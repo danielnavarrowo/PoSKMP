@@ -33,6 +33,7 @@ data class CartItem(
     var quantity: Double
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VentaScreen(
     repository: ProductRepository,
@@ -44,7 +45,7 @@ fun VentaScreen(
     val cartItems = remember { mutableStateListOf<CartItem>() }
 
     // Active tab in compact/mobile view
-    var mobileSelectedTab by remember { mutableStateOf(0) }
+    var mobileSelectedTab by remember { mutableIntStateOf(0) }
 
     // Weight Dialog state
     var showWeightDialogForProduct by remember { mutableStateOf<Products?>(null) }
@@ -54,8 +55,8 @@ fun VentaScreen(
     var showCheckoutDialog by remember { mutableStateOf(false) }
     var paymentAmountInput by remember { mutableStateOf("") }
     var showSuccessDialog by remember { mutableStateOf(false) }
-    var lastSaleTotal by remember { mutableStateOf(0.0) }
-    var lastSaleChange by remember { mutableStateOf(0.0) }
+    var lastSaleTotal by remember { mutableDoubleStateOf(0.0) }
+    var lastSaleChange by remember { mutableDoubleStateOf(0.0) }
 
     // Observe products from DB
     LaunchedEffect(searchQuery) {
@@ -91,7 +92,7 @@ fun VentaScreen(
     val total = subtotal + iva
 
     Scaffold(
-        modifier = modifier.fillMaxSize().background(Color(0xFFF8FAFC))
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) { paddingValues ->
         if (isCompact) {
             // MOBILE COMPACT VIEW: TAB SYSTEM
@@ -101,16 +102,10 @@ fun VentaScreen(
                     .padding(paddingValues)
             ) {
                 // Tab Selection
-                TabRow(
+                SecondaryTabRow(
                     selectedTabIndex = mobileSelectedTab,
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF0F766E),
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[mobileSelectedTab]),
-                            color = Color(0xFF0F766E)
-                        )
-                    }
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Tab(
                         selected = mobileSelectedTab == 0,
@@ -121,9 +116,11 @@ fun VentaScreen(
                     Tab(
                         selected = mobileSelectedTab == 1,
                         onClick = { mobileSelectedTab = 1 },
-                        text = { 
+                        text = {
                             Text(
-                                text = if (cartItems.isEmpty()) "Ticket" else "Ticket (${cartItems.sumOf { if (it.product.por_peso == 1L) 1.0 else it.quantity }.toInt()})",
+                                text = if (cartItems.isEmpty()) "Ticket" else "Ticket (${
+                                    cartItems.sumOf { if (it.product.por_peso == 1L) 1.0 else it.quantity }.toInt()
+                                })",
                                 fontWeight = FontWeight.Bold
                             )
                         },
@@ -174,7 +171,7 @@ fun VentaScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(Color(0xFFF8FAFC))
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 // Left Column: Catalog
                 CatalogSection(
@@ -208,7 +205,7 @@ fun VentaScreen(
                     },
                     modifier = Modifier
                         .weight(0.35f)
-                        .border(1.dp, Color(0xFFE2E8F0))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 )
             }
         }
@@ -217,48 +214,210 @@ fun VentaScreen(
     // Weight Dialog
     if (showWeightDialogForProduct != null) {
         val product = showWeightDialogForProduct!!
-        AlertDialog(
-            onDismissRequest = { showWeightDialogForProduct = null },
-            title = { Text("Ingresar Peso - ${product.nombre}", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text(
-                        text = "Este producto se vende por peso (${product.precio_nota ?: "Kg"}). Ingrese la cantidad:",
-                        fontSize = 14.sp,
-                        color = Color(0xFF475569),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    OutlinedTextField(
-                        value = weightInput,
-                        onValueChange = { weightInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        label = { Text("Cantidad (${product.precio_nota ?: "Kg"})") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF0F766E),
-                            unfocusedBorderColor = Color(0xFFCBD5E1)
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val weight = weightInput.toDoubleOrNull() ?: 1.0
-                        addProductToCart(product, weight)
-                        showWeightDialogForProduct = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E))
-                ) {
-                    Text("Agregar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showWeightDialogForProduct = null }) {
-                    Text("Cancelar", color = Color(0xFF64748B))
-                }
+
+        var weightInputValue by remember(product.id) { mutableStateOf("1") }
+        var priceInputValue by remember(product.id) {
+            val initialPrice = product.precio
+            mutableStateOf(if (initialPrice % 1.0 == 0.0) initialPrice.toInt().toString() else initialPrice.toString())
+        }
+
+        fun handleWeightChange(newWeight: String) {
+            weightInputValue = newWeight
+            val weight = newWeight.toDoubleOrNull()
+            if (weight != null && weight >= 0.0) {
+                val calcPrice = weight * product.precio
+                priceInputValue = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
+                    .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
+            } else if (newWeight.isEmpty()) {
+                priceInputValue = ""
             }
+        }
+
+        fun handlePriceChange(newPrice: String) {
+            priceInputValue = newPrice
+            val price = newPrice.toDoubleOrNull()
+            if (price != null && price >= 0.0) {
+                val calcWeight = price / product.precio
+                weightInputValue = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
+                    .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
+            } else if (newPrice.isEmpty()) {
+                weightInputValue = ""
+            }
+        }
+
+
+        BasicAlertDialog(
+            onDismissRequest = { showWeightDialogForProduct = null },
+            modifier = Modifier.background(
+                MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
+            ).padding(20.dp),
+            content = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "¿Cuánto de ${product.nombre}?",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Precio: $${product.precio.toString().formatPrice()} / Kg",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val inputFieldsContent = @Composable {
+                        // Left Column: Weight
+                        Column(modifier = if (isCompact) Modifier.fillMaxWidth() else Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(0.25, 0.5, 0.75, 1.0).forEach { qty ->
+                                    val label =
+                                        "${if (qty % 1.0 == 0.0) qty.toInt().toString() else qty.toString()}${" Kg"}"
+                                    Box(
+                                        modifier = Modifier
+                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
+                                            .clip(MaterialTheme.shapes.small)
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .clickable { handleWeightChange(qty.toString()) }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            Text(
+                                text = "PESO (Kg)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = weightInputValue,
+                                onValueChange = { handleWeightChange(it) },
+                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                )
+                            )
+                        }
+
+                        if (!isCompact) {
+                            Spacer(modifier = Modifier.width(16.dp))
+                        } else {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        // Right Column: Price/Pesos
+                        Column(modifier = if (isCompact) Modifier.fillMaxWidth() else Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(5, 10, 15, 20).forEach { cash ->
+                                    val label = "$${cash}"
+                                    Box(
+                                        modifier = Modifier
+                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
+                                            .clip(MaterialTheme.shapes.small)
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .clickable { handlePriceChange(cash.toString()) }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            Text(
+                                text = "PESOS ($)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = priceInputValue,
+                                onValueChange = { handlePriceChange(it) },
+                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                )
+                            )
+                        }
+
+
+                    }
+
+                    if (isCompact) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            inputFieldsContent()
+                        }
+                    } else {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            inputFieldsContent()
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    )
+                    {
+
+                        OutlinedButton(
+                            onClick = { showWeightDialogForProduct = null },
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            shape = MaterialTheme.shapes.small,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                        ) {
+                            Text("Cancelar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Button(
+                            onClick = {
+                                val weight = weightInputValue.toDoubleOrNull() ?: 1.0
+                                addProductToCart(product, weight)
+                                showWeightDialogForProduct = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Text("Agregar al ticket", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+
+                    }
+                }
+            },
         )
     }
 
@@ -269,15 +428,23 @@ fun VentaScreen(
 
         AlertDialog(
             onDismissRequest = { showCheckoutDialog = false },
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = { Text("Cobro de Venta", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp)).padding(12.dp),
+                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small)
+                            .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Total a Pagar:", color = Color(0xFF475569), fontWeight = FontWeight.Bold)
-                        Text("$${total.toString().formatPrice()}", color = Color(0xFF0F766E), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                        Text("Total a Pagar:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        Text(
+                            "$${total.toString().formatPrice()}",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp
+                        )
                     }
 
                     OutlinedTextField(
@@ -289,15 +456,15 @@ fun VentaScreen(
                         label = { Text("Efectivo Recibido") },
                         placeholder = { Text("0.00") },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF0F766E),
-                            unfocusedBorderColor = Color(0xFFCBD5E1)
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
 
                     if (paymentAmountInput.isNotEmpty() && paymentAmount < total) {
                         Text(
                             "Monto insuficiente. Falta $${(total - paymentAmount).toString().formatPrice()}",
-                            color = Color(0xFFEF4444),
+                            color = MaterialTheme.colorScheme.error,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -307,8 +474,13 @@ fun VentaScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Cambio a entregar:", color = Color(0xFF475569), fontSize = 14.sp)
-                            Text("$${change.toString().formatPrice()}", color = Color(0xFF0F766E), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                            Text("Cambio a entregar:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                            Text(
+                                "$${change.toString().formatPrice()}",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 20.sp
+                            )
                         }
                     }
                 }
@@ -323,14 +495,15 @@ fun VentaScreen(
                         cartItems.clear()
                     },
                     enabled = paymentAmount >= total || paymentAmountInput.isEmpty(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Text("Registrar Venta")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCheckoutDialog = false }) {
-                    Text("Cancelar", color = Color(0xFF64748B))
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -340,20 +513,38 @@ fun VentaScreen(
     if (showSuccessDialog) {
         AlertDialog(
             onDismissRequest = { showSuccessDialog = false },
-            icon = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(48.dp)) },
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            icon = {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF10B981),
+                    modifier = Modifier.size(48.dp)
+                )
+            },
             title = { Text("¡Venta Exitosa!", fontWeight = FontWeight.Bold) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text("La venta se ha registrado correctamente.", textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Total cobrado: $${lastSaleTotal.toString().formatPrice()}", fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
-                    Text("Cambio entregado: $${lastSaleChange.toString().formatPrice()}", color = Color(0xFF0F766E), fontWeight = FontWeight.Bold)
+                    Text(
+                        "Total cobrado: $${lastSaleTotal.toString().formatPrice()}",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Cambio entregado: $${lastSaleChange.toString().formatPrice()}",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = { showSuccessDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Text("Entendido")
                 }
@@ -384,7 +575,7 @@ fun CatalogSection(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            modifier = Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(12.dp)),
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium),
             placeholder = { Text("Buscar por nombre, código de barra o categoría...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
             trailingIcon = {
@@ -395,10 +586,10 @@ fun CatalogSection(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF0F766E),
-                unfocusedBorderColor = Color(0xFFE2E8F0)
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
             )
         )
 
@@ -409,7 +600,7 @@ fun CatalogSection(
             text = if (searchQuery.isBlank()) "Productos Disponibles" else "Resultados de la Búsqueda",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E293B),
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -422,13 +613,13 @@ fun CatalogSection(
                     Icon(
                         Icons.Default.Info,
                         contentDescription = null,
-                        tint = Color(0xFF94A3B8),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "No se encontraron productos.",
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 16.sp
                     )
                 }
@@ -444,9 +635,9 @@ fun CatalogSection(
                     items(productsList) { product ->
                         Card(
                             onClick = { onProductClick(product) },
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth().height(140.dp)
                         ) {
                             Column(
@@ -458,7 +649,7 @@ fun CatalogSection(
                                         text = product.categoria ?: "Sin categoría",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF0F766E),
+                                        color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -467,7 +658,7 @@ fun CatalogSection(
                                         text = product.nombre,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1E293B),
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -478,14 +669,21 @@ fun CatalogSection(
                                     verticalAlignment = Alignment.Bottom
                                 ) {
                                     Text(
-                                        text = "$${product.precio.toString().formatPrice()}${if (product.precio_nota.isNullOrBlank()) "" else " / ${product.precio_nota}"}",
+                                        text = "$${
+                                            product.precio.toString().formatPrice()
+                                        }${if (product.precio_nota.isNullOrBlank()) "" else " / ${product.precio_nota}"}",
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = Color(0xFF0F766E)
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                     if (product.por_peso == 1L) {
-                                        Badge(containerColor = Color(0xFFFEF3C7), contentColor = Color(0xFFD97706)) {
-                                            Text("Peso", fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                                        Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
+                                            Text(
+                                                "Peso",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 4.dp)
+                                            )
                                         }
                                     }
                                 }
@@ -499,8 +697,8 @@ fun CatalogSection(
                     ExtendedFloatingActionButton(
                         onClick = onViewCartClick,
                         modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                        containerColor = Color(0xFF0F766E),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
                         Icon(Icons.Default.ShoppingCart, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -527,7 +725,7 @@ fun TicketSection(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
         Row(
@@ -537,7 +735,7 @@ fun TicketSection(
             Icon(
                 Icons.Default.ShoppingCart,
                 contentDescription = null,
-                tint = Color(0xFF0F766E),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -545,17 +743,17 @@ fun TicketSection(
                 text = "Ticket Actual",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E293B)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.weight(1f))
             if (cartItems.isNotEmpty()) {
                 TextButton(onClick = onClearCart) {
-                    Text("Limpiar", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                    Text("Limpiar", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        HorizontalDivider(color = Color(0xFFF1F5F9))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         // Cart Items List
         if (cartItems.isEmpty()) {
@@ -567,13 +765,13 @@ fun TicketSection(
                     Icon(
                         Icons.Default.ShoppingCart,
                         contentDescription = null,
-                        tint = Color(0xFFCBD5E1),
+                        tint = MaterialTheme.colorScheme.outlineVariant,
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "El ticket está vacío",
-                        color = Color(0xFF94A3B8),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp
                     )
                 }
@@ -588,8 +786,8 @@ fun TicketSection(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF8FAFC))
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -598,14 +796,16 @@ fun TicketSection(
                                 text = item.product.nombre,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E293B),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "$${item.product.precio.toString().formatPrice()} x ${item.quantity.formatQuantity(item.product.por_peso == 1L)}",
+                                text = "$${
+                                    item.product.precio.toString().formatPrice()
+                                } x ${item.quantity.formatQuantity(item.product.por_peso == 1L)}",
                                 fontSize = 11.sp,
-                                color = Color(0xFF64748B)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
@@ -624,7 +824,7 @@ fun TicketSection(
                                 Icon(
                                     Icons.Default.KeyboardArrowDown,
                                     contentDescription = "Disminuir",
-                                    tint = Color(0xFF64748B),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -633,7 +833,7 @@ fun TicketSection(
                                 text = item.quantity.formatQuantity(item.product.por_peso == 1L),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E293B),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.widthIn(min = 28.dp),
                                 textAlign = TextAlign.Center
                             )
@@ -649,7 +849,7 @@ fun TicketSection(
                                 Icon(
                                     Icons.Default.Add,
                                     contentDescription = "Aumentar",
-                                    tint = Color(0xFF0F766E),
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -660,7 +860,7 @@ fun TicketSection(
                                 text = "$${(item.product.precio * item.quantity).toString().formatPrice()}",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1E293B),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.widthIn(min = 55.dp),
                                 textAlign = TextAlign.End
                             )
@@ -672,7 +872,7 @@ fun TicketSection(
                                 Icon(
                                     Icons.Default.Delete,
                                     contentDescription = "Quitar",
-                                    tint = Color(0xFFEF4444),
+                                    tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -682,7 +882,7 @@ fun TicketSection(
             }
         }
 
-        HorizontalDivider(color = Color(0xFFF1F5F9))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         // Totals and Checkout Button
         Column(
@@ -693,24 +893,24 @@ fun TicketSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Subtotal", color = Color(0xFF64748B), fontSize = 14.sp)
-                Text("$${subtotal.toString().formatPrice()}", color = Color(0xFF1E293B), fontSize = 14.sp)
+                Text("Subtotal", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                Text("$${subtotal.toString().formatPrice()}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("IVA (16%)", color = Color(0xFF64748B), fontSize = 14.sp)
-                Text("$${iva.toString().formatPrice()}", color = Color(0xFF1E293B), fontSize = 14.sp)
+                Text("IVA (16%)", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                Text("$${iva.toString().formatPrice()}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Total", color = Color(0xFF1E293B), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Total", color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                 Text(
                     "$${total.toString().formatPrice()}",
-                    color = Color(0xFF0F766E),
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
@@ -722,10 +922,10 @@ fun TicketSection(
                 onClick = onCheckout,
                 enabled = cartItems.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF0F766E),
-                    disabledContainerColor = Color(0xFF94A3B8)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 ),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Icon(Icons.Default.Done, contentDescription = null)

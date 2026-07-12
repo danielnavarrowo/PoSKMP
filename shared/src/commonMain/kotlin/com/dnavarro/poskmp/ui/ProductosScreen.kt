@@ -148,7 +148,7 @@ fun ProductosScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp)
     ) {
         // TOP HEADER
@@ -162,12 +162,12 @@ fun ProductosScreen(
                     text = "Administración de Productos",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF1E293B)
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "Catálogo local de productos y control de inventario",
                     fontSize = 14.sp,
-                    color = Color(0xFF64748B)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -175,7 +175,6 @@ fun ProductosScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
-                        // Generate CSV string from database products
                         val csvBuilder = StringBuilder("id,codigos,nombre,precio,costo,precio_nota,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
                         for ((id, codigos, nombre, precio, costo, precio_nota, categoria, activo, por_peso, precio_mayoreo, es_favorito) in productsList) {
                             csvBuilder.append("$id,")
@@ -195,8 +194,8 @@ fun ProductosScreen(
                         importSuccess = false
                         showImportExportDialog = true
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF64748B)),
-                    shape = RoundedCornerShape(8.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
@@ -205,8 +204,8 @@ fun ProductosScreen(
 
                 Button(
                     onClick = { openProductForm(null) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E)),
-                    shape = RoundedCornerShape(8.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
@@ -219,7 +218,7 @@ fun ProductosScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            modifier = Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(8.dp)),
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small),
             placeholder = { Text("Buscar por nombre, código de barra o categoría...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
             trailingIcon = {
@@ -230,10 +229,10 @@ fun ProductosScreen(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(8.dp),
+            shape = MaterialTheme.shapes.small,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF0F766E),
-                unfocusedBorderColor = Color(0xFFE2E8F0)
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
             )
         )
 
@@ -245,9 +244,9 @@ fun ProductosScreen(
 
             Card(
                 modifier = Modifier.fillMaxSize(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = MaterialTheme.shapes.medium,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 if (isCompact) {
                     // Mobile Compact List
@@ -256,7 +255,7 @@ fun ProductosScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No hay productos registrados.", color = Color(0xFF94A3B8))
+                            Text("No hay productos registrados.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         LazyColumn(
@@ -267,8 +266,8 @@ fun ProductosScreen(
                             items(productsList) { product ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                                 ) {
                                     Column(modifier = Modifier.padding(12.dp)) {
                                         Row(
@@ -280,7 +279,7 @@ fun ProductosScreen(
                                                 text = product.nombre,
                                                 fontSize = 15.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF1E293B),
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 modifier = Modifier.weight(1f),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
@@ -290,13 +289,13 @@ fun ProductosScreen(
                                                     onClick = { openProductForm(product) },
                                                     modifier = Modifier.size(28.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color(0xFF0F766E), modifier = Modifier.size(16.dp))
+                                                    Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                                 }
                                                 IconButton(
                                                     onClick = { repository.deleteProductSoft(product.id, currentTimeMillis()) },
                                                     modifier = Modifier.size(28.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                                                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                                                 }
                                             }
                                         }
@@ -316,12 +315,12 @@ fun ProductosScreen(
                                         } catch (_: Exception) {
                                             "N/A"
                                         }
-                                        Text("Código: $codesDisplay", fontSize = 12.sp, color = Color(0xFF64748B))
+                                        Text("Código: $codesDisplay", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                                         Spacer(modifier = Modifier.height(4.dp))
 
                                         // Category
-                                        Text("Categoría: ${product.categoria ?: "Sin categoría"}", fontSize = 12.sp, color = Color(0xFF64748B))
+                                        Text("Categoría: ${product.categoria ?: "Sin categoría"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                                         Spacer(modifier = Modifier.height(6.dp))
 
@@ -336,22 +335,22 @@ fun ProductosScreen(
                                                     text = "Precio: $${product.precio.toString().formatPrice()}${if (product.precio_nota.isNullOrBlank()) "" else " / ${product.precio_nota}"}",
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF0F766E)
+                                                    color = MaterialTheme.colorScheme.primary
                                                 )
-                                                Text("Costo: $${product.costo.toString().formatPrice()}", fontSize = 11.sp, color = Color(0xFF64748B))
+                                                Text("Costo: $${product.costo.toString().formatPrice()}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                                 if (product.es_favorito == 1L) {
-                                                    Badge(containerColor = Color(0xFFFFE4E6), contentColor = Color(0xFFE11D48)) {
+                                                    Badge(containerColor = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer) {
                                                         Text("★", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
                                                     }
                                                 }
                                                 if (product.activo == 1L) {
-                                                    Badge(containerColor = Color(0xFFD1FAE5), contentColor = Color(0xFF065F46)) {
+                                                    Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
                                                         Text("Activo", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
                                                     }
                                                 } else {
-                                                    Badge(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFF991B1B)) {
+                                                    Badge(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
                                                         Text("Inactivo", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
                                                     }
                                                 }
@@ -368,17 +367,17 @@ fun ProductosScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFF1F5F9))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Código(s)", modifier = Modifier.weight(0.18f), fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 13.sp)
-                            Text("Nombre del Producto", modifier = Modifier.weight(0.28f), fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 13.sp)
-                            Text("Categoría", modifier = Modifier.weight(0.14f), fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 13.sp)
-                            Text("Precio Venta", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 13.sp)
-                            Text("Costo", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 13.sp)
-                            Text("Estado", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 13.sp)
-                            Text("Acciones", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 13.sp)
+                            Text("Código(s)", modifier = Modifier.weight(0.18f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Text("Nombre del Producto", modifier = Modifier.weight(0.28f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Text("Categoría", modifier = Modifier.weight(0.14f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Text("Precio Venta", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Text("Costo", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Text("Estado", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Text("Acciones", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                         }
 
                         if (productsList.isEmpty()) {
@@ -386,7 +385,7 @@ fun ProductosScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("No hay productos registrados en el catálogo.", color = Color(0xFF94A3B8))
+                                Text("No hay productos registrados en el catálogo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
                             LazyColumn(
@@ -397,7 +396,7 @@ fun ProductosScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .border(BorderStroke(0.5.dp, Color(0xFFF1F5F9)))
+                                            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant))
                                             .padding(horizontal = 16.dp, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -417,7 +416,7 @@ fun ProductosScreen(
                                             text = codesDisplay,
                                             modifier = Modifier.weight(0.18f),
                                             fontSize = 13.sp,
-                                            color = Color(0xFF1E293B),
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -430,7 +429,7 @@ fun ProductosScreen(
                                                 text = product.nombre,
                                                 fontSize = 13.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF1E293B),
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
@@ -439,7 +438,7 @@ fun ProductosScreen(
                                                 Icon(
                                                     Icons.Default.Favorite,
                                                     contentDescription = "Favorito",
-                                                    tint = Color(0xFFE11D48),
+                                                    tint = MaterialTheme.colorScheme.error,
                                                     modifier = Modifier.size(14.dp)
                                                 )
                                             }
@@ -449,7 +448,7 @@ fun ProductosScreen(
                                             text = product.categoria ?: "Sin categoría",
                                             modifier = Modifier.weight(0.14f),
                                             fontSize = 13.sp,
-                                            color = Color(0xFF64748B),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -458,7 +457,7 @@ fun ProductosScreen(
                                             text = "$${product.precio.toString().formatPrice()}${if (product.precio_nota.isNullOrBlank()) "" else " / ${product.precio_nota}"}",
                                             modifier = Modifier.weight(0.10f),
                                             fontSize = 13.sp,
-                                            color = Color(0xFF0F766E),
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
 
@@ -466,16 +465,16 @@ fun ProductosScreen(
                                             text = "$${product.costo.toString().formatPrice()}",
                                             modifier = Modifier.weight(0.10f),
                                             fontSize = 13.sp,
-                                            color = Color(0xFF64748B)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
 
                                         Box(modifier = Modifier.weight(0.10f)) {
                                             if (product.activo == 1L) {
-                                                Badge(containerColor = Color(0xFFD1FAE5), contentColor = Color(0xFF065F46)) {
+                                                Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
                                                     Text("Activo", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
                                                 }
                                             } else {
-                                                Badge(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFF991B1B)) {
+                                                Badge(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
                                                     Text("Inactivo", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
                                                 }
                                             }
@@ -490,7 +489,7 @@ fun ProductosScreen(
                                                 onClick = { openProductForm(product) },
                                                 modifier = Modifier.size(28.dp)
                                             ) {
-                                                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color(0xFF0F766E), modifier = Modifier.size(16.dp))
+                                                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                             }
 
                                             IconButton(
@@ -500,7 +499,7 @@ fun ProductosScreen(
                                                 Icon(
                                                     Icons.Default.Delete,
                                                     contentDescription = "Quitar",
-                                                    tint = Color(0xFFEF4444),
+                                                    tint = MaterialTheme.colorScheme.error,
                                                     modifier = Modifier.size(16.dp)
                                                 )
                                             }
@@ -510,16 +509,18 @@ fun ProductosScreen(
                             }
                         }
                     }
-                }
             }
         }
     }
+}
 
     // PRODUCT FORM DIALOG
     if (showProductDialogFor != null) {
         val isNew = showProductDialogFor!!.id.isEmpty()
         AlertDialog(
             onDismissRequest = { showProductDialogFor = null },
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
                 Text(
                     text = if (isNew) "Registrar Nuevo Producto" else "Modificar Producto",
@@ -604,8 +605,7 @@ fun ProductosScreen(
                         Text("Vendido por Peso", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         Switch(
                             checked = formPorPeso,
-                            onCheckedChange = { formPorPeso = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF0F766E))
+                            onCheckedChange = { formPorPeso = it }
                         )
                     }
 
@@ -617,8 +617,7 @@ fun ProductosScreen(
                         Text("Es Producto Favorito", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         Switch(
                             checked = formEsFavorito,
-                            onCheckedChange = { formEsFavorito = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF0F766E))
+                            onCheckedChange = { formEsFavorito = it }
                         )
                     }
 
@@ -630,8 +629,7 @@ fun ProductosScreen(
                         Text("Producto Activo (Venta disponible)", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         Switch(
                             checked = formActivo,
-                            onCheckedChange = { formActivo = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF0F766E))
+                            onCheckedChange = { formActivo = it }
                         )
                     }
                 }
@@ -640,14 +638,15 @@ fun ProductosScreen(
                 Button(
                     onClick = { saveProduct() },
                     enabled = formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Text("Guardar")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showProductDialogFor = null }) {
-                    Text("Cancelar", color = Color(0xFF64748B))
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -657,13 +656,15 @@ fun ProductosScreen(
     if (showImportExportDialog) {
         AlertDialog(
             onDismissRequest = { showImportExportDialog = false },
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = { Text("Importar / Exportar en CSV", fontWeight = FontWeight.Bold) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = "Puedes copiar el CSV a continuación para respaldar los datos, o pegar tu propio texto CSV y presionar 'Importar' para actualizar el catálogo.",
                         fontSize = 13.sp,
-                        color = Color(0xFF475569)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     OutlinedTextField(
@@ -676,7 +677,7 @@ fun ProductosScreen(
                     )
 
                     if (importError != null) {
-                        Text(importError!!, color = Color(0xFFEF4444), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(importError!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
                     if (importSuccess) {
@@ -688,7 +689,6 @@ fun ProductosScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            // Run CSV Import logic
                             try {
                                 val lines = csvText.split("\n")
                                 if (lines.size < 2) throw Exception("CSV vacío o sin suficientes líneas.")
@@ -700,7 +700,6 @@ fun ProductosScreen(
                                     val line = lines[i].trim()
                                     if (line.isEmpty()) continue
                                     
-                                    // Parse CSV (handling optional quotes)
                                     val cols = parseCsvLine(line)
                                     if (cols.size < 4) continue // Skip invalid lines
                                     
@@ -715,7 +714,7 @@ fun ProductosScreen(
                                     val porPeso = cols.getOrNull(8)?.toLongOrNull() ?: 0L
                                     val precioMayoreo = cols.getOrNull(9)?.toDoubleOrNull() ?: 0.0
                                     val esFavorito = cols.getOrNull(10)?.toLongOrNull() ?: 0L
-
+ 
                                     val p = Products(
                                         id = id,
                                         codigos = codigos,
@@ -741,14 +740,16 @@ fun ProductosScreen(
                                 importSuccess = false
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = MaterialTheme.shapes.small
                     ) {
                         Text("Importar CSV")
                     }
 
                     Button(
                         onClick = { showImportExportDialog = false },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF64748B))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        shape = MaterialTheme.shapes.small
                     ) {
                         Text("Cerrar")
                     }

@@ -24,6 +24,7 @@ import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.ui.VentaScreen
 import com.dnavarro.poskmp.ui.ProductosScreen
 import com.dnavarro.poskmp.ui.Screen
+import com.dnavarro.poskmp.theme.AppTheme
 
 @Composable
 fun App() {
@@ -39,7 +40,7 @@ fun App() {
     // 2. Navigation State
     var currentScreen by remember { mutableStateOf(Screen.VENTA) }
 
-    MaterialTheme {
+    AppTheme {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val isCompact = maxWidth < 600.dp
 
@@ -53,32 +54,18 @@ fun App() {
                         }
                     }
 
-                    NavigationBar(containerColor = Color(0xFF0F172A)) {
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
                         NavigationBarItem(
                             selected = currentScreen == Screen.VENTA,
                             onClick = { currentScreen = Screen.VENTA },
                             icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Venta") },
-                            label = { Text("Venta") },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color.White,
-                                unselectedIconColor = Color(0xFF94A3B8),
-                                selectedTextColor = Color.White,
-                                unselectedTextColor = Color(0xFF94A3B8),
-                                indicatorColor = Color(0xFF0F766E)
-                            )
+                            label = { Text("Venta") }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.PRODUCTOS,
                             onClick = { currentScreen = Screen.PRODUCTOS },
                             icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Productos") },
-                            label = { Text("Productos") },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color.White,
-                                unselectedIconColor = Color(0xFF94A3B8),
-                                selectedTextColor = Color.White,
-                                unselectedTextColor = Color(0xFF94A3B8),
-                                indicatorColor = Color(0xFF0F766E)
-                            )
+                            label = { Text("Productos") }
                         )
                     }
                 }
@@ -90,7 +77,7 @@ fun App() {
                         modifier = Modifier
                             .width(240.dp)
                             .fillMaxHeight()
-                            .background(Color(0xFF0F172A)) // Sleek dark zinc/blue background
+                            .background(MaterialTheme.colorScheme.surfaceVariant) // Sleek adaptive M3 surfaceVariant background
                             .padding(20.dp),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -104,14 +91,14 @@ fun App() {
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFF0F766E)), // Emerald/teal logo accent
+                                        .clip(MaterialTheme.shapes.small)
+                                        .background(MaterialTheme.colorScheme.primary), // Dynamic M3 primary
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         Icons.Default.ShoppingCart,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -119,13 +106,13 @@ fun App() {
                                 Column {
                                     Text(
                                         "Antigravity",
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Black
                                     )
                                     Text(
                                         "Punto de Venta",
-                                        color = Color(0xFF0F766E),
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -135,7 +122,7 @@ fun App() {
                             // Navigation Links
                             Text(
                                 "MENÚ PRINCIPAL",
-                                color = Color(0xFF475569),
+                                color = MaterialTheme.colorScheme.outline,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 12.dp, start = 8.dp)
@@ -164,14 +151,14 @@ fun App() {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFF1E293B))
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
                                 .padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
                                 "ESTADO DEL SISTEMA",
-                                color = Color(0xFF94A3B8),
+                                color = MaterialTheme.colorScheme.outline,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -187,7 +174,7 @@ fun App() {
                                 )
                                 Text(
                                     "Base Local: Conectada",
-                                    color = Color(0xFFE2E8F0),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -204,7 +191,7 @@ fun App() {
                                 )
                                 Text(
                                     "Sincronización: Pendiente",
-                                    color = Color(0xFFE2E8F0),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -236,13 +223,13 @@ fun SidebarNavItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) Color(0xFF0F766E) else Color.Transparent
-    val contentColor = if (isSelected) Color.White else Color(0xFF94A3B8)
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(backgroundColor)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
