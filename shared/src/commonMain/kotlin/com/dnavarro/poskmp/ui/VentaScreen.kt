@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -22,7 +21,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.data.ProductRepository
 import kotlinx.coroutines.flow.collectLatest
@@ -412,7 +410,7 @@ fun VentaScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = MaterialTheme.shapes.small,
                         ) {
-                            Text("Agregar al ticket", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Agregar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
 
                     }

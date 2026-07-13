@@ -11,7 +11,7 @@ plugins {
 kotlin {
     jvm()
 
-    androidLibrary {
+    android {
         namespace = "com.dnavarro.poskmp.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -23,6 +23,8 @@ kotlin {
             isIncludeAndroidResources = true
         }
     }
+
+
 
     sourceSets {
         androidMain.dependencies {
