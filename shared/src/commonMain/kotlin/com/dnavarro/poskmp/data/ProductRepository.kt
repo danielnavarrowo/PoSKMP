@@ -34,7 +34,6 @@ class ProductRepository(database: AppDatabase) {
             nombre = product.nombre,
             precio = product.precio,
             costo = product.costo,
-            precio_nota = product.precio_nota,
             categoria = product.categoria,
             activo = product.activo,
             por_peso = product.por_peso,
@@ -52,7 +51,6 @@ class ProductRepository(database: AppDatabase) {
             nombre = product.nombre,
             precio = product.precio,
             costo = product.costo,
-            precio_nota = product.precio_nota,
             categoria = product.categoria,
             activo = product.activo,
             por_peso = product.por_peso,
@@ -84,20 +82,19 @@ class ProductRepository(database: AppDatabase) {
         if (existing.isEmpty()) {
             val now = currentTimeMillis()
             val dummyList = listOf(
-                ProductDummy("1", "[\"75010001\"]", "Coca Cola 600ml", 18.0, 12.5, "Refresco de cola", "Bebidas", 1, 0, 16.0, 1),
-                ProductDummy("2", "[\"75010002\"]", "Sabritas Sal 45g", 17.0, 11.0, "Papas fritas con sal", "Botanas", 1, 0, 15.0, 1),
-                ProductDummy("3", "[\"75010003\"]", "Jitomate Saladet", 35.0, 20.0, "Precio por Kg", "Frutas y Verduras", 1, 1, 30.0, 0),
-                ProductDummy("4", "[\"75010004\"]", "Huevo Blanco Kg", 42.0, 34.0, "Huevo fresco a granel", "Abarrotes", 1, 1, 38.0, 0),
-                ProductDummy("5", "[\"75010005\"]", "Gansito Marinela 50g", 15.5, 10.0, "Pastelito con chocolate", "Panadería", 1, 0, 14.0, 1)
+                ProductDummy("1", "[\"75010001\"]", "Coca Cola 600ml", 18.0, 12.5, "Bebidas", 1, 0, 16.0, 1),
+                ProductDummy("2", "[\"75010002\"]", "Sabritas Sal 45g", 17.0, 11.0, "Botanas", 1, 0, 15.0, 1),
+                ProductDummy("3", "[\"75010003\"]", "Jitomate Saladet", 35.0, 20.0, "Frutas y Verduras", 1, 1, 30.0, 0),
+                ProductDummy("4", "[\"75010004\"]", "Huevo Blanco Kg", 42.0, 34.0, "Abarrotes", 1, 1, 38.0, 0),
+                ProductDummy("5", "[\"75010005\"]", "Gansito Marinela 50g", 15.5, 10.0, "Panadería", 1, 0, 14.0, 1)
             )
-            for ((id, codigos, nombre, precio, costo, precioNota, categoria, activo, porPeso, precioMayoreo, esFavorito) in dummyList) {
+            for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, esFavorito) in dummyList) {
                 queries.insertProduct(
                     id = id,
                     codigos = codigos,
                     nombre = nombre,
                     precio = precio,
                     costo = costo,
-                    precio_nota = precioNota,
                     categoria = categoria,
                     activo = activo,
                     por_peso = porPeso,
@@ -117,7 +114,6 @@ private data class ProductDummy(
     val nombre: String,
     val precio: Double,
     val costo: Double,
-    val precioNota: String,
     val categoria: String,
     val activo: Long,
     val porPeso: Long,

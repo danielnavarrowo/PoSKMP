@@ -24,6 +24,11 @@ import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.data.ProductRepository
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import kotlin.math.roundToInt
 
 data class CartItem(
@@ -213,14 +218,30 @@ fun VentaScreen(
     if (showWeightDialogForProduct != null) {
         val product = showWeightDialogForProduct!!
 
-        var weightInputValue by remember(product.id) { mutableStateOf("1") }
+        val focusRequester = remember { FocusRequester() }
+
+        var weightInputValue by remember(product.id) {
+            mutableStateOf(
+                TextFieldValue(
+                    text = "1",
+                    selection = TextRange(0, 1)
+                )
+            )
+        }
         var priceInputValue by remember(product.id) {
             val initialPrice = product.precio
             mutableStateOf(if (initialPrice % 1.0 == 0.0) initialPrice.toInt().toString() else initialPrice.toString())
         }
 
+        LaunchedEffect(product.id) {
+            delay(50)
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+
         fun handleWeightChange(newWeight: String) {
-            weightInputValue = newWeight
+            weightInputValue = TextFieldValue(text = newWeight, selection = TextRange(newWeight.length))
             val weight = newWeight.toDoubleOrNull()
             if (weight != null && weight >= 0.0) {
                 val calcPrice = weight * product.precio
@@ -236,10 +257,11 @@ fun VentaScreen(
             val price = newPrice.toDoubleOrNull()
             if (price != null && price >= 0.0) {
                 val calcWeight = price / product.precio
-                weightInputValue = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
+                val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
                     .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
+                weightInputValue = TextFieldValue(text = weightStr, selection = TextRange(weightStr.length))
             } else if (newPrice.isEmpty()) {
-                weightInputValue = ""
+                weightInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
             }
         }
 
@@ -279,7 +301,11 @@ fun VentaScreen(
                                         "${if (qty % 1.0 == 0.0) qty.toInt().toString() else qty.toString()}${" Kg"}"
                                     Box(
                                         modifier = Modifier
-                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
+                                            .border(
+                                                1.dp,
+                                                MaterialTheme.colorScheme.outlineVariant,
+                                                MaterialTheme.shapes.small
+                                            )
                                             .clip(MaterialTheme.shapes.small)
                                             .background(MaterialTheme.colorScheme.surface)
                                             .clickable { handleWeightChange(qty.toString()) }
@@ -306,8 +332,22 @@ fun VentaScreen(
 
                             OutlinedTextField(
                                 value = weightInputValue,
-                                onValueChange = { handleWeightChange(it) },
-                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface),
+                                onValueChange = { newValue ->
+                                    weightInputValue = newValue
+                                    val newWeight = newValue.text
+                                    val weight = newWeight.toDoubleOrNull()
+                                    if (weight != null && weight >= 0.0) {
+                                        val calcPrice = weight * product.precio
+                                        priceInputValue = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
+                                            .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
+                                    } else if (newWeight.isEmpty()) {
+                                        priceInputValue = ""
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .focusRequester(focusRequester),
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
@@ -334,7 +374,11 @@ fun VentaScreen(
                                     val label = "$${cash}"
                                     Box(
                                         modifier = Modifier
-                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
+                                            .border(
+                                                1.dp,
+                                                MaterialTheme.colorScheme.outlineVariant,
+                                                MaterialTheme.shapes.small
+                                            )
                                             .clip(MaterialTheme.shapes.small)
                                             .background(MaterialTheme.colorScheme.surface)
                                             .clickable { handlePriceChange(cash.toString()) }
@@ -403,7 +447,7 @@ fun VentaScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         Button(
                             onClick = {
-                                val weight = weightInputValue.toDoubleOrNull() ?: 1.0
+                                val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
                                 addProductToCart(product, weight)
                                 showWeightDialogForProduct = null
                             },
@@ -432,11 +476,16 @@ fun VentaScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small)
+                        modifier = Modifier.fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small)
                             .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Total a Pagar:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Total a Pagar:",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
                         Text(
                             "$${total.toString().formatPrice()}",
                             color = MaterialTheme.colorScheme.primary,
@@ -472,7 +521,11 @@ fun VentaScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Cambio a entregar:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                            Text(
+                                "Cambio a entregar:",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
                             Text(
                                 "$${change.toString().formatPrice()}",
                                 color = MaterialTheme.colorScheme.primary,
@@ -573,7 +626,8 @@ fun CatalogSection(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium),
+            modifier = Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium),
             placeholder = { Text("Buscar por nombre, código de barra o categoría...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
             trailingIcon = {
@@ -666,23 +720,24 @@ fun CatalogSection(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.Bottom
                                 ) {
-                                    Text(
-                                        text = "$${
-                                            product.precio.toString().formatPrice()
-                                        }${if (product.precio_nota.isNullOrBlank()) "" else " / ${product.precio_nota}"}",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
                                     if (product.por_peso == 1L) {
-                                        Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
-                                            Text(
-                                                "Peso",
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(horizontal = 4.dp)
-                                            )
-                                        }
+                                        Text(
+                                            text = "$${
+                                                product.precio.toString().formatPrice()
+                                            } / Kg",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "$${
+                                                product.precio.toString().formatPrice()
+                                            }",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                     }
                                 }
                             }
@@ -892,7 +947,11 @@ fun TicketSection(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Subtotal", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-                Text("$${subtotal.toString().formatPrice()}", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                Text(
+                    "$${subtotal.toString().formatPrice()}",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 14.sp
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -905,7 +964,12 @@ fun TicketSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Total", color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    "Total",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
                 Text(
                     "$${total.toString().formatPrice()}",
                     color = MaterialTheme.colorScheme.primary,

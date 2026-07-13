@@ -5,7 +5,6 @@ CREATE TABLE products (
     nombre         TEXT    NOT NULL,
     precio         REAL    NOT NULL DEFAULT 0,
     costo          REAL    NOT NULL DEFAULT 0,
-    precio_nota    TEXT    DEFAULT '',
     categoria      TEXT    DEFAULT 'Sin categoria',
     activo         INTEGER NOT NULL DEFAULT 1, -- 0 = false, 1 = true
     por_peso       INTEGER NOT NULL DEFAULT 0, -- 0 = false, 1 = true
@@ -33,14 +32,14 @@ SELECT * FROM products WHERE sync_state != 'SYNCED';
 
 insertProduct:
 INSERT OR REPLACE INTO products (
-    id, codigos, nombre, precio, costo, precio_nota, 
+    id, codigos, nombre, precio, costo, 
     categoria, activo, por_peso, precio_mayoreo, es_favorito, 
     updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateProduct:
 UPDATE products
-SET codigos = ?, nombre = ?, precio = ?, costo = ?, precio_nota = ?, 
+SET codigos = ?, nombre = ?, precio = ?, costo = ?, 
     categoria = ?, activo = ?, por_peso = ?, precio_mayoreo = ?, es_favorito = ?, 
     updated_at = ?, sync_state = ?
 WHERE id = ?;

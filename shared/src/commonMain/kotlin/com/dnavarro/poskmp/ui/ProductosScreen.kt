@@ -41,7 +41,6 @@ fun ProductosScreen(
     var formPrecio by remember { mutableStateOf("") }
     var formCosto by remember { mutableStateOf("") }
     var formPrecioMayoreo by remember { mutableStateOf("") }
-    var formPrecioNota by remember { mutableStateOf("") }
     var formCategoria by remember { mutableStateOf("") }
     var formActivo by remember { mutableStateOf(true) }
     var formPorPeso by remember { mutableStateOf(false) }
@@ -74,12 +73,11 @@ fun ProductosScreen(
             formPrecio = ""
             formCosto = ""
             formPrecioMayoreo = ""
-            formPrecioNota = "Pza"
             formCategoria = "Abarrotes"
             formActivo = true
             formPorPeso = false
             formEsFavorito = false
-            showProductDialogFor = Products("", "[]", "", 0.0, 0.0, "", "", 1L, 0L, 0.0, 0L, 0L, "")
+            showProductDialogFor = Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
         } else {
             // Edit existing product
             formNombre = product.nombre
@@ -99,7 +97,6 @@ fun ProductosScreen(
             formPrecio = product.precio.toString()
             formCosto = product.costo.toString()
             formPrecioMayoreo = product.precio_mayoreo.toString()
-            formPrecioNota = product.precio_nota ?: ""
             formCategoria = product.categoria ?: "Sin categoría"
             formActivo = product.activo == 1L
             formPorPeso = product.por_peso == 1L
@@ -126,7 +123,6 @@ fun ProductosScreen(
             nombre = formNombre.trim(),
             precio = formPrecio.toDoubleOrNull() ?: 0.0,
             costo = formCosto.toDoubleOrNull() ?: 0.0,
-            precio_nota = formPrecioNota.trim(),
             categoria = formCategoria.trim().ifEmpty { "Sin categoría" },
             activo = if (formActivo) 1L else 0L,
             por_peso = if (formPorPeso) 1L else 0L,
@@ -174,14 +170,13 @@ fun ProductosScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = {
-                        val csvBuilder = StringBuilder("id,codigos,nombre,precio,costo,precio_nota,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
-                        for ((id, codigos, nombre, precio, costo, precio_nota, categoria, activo, por_peso, precio_mayoreo, es_favorito) in productsList) {
+                        val csvBuilder = StringBuilder("id,codigos,nombre,precio,costo,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
+                        for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito) in productsList) {
                             csvBuilder.append("$id,")
                             csvBuilder.append("\"${codigos.replace("\"", "\"\"")}\",")
                             csvBuilder.append("\"${nombre.replace("\"", "\"\"")}\",")
                             csvBuilder.append("$precio,")
                             csvBuilder.append("$costo,")
-                            csvBuilder.append("\"${(precio_nota ?: "").replace("\"", "\"\"")}\",")
                             csvBuilder.append("\"${(categoria ?: "").replace("\"", "\"\"")}\",")
                             csvBuilder.append("$activo,")
                             csvBuilder.append("$por_peso,")
@@ -331,7 +326,7 @@ fun ProductosScreen(
                                         ) {
                                             Column {
                                                 Text(
-                                                    text = "Precio: $${product.precio.toString().formatPrice()}${if (product.precio_nota.isNullOrBlank()) "" else " / ${product.precio_nota}"}",
+                                                    text = "Precio: $${product.precio.toString().formatPrice()}",
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = MaterialTheme.colorScheme.primary
@@ -453,7 +448,7 @@ fun ProductosScreen(
                                         )
 
                                         Text(
-                                            text = "$${product.precio.toString().formatPrice()}${if (product.precio_nota.isNullOrBlank()) "" else " / ${product.precio_nota}"}",
+                                            text = "$${product.precio.toString().formatPrice()}",
                                             modifier = Modifier.weight(0.10f),
                                             fontSize = 13.sp,
                                             color = MaterialTheme.colorScheme.primary,
@@ -567,23 +562,14 @@ fun ProductosScreen(
                         )
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = formPrecioMayoreo,
-                            onValueChange = { formPrecioMayoreo = it },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("Precio Mayoreo") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = formPrecioNota,
-                            onValueChange = { formPrecioNota = it },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("Unidad (e.g. Kg, Pza, L)") },
-                            singleLine = true
-                        )
-                    }
+                    OutlinedTextField(
+                        value = formPrecioMayoreo,
+                        onValueChange = { formPrecioMayoreo = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Precio Mayoreo") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
 
                     OutlinedTextField(
                         value = formCategoria,
@@ -707,12 +693,11 @@ fun ProductosScreen(
                                     val nombre = cols[2]
                                     val precio = cols[3].toDoubleOrNull() ?: 0.0
                                     val costo = cols.getOrNull(4)?.toDoubleOrNull() ?: 0.0
-                                    val precioNota = cols.getOrNull(5) ?: "Pza"
-                                    val categoria = cols.getOrNull(6) ?: "Sin categoría"
-                                    val activo = cols.getOrNull(7)?.toLongOrNull() ?: 1L
-                                    val porPeso = cols.getOrNull(8)?.toLongOrNull() ?: 0L
-                                    val precioMayoreo = cols.getOrNull(9)?.toDoubleOrNull() ?: 0.0
-                                    val esFavorito = cols.getOrNull(10)?.toLongOrNull() ?: 0L
+                                    val categoria = cols.getOrNull(5) ?: "Sin categoría"
+                                    val activo = cols.getOrNull(6)?.toLongOrNull() ?: 1L
+                                    val porPeso = cols.getOrNull(7)?.toLongOrNull() ?: 0L
+                                    val precioMayoreo = cols.getOrNull(8)?.toDoubleOrNull() ?: 0.0
+                                    val esFavorito = cols.getOrNull(9)?.toLongOrNull() ?: 0L
  
                                     val p = Products(
                                         id = id,
@@ -720,7 +705,6 @@ fun ProductosScreen(
                                         nombre = nombre,
                                         precio = precio,
                                         costo = costo,
-                                        precio_nota = precioNota,
                                         categoria = categoria,
                                         activo = activo,
                                         por_peso = porPeso,
