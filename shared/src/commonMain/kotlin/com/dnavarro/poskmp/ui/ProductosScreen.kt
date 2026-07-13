@@ -21,7 +21,10 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
+import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.parseCsvLine
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.ui.input.key.*
 
 @Composable
 fun ProductosScreen(
@@ -403,7 +406,7 @@ fun ProductosScreen(
                                                 .filter { it.isNotEmpty() }
                                                 .joinToString(", ")
                                                 .ifEmpty { "N/A" }
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             "N/A"
                                         }
                                         Text(
@@ -513,6 +516,16 @@ fun ProductosScreen(
         val isNew = showProductDialogFor!!.id.isEmpty()
         AlertDialog(
             onDismissRequest = { showProductDialogFor = null },
+            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown && 
+                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                ) {
+                    if (formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null) {
+                        saveProduct()
+                        true
+                    } else false
+                } else false
+            },
             shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
@@ -639,15 +652,75 @@ fun ProductosScreen(
 
     // CSV IMPORT/EXPORT DIALOG
     if (showImportExportDialog) {
+        val performImport = {
+            try {
+                val lines = csvText.split("\n")
+                if (lines.size < 2) throw Exception("CSV vacío o sin suficientes líneas.")
+                val header = lines[0].split(",")
+                if (header.size < 4) throw Exception("Encabezados inválidos (mínimo: id, codigos, nombre, precio).")
+
+                var count = 0
+                for (i in 1 until lines.size) {
+                    val line = lines[i].trim()
+                    if (line.isEmpty()) continue
+
+                    val cols = parseCsvLine(line)
+                    if (cols.size < 4) continue // Skip invalid lines
+
+                    val id = cols[0].ifEmpty { generateUUID() }
+                    val codigos = cols[1].ifEmpty { "[]" }
+                    val nombre = cols[2]
+                    val precio = cols[3].toDoubleOrNull() ?: 0.0
+                    val costo = cols.getOrNull(4)?.toDoubleOrNull() ?: 0.0
+                    val categoria = cols.getOrNull(5) ?: "Sin categoría"
+                    val activo = cols.getOrNull(6)?.toLongOrNull() ?: 1L
+                    val porPeso = cols.getOrNull(7)?.toLongOrNull() ?: 0L
+                    val precioMayoreo = cols.getOrNull(8)?.toDoubleOrNull() ?: 0.0
+                    val esFavorito = cols.getOrNull(9)?.toLongOrNull() ?: 0L
+
+                    val p = Products(
+                        id = id,
+                        codigos = codigos,
+                        nombre = nombre,
+                        precio = precio,
+                        costo = costo,
+                        categoria = categoria,
+                        activo = activo,
+                        por_peso = porPeso,
+                        precio_mayoreo = precioMayoreo,
+                        es_favorito = esFavorito,
+                        updated_at = currentTimeMillis(),
+                        sync_state = "PENDING_INSERT"
+                    )
+                    repository.insertProduct(p)
+                    count++
+                }
+                importSuccess = true
+                importError = null
+            } catch (e: Exception) {
+                importError = "Error al importar: ${e.message}"
+                importSuccess = false
+            }
+        }
+
         AlertDialog(
             onDismissRequest = { showImportExportDialog = false },
+            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown && 
+                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) &&
+                    keyEvent.isCtrlPressed
+                ) {
+                    performImport()
+                    true
+                } else false
+            },
             shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = { Text("Importar / Exportar en CSV", fontWeight = FontWeight.Bold) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Puedes copiar el CSV a continuación para respaldar los datos, o pegar tu propio texto CSV y presionar 'Importar' para actualizar el catálogo.",
+                        text = "Puedes copiar el CSV a continuación para respaldar los datos, o pegar tu propio texto CSV y presionar 'Importar' para actualizar el catálogo. (O presiona Ctrl+Enter para importar)",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -673,56 +746,7 @@ fun ProductosScreen(
             confirmButton = {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = {
-                            try {
-                                val lines = csvText.split("\n")
-                                if (lines.size < 2) throw Exception("CSV vacío o sin suficientes líneas.")
-                                val header = lines[0].split(",")
-                                if (header.size < 4) throw Exception("Encabezados inválidos (mínimo: id, codigos, nombre, precio).")
-                                
-                                var count = 0
-                                for (i in 1 until lines.size) {
-                                    val line = lines[i].trim()
-                                    if (line.isEmpty()) continue
-                                    
-                                    val cols = parseCsvLine(line)
-                                    if (cols.size < 4) continue // Skip invalid lines
-                                    
-                                    val id = cols[0].ifEmpty { generateUUID() }
-                                    val codigos = cols[1].ifEmpty { "[]" }
-                                    val nombre = cols[2]
-                                    val precio = cols[3].toDoubleOrNull() ?: 0.0
-                                    val costo = cols.getOrNull(4)?.toDoubleOrNull() ?: 0.0
-                                    val categoria = cols.getOrNull(5) ?: "Sin categoría"
-                                    val activo = cols.getOrNull(6)?.toLongOrNull() ?: 1L
-                                    val porPeso = cols.getOrNull(7)?.toLongOrNull() ?: 0L
-                                    val precioMayoreo = cols.getOrNull(8)?.toDoubleOrNull() ?: 0.0
-                                    val esFavorito = cols.getOrNull(9)?.toLongOrNull() ?: 0L
- 
-                                    val p = Products(
-                                        id = id,
-                                        codigos = codigos,
-                                        nombre = nombre,
-                                        precio = precio,
-                                        costo = costo,
-                                        categoria = categoria,
-                                        activo = activo,
-                                        por_peso = porPeso,
-                                        precio_mayoreo = precioMayoreo,
-                                        es_favorito = esFavorito,
-                                        updated_at = currentTimeMillis(),
-                                        sync_state = "PENDING_INSERT"
-                                    )
-                                    repository.insertProduct(p)
-                                    count++
-                                }
-                                importSuccess = true
-                                importError = null
-                            } catch (e: Exception) {
-                                importError = "Error al importar: ${e.message}"
-                                importSuccess = false
-                            }
-                        },
+                        onClick = { performImport() },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = MaterialTheme.shapes.small
                     ) {
@@ -742,41 +766,4 @@ fun ProductosScreen(
     }
 }
 
-// Simple multiplatform-friendly CSV line parser
-fun parseCsvLine(line: String): List<String> {
-    val result = mutableListOf<String>()
-    var curVal = StringBuilder()
-    var inQuotes = false
-    var i = 0
-    while (i < line.length) {
-        val ch = line[i]
-        if (inQuotes) {
-            if (ch == '\"') {
-                if (i + 1 < line.length && line[i + 1] == '\"') {
-                    curVal.append('\"')
-                    i++
-                } else {
-                    inQuotes = false
-                }
-            } else {
-                curVal.append(ch)
-            }
-        } else {
-            when (ch) {
-                '\"' -> {
-                    inQuotes = true
-                }
-                ',' -> {
-                    result.add(curVal.toString().trim())
-                    curVal = StringBuilder()
-                }
-                else -> {
-                    curVal.append(ch)
-                }
-            }
-        }
-        i++
-    }
-    result.add(curVal.toString().trim())
-    return result
-}
+
