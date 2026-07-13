@@ -23,8 +23,10 @@ import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.ui.VentaScreen
 import com.dnavarro.poskmp.ui.ProductosScreen
 import com.dnavarro.poskmp.ui.AjustesScreen
+import com.dnavarro.poskmp.ui.ChecadorDialog
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.theme.AppTheme
+import androidx.compose.material.icons.filled.Search
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -40,6 +42,7 @@ fun App() {
 
     // 2. Navigation State
     var currentScreen by remember { mutableStateOf(Screen.VENTA) }
+    var showPriceCheckerDialog by remember { mutableStateOf(false) }
 
     AppTheme {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -135,6 +138,32 @@ fun App() {
 
                         Spacer(modifier = Modifier.width(8.dp))
 
+                        // Item: Checador
+                        ToggleButton(
+                            checked = false,
+                            onCheckedChange = { showPriceCheckerDialog = true },
+                            shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
+                            modifier = Modifier.height(56.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "Checador"
+                                )
+                                Text(
+                                    text = "Checador",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         // Item: Ajustes
                         val isAjustesSelected = currentScreen == Screen.AJUSTES
                         ToggleButton(
@@ -170,4 +199,10 @@ fun App() {
             }
         }
     }
+
+    ChecadorDialog(
+        showDialog = showPriceCheckerDialog,
+        onDismiss = { showPriceCheckerDialog = false },
+        repository = repository
+    )
 }

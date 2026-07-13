@@ -497,17 +497,14 @@ fun VentaScreen(
         AlertDialog(
             onDismissRequest = { showCheckoutDialog = false },
             modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown && 
-                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                ) {
-                    if (paymentAmount >= total || paymentAmountInput.isEmpty()) {
-                        lastSaleTotal = total
-                        lastSaleChange = change
-                        showCheckoutDialog = false
-                        showSuccessDialog = true
-                        cartItems.clear()
-                        true
-                    } else false
+                keyEvent.type == KeyEventType.KeyDown &&
+                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (paymentAmount >= total || paymentAmountInput.isEmpty()) {
+                    lastSaleTotal = total
+                    lastSaleChange = change
+                    showCheckoutDialog = false
+                    showSuccessDialog = true
+                    cartItems.clear()
+                    true
                 } else false
             },
             shape = MaterialTheme.shapes.large,

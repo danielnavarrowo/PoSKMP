@@ -517,13 +517,10 @@ fun ProductosScreen(
         AlertDialog(
             onDismissRequest = { showProductDialogFor = null },
             modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown && 
-                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                ) {
-                    if (formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null) {
-                        saveProduct()
-                        true
-                    } else false
+                keyEvent.type == KeyEventType.KeyDown &&
+                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null) {
+                    saveProduct()
+                    true
                 } else false
             },
             shape = MaterialTheme.shapes.large,

@@ -7,6 +7,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 
 class ProductRepository(database: AppDatabase) {
     private val queries = database.appDatabaseQueries
@@ -103,6 +104,15 @@ class ProductRepository(database: AppDatabase) {
                     updated_at = now,
                     sync_state = "PENDING_INSERT"
                 )
+            }
+        }
+    }
+
+    suspend fun findProductByBarcode(barcode: String): Products? {
+        return withContext(Dispatchers.IO) {
+            val list = queries.selectActiveProducts().executeAsList()
+            list.firstOrNull { product ->
+                product.id == barcode || product.codigos.contains(barcode)
             }
         }
     }
