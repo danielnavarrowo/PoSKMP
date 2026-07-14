@@ -1,6 +1,8 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -33,7 +35,9 @@ fun CatalogSection(
     onViewCartClick: (() -> Unit)? = null,
     cartCount: Int = 0,
     cartTotal: Double = 0.0,
-    onSellUnregisteredClick: () -> Unit
+    onSellUnregisteredClick: () -> Unit,
+    onApplyWholesaleClick: () -> Unit = {},
+    onCheckoutClick: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -66,33 +70,13 @@ fun CatalogSection(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Catalog Header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (searchQuery.isBlank()) "Productos Disponibles" else "Resultados de la Búsqueda",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Button(
-                onClick = onSellUnregisteredClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                ),
-                shape = MaterialTheme.shapes.small,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("No Registrado", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+        Text(
+            text = if (searchQuery.isBlank()) "Productos Disponibles" else "Resultados de la Búsqueda",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        )
 
         if (productsList.isEmpty()) {
             Box(
@@ -197,6 +181,39 @@ fun CatalogSection(
                     }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SuggestionChip(
+                onClick = onSellUnregisteredClick,
+                label = { Text(if (isCompact) "No Registrado" else "F7: No Registrado", fontWeight = FontWeight.Bold) },
+                colors = SuggestionChipDefaults.suggestionChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+            )
+            SuggestionChip(
+                onClick = onApplyWholesaleClick,
+                label = { Text(if (isCompact) "Mayoreo a Ticket" else "Shift + F11: Mayoreo a Ticket", fontWeight = FontWeight.Bold) },
+                colors = SuggestionChipDefaults.suggestionChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+            )
+            SuggestionChip(
+                onClick = onCheckoutClick,
+                label = { Text(if (isCompact) "Cobrar" else "F12: Cobrar", fontWeight = FontWeight.Bold) },
+                colors = SuggestionChipDefaults.suggestionChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+            )
         }
     }
 }

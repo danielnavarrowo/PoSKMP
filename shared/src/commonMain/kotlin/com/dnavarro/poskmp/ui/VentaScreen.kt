@@ -31,6 +31,8 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.generateUUID
+import com.dnavarro.poskmp.util.isAndroid
+import androidx.compose.foundation.focusable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.roundToInt
@@ -38,7 +40,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 data class CartItem(
     val product: Products,
-    var quantity: Double
+    var quantity: Double,
+    val originalPrice: Double = product.precio
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,6 +96,13 @@ fun VentaScreen(
         }
     }
 
+    val desktopFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            desktopFocusRequester.requestFocus()
+        }
+    }
+
     // Helper: Add/Update product quantity in cart
     fun addProductToCart(product: Products, qty: Double) {
         val existingIndex = cartItems.indexOfFirst { it.product.id == product.id }
@@ -109,10 +119,56 @@ fun VentaScreen(
         }
     }
 
+    fun toggleWholesalePrice() {
+        val eligibleItems = cartItems.filter { it.product.precio_mayoreo > 0.0 }
+        if (eligibleItems.isEmpty()) return
+
+        val allWholesale = eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
+        for (i in cartItems.indices) {
+            val item = cartItems[i]
+            if (item.product.precio_mayoreo > 0.0) {
+                val targetPrice = if (allWholesale) item.originalPrice else item.product.precio_mayoreo
+                val newProduct = item.product.copy(precio = targetPrice)
+                cartItems[i] = item.copy(product = newProduct)
+            }
+        }
+    }
+
     val total = cartItems.sumOf { it.product.precio * it.quantity }
 
     Scaffold(
-        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusRequester(desktopFocusRequester)
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                when (keyEvent.key) {
+                                    Key.F7 -> {
+                                        openUnregisteredDialog()
+                                        true
+                                    }
+                                    Key.F11 -> {
+                                        if (keyEvent.isShiftPressed) {
+                                            toggleWholesalePrice()
+                                            true
+                                        } else false
+                                    }
+                                    Key.F12 -> {
+                                        paymentAmountInput = ""
+                                        showCheckoutDialog = true
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            } else false
+                        }
+                } else Modifier
+            )
     ) { paddingValues ->
         if (isCompact) {
             // MOBILE COMPACT VIEW: TAB SYSTEM
@@ -167,7 +223,12 @@ fun VentaScreen(
                             onViewCartClick = { mobileSelectedTab = 1 },
                             cartCount = cartItems.size,
                             cartTotal = total,
-                            onSellUnregisteredClick = { openUnregisteredDialog() }
+                            onSellUnregisteredClick = { openUnregisteredDialog() },
+                            onApplyWholesaleClick = { toggleWholesalePrice() },
+                            onCheckoutClick = {
+                                paymentAmountInput = ""
+                                showCheckoutDialog = true
+                            }
                         )
                     } else {
                         TicketSection(
@@ -207,7 +268,12 @@ fun VentaScreen(
                     },
                     isCompact = false,
                     modifier = Modifier.weight(0.65f),
-                    onSellUnregisteredClick = { openUnregisteredDialog() }
+                    onSellUnregisteredClick = { openUnregisteredDialog() },
+                    onApplyWholesaleClick = { toggleWholesalePrice() },
+                    onCheckoutClick = {
+                        paymentAmountInput = ""
+                        showCheckoutDialog = true
+                    }
                 )
 
                 // Right Column: Ticket

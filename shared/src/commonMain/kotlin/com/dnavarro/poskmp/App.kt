@@ -3,6 +3,7 @@ package com.dnavarro.poskmp
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +37,11 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.util.fastForEach
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+
 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -55,21 +61,22 @@ fun App() {
     var showPriceCheckerDialog by remember { mutableStateOf(false) }
 
     val toolbarItems = remember(currentScreen) {
+        val isDesktop = !isAndroid()
         listOf(
             ToolbarItem(
-                label = "Venta",
+                label = if (isDesktop) "Venta (F1)" else "Venta",
                 icon = Icons.Default.ShoppingCart,
                 isSelected = currentScreen == Screen.VENTA,
                 onCheckedChange = { if (it) currentScreen = Screen.VENTA }
             ),
             ToolbarItem(
-                label = "Productos",
+                label = if (isDesktop) "Productos (F3)" else "Productos",
                 icon = Icons.AutoMirrored.Filled.List,
                 isSelected = currentScreen == Screen.PRODUCTOS,
                 onCheckedChange = { if (it) currentScreen = Screen.PRODUCTOS }
             ),
             ToolbarItem(
-                label = "Checador",
+                label = if (isDesktop) "Checador (F2)" else "Checador",
                 icon = Icons.Default.Search,
                 isSelected = false,
                 onCheckedChange = { showPriceCheckerDialog = true }
@@ -84,28 +91,53 @@ fun App() {
     }
 
 
+
     AppTheme {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val isCompact = maxWidth < 600.dp
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                // 1. Content Area (occupies full screen)
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    when (currentScreen) {
-                        Screen.VENTA -> VentaScreen(repository = repository, isCompact = isCompact)
-                        Screen.PRODUCTOS -> ProductosScreen(repository = repository)
-                        Screen.AJUSTES -> AjustesScreen()
-                    }
+            val focusRequester = remember { FocusRequester() }
+            LaunchedEffect(Unit) {
+                if (!isAndroid()) {
+                    focusRequester.requestFocus()
                 }
+            }
 
-                // 2. Floating Toolbar overlay (at bottom center)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize().background(MaterialTheme.colorScheme.background)
+                    .then(
+                        if (!isAndroid()) {
+                            Modifier
+                                .focusRequester(focusRequester)
+                                .focusable()
+                                .onPreviewKeyEvent { keyEvent ->
+                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                        when (keyEvent.key) {
+                                            Key.F1 -> {
+                                                currentScreen = Screen.VENTA
+                                                true
+                                            }
+                                            Key.F2 -> {
+                                                showPriceCheckerDialog = true
+                                                true
+                                            }
+                                            Key.F3 -> {
+                                                currentScreen = Screen.PRODUCTOS
+                                                true
+                                            }
+                                            else -> false
+                                        }
+                                    } else false
+                                }
+                        } else Modifier.statusBarsPadding()
+                    )
+            ) {
+                // 1. Floating Toolbar overlay (at top center)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 24.dp),
+                        .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     HorizontalFloatingToolbar(
@@ -118,7 +150,7 @@ fun App() {
                         toolbarItems.fastForEach { item ->
                             TooltipBox(
                                 positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                                    TooltipAnchorPosition.Above
+                                    TooltipAnchorPosition.Below
                                 ),
                                 tooltip = { PlainTooltip { Text(item.label) } },
                                 state = rememberTooltipState(),
@@ -157,6 +189,17 @@ fun App() {
                             }
                             index++
                         }
+                    }
+                }
+
+                // 2. Content Area (occupies remaining screen space)
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                ) {
+                    when (currentScreen) {
+                        Screen.VENTA -> VentaScreen(repository = repository, isCompact = isCompact)
+                        Screen.PRODUCTOS -> ProductosScreen(repository = repository)
+                        Screen.AJUSTES -> AjustesScreen()
                     }
                 }
             }

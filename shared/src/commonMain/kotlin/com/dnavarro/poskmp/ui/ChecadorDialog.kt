@@ -65,16 +65,20 @@ fun ChecadorDialog(
     }
 
     LaunchedEffect(Unit) {
+        if (isCameraScannerAvailable()) {
+            showCameraScanner = true
+        }
         delay(50.milliseconds)
         focusRequester.requestFocus()
     }
+
 
     BasicAlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier
             .background(MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.large)
             .padding(24.dp)
-            .fillMaxWidth(if (searchedProduct != null) 0.6f else 0.45f)
+            .fillMaxWidth()
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown && 
                     (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
