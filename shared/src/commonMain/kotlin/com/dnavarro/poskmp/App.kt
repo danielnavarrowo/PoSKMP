@@ -27,8 +27,18 @@ import com.dnavarro.poskmp.ui.ChecadorDialog
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.theme.AppTheme
 import androidx.compose.material.icons.filled.Search
+import com.dnavarro.poskmp.util.isAndroid
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.util.fastForEach
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
     // 1. Initialize Database & Repository
@@ -43,6 +53,36 @@ fun App() {
     // 2. Navigation State
     var currentScreen by remember { mutableStateOf(Screen.VENTA) }
     var showPriceCheckerDialog by remember { mutableStateOf(false) }
+
+    val toolbarItems = remember(currentScreen) {
+        listOf(
+            ToolbarItem(
+                label = "Venta",
+                icon = Icons.Default.ShoppingCart,
+                isSelected = currentScreen == Screen.VENTA,
+                onCheckedChange = { if (it) currentScreen = Screen.VENTA }
+            ),
+            ToolbarItem(
+                label = "Productos",
+                icon = Icons.AutoMirrored.Filled.List,
+                isSelected = currentScreen == Screen.PRODUCTOS,
+                onCheckedChange = { if (it) currentScreen = Screen.PRODUCTOS }
+            ),
+            ToolbarItem(
+                label = "Checador",
+                icon = Icons.Default.Search,
+                isSelected = false,
+                onCheckedChange = { showPriceCheckerDialog = true }
+            ),
+            ToolbarItem(
+                label = "Ajustes",
+                icon = Icons.Default.Settings,
+                isSelected = currentScreen == Screen.AJUSTES,
+                onCheckedChange = { if (it) currentScreen = Screen.AJUSTES }
+            )
+        )
+    }
+
 
     AppTheme {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -72,127 +112,50 @@ fun App() {
                         expanded = true,
                         modifier = Modifier.zIndex(1f)
                     ) {
-                        // Item: Venta
-                        val isVentaSelected = currentScreen == Screen.VENTA
-                        ToggleButton(
-                            checked = isVentaSelected,
-                            onCheckedChange = { if (it) currentScreen = Screen.VENTA },
-                            shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
-                            modifier = Modifier.height(56.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp)
+                        val showLabels = !isAndroid()
+
+                        var index = 0
+                        toolbarItems.fastForEach { item ->
+                            TooltipBox(
+                                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                    TooltipAnchorPosition.Above
+                                ),
+                                tooltip = { PlainTooltip { Text(item.label) } },
+                                state = rememberTooltipState(),
                             ) {
-                                Icon(
-                                    Icons.Default.ShoppingCart,
-                                    contentDescription = "Venta"
-                                )
-                                AnimatedVisibility(
-                                    visible = isVentaSelected,
-                                    enter = expandHorizontally(),
-                                    exit = shrinkHorizontally()
+                                ToggleButton(
+                                    checked = item.isSelected,
+                                    onCheckedChange = item.onCheckedChange,
+                                    shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
+                                    modifier = Modifier.height(56.dp)
                                 ) {
-                                    Text(
-                                        text = "Venta",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    ) {
+                                        Icon(
+                                            item.icon,
+                                            contentDescription = item.label
+                                        )
+                                        AnimatedVisibility(
+                                            visible = showLabels,
+                                            enter = expandHorizontally(),
+                                            exit = shrinkHorizontally()
+                                        ) {
+                                            Text(
+                                                text = item.label,
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(start = 8.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Item: Productos
-                        val isProductosSelected = currentScreen == Screen.PRODUCTOS
-                        ToggleButton(
-                            checked = isProductosSelected,
-                            onCheckedChange = { if (it) currentScreen = Screen.PRODUCTOS },
-                            shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
-                            modifier = Modifier.height(56.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.List,
-                                    contentDescription = "Productos"
-                                )
-                                AnimatedVisibility(
-                                    visible = isProductosSelected,
-                                    enter = expandHorizontally(),
-                                    exit = shrinkHorizontally()
-                                ) {
-                                    Text(
-                                        text = "Productos",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
+                            if (index < toolbarItems.lastIndex) {
+                                Spacer(modifier = Modifier.width(8.dp))
                             }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Item: Checador
-                        ToggleButton(
-                            checked = false,
-                            onCheckedChange = { showPriceCheckerDialog = true },
-                            shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
-                            modifier = Modifier.height(56.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = "Checador"
-                                )
-                                Text(
-                                    text = "Checador",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Item: Ajustes
-                        val isAjustesSelected = currentScreen == Screen.AJUSTES
-                        ToggleButton(
-                            checked = isAjustesSelected,
-                            onCheckedChange = { if (it) currentScreen = Screen.AJUSTES },
-                            shapes = ToggleButtonDefaults.shapes(CircleShape, CircleShape, CircleShape),
-                            modifier = Modifier.height(56.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Settings,
-                                    contentDescription = "Ajustes"
-                                )
-                                AnimatedVisibility(
-                                    visible = isAjustesSelected,
-                                    enter = expandHorizontally(),
-                                    exit = shrinkHorizontally()
-                                ) {
-                                    Text(
-                                        text = "Ajustes",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-                            }
+                            index++
                         }
                     }
                 }
@@ -206,3 +169,10 @@ fun App() {
         repository = repository
     )
 }
+
+private data class ToolbarItem(
+    val label: String,
+    val icon: ImageVector,
+    val isSelected: Boolean,
+    val onCheckedChange: (Boolean) -> Unit
+)

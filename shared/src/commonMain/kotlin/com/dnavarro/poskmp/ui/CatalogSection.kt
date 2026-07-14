@@ -125,7 +125,7 @@ fun CatalogSection(
                     items(productsList) { product ->
                         Card(
                             onClick = { onProductClick(product) },
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth().height(140.dp)

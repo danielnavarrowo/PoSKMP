@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.1"
+agp = "9.2.1"
 android-compileSdk = "37"
 android-minSdk = "31"
 android-targetSdk = "37"
@@ -11,7 +11,7 @@ kotlinx-coroutines = "1.11.0"
 material3 = "1.11.0-alpha07"
 sqldelight = "2.3.2"
 accompanistPermissions = "0.37.3"
-cameraCore = "1.6.0"
+cameraCore = "1.6.1"
 playServicesMlkitBarcodeScanning = "18.3.1"
 
 
