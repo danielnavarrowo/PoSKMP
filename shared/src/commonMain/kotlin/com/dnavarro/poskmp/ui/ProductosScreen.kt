@@ -3,17 +3,17 @@ package com.dnavarro.poskmp.ui
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,17 +38,6 @@ fun ProductosScreen(
     var showProductDialogFor by remember { mutableStateOf<Products?>(null) } // Null means not showing, a Product with empty ID means "New"
     var showImportExportDialog by remember { mutableStateOf(false) }
 
-    // Form inputs state
-    var formNombre by remember { mutableStateOf("") }
-    var formCodigo by remember { mutableStateOf("") } // Comma-separated barcodes
-    var formPrecio by remember { mutableStateOf("") }
-    var formCosto by remember { mutableStateOf("") }
-    var formPrecioMayoreo by remember { mutableStateOf("") }
-    var formCategoria by remember { mutableStateOf("") }
-    var formActivo by remember { mutableStateOf(true) }
-    var formPorPeso by remember { mutableStateOf(false) }
-    var formEsFavorito by remember { mutableStateOf(false) }
-
     // Import/Export state
     var csvText by remember { mutableStateOf("") }
     var importError by remember { mutableStateOf<String?>(null) }
@@ -65,82 +54,6 @@ fun ProductosScreen(
                 productsList = it
             }
         }
-    }
-
-    // Populate form fields helper
-    fun openProductForm(product: Products?) {
-        if (product == null) {
-            // New product
-            formNombre = ""
-            formCodigo = ""
-            formPrecio = ""
-            formCosto = ""
-            formPrecioMayoreo = ""
-            formCategoria = "Abarrotes"
-            formActivo = true
-            formPorPeso = false
-            formEsFavorito = false
-            showProductDialogFor = Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
-        } else {
-            // Edit existing product
-            formNombre = product.nombre
-            // Parse JSON array back to comma-separated list for easy editing
-            formCodigo = try {
-                product.codigos
-                    .replace("[", "")
-                    .replace("]", "")
-                    .replace("\"", "")
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
-                    .joinToString(", ")
-            } catch (_: Exception) {
-                ""
-            }
-            formPrecio = product.precio.toString()
-            formCosto = product.costo.toString()
-            formPrecioMayoreo = product.precio_mayoreo.toString()
-            formCategoria = product.categoria ?: "Sin categoría"
-            formActivo = product.activo == 1L
-            formPorPeso = product.por_peso == 1L
-            formEsFavorito = product.es_favorito == 1L
-            showProductDialogFor = product
-        }
-    }
-
-    // Save product to DB helper
-    fun saveProduct() {
-        val original = showProductDialogFor ?: return
-        val id = original.id.ifEmpty { generateUUID() }
-        
-        // Format codes as JSON string array
-        val formattedCodes = formCodigo.split(",")
-            .map { it.trim().replace("\"", "") }
-            .filter { it.isNotEmpty() }
-            .joinToString(separator = "\",\"", prefix = "[\"", postfix = "\"]") { it }
-            .let { if (it == "[\"\"]") "[]" else it }
-
-        val p = Products(
-            id = id,
-            codigos = formattedCodes,
-            nombre = formNombre.trim(),
-            precio = formPrecio.toDoubleOrNull() ?: 0.0,
-            costo = formCosto.toDoubleOrNull() ?: 0.0,
-            categoria = formCategoria.trim().ifEmpty { "Sin categoría" },
-            activo = if (formActivo) 1L else 0L,
-            por_peso = if (formPorPeso) 1L else 0L,
-            precio_mayoreo = formPrecioMayoreo.toDoubleOrNull() ?: 0.0,
-            es_favorito = if (formEsFavorito) 1L else 0L,
-            updated_at = currentTimeMillis(),
-            sync_state = if (original.id.isEmpty()) "PENDING_INSERT" else "PENDING_UPDATE"
-        )
-
-        if (original.id.isEmpty()) {
-            repository.insertProduct(p)
-        } else {
-            repository.updateProduct(p)
-        }
-        showProductDialogFor = null
     }
 
     Column(
@@ -200,7 +113,7 @@ fun ProductosScreen(
                 }
 
                 Button(
-                    onClick = { openProductForm(null) },
+                    onClick = { showProductDialogFor = Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "") },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = MaterialTheme.shapes.small
                 ) {
@@ -257,12 +170,35 @@ fun ProductosScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
                             contentPadding = PaddingValues(bottom = 12.dp)
                         ) {
-                            items(productsList) { product ->
+                            itemsIndexed(productsList) { index, product ->
+                                val shape = if (productsList.size == 1) {
+                                    MaterialTheme.shapes.medium
+                                } else if (index == 0) {
+                                    RoundedCornerShape(
+                                        topStart = MaterialTheme.shapes.medium.topStart,
+                                        topEnd = MaterialTheme.shapes.medium.topEnd,
+                                        bottomStart = MaterialTheme.shapes.extraSmall.bottomStart,
+                                        bottomEnd = MaterialTheme.shapes.extraSmall.bottomEnd
+                                    )
+                                } else if (index == productsList.lastIndex) {
+                                    RoundedCornerShape(
+                                        topStart = MaterialTheme.shapes.extraSmall.topStart,
+                                        topEnd = MaterialTheme.shapes.extraSmall.topEnd,
+                                        bottomStart = MaterialTheme.shapes.medium.bottomStart,
+                                        bottomEnd = MaterialTheme.shapes.medium.bottomEnd
+                                    )
+                                } else {
+                                    RoundedCornerShape(MaterialTheme.shapes.extraSmall.topStart)
+                                }
+
                                 Card(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showProductDialogFor = product },
+                                    shape = shape,
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                                 ) {
@@ -283,7 +219,7 @@ fun ProductosScreen(
                                             )
                                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 IconButton(
-                                                    onClick = { openProductForm(product) },
+                                                    onClick = { showProductDialogFor = product },
                                                     modifier = Modifier.size(28.dp)
                                                 ) {
                                                     Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
@@ -387,13 +323,37 @@ fun ProductosScreen(
                         } else {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
                                 contentPadding = PaddingValues(bottom = 12.dp)
                             ) {
-                                items(productsList) { product ->
+                                itemsIndexed(productsList) { index, product ->
+                                    val shape = if (productsList.size == 1) {
+                                        MaterialTheme.shapes.medium
+                                    } else if (index == 0) {
+                                        RoundedCornerShape(
+                                            topStart = MaterialTheme.shapes.medium.topStart,
+                                            topEnd = MaterialTheme.shapes.medium.topEnd,
+                                            bottomStart = MaterialTheme.shapes.extraSmall.bottomStart,
+                                            bottomEnd = MaterialTheme.shapes.extraSmall.bottomEnd
+                                        )
+                                    } else if (index == productsList.lastIndex) {
+                                        RoundedCornerShape(
+                                            topStart = MaterialTheme.shapes.extraSmall.topStart,
+                                            topEnd = MaterialTheme.shapes.extraSmall.topEnd,
+                                            bottomStart = MaterialTheme.shapes.medium.bottomStart,
+                                            bottomEnd = MaterialTheme.shapes.medium.bottomEnd
+                                        )
+                                    } else {
+                                        RoundedCornerShape(MaterialTheme.shapes.extraSmall.topStart)
+                                    }
+
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant))
+                                            .clip(shape)
+                                            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                                            .clickable { showProductDialogFor = product }
+                                            .border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant), shape)
                                             .padding(horizontal = 16.dp, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
@@ -483,7 +443,7 @@ fun ProductosScreen(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             IconButton(
-                                                onClick = { openProductForm(product) },
+                                                onClick = { showProductDialogFor = product },
                                                 modifier = Modifier.size(28.dp)
                                             ) {
                                                 Icon(Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
@@ -513,136 +473,16 @@ fun ProductosScreen(
 
     // PRODUCT FORM DIALOG
     if (showProductDialogFor != null) {
-        val isNew = showProductDialogFor!!.id.isEmpty()
-        AlertDialog(
-            onDismissRequest = { showProductDialogFor = null },
-            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                keyEvent.type == KeyEventType.KeyDown &&
-                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null) {
-                    saveProduct()
-                    true
-                } else false
-            },
-            shape = MaterialTheme.shapes.large,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            title = {
-                Text(
-                    text = if (isNew) "Registrar Nuevo Producto" else "Modificar Producto",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = formNombre,
-                        onValueChange = { formNombre = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Nombre del Producto *") },
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = formCodigo,
-                        onValueChange = { formCodigo = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Código(s) de Barra (separados por coma)") },
-                        placeholder = { Text("e.g. 75010001, 75010002") },
-                        singleLine = true
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = formPrecio,
-                            onValueChange = { formPrecio = it },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("Precio de Venta *") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = formCosto,
-                            onValueChange = { formCosto = it },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("Costo") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true
-                        )
-                    }
-
-                    OutlinedTextField(
-                        value = formPrecioMayoreo,
-                        onValueChange = { formPrecioMayoreo = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Precio Mayoreo") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = formCategoria,
-                        onValueChange = { formCategoria = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Categoría") },
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // SWITCHES
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Vendido por Peso", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                        Switch(
-                            checked = formPorPeso,
-                            onCheckedChange = { formPorPeso = it }
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Es Producto Favorito", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                        Switch(
-                            checked = formEsFavorito,
-                            onCheckedChange = { formEsFavorito = it }
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Producto Activo (Venta disponible)", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                        Switch(
-                            checked = formActivo,
-                            onCheckedChange = { formActivo = it }
-                        )
-                    }
+        ProductFormDialog(
+            product = if (showProductDialogFor!!.id.isEmpty()) null else showProductDialogFor,
+            onDismiss = { showProductDialogFor = null },
+            onSave = { updatedProduct ->
+                if (showProductDialogFor!!.id.isEmpty()) {
+                    repository.insertProduct(updatedProduct)
+                } else {
+                    repository.updateProduct(updatedProduct)
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { saveProduct() },
-                    enabled = formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text("Guardar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showProductDialogFor = null }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                showProductDialogFor = null
             }
         )
     }

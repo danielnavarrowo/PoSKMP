@@ -22,6 +22,7 @@ import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.createDatabase
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.ui.VentaScreen
+import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.ui.ProductosScreen
 import com.dnavarro.poskmp.ui.AjustesScreen
 import com.dnavarro.poskmp.ui.ChecadorDialog
@@ -58,6 +59,7 @@ fun App() {
 
     // 2. Navigation State
     var currentScreen by remember { mutableStateOf(Screen.VENTA) }
+    val cartItems = remember { mutableStateListOf<CartItem>() }
     var showPriceCheckerDialog by remember { mutableStateOf(false) }
 
     val toolbarItems = remember(currentScreen) {
@@ -197,20 +199,24 @@ fun App() {
                     modifier = Modifier.weight(1f).fillMaxWidth()
                 ) {
                     when (currentScreen) {
-                        Screen.VENTA -> VentaScreen(repository = repository, isCompact = isCompact)
+                        Screen.VENTA -> VentaScreen(
+                            repository = repository,
+                            isCompact = isCompact,
+                            cartItems = cartItems
+                        )
                         Screen.PRODUCTOS -> ProductosScreen(repository = repository)
                         Screen.AJUSTES -> AjustesScreen()
                     }
                 }
             }
+
+            ChecadorDialog(
+                showDialog = showPriceCheckerDialog,
+                onDismiss = { showPriceCheckerDialog = false },
+                repository = repository
+            )
         }
     }
-
-    ChecadorDialog(
-        showDialog = showPriceCheckerDialog,
-        onDismiss = { showPriceCheckerDialog = false },
-        repository = repository
-    )
 }
 
 private data class ToolbarItem(

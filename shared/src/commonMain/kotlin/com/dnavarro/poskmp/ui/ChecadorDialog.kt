@@ -75,8 +75,9 @@ fun ChecadorDialog(
 
     BasicAlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.large)
+        modifier = Modifier.background(
+            MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
+        )
             .padding(24.dp)
             .fillMaxWidth()
             .onPreviewKeyEvent { keyEvent ->

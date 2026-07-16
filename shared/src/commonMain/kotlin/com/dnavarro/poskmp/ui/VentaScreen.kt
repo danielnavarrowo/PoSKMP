@@ -35,6 +35,7 @@ import com.dnavarro.poskmp.util.isAndroid
 import androidx.compose.foundation.focusable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -49,11 +50,11 @@ data class CartItem(
 fun VentaScreen(
     repository: ProductRepository,
     isCompact: Boolean,
+    cartItems: SnapshotStateList<CartItem>,
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var productsList by remember { mutableStateOf<List<Products>>(emptyList()) }
-    val cartItems = remember { mutableStateListOf<CartItem>() }
 
     // Active tab in compact/mobile view
     var mobileSelectedTab by remember { mutableIntStateOf(0) }
@@ -81,6 +82,18 @@ fun VentaScreen(
         unregisteredPrice = ""
         unregisteredQuantity = "1"
         showUnregisteredDialog = true
+    }
+
+    // Edit Product Dialog state (from context menu)
+    var showProductDialogFor by remember { mutableStateOf<Products?>(null) }
+
+    fun toggleProductFavorite(product: Products) {
+        val updated = product.copy(
+            es_favorito = if (product.es_favorito == 1L) 0L else 1L,
+            updated_at = currentTimeMillis(),
+            sync_state = "PENDING_UPDATE"
+        )
+        repository.updateProduct(updated)
     }
 
     // Observe products from DB
@@ -116,6 +129,21 @@ fun VentaScreen(
             }
         } else if (qty > 0.0) {
             cartItems.add(CartItem(product, qty))
+        }
+    }
+
+    fun setProductQuantityInCart(product: Products, qty: Double) {
+        val existingIndex = cartItems.indexOfFirst { it.product.id == product.id }
+        if (existingIndex != -1) {
+            if (qty <= 0.0) {
+                cartItems.removeAt(existingIndex)
+            } else {
+                val roundedQty = (qty * 100.0).roundToInt() / 100.0
+                cartItems[existingIndex] = cartItems[existingIndex].copy(quantity = roundedQty)
+            }
+        } else if (qty > 0.0) {
+            val roundedQty = (qty * 100.0).roundToInt() / 100.0
+            cartItems.add(CartItem(product, roundedQty))
         }
     }
 
@@ -219,6 +247,8 @@ fun VentaScreen(
                                     addProductToCart(product, 1.0)
                                 }
                             },
+                            onToggleFavorite = { product -> toggleProductFavorite(product) },
+                            onModifyProduct = { product -> showProductDialogFor = product },
                             isCompact = true,
                             onViewCartClick = { mobileSelectedTab = 1 },
                             cartCount = cartItems.size,
@@ -236,6 +266,7 @@ fun VentaScreen(
                             total = total,
                             onClearCart = { cartItems.clear() },
                             onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
+                            onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
                             onRemoveItem = { item -> cartItems.remove(item) },
                             onCheckout = {
                                 paymentAmountInput = ""
@@ -266,6 +297,8 @@ fun VentaScreen(
                             addProductToCart(product, 1.0)
                         }
                     },
+                    onToggleFavorite = { product -> toggleProductFavorite(product) },
+                    onModifyProduct = { product -> showProductDialogFor = product },
                     isCompact = false,
                     modifier = Modifier.weight(0.65f),
                     onSellUnregisteredClick = { openUnregisteredDialog() },
@@ -282,6 +315,7 @@ fun VentaScreen(
                     total = total,
                     onClearCart = { cartItems.clear() },
                     onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
+                    onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
                     onRemoveItem = { item -> cartItems.remove(item) },
                     onCheckout = {
                         paymentAmountInput = ""
@@ -861,6 +895,18 @@ fun VentaScreen(
                 TextButton(onClick = { showUnregisteredDialog = false }) {
                     Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+        )
+    }
+
+    // PRODUCT FORM DIALOG (from context menu)
+    if (showProductDialogFor != null) {
+        ProductFormDialog(
+            product = showProductDialogFor,
+            onDismiss = { showProductDialogFor = null },
+            onSave = { updatedProduct ->
+                repository.updateProduct(updatedProduct)
+                showProductDialogFor = null
             }
         )
     }

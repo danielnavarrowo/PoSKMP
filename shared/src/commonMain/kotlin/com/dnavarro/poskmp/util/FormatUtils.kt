@@ -1,7 +1,6 @@
 package com.dnavarro.poskmp.util
 
 fun String.formatPrice(): String {
-    val doubleVal = this.toDoubleOrNull() ?: return this
     return try {
         val parts = this.split(".")
         if (parts.size == 1) {
