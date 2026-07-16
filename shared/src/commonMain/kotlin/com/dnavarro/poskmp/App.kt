@@ -99,9 +99,11 @@ fun App() {
             val isCompact = maxWidth < 600.dp
 
             val focusRequester = remember { FocusRequester() }
-            LaunchedEffect(Unit) {
-                if (!isAndroid()) {
-                    focusRequester.requestFocus()
+            LaunchedEffect(currentScreen) {
+                if (!isAndroid() && currentScreen != Screen.VENTA) {
+                    try {
+                        focusRequester.requestFocus()
+                    } catch (_: Exception) {}
                 }
             }
 

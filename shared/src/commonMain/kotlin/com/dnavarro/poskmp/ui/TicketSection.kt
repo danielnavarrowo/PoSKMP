@@ -79,29 +79,30 @@ fun TicketSection(
     onSetQuantity: (CartItem, Double) -> Unit,
     onRemoveItem: (CartItem) -> Unit,
     onCheckout: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedIndex: Int = -1,
+    onSelectedIndexChange: (Int) -> Unit = {}
 ) {
     val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
-    var selectedIndex by remember { mutableIntStateOf(-1) }
     var previousSize by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(cartItems.size) {
         if (cartItems.isNotEmpty()) {
-            if (cartItems.size > previousSize) {
-                selectedIndex = cartItems.size - 1
-            } else if (selectedIndex >= cartItems.size) {
-                selectedIndex = cartItems.size - 1
-            } else if (selectedIndex < 0) {
-                selectedIndex = 0
+            val targetIndex = when {
+                cartItems.size > previousSize -> cartItems.size - 1
+                selectedIndex >= cartItems.size -> cartItems.size - 1
+                selectedIndex < 0 -> 0
+                else -> selectedIndex
             }
+            onSelectedIndexChange(targetIndex)
             delay(50.milliseconds)
             try {
-                if (selectedIndex >= 0 && selectedIndex < cartItems.size) {
-                    focusRequesters[selectedIndex]?.requestFocus()
+                if (targetIndex < cartItems.size) {
+                    focusRequesters[targetIndex]?.requestFocus()
                 }
             } catch (_: Exception) {}
         } else {
-            selectedIndex = -1
+            onSelectedIndexChange(-1)
         }
         previousSize = cartItems.size
     }
@@ -192,7 +193,7 @@ fun TicketSection(
                         RoundedCornerShape(MaterialTheme.shapes.extraSmall.topStart)
                     }
 
-                    val focusRequester = focusRequesters.getOrPut(index) { FocusRequester() }
+                    val focusRequester = remember(index) { focusRequesters.getOrPut(index) { FocusRequester() } }
                     val isRowFocused = selectedIndex == index
                     var isTextFieldFocused by remember { mutableStateOf(false) }
 
@@ -203,7 +204,7 @@ fun TicketSection(
                             .focusRequester(focusRequester)
                             .onFocusChanged { focusState ->
                                 if (focusState.isFocused || focusState.hasFocus) {
-                                    selectedIndex = index
+                                    onSelectedIndexChange(index)
                                 }
                             }
                             .onKeyEvent { keyEvent ->
@@ -241,7 +242,7 @@ fun TicketSection(
                             }
                             .clickable {
                                 focusRequester.requestFocus()
-                                selectedIndex = index
+                                onSelectedIndexChange(index)
                             }
                             .background(
                                 if (isRowFocused) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
@@ -358,7 +359,7 @@ fun TicketSection(
                                         .onFocusChanged { focusState ->
                                             isTextFieldFocused = focusState.isFocused
                                             if (focusState.isFocused) {
-                                                selectedIndex = index
+                                                onSelectedIndexChange(index)
                                             }
                                             if (!focusState.isFocused) {
                                                 val parsed = textValue.toDoubleOrNull()

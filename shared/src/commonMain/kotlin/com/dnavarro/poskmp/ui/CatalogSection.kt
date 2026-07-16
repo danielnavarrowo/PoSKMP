@@ -56,6 +56,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.formatPrice
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.*
+import com.dnavarro.poskmp.util.isAndroid
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -73,7 +77,10 @@ fun CatalogSection(
     cartTotal: Double = 0.0,
     onSellUnregisteredClick: () -> Unit,
     onApplyWholesaleClick: () -> Unit = {},
-    onCheckoutClick: () -> Unit = {}
+    onCheckoutClick: () -> Unit = {},
+    searchFocusRequester: FocusRequester? = null,
+    onBarcodeScan: ((String) -> Unit)? = null,
+    onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null
 ) {
     Column(
         modifier = modifier
@@ -85,7 +92,23 @@ fun CatalogSection(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             modifier = Modifier.fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium),
+                .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
+                .let { mod ->
+                    if (searchFocusRequester != null) mod.focusRequester(searchFocusRequester) else mod
+                }
+                .onPreviewKeyEvent { keyEvent ->
+                    if (onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent)) {
+                        true
+                    } else if (!isAndroid() &&
+                        keyEvent.type == KeyEventType.KeyDown &&
+                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                    ) {
+                        if (onBarcodeScan != null && searchQuery.isNotBlank()) {
+                            onBarcodeScan(searchQuery)
+                            true
+                        } else false
+                    } else false
+                },
             placeholder = { Text("Buscar por nombre, código de barra o categoría...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
             trailingIcon = {
@@ -104,15 +127,6 @@ fun CatalogSection(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Catalog Header
-        Text(
-            text = if (searchQuery.isBlank()) "Productos Disponibles" else "Resultados de la Búsqueda",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        )
 
         if (productsList.isEmpty()) {
             Box(

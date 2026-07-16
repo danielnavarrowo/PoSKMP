@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +20,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,6 +40,14 @@ import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 data class CartItem(
     val product: Products,
@@ -55,6 +65,7 @@ fun VentaScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var productsList by remember { mutableStateOf<List<Products>>(emptyList()) }
+    var selectedIndex by remember { mutableIntStateOf(-1) }
 
     // Active tab in compact/mobile view
     var mobileSelectedTab by remember { mutableIntStateOf(0) }
@@ -87,6 +98,39 @@ fun VentaScreen(
     // Edit Product Dialog state (from context menu)
     var showProductDialogFor by remember { mutableStateOf<Products?>(null) }
 
+    // Widescreen Split Resizing & Ordering States
+    var leftWeight by remember { mutableFloatStateOf(0.65f) }
+    var isCatalogOnLeft by remember { mutableStateOf(true) }
+
+    val coroutineScope = rememberCoroutineScope()
+    val searchBarFocusRequester = remember { FocusRequester() }
+
+    fun reclaimSearchBarFocus() {
+        if (!isAndroid()) {
+            coroutineScope.launch {
+                delay(50.milliseconds)
+                try {
+                    searchBarFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    var showBarcodeNotFoundQuery by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(showBarcodeNotFoundQuery) {
+        if (showBarcodeNotFoundQuery != null) {
+            delay(2500.milliseconds)
+            showBarcodeNotFoundQuery = null
+        }
+    }
+
+    LaunchedEffect(showWeightDialogForProduct, showCheckoutDialog, showUnregisteredDialog, showProductDialogFor, showBarcodeNotFoundQuery) {
+        if (showWeightDialogForProduct == null && !showCheckoutDialog && !showUnregisteredDialog && showProductDialogFor == null && showBarcodeNotFoundQuery == null) {
+            reclaimSearchBarFocus()
+        }
+    }
+
     fun toggleProductFavorite(product: Products) {
         val updated = product.copy(
             es_favorito = if (product.es_favorito == 1L) 0L else 1L,
@@ -94,7 +138,10 @@ fun VentaScreen(
             sync_state = "PENDING_UPDATE"
         )
         repository.updateProduct(updated)
+        reclaimSearchBarFocus()
     }
+
+
 
     // Observe products from DB
     LaunchedEffect(searchQuery) {
@@ -112,7 +159,10 @@ fun VentaScreen(
     val desktopFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
-            desktopFocusRequester.requestFocus()
+            delay(100.milliseconds)
+            try {
+                searchBarFocusRequester.requestFocus()
+            } catch (_: Exception) {}
         }
     }
 
@@ -130,6 +180,7 @@ fun VentaScreen(
         } else if (qty > 0.0) {
             cartItems.add(CartItem(product, qty))
         }
+        reclaimSearchBarFocus()
     }
 
     fun setProductQuantityInCart(product: Products, qty: Double) {
@@ -145,6 +196,7 @@ fun VentaScreen(
             val roundedQty = (qty * 100.0).roundToInt() / 100.0
             cartItems.add(CartItem(product, roundedQty))
         }
+        reclaimSearchBarFocus()
     }
 
     fun toggleWholesalePrice() {
@@ -160,6 +212,80 @@ fun VentaScreen(
                 cartItems[i] = item.copy(product = newProduct)
             }
         }
+        reclaimSearchBarFocus()
+    }
+
+    val barcodeScanCallback: (String) -> Unit = { barcode ->
+        coroutineScope.launch {
+            val trimmed = barcode.trim()
+            val p = repository.findProductByBarcode(trimmed)
+            if (p != null) {
+                if (p.por_peso == 1L) {
+                    weightInput = "1.000"
+                    showWeightDialogForProduct = p
+                } else {
+                    addProductToCart(p, 1.0)
+                }
+                searchQuery = ""
+            } else {
+                showBarcodeNotFoundQuery = trimmed
+                searchQuery = ""
+            }
+        }
+    }
+
+    val handleSearchKeyIntercept: (KeyEvent) -> Boolean = { keyEvent ->
+        if (cartItems.isNotEmpty()) {
+            val key = keyEvent.key
+            val codePoint = keyEvent.utf16CodePoint
+            val isPlus = key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
+            val isMinus = key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
+            val isUp = key == Key.DirectionUp
+            val isDown = key == Key.DirectionDown
+            val isDelete = key == Key.Delete
+            val isBackspace = key == Key.Backspace
+
+            val shouldIntercept = isUp || isDown || isDelete ||
+                    isPlus ||
+                    isMinus ||
+                    (isBackspace && searchQuery.isEmpty())
+
+            if (shouldIntercept) {
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                    val currentItem = cartItems[currentIndex]
+                    when {
+                        isUp -> {
+                            if (currentIndex > 0) {
+                                selectedIndex = currentIndex - 1
+                            }
+                        }
+                        isDown -> {
+                            if (currentIndex < cartItems.lastIndex) {
+                                selectedIndex = currentIndex + 1
+                            }
+                        }
+                        isPlus -> {
+                            val increment = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
+                            addProductToCart(currentItem.product, increment)
+                        }
+                        isMinus -> {
+                            val decrement = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
+                            addProductToCart(currentItem.product, -decrement)
+                        }
+
+                        else -> {
+                            cartItems.removeAt(currentIndex)
+                            if (selectedIndex >= cartItems.size) {
+                                selectedIndex = cartItems.size - 1
+                            }
+                            reclaimSearchBarFocus()
+                        }
+                    }
+                }
+                true
+            } else false
+        } else false
     }
 
     val total = cartItems.sumOf { it.product.precio * it.quantity }
@@ -168,6 +294,11 @@ fun VentaScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    reclaimSearchBarFocus()
+                }
+            }
             .then(
                 if (!isAndroid()) {
                     Modifier
@@ -258,7 +389,10 @@ fun VentaScreen(
                             onCheckoutClick = {
                                 paymentAmountInput = ""
                                 showCheckoutDialog = true
-                            }
+                            },
+                            searchFocusRequester = searchBarFocusRequester,
+                            onBarcodeScan = barcodeScanCallback,
+                            onSearchKeyIntercept = handleSearchKeyIntercept
                         )
                     } else {
                         TicketSection(
@@ -271,20 +405,18 @@ fun VentaScreen(
                             onCheckout = {
                                 paymentAmountInput = ""
                                 showCheckoutDialog = true
-                            }
+                            },
+                            selectedIndex = selectedIndex,
+                            onSelectedIndexChange = { selectedIndex = it }
                         )
                     }
                 }
             }
         } else {
             // DESKTOP WIDESCREEN VIEW: SPLIT ROW LAYOUT
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                // Left Column: Catalog
+            var totalWidthPx by remember { mutableFloatStateOf(0f) }
+
+            val catalogComposable = @Composable { modifier: Modifier ->
                 CatalogSection(
                     searchQuery = searchQuery,
                     onSearchQueryChange = { searchQuery = it },
@@ -300,16 +432,20 @@ fun VentaScreen(
                     onToggleFavorite = { product -> toggleProductFavorite(product) },
                     onModifyProduct = { product -> showProductDialogFor = product },
                     isCompact = false,
-                    modifier = Modifier.weight(0.65f),
+                    modifier = modifier,
                     onSellUnregisteredClick = { openUnregisteredDialog() },
                     onApplyWholesaleClick = { toggleWholesalePrice() },
                     onCheckoutClick = {
                         paymentAmountInput = ""
                         showCheckoutDialog = true
-                    }
+                    },
+                    searchFocusRequester = searchBarFocusRequester,
+                    onBarcodeScan = barcodeScanCallback,
+                    onSearchKeyIntercept = handleSearchKeyIntercept
                 )
+            }
 
-                // Right Column: Ticket
+            val ticketComposable = @Composable { modifier: Modifier ->
                 TicketSection(
                     cartItems = cartItems,
                     total = total,
@@ -321,12 +457,112 @@ fun VentaScreen(
                         paymentAmountInput = ""
                         showCheckoutDialog = true
                     },
-                    modifier = Modifier
-                        .weight(0.35f)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    modifier = modifier,
+                    selectedIndex = selectedIndex,
+                    onSelectedIndexChange = { selectedIndex = it }
                 )
             }
+
+            val dividerComposable = @Composable {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(10.dp)
+                        .pointerHoverIcon(PointerIcon.Hand)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    isCatalogOnLeft = !isCatalogOnLeft
+                                }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures { change, dragAmount ->
+                                change.consume()
+                                if (totalWidthPx > 0) {
+                                    leftWeight = (leftWeight + dragAmount / totalWidthPx).coerceIn(0.2f, 0.8f)
+                                }
+                            }
+                        }
+                        .background(MaterialTheme.colorScheme.background),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(2.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(MaterialTheme.colorScheme.background)
+                    .onGloballyPositioned { coordinates ->
+                        totalWidthPx = coordinates.size.width.toFloat()
+                    }
+            ) {
+                val catalogModifier = Modifier.weight(if (isCatalogOnLeft) leftWeight else 1f - leftWeight)
+                val ticketModifier = Modifier
+                    .weight(if (isCatalogOnLeft) 1f - leftWeight else leftWeight)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
+
+                if (isCatalogOnLeft) {
+                    catalogComposable(catalogModifier)
+                    dividerComposable()
+                    ticketComposable(ticketModifier)
+                } else {
+                    ticketComposable(ticketModifier)
+                    dividerComposable()
+                    catalogComposable(catalogModifier)
+                }
+            }
         }
+    }
+
+    // Barcode Not Found Warning Dialog
+    if (showBarcodeNotFoundQuery != null) {
+        AlertDialog(
+            onDismissRequest = { showBarcodeNotFoundQuery = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Código no encontrado", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Text(
+                    text = "El producto con el código de barra \"$showBarcodeNotFoundQuery\" no está registrado en el catálogo.",
+                    fontSize = 15.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showBarcodeNotFoundQuery = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text("Entendido (Enter)")
+                }
+            },
+            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown &&
+                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter || keyEvent.key == Key.Escape)
+                ) {
+                    showBarcodeNotFoundQuery = null
+                    true
+                } else false
+            }
+        )
     }
 
     // Weight Dialog
