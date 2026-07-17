@@ -70,6 +70,14 @@ class ProductRepository(database: AppDatabase) {
         queries.deleteProductHard(id)
     }
 
+    fun deleteAllProducts() {
+        queries.deleteAllProducts()
+    }
+
+    fun getAllProductsList(): List<Products> {
+        return queries.selectAllProducts().executeAsList()
+    }
+
     fun getUnsyncedProducts(): List<Products> {
         return queries.selectUnsyncedProducts().executeAsList()
     }

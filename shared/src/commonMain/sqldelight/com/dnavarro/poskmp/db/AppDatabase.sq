@@ -52,6 +52,9 @@ WHERE id = ?;
 deleteProductHard:
 DELETE FROM products WHERE id = ?;
 
+deleteAllProducts:
+DELETE FROM products;
+
 updateSyncStatus:
 UPDATE products
 SET sync_state = ?, updated_at = ?
