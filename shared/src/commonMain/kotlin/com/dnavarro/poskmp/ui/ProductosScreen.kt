@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -86,6 +87,47 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
+enum class ProductSortField {
+    CODIGO, NOMBRE, CATEGORIA, PRECIO, COSTO, ESTADO
+}
+
+enum class ProductSortOrder {
+    ASC, DESC
+}
+
+@Composable
+fun RowScope.TableHeader(
+    text: String,
+    weight: Float,
+    field: ProductSortField,
+    currentField: ProductSortField,
+    currentOrder: ProductSortOrder,
+    onHeaderClick: (ProductSortField) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .weight(weight)
+            .clickable { onHeaderClick(field) }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            fontWeight = FontWeight.Bold,
+            color = if (field == currentField) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp
+        )
+        if (field == currentField) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (currentOrder == ProductSortOrder.ASC) "▲" else "▼",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
 @Composable
 fun ProductosScreen(
     repository: ProductRepository,
@@ -93,6 +135,9 @@ fun ProductosScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var productsList by remember { mutableStateOf<List<Products>>(emptyList()) }
+
+    var sortField by remember { mutableStateOf(ProductSortField.NOMBRE) }
+    var sortOrder by remember { mutableStateOf(ProductSortOrder.ASC) }
 
     // Dialog control states
     var showProductDialogFor by remember { mutableStateOf<Products?>(null) } // Null means not showing, a Product with empty ID means "New"
@@ -111,6 +156,29 @@ fun ProductosScreen(
             repository.searchProducts(searchQuery).collectLatest {
                 productsList = it
             }
+        }
+    }
+
+    val sortedProducts = remember(productsList, sortField, sortOrder) {
+        productsList.sortedWith { p1, p2 ->
+            val f1 = p1.es_favorito == 1L
+            val f2 = p2.es_favorito == 1L
+            if (f1 != f2) {
+                return@sortedWith if (f1) -1 else 1
+            }
+            val comparison = when (sortField) {
+                ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
+                ProductSortField.CODIGO -> {
+                    val c1 = try { p1.codigos.replace("[", "").replace("]", "").replace("\"", "") } catch (_: Exception) { "" }
+                    val c2 = try { p2.codigos.replace("[", "").replace("]", "").replace("\"", "") } catch (_: Exception) { "" }
+                    c1.compareTo(c2)
+                }
+                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
+                ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
+                ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
+                ProductSortField.ESTADO -> p1.activo.compareTo(p2.activo)
+            }
+            if (sortOrder == ProductSortOrder.ASC) comparison else -comparison
         }
     }
 
@@ -252,8 +320,8 @@ fun ProductosScreen(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                             contentPadding = PaddingValues(bottom = 12.dp)
                         ) {
-                            itemsIndexed(productsList) { index, product ->
-                                val shape = if (productsList.size == 1) {
+                            itemsIndexed(sortedProducts) { index, product ->
+                                val shape = if (sortedProducts.size == 1) {
                                     MaterialTheme.shapes.medium
                                 } else if (index == 0) {
                                     RoundedCornerShape(
@@ -262,7 +330,7 @@ fun ProductosScreen(
                                         bottomStart = MaterialTheme.shapes.extraSmall.bottomStart,
                                         bottomEnd = MaterialTheme.shapes.extraSmall.bottomEnd
                                     )
-                                } else if (index == productsList.lastIndex) {
+                                } else if (index == sortedProducts.lastIndex) {
                                     RoundedCornerShape(
                                         topStart = MaterialTheme.shapes.extraSmall.topStart,
                                         topEnd = MaterialTheme.shapes.extraSmall.topEnd,
@@ -376,6 +444,15 @@ fun ProductosScreen(
                 } else {
                     // Desktop Table Layout
                     Column(modifier = Modifier.fillMaxSize()) {
+                        val onHeaderClick = { field: ProductSortField ->
+                            if (sortField == field) {
+                                sortOrder = if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
+                            } else {
+                                sortField = field
+                                sortOrder = ProductSortOrder.ASC
+                            }
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -383,12 +460,12 @@ fun ProductosScreen(
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Código(s)", modifier = Modifier.weight(0.18f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                            Text("Nombre del Producto", modifier = Modifier.weight(0.28f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                            Text("Categoría", modifier = Modifier.weight(0.14f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                            Text("Precio Venta", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                            Text("Costo", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                            Text("Estado", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            TableHeader("Código(s)", 0.18f, ProductSortField.CODIGO, sortField, sortOrder, onHeaderClick)
+                            TableHeader("Nombre del Producto", 0.28f, ProductSortField.NOMBRE, sortField, sortOrder, onHeaderClick)
+                            TableHeader("Categoría", 0.14f, ProductSortField.CATEGORIA, sortField, sortOrder, onHeaderClick)
+                            TableHeader("Precio Venta", 0.10f, ProductSortField.PRECIO, sortField, sortOrder, onHeaderClick)
+                            TableHeader("Costo", 0.10f, ProductSortField.COSTO, sortField, sortOrder, onHeaderClick)
+                            TableHeader("Estado", 0.10f, ProductSortField.ESTADO, sortField, sortOrder, onHeaderClick)
                             Text("Acciones", modifier = Modifier.weight(0.10f), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                         }
 
@@ -405,8 +482,8 @@ fun ProductosScreen(
                                 verticalArrangement = Arrangement.spacedBy(2.dp),
                                 contentPadding = PaddingValues(bottom = 12.dp)
                             ) {
-                                itemsIndexed(productsList) { index, product ->
-                                    val shape = if (productsList.size == 1) {
+                                itemsIndexed(sortedProducts) { index, product ->
+                                    val shape = if (sortedProducts.size == 1) {
                                         MaterialTheme.shapes.medium
                                     } else if (index == 0) {
                                         RoundedCornerShape(
@@ -415,7 +492,7 @@ fun ProductosScreen(
                                             bottomStart = MaterialTheme.shapes.extraSmall.bottomStart,
                                             bottomEnd = MaterialTheme.shapes.extraSmall.bottomEnd
                                         )
-                                    } else if (index == productsList.lastIndex) {
+                                    } else if (index == sortedProducts.lastIndex) {
                                         RoundedCornerShape(
                                             topStart = MaterialTheme.shapes.extraSmall.topStart,
                                             topEnd = MaterialTheme.shapes.extraSmall.topEnd,

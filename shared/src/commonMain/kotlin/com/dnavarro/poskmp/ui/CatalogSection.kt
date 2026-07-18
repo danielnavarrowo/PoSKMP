@@ -149,6 +149,12 @@ fun CatalogSection(
                 }
             }
         } else {
+            val sortedProducts = remember(productsList) {
+                productsList.sortedWith(
+                    compareByDescending<Products> { it.es_favorito == 1L }
+                        .thenBy { it.nombre.lowercase() }
+                )
+            }
             Box(modifier = Modifier.weight(1f)) {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 160.dp),
@@ -156,7 +162,7 @@ fun CatalogSection(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(productsList) { product ->
+                    items(sortedProducts) { product ->
                         var showContextMenu by remember { mutableStateOf(false) }
 
                         Card(
