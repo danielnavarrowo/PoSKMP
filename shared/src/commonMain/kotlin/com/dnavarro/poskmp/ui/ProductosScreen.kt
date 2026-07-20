@@ -218,7 +218,7 @@ fun ProductosScreen(
                         onClick = { showBulkModificationDialog = true },
                         shape = MaterialTheme.shapes.small
                     ) {
-                        Text(stringResource(R.string.modify_count_button, selectedProductIds.size))
+                        Text("Modificar ${selectedProductIds.size} producto(s)")
                     }
                 }
 
