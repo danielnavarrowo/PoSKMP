@@ -41,6 +41,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -142,6 +143,8 @@ fun ProductosScreen(
     // Dialog control states
     var showProductDialogFor by remember { mutableStateOf<Products?>(null) } // Null means not showing, a Product with empty ID means "New"
     var showImportDialog by remember { mutableStateOf(false) }
+    var showBulkModificationDialog by remember { mutableStateOf(false) }
+    var selectedProductIds by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
@@ -210,6 +213,15 @@ fun ProductosScreen(
 
             // Quick Actions
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (selectedProductIds.isNotEmpty()) {
+                    Button(
+                        onClick = { showBulkModificationDialog = true },
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(stringResource(R.string.modify_count_button, selectedProductIds.size))
+                    }
+                }
+
                 if (!isAndroid()) {
                     Button(
                         onClick = { showImportDialog = true },
@@ -355,6 +367,12 @@ fun ProductosScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
+                                            Checkbox(
+                                                checked = product.id in selectedProductIds,
+                                                onCheckedChange = { isSelected ->
+                                                    selectedProductIds = if (isSelected) selectedProductIds + product.id else selectedProductIds - product.id
+                                                }
+                                            )
                                             Text(
                                                 text = product.nombre,
                                                 fontSize = 15.sp,
@@ -513,6 +531,13 @@ fun ProductosScreen(
                                             .padding(horizontal = 16.dp, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+                                        Checkbox(
+                                            checked = product.id in selectedProductIds,
+                                            onCheckedChange = { isSelected ->
+                                                selectedProductIds = if (isSelected) selectedProductIds + product.id else selectedProductIds - product.id
+                                            },
+                                            modifier = Modifier.weight(0.05f)
+                                        )
                                         val codesDisplay = try {
                                             product.codigos
                                                 .replace("[", "")
@@ -648,6 +673,32 @@ fun ProductosScreen(
         ImportProductsDialog(
             onDismiss = { showImportDialog = false },
             repository = repository
+        )
+    }
+
+    if (showBulkModificationDialog) {
+        BulkProductModificationDialog(
+            selectedCount = selectedProductIds.size,
+            onDismiss = { showBulkModificationDialog = false },
+            onApply = { modification ->
+                repository.getAllProductsList()
+                    .filter { it.id in selectedProductIds }
+                    .forEach { product ->
+                        val updatedProduct = applyBulkProductModification(product, modification)
+                        if (updatedProduct == null) {
+                            repository.deleteProductHard(product.id)
+                        } else {
+                            repository.updateProduct(
+                                updatedProduct.copy(
+                                    updated_at = currentTimeMillis(),
+                                    sync_state = "PENDING_UPDATE"
+                                )
+                            )
+                        }
+                    }
+                selectedProductIds = emptySet()
+                showBulkModificationDialog = false
+            }
         )
     }
 
