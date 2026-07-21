@@ -21,7 +21,6 @@ actual fun AppTheme(
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
-        shapes = AppShapes,
         motionScheme = MotionScheme.expressive(),
         content = content
     )

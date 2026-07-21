@@ -2,47 +2,18 @@ package com.dnavarro.poskmp.ui
 
 import android.Manifest
 import android.view.MotionEvent
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.FocusMeteringAction
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.core.SurfaceOrientedMeteringPointFactory
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,14 +24,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import org.jetbrains.compose.resources.painterResource
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.photo_camera
 import java.util.concurrent.Executors
 
 actual fun isCameraScannerAvailable(): Boolean = true
@@ -74,12 +48,6 @@ actual fun PlatformBarcodeScanner(
 ) {
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
-    LaunchedEffect(Unit) {
-        if (!cameraPermissionState.status.isGranted) {
-            cameraPermissionState.launchPermissionRequest()
-        }
-    }
-
     Dialog(
         onDismissRequest = onClose,
         properties = DialogProperties(
@@ -91,19 +59,10 @@ actual fun PlatformBarcodeScanner(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
         ) {
-            when {
-                cameraPermissionState.status.isGranted -> {
+            if (cameraPermissionState.status.isGranted)
                     CameraPreviewScreen(onScanResult = onScanResult, onClose = onClose)
-                }
-                cameraPermissionState.status.shouldShowRationale -> {
-                    PermissionRationaleScreen(
-                        onRequestPermission = { cameraPermissionState.launchPermissionRequest() },
-                        onCancel = onClose
-                    )
-                }
-                else -> {
+                else {
                     PermissionRationaleScreen(
                         onRequestPermission = { cameraPermissionState.launchPermissionRequest() },
                         onCancel = onClose
@@ -112,7 +71,7 @@ actual fun PlatformBarcodeScanner(
             }
         }
     }
-}
+
 
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
@@ -319,11 +278,12 @@ fun PermissionRationaleScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(
-                Icons.Default.Warning,
+                painterResource(Res.drawable.photo_camera),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier.size(84.dp)
             )
+
             Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = "Permiso de cámara requerido",
@@ -343,16 +303,16 @@ fun PermissionRationaleScreen(
             Button(
                 onClick = onRequestPermission,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.small,
+                shape = ShapeDefaults.topListItemShape,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("Conceder permiso", fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             OutlinedButton(
                 onClick = onCancel,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = MaterialTheme.shapes.small
+                shape = ShapeDefaults.bottomListItemShape
             ) {
                 Text("Cancelar", fontWeight = FontWeight.Bold)
             }
