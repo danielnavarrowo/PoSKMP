@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
@@ -40,12 +41,17 @@ import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.SupportingPaneScaffold
+import androidx.compose.material3.adaptive.layout.SupportingPaneScaffoldDefaults
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
+import androidx.compose.material3.adaptive.layout.calculateThreePaneScaffoldValue
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 
@@ -55,7 +61,7 @@ data class CartItem(
     val originalPrice: Double = product.precio
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun VentaScreen(
     repository: ProductRepository,
@@ -98,12 +104,21 @@ fun VentaScreen(
     // Edit Product Dialog state (from context menu)
     var showProductDialogFor by remember { mutableStateOf<Products?>(null) }
 
-    // Widescreen Split Resizing & Ordering States
-    var leftWeight by remember { mutableFloatStateOf(0.65f) }
-    var isCatalogOnLeft by remember { mutableStateOf(true) }
-
     val coroutineScope = rememberCoroutineScope()
     val searchBarFocusRequester = remember { FocusRequester() }
+
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val paneScaffoldDirective = remember(adaptiveInfo) {
+        calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth(adaptiveInfo)
+    }
+    val paneScaffoldValue = remember(paneScaffoldDirective) {
+        calculateThreePaneScaffoldValue(
+            maxHorizontalPartitions = paneScaffoldDirective.maxHorizontalPartitions,
+            adaptStrategies = SupportingPaneScaffoldDefaults.adaptStrategies(),
+            currentDestination = null,
+            maxVerticalPartitions = paneScaffoldDirective.maxVerticalPartitions
+        )
+    }
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
@@ -305,26 +320,27 @@ fun VentaScreen(
                         .focusRequester(desktopFocusRequester)
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                when (keyEvent.key) {
-                                    Key.F7 -> {
-                                        openUnregisteredDialog()
-                                        true
-                                    }
-                                    Key.F11 -> {
-                                        if (keyEvent.isShiftPressed) {
-                                            toggleWholesalePrice()
-                                            true
-                                        } else false
-                                    }
-                                    Key.F12 -> {
-                                        paymentAmountInput = ""
-                                        showCheckoutDialog = true
-                                        true
-                                    }
-                                    else -> false
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.F7 -> {
+                                    openUnregisteredDialog()
+                                    true
                                 }
-                            } else false
+
+                                Key.F11 -> {
+                                    if (keyEvent.isShiftPressed) {
+                                        toggleWholesalePrice()
+                                        true
+                                    } else false
+                                }
+
+                                Key.F12 -> {
+                                    paymentAmountInput = ""
+                                    showCheckoutDialog = true
+                                    true
+                                }
+
+                                else -> false
+                            }
                         }
                 } else Modifier
             )
@@ -413,113 +429,84 @@ fun VentaScreen(
                 }
             }
         } else {
-            // DESKTOP WIDESCREEN VIEW: SPLIT ROW LAYOUT
-            var totalWidthPx by remember { mutableFloatStateOf(0f) }
-
-            val catalogComposable = @Composable { modifier: Modifier ->
-                CatalogSection(
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    productsList = productsList,
-                    onProductClick = { product ->
-                        if (product.por_peso == 1L) {
-                            weightInput = "1.000"
-                            showWeightDialogForProduct = product
-                        } else {
-                            addProductToCart(product, 1.0)
-                        }
-                    },
-                    onToggleFavorite = { product -> toggleProductFavorite(product) },
-                    onModifyProduct = { product -> showProductDialogFor = product },
-                    isCompact = false,
-                    modifier = modifier,
-                    onSellUnregisteredClick = { openUnregisteredDialog() },
-                    onApplyWholesaleClick = { toggleWholesalePrice() },
-                    onCheckoutClick = {
-                        paymentAmountInput = ""
-                        showCheckoutDialog = true
-                    },
-                    searchFocusRequester = searchBarFocusRequester,
-                    onBarcodeScan = barcodeScanCallback,
-                    onSearchKeyIntercept = handleSearchKeyIntercept
-                )
-            }
-
-            val ticketComposable = @Composable { modifier: Modifier ->
-                TicketSection(
-                    cartItems = cartItems,
-                    total = total,
-                    onClearCart = { cartItems.clear() },
-                    onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
-                    onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                    onRemoveItem = { item -> cartItems.remove(item) },
-                    onCheckout = {
-                        paymentAmountInput = ""
-                        showCheckoutDialog = true
-                    },
-                    modifier = modifier,
-                    selectedIndex = selectedIndex,
-                    onSelectedIndexChange = { selectedIndex = it }
-                )
-            }
-
-            val dividerComposable = @Composable {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(10.dp)
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onDoubleTap = {
-                                    isCatalogOnLeft = !isCatalogOnLeft
-                                }
-                            )
-                        }
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures { change, dragAmount ->
-                                change.consume()
-                                if (totalWidthPx > 0) {
-                                    leftWeight = (leftWeight + dragAmount / totalWidthPx).coerceIn(0.2f, 0.8f)
-                                }
-                            }
-                        }
-                        .background(MaterialTheme.colorScheme.background),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(2.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
-                }
-            }
-
-            Row(
+            // ADAPTIVE SUPPORTING-PANE VIEW: catalog as the main pane, ticket as supporting pane.
+            SupportingPaneScaffold(
+                directive = paneScaffoldDirective,
+                value = paneScaffoldValue,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background)
-                    .onGloballyPositioned { coordinates ->
-                        totalWidthPx = coordinates.size.width.toFloat()
+                    .background(MaterialTheme.colorScheme.background),
+                mainPane = {
+                    AnimatedPane {
+                        CatalogSection(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            productsList = productsList,
+                            onProductClick = { product ->
+                                if (product.por_peso == 1L) {
+                                    weightInput = "1.000"
+                                    showWeightDialogForProduct = product
+                                } else {
+                                    addProductToCart(product, 1.0)
+                                }
+                            },
+                            onToggleFavorite = { product -> toggleProductFavorite(product) },
+                            onModifyProduct = { product -> showProductDialogFor = product },
+                            isCompact = false,
+                            onSellUnregisteredClick = { openUnregisteredDialog() },
+                            onApplyWholesaleClick = { toggleWholesalePrice() },
+                            onCheckoutClick = {
+                                paymentAmountInput = ""
+                                showCheckoutDialog = true
+                            },
+                            searchFocusRequester = searchBarFocusRequester,
+                            onBarcodeScan = barcodeScanCallback,
+                            onSearchKeyIntercept = handleSearchKeyIntercept
+                        )
                     }
-            ) {
-                val catalogModifier = Modifier.weight(if (isCatalogOnLeft) leftWeight else 1f - leftWeight)
-                val ticketModifier = Modifier
-                    .weight(if (isCatalogOnLeft) 1f - leftWeight else leftWeight)
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
-
-                if (isCatalogOnLeft) {
-                    catalogComposable(catalogModifier)
-                    dividerComposable()
-                    ticketComposable(ticketModifier)
-                } else {
-                    ticketComposable(ticketModifier)
-                    dividerComposable()
-                    catalogComposable(catalogModifier)
+                },
+                supportingPane = {
+                    AnimatedPane {
+                        TicketSection(
+                            cartItems = cartItems,
+                            total = total,
+                            onClearCart = { cartItems.clear() },
+                            onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
+                            onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
+                            onRemoveItem = { item -> cartItems.remove(item) },
+                            onCheckout = {
+                                paymentAmountInput = ""
+                                showCheckoutDialog = true
+                            },
+                            selectedIndex = selectedIndex,
+                            onSelectedIndexChange = { selectedIndex = it }
+                        )
+                    }
+                },
+                paneExpansionDragHandle = { state ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(10.dp)
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .paneExpansionDraggable(
+                                state = state,
+                                minTouchTargetSize = 48.dp,
+                                interactionSource = remember { MutableInteractionSource() }
+                            )
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(2.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+                    }
                 }
-            }
+            )
         }
     }
 
