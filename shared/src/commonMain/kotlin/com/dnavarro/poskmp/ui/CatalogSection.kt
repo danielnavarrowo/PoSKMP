@@ -3,50 +3,20 @@ package com.dnavarro.poskmp.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -56,12 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.formatPrice
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.*
 import com.dnavarro.poskmp.util.isAndroid
+import org.jetbrains.compose.resources.painterResource
+import poskmp.shared.generated.resources.*
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CatalogSection(
     modifier: Modifier = Modifier,
@@ -97,25 +65,33 @@ fun CatalogSection(
                     if (searchFocusRequester != null) mod.focusRequester(searchFocusRequester) else mod
                 }
                 .onPreviewKeyEvent { keyEvent ->
-                    if (onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent)) {
+                    onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || !isAndroid() &&
+                            keyEvent.type == KeyEventType.KeyDown &&
+                            (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (onBarcodeScan != null && searchQuery.isNotBlank()) {
+                        onBarcodeScan(searchQuery)
                         true
-                    } else if (!isAndroid() &&
-                        keyEvent.type == KeyEventType.KeyDown &&
-                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                    ) {
-                        if (onBarcodeScan != null && searchQuery.isNotBlank()) {
-                            onBarcodeScan(searchQuery)
-                            true
-                        } else false
                     } else false
                 },
-            placeholder = { Text("Buscar por nombre, código de barra o categoría...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+            placeholder = {
+                Text(
+                    "Buscar por nombre, código de barra o categoría...",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(Res.drawable.search),
+                    contentDescription = "Buscar",
+                )
+            },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Limpiar")
-                    }
+                    Icon(
+                        painter = painterResource(Res.drawable.close),
+                        contentDescription = "Limpiar",
+                    )
                 }
             },
             singleLine = true,
@@ -135,8 +111,8 @@ fun CatalogSection(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        Icons.Default.Info,
-                        contentDescription = null,
+                        painter = painterResource(Res.drawable.sad_face),
+                        contentDescription = "Vacio",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(48.dp)
                     )
@@ -258,10 +234,10 @@ fun CatalogSection(
                                         },
                                         leadingIcon = {
                                             Icon(
-                                                imageVector = Icons.Default.Favorite,
-                                                contentDescription = null,
-                                                tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.error
-                                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                                painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
+                                                contentDescription = "Favorito",
+                                                tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     )
@@ -272,7 +248,7 @@ fun CatalogSection(
                                             onModifyProduct(product)
                                         },
                                         leadingIcon = {
-                                            Icon(Icons.Default.Edit, contentDescription = null)
+                                            Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Modificar")
                                         }
                                     )
                                 }
@@ -282,7 +258,7 @@ fun CatalogSection(
                 }
 
                 // Mobile bottom overlay to access cart
-                if (isCompact && cartCount > 0 && onViewCartClick != null) {
+                if (isCompact && onViewCartClick != null) {
                     ExtendedFloatingActionButton(
                         onClick = onViewCartClick,
                         modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
@@ -291,7 +267,10 @@ fun CatalogSection(
                     ) {
                         Icon(Icons.Default.ShoppingCart, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ver Ticket ($cartCount) • $${cartTotal.toString().formatPrice()}")
+                        Text(
+                            if (cartCount > 0) "Ver Ticket ($cartCount) • $${cartTotal.toString().formatPrice()}"
+                            else "Ver Ticket"
+                        )
                     }
                 }
             }
@@ -316,7 +295,12 @@ fun CatalogSection(
             )
             SuggestionChip(
                 onClick = onApplyWholesaleClick,
-                label = { Text(if (isCompact) "Mayoreo a Ticket" else "Shift + F11: Mayoreo a Ticket", fontWeight = FontWeight.Bold) },
+                label = {
+                    Text(
+                        if (isCompact) "Mayoreo a Ticket" else "Shift + F11: Mayoreo a Ticket",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 colors = SuggestionChipDefaults.suggestionChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 )

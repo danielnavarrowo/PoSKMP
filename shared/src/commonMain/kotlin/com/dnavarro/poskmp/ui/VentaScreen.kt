@@ -1,19 +1,20 @@
 package com.dnavarro.poskmp.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.*
+import androidx.compose.material3.adaptive.navigation.rememberSupportingPaneScaffoldNavigator
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,7 +22,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -35,25 +38,11 @@ import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
-import androidx.compose.foundation.focusable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.layout.AnimatedPane
-import androidx.compose.material3.adaptive.layout.SupportingPaneScaffold
-import androidx.compose.material3.adaptive.layout.SupportingPaneScaffoldDefaults
-import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
-import androidx.compose.material3.adaptive.layout.calculateThreePaneScaffoldValue
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 
 data class CartItem(
     val product: Products,
@@ -72,9 +61,6 @@ fun VentaScreen(
     var searchQuery by remember { mutableStateOf("") }
     var productsList by remember { mutableStateOf<List<Products>>(emptyList()) }
     var selectedIndex by remember { mutableIntStateOf(-1) }
-
-    // Active tab in compact/mobile view
-    var mobileSelectedTab by remember { mutableIntStateOf(0) }
 
     // Weight Dialog state
     var showWeightDialogForProduct by remember { mutableStateOf<Products?>(null) }
@@ -108,17 +94,15 @@ fun VentaScreen(
     val searchBarFocusRequester = remember { FocusRequester() }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val paneScaffoldDirective = remember(adaptiveInfo) {
-        calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth(adaptiveInfo)
-    }
-    val paneScaffoldValue = remember(paneScaffoldDirective) {
-        calculateThreePaneScaffoldValue(
-            maxHorizontalPartitions = paneScaffoldDirective.maxHorizontalPartitions,
-            adaptStrategies = SupportingPaneScaffoldDefaults.adaptStrategies(),
-            currentDestination = null,
-            maxVerticalPartitions = paneScaffoldDirective.maxVerticalPartitions
+    val scaffoldDirective = remember(adaptiveInfo) {
+        calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth(adaptiveInfo).copy(
+            maxVerticalPartitions = 1
         )
     }
+    val navigator = rememberSupportingPaneScaffoldNavigator<Nothing>(
+        scaffoldDirective = scaffoldDirective
+    )
+    val paneExpansionState = rememberPaneExpansionState()
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
@@ -345,169 +329,98 @@ fun VentaScreen(
                 } else Modifier
             )
     ) { paddingValues ->
-        if (isCompact) {
-            // MOBILE COMPACT VIEW: TAB SYSTEM
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Tab Selection
-                SecondaryTabRow(
-                    selectedTabIndex = mobileSelectedTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Tab(
-                        selected = mobileSelectedTab == 0,
-                        onClick = { mobileSelectedTab = 0 },
-                        text = { Text("Catálogo", fontWeight = FontWeight.Bold) },
-                        icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) }
-                    )
-                    Tab(
-                        selected = mobileSelectedTab == 1,
-                        onClick = { mobileSelectedTab = 1 },
-                        text = {
-                            Text(
-                                text = if (cartItems.isEmpty()) "Ticket" else "Ticket (${
-                                    cartItems.sumOf { if (it.product.por_peso == 1L) 1.0 else it.quantity }.toInt()
-                                })",
-                                fontWeight = FontWeight.Bold
-                            )
+        SupportingPaneScaffold(
+            directive = navigator.scaffoldDirective,
+            value = navigator.scaffoldValue,
+            paneExpansionState = paneExpansionState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background),
+            mainPane = {
+                AnimatedPane {
+                    CatalogSection(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        productsList = productsList,
+                        onProductClick = { product ->
+                            if (product.por_peso == 1L) {
+                                weightInput = "1.000"
+                                showWeightDialogForProduct = product
+                            } else {
+                                addProductToCart(product, 1.0)
+                            }
                         },
-                        icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) }
+                        onToggleFavorite = { product -> toggleProductFavorite(product) },
+                        onModifyProduct = { product -> showProductDialogFor = product },
+                        isCompact = isCompact,
+                        onViewCartClick = {
+                            coroutineScope.launch {
+                                navigator.navigateTo(ThreePaneScaffoldRole.Secondary)
+                            }
+                        },
+                        cartCount = cartItems.size,
+                        cartTotal = total,
+                        onSellUnregisteredClick = { openUnregisteredDialog() },
+                        onApplyWholesaleClick = { toggleWholesalePrice() },
+                        onCheckoutClick = {
+                            paymentAmountInput = ""
+                            showCheckoutDialog = true
+                        },
+                        searchFocusRequester = searchBarFocusRequester,
+                        onBarcodeScan = barcodeScanCallback,
+                        onSearchKeyIntercept = handleSearchKeyIntercept
                     )
                 }
-
-                // Render Active Tab View
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    if (mobileSelectedTab == 0) {
-                        CatalogSection(
-                            searchQuery = searchQuery,
-                            onSearchQueryChange = { searchQuery = it },
-                            productsList = productsList,
-                            onProductClick = { product ->
-                                if (product.por_peso == 1L) {
-                                    weightInput = "1.000"
-                                    showWeightDialogForProduct = product
-                                } else {
-                                    addProductToCart(product, 1.0)
+            },
+            supportingPane = {
+                AnimatedPane {
+                    TicketSection(
+                        cartItems = cartItems,
+                        total = total,
+                        onClearCart = { cartItems.clear() },
+                        onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
+                        onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
+                        onRemoveItem = { item -> cartItems.remove(item) },
+                        onCheckout = {
+                            paymentAmountInput = ""
+                            showCheckoutDialog = true
+                        },
+                        selectedIndex = selectedIndex,
+                        onSelectedIndexChange = { selectedIndex = it },
+                        onBackClick = if (navigator.canNavigateBack()) {
+                            {
+                                coroutineScope.launch {
+                                    navigator.navigateBack()
                                 }
-                            },
-                            onToggleFavorite = { product -> toggleProductFavorite(product) },
-                            onModifyProduct = { product -> showProductDialogFor = product },
-                            isCompact = true,
-                            onViewCartClick = { mobileSelectedTab = 1 },
-                            cartCount = cartItems.size,
-                            cartTotal = total,
-                            onSellUnregisteredClick = { openUnregisteredDialog() },
-                            onApplyWholesaleClick = { toggleWholesalePrice() },
-                            onCheckoutClick = {
-                                paymentAmountInput = ""
-                                showCheckoutDialog = true
-                            },
-                            searchFocusRequester = searchBarFocusRequester,
-                            onBarcodeScan = barcodeScanCallback,
-                            onSearchKeyIntercept = handleSearchKeyIntercept
-                        )
-                    } else {
-                        TicketSection(
-                            cartItems = cartItems,
-                            total = total,
-                            onClearCart = { cartItems.clear() },
-                            onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
-                            onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                            onRemoveItem = { item -> cartItems.remove(item) },
-                            onCheckout = {
-                                paymentAmountInput = ""
-                                showCheckoutDialog = true
-                            },
-                            selectedIndex = selectedIndex,
-                            onSelectedIndexChange = { selectedIndex = it }
-                        )
-                    }
+                            }
+                        } else null
+                    )
                 }
-            }
-        } else {
-            // ADAPTIVE SUPPORTING-PANE VIEW: catalog as the main pane, ticket as supporting pane.
-            SupportingPaneScaffold(
-                directive = paneScaffoldDirective,
-                value = paneScaffoldValue,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background),
-                mainPane = {
-                    AnimatedPane {
-                        CatalogSection(
-                            searchQuery = searchQuery,
-                            onSearchQueryChange = { searchQuery = it },
-                            productsList = productsList,
-                            onProductClick = { product ->
-                                if (product.por_peso == 1L) {
-                                    weightInput = "1.000"
-                                    showWeightDialogForProduct = product
-                                } else {
-                                    addProductToCart(product, 1.0)
-                                }
-                            },
-                            onToggleFavorite = { product -> toggleProductFavorite(product) },
-                            onModifyProduct = { product -> showProductDialogFor = product },
-                            isCompact = false,
-                            onSellUnregisteredClick = { openUnregisteredDialog() },
-                            onApplyWholesaleClick = { toggleWholesalePrice() },
-                            onCheckoutClick = {
-                                paymentAmountInput = ""
-                                showCheckoutDialog = true
-                            },
-                            searchFocusRequester = searchBarFocusRequester,
-                            onBarcodeScan = barcodeScanCallback,
-                            onSearchKeyIntercept = handleSearchKeyIntercept
+            },
+            paneExpansionDragHandle = { state ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(10.dp)
+                        .pointerHoverIcon(PointerIcon.Hand)
+                        .paneExpansionDraggable(
+                            state = state,
+                            minTouchTargetSize = 48.dp,
+                            interactionSource = remember { MutableInteractionSource() }
                         )
-                    }
-                },
-                supportingPane = {
-                    AnimatedPane {
-                        TicketSection(
-                            cartItems = cartItems,
-                            total = total,
-                            onClearCart = { cartItems.clear() },
-                            onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
-                            onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                            onRemoveItem = { item -> cartItems.remove(item) },
-                            onCheckout = {
-                                paymentAmountInput = ""
-                                showCheckoutDialog = true
-                            },
-                            selectedIndex = selectedIndex,
-                            onSelectedIndexChange = { selectedIndex = it }
-                        )
-                    }
-                },
-                paneExpansionDragHandle = { state ->
+                        .background(MaterialTheme.colorScheme.background),
+                    contentAlignment = Alignment.Center
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .width(10.dp)
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .paneExpansionDraggable(
-                                state = state,
-                                minTouchTargetSize = 48.dp,
-                                interactionSource = remember { MutableInteractionSource() }
-                            )
-                            .background(MaterialTheme.colorScheme.background),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(2.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
-                        )
-                    }
+                            .width(2.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
                 }
-            )
-        }
+            }
+        )
     }
 
     // Barcode Not Found Warning Dialog

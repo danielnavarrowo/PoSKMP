@@ -46,19 +46,8 @@ To avoid extremely large and monolithic user interface files, strict modular seg
 
 ---
 
-### A. Compact (Mobile) View
-- Activated when the screen width is less than `600.dp`.
-- Uses a **tab system** (SecondaryTabRow) containing:
-    1. **Catálogo**: Product search list, categories chips, and favorite toggle buttons.
-    2. **Ticket**: Active shopping cart items list, checkout, and wholesale actions.
-
-### B. Widescreen (Desktop) View
-- Activated on wider screens (width $\ge$ `600.dp`).
-- Displays both **Catálogo** and **Ticket** side-by-side.
-- **Widescreen Resizable & Swappable Layout**:
-    - The columns are separated by an interactive, draggable vertical **divider bar** (`detectHorizontalDragGestures`).
-    - Cashiers can drag the bar left and right to adjust the column width ratio.
-    - **Double-clicking** (`detectTapGestures(onDoubleTap = ...)`) on the divider bar swaps the positions of the columns (sending the Ticket to the left and Catalog to the right, or vice versa).
+Keep in mind, the app should have adaptive layouts in compact, medium and wide screens, using canonical layouts from Compose when possible. 
+\
 
 ---
 

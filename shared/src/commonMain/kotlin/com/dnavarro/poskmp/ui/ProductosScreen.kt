@@ -288,7 +288,7 @@ fun ProductosScreen(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small),
-            placeholder = { Text("Buscar por nombre, código de barra o categoría...") },
+            placeholder = { Text("Buscar por nombre, código de barra o categoría...", maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {

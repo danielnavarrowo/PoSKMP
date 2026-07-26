@@ -4,11 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -17,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,6 +23,9 @@ import com.dnavarro.poskmp.db.createDatabase
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.ui.*
 import com.dnavarro.poskmp.util.isAndroid
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import poskmp.shared.generated.resources.*
 
 
 internal fun navigationSuiteTypeForWidth(width: Dp): NavigationSuiteType = when {
@@ -60,25 +57,25 @@ fun App() {
         listOf(
             ToolbarItem(
                 label = if (isDesktop) "Venta (F1)" else "Venta",
-                icon = Icons.Default.ShoppingCart,
+                icon = Res.drawable.point_of_sale,
                 isSelected = currentScreen == Screen.VENTA,
                 onCheckedChange = { if (it) currentScreen = Screen.VENTA }
             ),
             ToolbarItem(
                 label = if (isDesktop) "Productos (F3)" else "Productos",
-                icon = Icons.AutoMirrored.Filled.List,
+                icon = Res.drawable.products,
                 isSelected = currentScreen == Screen.PRODUCTOS,
                 onCheckedChange = { if (it) currentScreen = Screen.PRODUCTOS }
             ),
             ToolbarItem(
                 label = if (isDesktop) "Checador (F2)" else "Checador",
-                icon = Icons.Default.Search,
+                icon = Res.drawable.price,
                 isSelected = false,
                 onCheckedChange = { showPriceCheckerDialog = true }
             ),
             ToolbarItem(
                 label = "Ajustes",
-                icon = Icons.Default.Settings,
+                icon = Res.drawable.settings,
                 isSelected = currentScreen == Screen.AJUSTES,
                 onCheckedChange = { if (it) currentScreen = Screen.AJUSTES }
             )
@@ -110,7 +107,7 @@ fun App() {
                             onClick = { navItem.onCheckedChange(true) },
                             icon = {
                                 Icon(
-                                    navItem.icon,
+                                    painter = painterResource(navItem.icon),
                                     contentDescription = navItem.label
                                 )
                             },
@@ -188,7 +185,7 @@ fun App() {
                                                     modifier = Modifier.padding(horizontal = 8.dp)
                                                 ) {
                                                     Icon(
-                                                        item.icon,
+                                                        painter = painterResource(item.icon),
                                                         contentDescription = item.label
                                                     )
                                                 }
@@ -233,7 +230,7 @@ fun App() {
 
 private data class ToolbarItem(
     val label: String,
-    val icon: ImageVector,
+    val icon: DrawableResource,
     val isSelected: Boolean,
     val onCheckedChange: (Boolean) -> Unit
 )
