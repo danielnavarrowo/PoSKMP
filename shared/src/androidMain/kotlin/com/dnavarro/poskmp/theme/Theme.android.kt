@@ -27,6 +27,7 @@ actual fun SystemDynamicTheme(
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
+        typography = AppTypography,
         motionScheme = MotionScheme.expressive(),
         content = content
     )

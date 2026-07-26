@@ -8,6 +8,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BrightnessAuto
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.isDynamicColorSupported
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
@@ -35,6 +40,7 @@ private val presetSeedColors = listOf(
     Color(0xFF2E7D32)  // Verde Bosque
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AjustesScreen(
     useDynamicColor: Boolean = isAndroid(),
@@ -43,6 +49,8 @@ fun AjustesScreen(
     onSeedColorChange: (Color) -> Unit = {},
     isAmoled: Boolean = false,
     onIsAmoledChange: (Boolean) -> Unit = {},
+    darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
+    onDarkModeConfigChange: (DarkModeConfig) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -133,47 +141,96 @@ fun AjustesScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Row 1: Dynamic Color Toggle
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = stringResource(Res.string.dynamic_color_title),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                if (isAndroid()) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Badge(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    ) {
-                                        Text(
-                                            "Android",
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                            fontSize = 10.sp
-                                        )
+                    if (isAndroid()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = stringResource(Res.string.dynamic_color_title),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (isAndroid()) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        ) {
+                                            Text(
+                                                "Android",
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                fontSize = 10.sp
+                                            )
+                                        }
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.dynamic_color_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = stringResource(Res.string.dynamic_color_subtitle),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+
+                            Switch(
+                                checked = useDynamicColor,
+                                onCheckedChange = onUseDynamicColorChange,
+                                enabled = isAndroid()
                             )
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
-                        Switch(
-                            checked = useDynamicColor,
-                            onCheckedChange = onUseDynamicColorChange,
-                            enabled = isAndroid()
+
+                    // Row 2: Dark Mode 3-step Switch (Follow System, Off, On)
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = stringResource(Res.string.dark_mode_title),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.dark_mode_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val options = listOf(
+                                Triple(DarkModeConfig.SYSTEM, stringResource(Res.string.dark_mode_system), Icons.Outlined.BrightnessAuto),
+                                Triple(DarkModeConfig.LIGHT, stringResource(Res.string.dark_mode_off), Icons.Outlined.LightMode),
+                                Triple(DarkModeConfig.DARK, stringResource(Res.string.dark_mode_on), Icons.Outlined.DarkMode)
+                            )
+                            options.forEachIndexed { index, (config, label, icon) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                                    onClick = { onDarkModeConfigChange(config) },
+                                    selected = darkModeConfig == config,
+                                    icon = {
+                                        SegmentedButtonDefaults.Icon(active = darkModeConfig == config) {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = label,
+                                                modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
+                                            )
+                                        }
+                                    }
+                                ) {
+                                    Text(text = label, maxLines = 1)
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))

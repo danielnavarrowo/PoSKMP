@@ -2,6 +2,7 @@ package com.dnavarro.poskmp
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -20,12 +21,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
-import kotlinx.coroutines.launch
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.createDatabase
 import com.dnavarro.poskmp.theme.AppTheme
+import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.*
 import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -97,12 +99,21 @@ fun App() {
     val useDynamicColor by settingsRepository.useDynamicColorFlow.collectAsState(initial = isAndroid())
     val seedColor by settingsRepository.seedColorFlow.collectAsState(initial = Color(0xFF0061A4))
     val isAmoled by settingsRepository.isAmoledFlow.collectAsState(initial = false)
+    val darkModeConfig by settingsRepository.darkModeConfigFlow.collectAsState(initial = DarkModeConfig.SYSTEM)
     val coroutineScope = rememberCoroutineScope()
+
+    val systemInDark = isSystemInDarkTheme()
+    val darkTheme = when (darkModeConfig) {
+        DarkModeConfig.SYSTEM -> systemInDark
+        DarkModeConfig.LIGHT -> false
+        DarkModeConfig.DARK -> true
+    }
 
     AppTheme(
         seedColor = seedColor,
         useDynamicColor = useDynamicColor,
-        isAmoled = isAmoled
+        isAmoled = isAmoled,
+        darkTheme = darkTheme
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val isCompact = maxWidth < 600.dp
@@ -244,6 +255,10 @@ fun App() {
                                 isAmoled = isAmoled,
                                 onIsAmoledChange = { newAmoled ->
                                     coroutineScope.launch { settingsRepository.setIsAmoled(newAmoled) }
+                                },
+                                darkModeConfig = darkModeConfig,
+                                onDarkModeConfigChange = { newConfig ->
+                                    coroutineScope.launch { settingsRepository.setDarkModeConfig(newConfig) }
                                 }
                             )
                         }

@@ -32,6 +32,7 @@ fun AppTheme(
     } else {
         DynamicMaterialExpressiveTheme(
             seedColor = seedColor,
+            typography = AppTypography,
             motionScheme = MotionScheme.expressive(),
             isAmoled = isAmoled,
             isDark = darkTheme,

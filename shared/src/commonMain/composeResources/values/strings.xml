@@ -47,6 +47,11 @@
     <string name="seed_color_subtitle">Selecciona un color base para generar la paleta de colores del tema</string>
     <string name="amoled_mode_title">Modo AMOLED</string>
     <string name="amoled_mode_subtitle">Fondo negro puro en tema oscuro</string>
+    <string name="dark_mode_title">Tema Oscuro</string>
+    <string name="dark_mode_subtitle">Selecciona la preferencia de tema visual</string>
+    <string name="dark_mode_system">Sistema</string>
+    <string name="dark_mode_off">Claro</string>
+    <string name="dark_mode_on">Oscuro</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>
