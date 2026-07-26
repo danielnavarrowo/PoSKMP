@@ -52,6 +52,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -185,12 +186,16 @@ fun ProductosScreen(
         }
     }
 
-    Column(
+    Scaffold(
         modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp)
-    ) {
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(24.dp)
+        ) {
         // TOP HEADER
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
@@ -647,6 +652,7 @@ fun ProductosScreen(
                             }
                         }
                     }
+                }
             }
         }
     }

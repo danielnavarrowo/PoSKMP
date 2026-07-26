@@ -138,7 +138,7 @@ fun CatalogSection(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(sortedProducts) { product ->
+                    items(sortedProducts.take(50)) { product ->
                         var showContextMenu by remember { mutableStateOf(false) }
 
                         Card(
