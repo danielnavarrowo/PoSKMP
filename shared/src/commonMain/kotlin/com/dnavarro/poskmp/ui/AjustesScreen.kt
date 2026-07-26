@@ -1,22 +1,48 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.theme.isDynamicColorSupported
+import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 
+private val presetSeedColors = listOf(
+    Color(0xFF0061A4), // Azul Clásico
+    Color(0xFF2FC991), // Verde Esmeralda (PoS)
+    Color(0xFF6750A4), // Púrpura Material
+    Color(0xFF00897B), // Teal / Turquesa
+    Color(0xFFE65100), // Naranja Puesta de Sol
+    Color(0xFFB71C1C), // Rojo Carmesí
+    Color(0xFF4A148C), // Violeta Profundo
+    Color(0xFF2E7D32)  // Verde Bosque
+)
+
 @Composable
 fun AjustesScreen(
+    useDynamicColor: Boolean = isAndroid(),
+    onUseDynamicColorChange: (Boolean) -> Unit = {},
+    seedColor: Color = Color(0xFF0061A4),
+    onSeedColorChange: (Color) -> Unit = {},
+    isAmoled: Boolean = false,
+    onIsAmoledChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -89,7 +115,174 @@ fun AjustesScreen(
                 }
             }
 
-            // Card 2: Database Status
+            // Card 2: Apariencia y Tema (Dynamic Color, AMOLED & Seed Color)
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = stringResource(Res.string.theme_section_title),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Row 1: Dynamic Color Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = stringResource(Res.string.dynamic_color_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                if (isAndroid()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ) {
+                                        Text(
+                                            "Android",
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(Res.string.dynamic_color_subtitle),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Switch(
+                            checked = useDynamicColor,
+                            onCheckedChange = onUseDynamicColorChange,
+                            enabled = isAndroid()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        thickness = 1.dp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Row 2: AMOLED Mode Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                            Text(
+                                text = stringResource(Res.string.amoled_mode_title),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(Res.string.amoled_mode_subtitle),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Switch(
+                            checked = isAmoled,
+                            onCheckedChange = onIsAmoledChange
+                        )
+                    }
+
+                    // Seed Color Picker (visible when Dynamic Color is disabled or always for selection)
+                    AnimatedVisibility(
+                        visible = !useDynamicColor || !isDynamicColorSupported(),
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Column(modifier = Modifier.padding(top = 20.dp)) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                thickness = 1.dp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = stringResource(Res.string.seed_color_title),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(Res.string.seed_color_subtitle),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                presetSeedColors.forEach { color ->
+                                    val isSelected = !useDynamicColor && seedColor == color
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                            .then(
+                                                if (isSelected) {
+                                                    Modifier.border(
+                                                        width = 3.dp,
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        shape = CircleShape
+                                                    )
+                                                } else Modifier
+                                            )
+                                            .clickable {
+                                                if (useDynamicColor) {
+                                                    onUseDynamicColorChange(false)
+                                                }
+                                                onSeedColorChange(color)
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelected) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.check),
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Card 3: Database Status
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -147,7 +340,7 @@ fun AjustesScreen(
                 }
             }
 
-            // Card 3: Cloud Synchronization Status
+
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -231,3 +424,4 @@ fun AjustesScreen(
         }
     }
 }
+

@@ -1606,19 +1606,19 @@ fun ImportProductsDialog(
                                                             importProgressText =
                                                                 savingFmt.replace($$"%1$s", p.nombre)
                                                                     .replace(
-                                                                        "%2\$d",
+                                                                        $$"%2$d",
                                                                         currentProcessed.toString()
                                                                     ).replace(
-                                                                    "%3\$d",
+                                                                        $$"%3$d",
                                                                     total.toString()
                                                                 )
                                                         }
                                                         delay(10.milliseconds)
                                                     }
                                                     importSuccessMessage = updateSuccessFmt.replace(
-                                                        "%1\$d",
+                                                        $$"%1$d",
                                                         inserted.toString()
-                                                    ).replace("%2\$d", updated.toString())
+                                                    ).replace($$"%2$d", updated.toString())
                                                 } else {
                                                     repository.deleteAllProducts()
                                                     val total = parsedProducts.size
@@ -1635,18 +1635,18 @@ fun ImportProductsDialog(
                                                                 currentProcessed.toFloat() / total
                                                             importProgressText =
                                                                 insertingFmt.replace(
-                                                                    "%1\$s",
+                                                                    $$"%1$s",
                                                                     p.nombre
                                                                 ).replace(
-                                                                    "%2\$d",
+                                                                    $$"%2$d",
                                                                     currentProcessed.toString()
-                                                                ).replace("%3\$d", total.toString())
+                                                                ).replace($$"%3$d", total.toString())
                                                         }
                                                         delay(10.milliseconds)
                                                     }
                                                     importSuccessMessage =
                                                         replaceSuccessFmt.replace(
-                                                            "%1\$d",
+                                                            $$"%1$d",
                                                             parsedProducts.size.toString()
                                                         )
                                                 }
@@ -1654,7 +1654,7 @@ fun ImportProductsDialog(
                                             currentStep = 4
                                         } catch (e: Exception) {
                                             importError =
-                                                dbSaveErrFmt.replace("%1\$s", e.message ?: "")
+                                                dbSaveErrFmt.replace($$"%1$s", e.message ?: "")
                                         } finally {
                                             isProcessing = false
                                         }

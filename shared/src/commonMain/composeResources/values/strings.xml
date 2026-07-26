@@ -40,6 +40,13 @@
     <string name="supabase_status_pending_desc">Sincronización en segundo plano pendiente</string>
     <string name="status_pending">Pendiente</string>
     <string name="sync_now_button">Sincronizar ahora</string>
+    <string name="theme_section_title">Apariencia y Tema</string>
+    <string name="dynamic_color_title">Color Dinámico</string>
+    <string name="dynamic_color_subtitle">Usar colores del fondo de pantalla del sistema</string>
+    <string name="seed_color_title">Color personalizado</string>
+    <string name="seed_color_subtitle">Selecciona un color base para generar la paleta de colores del tema</string>
+    <string name="amoled_mode_title">Modo AMOLED</string>
+    <string name="amoled_mode_subtitle">Fondo negro puro en tema oscuro</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>

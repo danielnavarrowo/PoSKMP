@@ -1,114 +1,43 @@
 package com.dnavarro.poskmp.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import com.materialkolor.DynamicMaterialExpressiveTheme
 
-val lightColorScheme = lightColorScheme(
-    primary = PrimaryLight,
-    onPrimary = OnPrimaryLight,
-    primaryContainer = PrimaryContainerLight,
-    onPrimaryContainer = OnPrimaryContainerLight,
-    inversePrimary = InversePrimaryLight,
-    secondary = SecondaryLight,
-    onSecondary = OnSecondaryLight,
-    secondaryContainer = SecondaryContainerLight,
-    onSecondaryContainer = OnSecondaryContainerLight,
-    tertiary = TertiaryLight,
-    onTertiary = OnTertiaryLight,
-    tertiaryContainer = TertiaryContainerLight,
-    onTertiaryContainer = OnTertiaryContainerLight,
-    background = BackgroundLight,
-    onBackground = OnBackgroundLight,
-    surface = SurfaceLight,
-    onSurface = OnSurfaceLight,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = OnSurfaceVariantLight,
-    surfaceTint = SurfaceTintLight,
-    inverseSurface = InverseSurfaceLight,
-    inverseOnSurface = InverseOnSurfaceLight,
-    error = ErrorLight,
-    onError = OnErrorLight,
-    errorContainer = ErrorContainerLight,
-    onErrorContainer = OnErrorContainerLight,
-    outline = OutlineLight,
-    outlineVariant = OutlineVariantLight,
-    scrim = ScrimLight,
-    surfaceBright = SurfaceBrightLight,
-    surfaceContainer = SurfaceContainerLight,
-    surfaceContainerHigh = SurfaceContainerHighLight,
-    surfaceContainerHighest = SurfaceContainerHighestLight,
-    surfaceContainerLow = SurfaceContainerLowLight,
-    surfaceContainerLowest = SurfaceContainerLowestLight,
-    surfaceDim = SurfaceDimLight,
-    primaryFixed = PrimaryFixed,
-    primaryFixedDim = PrimaryFixedDim,
-    onPrimaryFixed = OnPrimaryFixed,
-    onPrimaryFixedVariant = OnPrimaryFixedVariant,
-    secondaryFixed = SecondaryFixed,
-    secondaryFixedDim = SecondaryFixedDim,
-    onSecondaryFixed = OnSecondaryFixed,
-    onSecondaryFixedVariant = OnSecondaryFixedVariant,
-    tertiaryFixed = TertiaryFixed,
-    tertiaryFixedDim = TertiaryFixedDim,
-    onTertiaryFixed = OnTertiaryFixed,
-    onTertiaryFixedVariant = OnTertiaryFixedVariant,
-)
-
-val darkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
-    onPrimary = OnPrimaryDark,
-    primaryContainer = PrimaryContainerDark,
-    onPrimaryContainer = OnPrimaryContainerDark,
-    inversePrimary = InversePrimaryDark,
-    secondary = SecondaryDark,
-    onSecondary = OnSecondaryDark,
-    secondaryContainer = SecondaryContainerDark,
-    onSecondaryContainer = OnSecondaryContainerDark,
-    tertiary = TertiaryDark,
-    onTertiary = OnTertiaryDark,
-    tertiaryContainer = TertiaryContainerDark,
-    onTertiaryContainer = OnTertiaryContainerDark,
-    background = BackgroundDark,
-    onBackground = OnBackgroundDark,
-    surface = SurfaceDark,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = OnSurfaceVariantDark,
-    surfaceTint = SurfaceTintDark,
-    inverseSurface = InverseSurfaceDark,
-    inverseOnSurface = InverseOnSurfaceDark,
-    error = ErrorDark,
-    onError = OnErrorDark,
-    errorContainer = ErrorContainerDark,
-    onErrorContainer = OnErrorContainerDark,
-    outline = OutlineDark,
-    outlineVariant = OutlineVariantDark,
-    scrim = ScrimDark,
-    surfaceBright = SurfaceBrightDark,
-    surfaceContainer = SurfaceContainerDark,
-    surfaceContainerHigh = SurfaceContainerHighDark,
-    surfaceContainerHighest = SurfaceContainerHighestDark,
-    surfaceContainerLow = SurfaceContainerLowDark,
-    surfaceContainerLowest = SurfaceContainerLowestDark,
-    surfaceDim = SurfaceDimDark,
-    primaryFixed = PrimaryFixed,
-    primaryFixedDim = PrimaryFixedDim,
-    onPrimaryFixed = OnPrimaryFixed,
-    onPrimaryFixedVariant = OnPrimaryFixedVariant,
-    secondaryFixed = SecondaryFixed,
-    secondaryFixedDim = SecondaryFixedDim,
-    onSecondaryFixed = OnSecondaryFixed,
-    onSecondaryFixedVariant = OnSecondaryFixedVariant,
-    tertiaryFixed = TertiaryFixed,
-    tertiaryFixedDim = TertiaryFixedDim,
-    onTertiaryFixed = OnTertiaryFixed,
-    onTertiaryFixedVariant = OnTertiaryFixedVariant,
-)
+expect fun isDynamicColorSupported(): Boolean
 
 @Composable
-expect fun AppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+expect fun SystemDynamicTheme(
+    darkTheme: Boolean,
     content: @Composable () -> Unit
 )
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun AppTheme(
+    seedColor: Color = Color(0xFF0061A4),
+    useDynamicColor: Boolean = isDynamicColorSupported(),
+    isAmoled: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    if (useDynamicColor && isDynamicColorSupported()) {
+        SystemDynamicTheme(
+            darkTheme = darkTheme,
+            content = content
+        )
+    } else {
+        DynamicMaterialExpressiveTheme(
+            seedColor = seedColor,
+            motionScheme = MotionScheme.expressive(),
+            isAmoled = isAmoled,
+            isDark = darkTheme,
+            animate = true,
+            content = content,
+        )
+    }
+}
+

@@ -8,15 +8,21 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+actual fun isDynamicColorSupported(): Boolean {
+   return true
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-actual fun AppTheme(
+actual fun SystemDynamicTheme(
     darkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val colorScheme = run {
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = if (darkTheme) {
+        dynamicDarkColorScheme(context)
+    } else {
+        dynamicLightColorScheme(context)
     }
 
     MaterialExpressiveTheme(
@@ -25,3 +31,4 @@ actual fun AppTheme(
         content = content
     )
 }
+

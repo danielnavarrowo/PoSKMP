@@ -16,8 +16,11 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.SettingsRepository
+import kotlinx.coroutines.launch
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.createDatabase
 import com.dnavarro.poskmp.theme.AppTheme
@@ -90,7 +93,17 @@ fun App() {
 
 
 
-    AppTheme {
+    val settingsRepository = remember { SettingsRepository() }
+    val useDynamicColor by settingsRepository.useDynamicColorFlow.collectAsState(initial = isAndroid())
+    val seedColor by settingsRepository.seedColorFlow.collectAsState(initial = Color(0xFF0061A4))
+    val isAmoled by settingsRepository.isAmoledFlow.collectAsState(initial = false)
+    val coroutineScope = rememberCoroutineScope()
+
+    AppTheme(
+        seedColor = seedColor,
+        useDynamicColor = useDynamicColor,
+        isAmoled = isAmoled
+    ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val isCompact = maxWidth < 600.dp
             val navigationLayoutType = navigationSuiteTypeForWidth(maxWidth)
@@ -219,7 +232,20 @@ fun App() {
                                 cartItems = cartItems
                             )
                             Screen.PRODUCTOS -> ProductosScreen(repository = repository)
-                            Screen.AJUSTES -> AjustesScreen()
+                            Screen.AJUSTES -> AjustesScreen(
+                                useDynamicColor = useDynamicColor,
+                                onUseDynamicColorChange = { newValue ->
+                                    coroutineScope.launch { settingsRepository.setUseDynamicColor(newValue) }
+                                },
+                                seedColor = seedColor,
+                                onSeedColorChange = { newColor ->
+                                    coroutineScope.launch { settingsRepository.setSeedColor(newColor) }
+                                },
+                                isAmoled = isAmoled,
+                                onIsAmoledChange = { newAmoled ->
+                                    coroutineScope.launch { settingsRepository.setIsAmoled(newAmoled) }
+                                }
+                            )
                         }
                     }
                 }

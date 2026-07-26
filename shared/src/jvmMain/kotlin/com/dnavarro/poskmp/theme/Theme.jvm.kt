@@ -1,21 +1,18 @@
 package com.dnavarro.poskmp.theme
 
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+actual fun isDynamicColorSupported(): Boolean {
+    return false
+}
+
 @Composable
-actual fun AppTheme(
+actual fun SystemDynamicTheme(
     darkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) darkColorScheme else lightColorScheme
-
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        motionScheme = MotionScheme.expressive(),
-        content = content
-    )
+    content()
 }
+
+
+

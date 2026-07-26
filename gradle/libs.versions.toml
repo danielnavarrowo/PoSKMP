@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.1"
+agp = "9.3.1"
 android-compileSdk = "37"
 android-minSdk = "31"
 android-targetSdk = "37"
@@ -10,10 +10,13 @@ kotlin = "2.4.10"
 kotlinx-coroutines = "1.11.0"
 material3 = "1.11.0-alpha07"
 adaptive = "1.2.0"
+materialKolor = "5.0.0"
 sqldelight = "2.3.2"
+datastore = "1.2.1"
 accompanistPermissions = "0.37.3"
 cameraCore = "1.6.1"
 playServicesMlkitBarcodeScanning = "18.3.1"
+
 
 
 [libraries]
@@ -33,6 +36,7 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 compose-icons = { module = "org.jetbrains.compose.material:material-icons-extended", version = "1.7.3" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 sqldelight-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
@@ -42,6 +46,9 @@ androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "cameraCore" }
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraCore" }
 play-services-mlkit-barcode-scanning = { module = "com.google.android.gms:play-services-mlkit-barcode-scanning", version.ref = "playServicesMlkitBarcodeScanning" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
+
 
 
 [plugins]
