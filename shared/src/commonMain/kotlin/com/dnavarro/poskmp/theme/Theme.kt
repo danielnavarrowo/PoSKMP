@@ -1,12 +1,9 @@
 package com.dnavarro.poskmp.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
 
 val lightColorScheme = lightColorScheme(
     primary = PrimaryLight,
@@ -109,6 +106,7 @@ val darkColorScheme = darkColorScheme(
     onTertiaryFixed = OnTertiaryFixed,
     onTertiaryFixedVariant = OnTertiaryFixedVariant,
 )
+
 @Composable
 expect fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

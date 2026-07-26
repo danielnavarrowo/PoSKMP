@@ -1,20 +1,42 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -27,6 +49,23 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.formatPrice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.barcode_input_placeholder
+import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.category_label_format
+import poskmp.shared.generated.resources.clear_desc
+import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.close_button
+import poskmp.shared.generated.resources.no_category
+import poskmp.shared.generated.resources.per_kg_suffix
+import poskmp.shared.generated.resources.price_checker_title
+import poskmp.shared.generated.resources.product_not_found
+import poskmp.shared.generated.resources.query_button
+import poskmp.shared.generated.resources.scan_with_camera_desc
+import poskmp.shared.generated.resources.search
+import poskmp.shared.generated.resources.warning
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +134,7 @@ fun ChecadorDialog(
             ) {
                 // Header
                 Text(
-                    text = "Verificador de Precios",
+                    text = stringResource(Res.string.price_checker_title),
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 20.sp,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -108,13 +147,13 @@ fun ChecadorDialog(
                 OutlinedTextField(
                     value = barcodeInputValue,
                     onValueChange = { barcodeInputValue = it },
-                    placeholder = { Text("Escribe o escanea código de barras...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder = { Text(stringResource(Res.string.barcode_input_placeholder)) },
+                    leadingIcon = { Icon(painter = painterResource(Res.drawable.search), contentDescription = null) },
                     trailingIcon = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (isCameraScannerAvailable()) {
                                 IconButton(onClick = { showCameraScanner = true }) {
-                                    Icon(Icons.Default.PhotoCamera, contentDescription = "Escanear con cámara")
+                                    Icon(painter = painterResource(Res.drawable.barcode_scanner), contentDescription = stringResource(Res.string.scan_with_camera_desc))
                                 }
                             }
                             if (barcodeInputValue.text.isNotEmpty()) {
@@ -124,7 +163,7 @@ fun ChecadorDialog(
                                     hasSearched = false
                                     focusRequester.requestFocus()
                                 }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                    Icon(painter = painterResource(Res.drawable.close), contentDescription = stringResource(Res.string.clear_desc))
                                 }
                             }
                         }
@@ -164,7 +203,8 @@ fun ChecadorDialog(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Large beautiful price text
-                        val suffix = if (product.por_peso == 1L) " / Kg" else ""
+                        val perKgSuffix = stringResource(Res.string.per_kg_suffix)
+                        val suffix = if (product.por_peso == 1L) perKgSuffix else ""
                         Text(
                             text = "$${product.precio.toString().formatPrice()}$suffix",
                             fontWeight = FontWeight.Black,
@@ -175,8 +215,9 @@ fun ChecadorDialog(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        val categoryText = product.categoria ?: stringResource(Res.string.no_category)
                         Text(
-                            text = "Categoría: ${product.categoria ?: "Sin categoría"}",
+                            text = stringResource(Res.string.category_label_format, categoryText),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -191,13 +232,13 @@ fun ChecadorDialog(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            Icons.Default.Warning,
+                           painter = painterResource(Res.drawable.warning),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Producto no encontrado",
+                            text = stringResource(Res.string.product_not_found),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             fontSize = 15.sp
@@ -218,7 +259,7 @@ fun ChecadorDialog(
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.small
                     ) {
-                        Text("Cerrar")
+                        Text(stringResource(Res.string.close_button))
                     }
 
                     Button(
@@ -227,7 +268,7 @@ fun ChecadorDialog(
                         shape = MaterialTheme.shapes.small,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Consultar")
+                        Text(stringResource(Res.string.query_button))
                     }
                 }
             }

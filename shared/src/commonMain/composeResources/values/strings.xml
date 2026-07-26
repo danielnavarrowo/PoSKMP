@@ -2,12 +2,14 @@
 <resources>
     <!-- Common / Shared -->
     <string name="app_name">PoSKMP</string>
-    <string name="cancel_button">Cancelar</string>
+    <string name="app_window_title">Punto de Venta</string>
+    <string name="cancel">Cancelar</string>
     <string name="close_button">Cerrar</string>
     <string name="back_button">Atrás</string>
     <string name="next_button">Siguiente</string>
     <string name="delete_button">Eliminar</string>
     <string name="save_button">Guardar</string>
+    <string name="accept_button">Aceptar</string>
     <string name="no_category">Sin categoría</string>
     <string name="clear_desc">Limpiar</string>
 
@@ -47,11 +49,23 @@
     <string name="camera_permission_required_desc">Se necesita acceso a la cámara para escanear códigos de barras de los productos.</string>
     <string name="grant_permission_button">Conceder permiso</string>
 
-    <!-- PlatformUtils (Android) -->
+    <!-- PlatformUtils -->
     <string name="import_not_supported_android">La importación no está soportada en Android.</string>
     <string name="save_file_error">Error al guardar archivo: %1$s</string>
     <string name="operation_cancelled_by_user">Operación cancelada por el usuario.</string>
     <string name="android_context_not_initialized">Contexto de Android no inicializado.</string>
+    <string name="select_file_dialog_title">Seleccionar archivo</string>
+    <string name="save_file_dialog_title">Guardar archivo</string>
+    <string name="file_explorer_open_error">Error al abrir el explorador de archivos: %1$s</string>
+    <string name="unsupported_file_format">Formato de archivo no soportado: %1$s</string>
+    <string name="csv_empty_error">El archivo CSV está vacío.</string>
+    <string name="csv_no_header_error">No se encontró cabecera en el archivo CSV.</string>
+    <string name="csv_invalid_headers_error">Encabezados inválidos. Se requiere al menos las columnas \'nombre\' y \'precio\'.</string>
+    <string name="excel_read_error">Error al leer el archivo Excel (.xlsx): %1$s</string>
+    <string name="excel_no_sheet_error">No se encontró la hoja de datos principal (sheet1.xml) en el archivo Excel.</string>
+    <string name="excel_parse_error">Error al analizar la estructura del archivo Excel: %1$s</string>
+    <string name="excel_empty_rows_error">El archivo Excel no contiene filas.</string>
+    <string name="excel_invalid_headers_error">Encabezados inválidos en la primera fila. Se requiere al menos las columnas \'nombre\' y \'precio\'.</string>
 
     <!-- ChecadorDialog -->
     <string name="price_checker_title">Verificador de Precios</string>
@@ -95,6 +109,7 @@
     <string name="apply_changes_button">Aplicar cambios</string>
 
     <!-- TicketSection -->
+    <string name="back_to_catalog_desc">Volver al catálogo</string>
     <string name="current_ticket_title">Ticket Actual</string>
     <string name="clear_all_button">Limpiar Todo</string>
     <string name="ticket_empty_message">El ticket está vacío</string>
@@ -109,6 +124,7 @@
     <!-- CatalogSection -->
     <string name="search_placeholder">Buscar por nombre, código de barra o categoría...</string>
     <string name="search_desc">Buscar</string>
+    <string name="empty_icon_desc">Vacio</string>
     <string name="no_products_found">No se encontraron productos.</string>
     <string name="remove_from_favorites">Quitar de favoritos</string>
     <string name="mark_as_favorite">Marcar como favorito</string>
@@ -139,14 +155,17 @@
     <!-- ProductosScreen -->
     <string name="product_admin_title">Administración de Productos</string>
     <string name="product_admin_subtitle">Catálogo local de productos y control de inventario</string>
-    <string name="modify_count_button">Modificar %1$d</string>
+    <string name="modify_count_button">Modificar %1$d producto(s)</string>
     <string name="import_button">Importar</string>
     <string name="export_button">Exportar</string>
+    <string name="export_success_title">Exportación Exitosa</string>
+    <string name="export_error_title">Error al Exportar</string>
     <string name="export_success_message">Catálogo de productos exportado y guardado exitosamente.</string>
     <string name="new_product_button">Nuevo Producto</string>
     <string name="no_products_registered">No hay productos registrados.</string>
     <string name="edit_desc">Editar</string>
     <string name="delete_desc">Eliminar</string>
+    <string name="remove_desc">Quitar</string>
     <string name="codes_display_label">Código: %1$s</string>
     <string name="price_display_label">Precio: $%1$s</string>
     <string name="cost_display_label">Costo: $%1$s</string>
@@ -161,6 +180,12 @@
     <string name="header_actions">Acciones</string>
     <string name="no_catalog_products">No hay productos registrados en el catálogo.</string>
     <string name="favorite_desc">Favorito</string>
+    <string name="import_products_title">Importar Productos</string>
+    <string name="import_step_format">Paso %1$d de 3</string>
+    <string name="import_required_columns_title">Columnas requeridas en su archivo (.csv o .xlsx):</string>
+    <string name="import_col_name_req">• nombre (Texto - Obligatorio)</string>
+    <string name="import_col_price_req">• precio (Número - Obligatorio)</string>
+    <string name="import_optional_columns_hint">Columnas opcionales: id, codigos, costo, categoria, activo (1/0), por_peso (1/0), precio_mayoreo, es_favorito (1/0)</string>
     <string name="import_no_valid_products_error">El archivo no contiene productos válidos.</string>
     <string name="import_parse_error">Error al analizar el archivo.</string>
     <string name="import_select_file_title">Seleccionar archivo .csv o .xlsx para importar</string>
@@ -213,4 +238,5 @@
     <string name="quantity_weight_label">Cantidad / Peso</string>
     <string name="default_quantity_placeholder">1</string>
     <string name="add_to_ticket_button">Añadir al Ticket</string>
+    <string name="per_kg_suffix"> / Kg</string>
 </resources>

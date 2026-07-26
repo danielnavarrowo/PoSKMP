@@ -25,6 +25,7 @@ import com.dnavarro.poskmp.ui.*
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 
 
@@ -52,29 +53,34 @@ fun App() {
     val cartItems = remember { mutableStateListOf<CartItem>() }
     var showPriceCheckerDialog by remember { mutableStateOf(false) }
 
-    val toolbarItems = remember(currentScreen) {
-        val isDesktop = !isAndroid()
+    val isDesktop = !isAndroid()
+    val tabVentaLabel = stringResource(if (isDesktop) Res.string.tab_venta_desktop else Res.string.tab_venta)
+    val tabProductosLabel = stringResource(if (isDesktop) Res.string.tab_productos_desktop else Res.string.tab_productos)
+    val tabChecadorLabel = stringResource(if (isDesktop) Res.string.tab_checador_desktop else Res.string.tab_checador)
+    val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
+
+    val toolbarItems = remember(currentScreen, isDesktop, tabVentaLabel, tabProductosLabel, tabChecadorLabel, tabAjustesLabel) {
         listOf(
             ToolbarItem(
-                label = if (isDesktop) "Venta (F1)" else "Venta",
+                label = tabVentaLabel,
                 icon = Res.drawable.point_of_sale,
                 isSelected = currentScreen == Screen.VENTA,
                 onCheckedChange = { if (it) currentScreen = Screen.VENTA }
             ),
             ToolbarItem(
-                label = if (isDesktop) "Productos (F3)" else "Productos",
+                label = tabProductosLabel,
                 icon = Res.drawable.products,
                 isSelected = currentScreen == Screen.PRODUCTOS,
                 onCheckedChange = { if (it) currentScreen = Screen.PRODUCTOS }
             ),
             ToolbarItem(
-                label = if (isDesktop) "Checador (F2)" else "Checador",
-                icon = Res.drawable.price,
+                label = tabChecadorLabel,
+                icon = Res.drawable.barcode_scanner,
                 isSelected = false,
                 onCheckedChange = { showPriceCheckerDialog = true }
             ),
             ToolbarItem(
-                label = "Ajustes",
+                label = tabAjustesLabel,
                 icon = Res.drawable.settings,
                 isSelected = currentScreen == Screen.AJUSTES,
                 onCheckedChange = { if (it) currentScreen = Screen.AJUSTES }

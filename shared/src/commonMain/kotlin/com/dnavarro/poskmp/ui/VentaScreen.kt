@@ -41,6 +41,8 @@ import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import poskmp.shared.generated.resources.*
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -436,12 +438,12 @@ fun VentaScreen(
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Código no encontrado", fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.barcode_not_found_title), fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Text(
-                    text = "El producto con el código de barra \"$showBarcodeNotFoundQuery\" no está registrado en el catálogo.",
+                    text = stringResource(Res.string.barcode_not_found_message, showBarcodeNotFoundQuery ?: ""),
                     fontSize = 15.sp
                 )
             },
@@ -451,7 +453,7 @@ fun VentaScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = MaterialTheme.shapes.small
                 ) {
-                    Text("Entendido (Enter)")
+                    Text(stringResource(Res.string.understood_enter_button))
                 }
             },
             modifier = Modifier.onPreviewKeyEvent { keyEvent ->
@@ -536,7 +538,7 @@ fun VentaScreen(
             content = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "¿Cuánto de ${product.nombre}?",
+                        text = stringResource(Res.string.quantity_prompt_title, product.nombre),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -544,7 +546,7 @@ fun VentaScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = "Precio: $${product.precio.toString().formatPrice()} / Kg",
+                        text = stringResource(Res.string.price_per_kg_label, product.precio.toString().formatPrice()),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -559,8 +561,9 @@ fun VentaScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 listOf(0.25, 0.5, 0.75, 1.0).forEach { qty ->
+                                    val kgSuffix = stringResource(Res.string.kg_suffix)
                                     val label =
-                                        "${if (qty % 1.0 == 0.0) qty.toInt().toString() else qty.toString()}${" Kg"}"
+                                        "${if (qty % 1.0 == 0.0) qty.toInt().toString() else qty.toString()}$kgSuffix"
                                     Box(
                                         modifier = Modifier
                                             .border(
@@ -585,7 +588,7 @@ fun VentaScreen(
                             }
 
                             Text(
-                                text = "PESO (Kg)",
+                                text = stringResource(Res.string.weight_kg_label),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -658,7 +661,7 @@ fun VentaScreen(
                             }
 
                             Text(
-                                text = "PESOS ($)",
+                                text = stringResource(Res.string.pesos_currency_label),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -704,7 +707,7 @@ fun VentaScreen(
                             shape = MaterialTheme.shapes.small,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
                         ) {
-                            Text("Cancelar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(stringResource(Res.string.cancel), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Button(
@@ -716,7 +719,7 @@ fun VentaScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = MaterialTheme.shapes.small,
                         ) {
-                            Text("Agregar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(stringResource(Res.string.add_button), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
 
                     }
@@ -745,7 +748,7 @@ fun VentaScreen(
             },
             shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            title = { Text("Cobro de Venta", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(Res.string.checkout_sale_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
@@ -755,7 +758,7 @@ fun VentaScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            "Total a Pagar:",
+                            stringResource(Res.string.total_to_pay_label),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold
                         )
@@ -773,7 +776,7 @@ fun VentaScreen(
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        label = { Text("Efectivo Recibido") },
+                        label = { Text(stringResource(Res.string.cash_received_label)) },
                         placeholder = { Text("0.00") },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -783,7 +786,7 @@ fun VentaScreen(
 
                     if (paymentAmountInput.isNotEmpty() && paymentAmount < total) {
                         Text(
-                            "Monto insuficiente. Falta $${(total - paymentAmount).toString().formatPrice()}",
+                            stringResource(Res.string.insufficient_amount_error, (total - paymentAmount).toString().formatPrice()),
                             color = MaterialTheme.colorScheme.error,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
@@ -795,7 +798,7 @@ fun VentaScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "Cambio a entregar:",
+                                stringResource(Res.string.change_to_deliver_label),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 14.sp
                             )
@@ -822,12 +825,12 @@ fun VentaScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = MaterialTheme.shapes.small
                 ) {
-                    Text("Registrar Venta")
+                    Text(stringResource(Res.string.register_sale_button))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCheckoutDialog = false }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -855,18 +858,18 @@ fun VentaScreen(
                     modifier = Modifier.size(48.dp)
                 )
             },
-            title = { Text("¡Venta Exitosa!", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(Res.string.sale_success_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("La venta se ha registrado correctamente.", textAlign = TextAlign.Center)
+                    Text(stringResource(Res.string.sale_success_message), textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Total cobrado: $${lastSaleTotal.toString().formatPrice()}",
+                        stringResource(Res.string.total_charged_label, lastSaleTotal.toString().formatPrice()),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "Cambio entregado: $${lastSaleChange.toString().formatPrice()}",
+                        stringResource(Res.string.change_delivered_label, lastSaleChange.toString().formatPrice()),
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
@@ -878,13 +881,15 @@ fun VentaScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = MaterialTheme.shapes.small
                 ) {
-                    Text("Entendido")
+                    Text(stringResource(Res.string.understood_button))
                 }
             }
         )
     }
 
     // Unregistered Product Dialog
+    val notRegisteredCategory = stringResource(Res.string.not_registered)
+
     if (showUnregisteredDialog) {
         LaunchedEffect(Unit) {
             delay(50.milliseconds)
@@ -909,7 +914,7 @@ fun VentaScreen(
                             nombre = unregisteredName.trim(),
                             precio = priceVal,
                             costo = 0.0,
-                            categoria = "No Registrado",
+                            categoria = notRegisteredCategory,
                             activo = 1L,
                             por_peso = if (qtyVal % 1.0 != 0.0) 1L else 0L,
                             precio_mayoreo = 0.0,
@@ -927,7 +932,7 @@ fun VentaScreen(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
                 Text(
-                    text = "Vender Producto No Registrado",
+                    text = stringResource(Res.string.sell_unregistered_title),
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 18.sp
                 )
@@ -940,8 +945,8 @@ fun VentaScreen(
                     OutlinedTextField(
                         value = unregisteredName,
                         onValueChange = { unregisteredName = it },
-                        label = { Text("Nombre del Producto") },
-                        placeholder = { Text("Ej. Refresco Libre") },
+                        label = { Text(stringResource(Res.string.header_product_name)) },
+                        placeholder = { Text(stringResource(Res.string.unregistered_name_placeholder)) },
                         singleLine = true,
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier
@@ -960,7 +965,7 @@ fun VentaScreen(
                                 unregisteredPrice = input
                             }
                         },
-                        label = { Text("Precio Unitario ($)") },
+                        label = { Text(stringResource(Res.string.unit_price_label)) },
                         placeholder = { Text("0.00") },
                         singleLine = true,
                         shape = MaterialTheme.shapes.medium,
@@ -979,8 +984,8 @@ fun VentaScreen(
                                 unregisteredQuantity = input
                             }
                         },
-                        label = { Text("Cantidad / Peso") },
-                        placeholder = { Text("1") },
+                        label = { Text(stringResource(Res.string.quantity_weight_label)) },
+                        placeholder = { Text(stringResource(Res.string.default_quantity_placeholder)) },
                         singleLine = true,
                         shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1008,7 +1013,7 @@ fun VentaScreen(
                                 nombre = unregisteredName.trim(),
                                 precio = priceVal,
                                 costo = 0.0,
-                                categoria = "No Registrado",
+                                categoria = notRegisteredCategory,
                                 activo = 1L,
                                 por_peso = if (qtyVal % 1.0 != 0.0) 1L else 0L,
                                 precio_mayoreo = 0.0,
@@ -1024,12 +1029,12 @@ fun VentaScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = MaterialTheme.shapes.small
                 ) {
-                    Text("Añadir al Ticket")
+                    Text(stringResource(Res.string.add_to_ticket_button))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showUnregisteredDialog = false }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )

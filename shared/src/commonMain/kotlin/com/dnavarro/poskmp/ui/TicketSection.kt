@@ -32,6 +32,7 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -91,13 +92,13 @@ fun TicketSection(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             painter = (painterResource(Res.drawable.back)),
-                            contentDescription = "Volver al catálogo"
+                            contentDescription = stringResource(Res.string.back_to_catalog_desc)
                         )
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                 }
                 Text(
-                    text = "Ticket Actual",
+                    text = stringResource(Res.string.current_ticket_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -107,7 +108,7 @@ fun TicketSection(
                 IconButton(onClick = onClearCart) {
                     Icon(
                         painter = painterResource(Res.drawable.trash),
-                        contentDescription = "Limpiar Todo"
+                        contentDescription = stringResource(Res.string.clear_all_button)
                     )
                 }
             }
@@ -128,7 +129,7 @@ fun TicketSection(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "El ticket está vacío",
+                        stringResource(Res.string.ticket_empty_message),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp
                     )
@@ -253,7 +254,7 @@ fun TicketSection(
                                     shape = MaterialTheme.shapes.extraSmall
                                 ) {
                                     Text(
-                                        text = "May",
+                                        text = stringResource(Res.string.wholesale_badge),
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -277,7 +278,7 @@ fun TicketSection(
                                 ) {
                                     Icon(
                                      painter = painterResource(Res.drawable.remove),
-                                        contentDescription = "Disminuir",
+                                        contentDescription = stringResource(Res.string.decrease_desc),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -356,7 +357,7 @@ fun TicketSection(
                                 ) {
                                     Icon(
                                         painter = painterResource(Res.drawable.add),
-                                        contentDescription = "Aumentar",
+                                        contentDescription = stringResource(Res.string.increase_desc),
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -406,13 +407,13 @@ fun TicketSection(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "Artículos: $productCount",
+                    stringResource(Res.string.items_count_label, productCount),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    "Piezas: $formattedPieces",
+                    stringResource(Res.string.pieces_count_label, formattedPieces),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
@@ -424,7 +425,7 @@ fun TicketSection(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "Total",
+                    stringResource(Res.string.total_label),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold
@@ -451,7 +452,7 @@ fun TicketSection(
             ) {
                 Icon(painter = painterResource(Res.drawable.money), contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Cobrar", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.checkout_button), fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

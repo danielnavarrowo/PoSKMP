@@ -1,6 +1,9 @@
 package com.dnavarro.poskmp.util
 
 import com.dnavarro.poskmp.db.Products
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.getString
+import poskmp.shared.generated.resources.*
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.ByteArrayInputStream
@@ -22,20 +25,25 @@ actual fun pickFile(
 ) {
     SwingUtilities.invokeLater {
         try {
-            val dialog = FileDialog(null as Frame?, "Seleccionar archivo", FileDialog.LOAD)
-            dialog.setFilenameFilter { _, name ->
-                allowedExtensions.any { name.endsWith(it, ignoreCase = true) }
-            }
+            val title = runBlocking { getString(Res.string.select_file_dialog_title) }
+            val dialog = FileDialog(null as Frame?, title, FileDialog.LOAD)
             dialog.isVisible = true
             val file = dialog.file
             val directory = dialog.directory
             if (file != null && directory != null) {
                 val selectedFile = File(directory, file)
-                val bytes = selectedFile.readBytes()
-                onFilePicked(file, bytes)
+                val extension = selectedFile.extension.lowercase()
+                if (allowedExtensions.isEmpty() || allowedExtensions.any { it.equals(extension, ignoreCase = true) }) {
+                    val bytes = selectedFile.readBytes()
+                    onFilePicked(file, bytes)
+                } else {
+                    val err = runBlocking { getString(Res.string.unsupported_file_format, extension) }
+                    onError(err)
+                }
             }
         } catch (e: Exception) {
-            onError("Error al abrir el explorador de archivos: ${e.message}")
+            val err = runBlocking { getString(Res.string.file_explorer_open_error, e.message ?: "") }
+            onError(err)
         }
     }
 }
@@ -48,7 +56,8 @@ actual fun saveFile(
 ) {
     SwingUtilities.invokeLater {
         try {
-            val dialog = FileDialog(null as Frame?, "Guardar archivo", FileDialog.SAVE)
+            val title = runBlocking { getString(Res.string.save_file_dialog_title) }
+            val dialog = FileDialog(null as Frame?, title, FileDialog.SAVE)
             dialog.file = defaultFileName
             dialog.isVisible = true
             val file = dialog.file
@@ -59,7 +68,8 @@ actual fun saveFile(
                 onSuccess()
             }
         } catch (e: Exception) {
-            onError("Error al guardar el archivo: ${e.message}")
+            val err = runBlocking { getString(Res.string.save_file_error, e.message ?: "") }
+            onError(err)
         }
     }
 }
@@ -71,23 +81,33 @@ actual fun parseImportFile(
     return when (val extension = fileName.substringAfterLast(".", "").lowercase()) {
         "csv" -> parseCsvContent(content)
         "xlsx" -> parseXlsxContent(content)
-        else -> throw IllegalArgumentException("Formato de archivo no soportado: $extension")
+        else -> {
+            val err = runBlocking { getString(Res.string.unsupported_file_format, extension) }
+            throw IllegalArgumentException(err)
+        }
     }
 }
 
 private fun parseCsvContent(content: ByteArray): List<Products> {
     val text = String(content, Charsets.UTF_8)
     val lines = text.split(Regex("\\r?\\n"))
-    if (lines.isEmpty()) throw Exception("El archivo CSV está vacío.")
+    if (lines.isEmpty()) {
+        val err = runBlocking { getString(Res.string.csv_empty_error) }
+        throw Exception(err)
+    }
     
-    val headerLine = lines.firstOrNull { it.trim().isNotEmpty() } ?: throw Exception("No se encontró cabecera en el archivo CSV.")
+    val headerLine = lines.firstOrNull { it.trim().isNotEmpty() } ?: run {
+        val err = runBlocking { getString(Res.string.csv_no_header_error) }
+        throw Exception(err)
+    }
     val headerCols = parseCsvLine(headerLine).map { it.lowercase().trim() }
     
     val nameIndex = headerCols.indexOfFirst { it == "nombre" || it == "name" }
     val priceIndex = headerCols.indexOfFirst { it == "precio" || it == "price" || it == "precio_venta" }
     
     if (nameIndex == -1 || priceIndex == -1) {
-        throw Exception("Encabezados inválidos. Se requiere al menos las columnas 'nombre' y 'precio'.")
+        val err = runBlocking { getString(Res.string.csv_invalid_headers_error) }
+        throw Exception(err)
     }
     
     val idIndex = headerCols.indexOfFirst { it == "id" }
@@ -185,11 +205,13 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
             }
         }
     } catch (e: Exception) {
-        throw Exception("Error al leer el archivo Excel (.xlsx): ${e.message}")
+        val err = runBlocking { getString(Res.string.excel_read_error, e.message ?: "") }
+        throw Exception(err)
     }
 
     if (sheetXmlBytes == null) {
-        throw Exception("No se encontró la hoja de datos principal (sheet1.xml) en el archivo Excel.")
+        val err = runBlocking { getString(Res.string.excel_no_sheet_error) }
+        throw Exception(err)
     }
 
     val rows = mutableListOf<List<String>>()
@@ -233,10 +255,14 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
             rows.add(rowCells)
         }
     } catch (e: Exception) {
-        throw Exception("Error al analizar la estructura del archivo Excel: ${e.message}")
+        val err = runBlocking { getString(Res.string.excel_parse_error, e.message ?: "") }
+        throw Exception(err)
     }
 
-    if (rows.isEmpty()) throw Exception("El archivo Excel no contiene filas.")
+    if (rows.isEmpty()) {
+        val err = runBlocking { getString(Res.string.excel_empty_rows_error) }
+        throw Exception(err)
+    }
 
     val headerRow = rows.first()
     val headerCols = headerRow.map { it.lowercase().trim() }
@@ -245,7 +271,8 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
     val priceIndex = headerCols.indexOfFirst { it == "precio" || it == "price" || it == "precio_venta" }
     
     if (nameIndex == -1 || priceIndex == -1) {
-        throw Exception("Encabezados inválidos en la primera fila. Se requiere al menos las columnas 'nombre' y 'precio'.")
+        val err = runBlocking { getString(Res.string.excel_invalid_headers_error) }
+        throw Exception(err)
     }
     
     val idIndex = headerCols.indexOfFirst { it == "id" }

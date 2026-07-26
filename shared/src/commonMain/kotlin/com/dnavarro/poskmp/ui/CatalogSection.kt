@@ -28,6 +28,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 
 @Composable
@@ -74,7 +75,7 @@ fun CatalogSection(
                 },
             placeholder = {
                 Text(
-                    "Buscar por nombre, código de barra o categoría...",
+                    stringResource(Res.string.search_placeholder),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     softWrap = false
@@ -83,14 +84,14 @@ fun CatalogSection(
             leadingIcon = {
                 Icon(
                     painter = painterResource(Res.drawable.search),
-                    contentDescription = "Buscar",
+                    contentDescription = stringResource(Res.string.search_desc),
                 )
             },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     Icon(
                         painter = painterResource(Res.drawable.close),
-                        contentDescription = "Limpiar",
+                        contentDescription = stringResource(Res.string.clear_desc),
                     )
                 }
             },
@@ -112,13 +113,13 @@ fun CatalogSection(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         painter = painterResource(Res.drawable.sad_face),
-                        contentDescription = "Vacio",
+                        contentDescription = stringResource(Res.string.empty_icon_desc),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "No se encontraron productos.",
+                        stringResource(Res.string.no_products_found),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 16.sp
                     )
@@ -174,7 +175,7 @@ fun CatalogSection(
                                 ) {
                                     Column {
                                         Text(
-                                            text = product.categoria ?: "Sin categoría",
+                                            text = product.categoria ?: stringResource(Res.string.no_category),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.primary,
@@ -226,7 +227,7 @@ fun CatalogSection(
                                 ) {
                                     DropdownMenuItem(
                                         text = {
-                                            Text(if (product.es_favorito == 1L) "Quitar de favoritos" else "Marcar como favorito")
+                                            Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
                                         },
                                         onClick = {
                                             showContextMenu = false
@@ -235,20 +236,20 @@ fun CatalogSection(
                                         leadingIcon = {
                                             Icon(
                                                 painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
-                                                contentDescription = "Favorito",
+                                                contentDescription = stringResource(Res.string.favorite_desc),
                                                 tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
                                                 else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Modificar") },
+                                        text = { Text(stringResource(Res.string.modify)) },
                                         onClick = {
                                             showContextMenu = false
                                             onModifyProduct(product)
                                         },
                                         leadingIcon = {
-                                            Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Modificar")
+                                            Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
                                         }
                                     )
                                 }
@@ -268,8 +269,8 @@ fun CatalogSection(
                         Icon(Icons.Default.ShoppingCart, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            if (cartCount > 0) "Ver Ticket ($cartCount) • $${cartTotal.toString().formatPrice()}"
-                            else "Ver Ticket"
+                            if (cartCount > 0) stringResource(Res.string.view_ticket_fab, cartCount, cartTotal.toString().formatPrice())
+                            else stringResource(Res.string.tab_ticket)
                         )
                     }
                 }
@@ -288,7 +289,7 @@ fun CatalogSection(
         ) {
             SuggestionChip(
                 onClick = onSellUnregisteredClick,
-                label = { Text(if (isCompact) "No Registrado" else "F7: No Registrado", fontWeight = FontWeight.Bold) },
+                label = { Text(if (isCompact) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey), fontWeight = FontWeight.Bold) },
                 colors = SuggestionChipDefaults.suggestionChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 )
@@ -297,7 +298,7 @@ fun CatalogSection(
                 onClick = onApplyWholesaleClick,
                 label = {
                     Text(
-                        if (isCompact) "Mayoreo a Ticket" else "Shift + F11: Mayoreo a Ticket",
+                        if (isCompact) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey),
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -307,7 +308,7 @@ fun CatalogSection(
             )
             SuggestionChip(
                 onClick = onCheckoutClick,
-                label = { Text(if (isCompact) "Cobrar" else "F12: Cobrar", fontWeight = FontWeight.Bold) },
+                label = { Text(if (isCompact) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey), fontWeight = FontWeight.Bold) },
                 colors = SuggestionChipDefaults.suggestionChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 )

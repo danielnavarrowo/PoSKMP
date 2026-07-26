@@ -6,6 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.Products
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.getString
+import poskmp.shared.generated.resources.*
 import java.util.UUID
 
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
@@ -17,7 +20,8 @@ actual fun pickFile(
     onFilePicked: (fileName: String, content: ByteArray) -> Unit,
     onError: (String) -> Unit
 ) {
-    onError("La importación no está soportada en Android.")
+    val err = runBlocking { getString(Res.string.import_not_supported_android) }
+    onError(err)
 }
 
 // Callback holder for Android file saving
@@ -42,10 +46,12 @@ class SaveFileHelperActivity : ComponentActivity() {
                 }
                 AndroidSaveFileHandler.onSuccess?.invoke()
             } catch (e: Exception) {
-                AndroidSaveFileHandler.onError?.invoke("Error al guardar archivo: ${e.message}")
+                val err = runBlocking { getString(Res.string.save_file_error, e.message ?: "") }
+                AndroidSaveFileHandler.onError?.invoke(err)
             }
         } else {
-            AndroidSaveFileHandler.onError?.invoke("Operación cancelada por el usuario.")
+            val cancelledErr = runBlocking { getString(Res.string.operation_cancelled_by_user) }
+            AndroidSaveFileHandler.onError?.invoke(cancelledErr)
         }
         finish()
     }
@@ -74,7 +80,8 @@ actual fun saveFile(
 ) {
     val context = DatabaseDriverFactory.appContext
     if (context == null) {
-        onError("Contexto de Android no inicializado.")
+        val err = runBlocking { getString(Res.string.android_context_not_initialized) }
+        onError(err)
         return
     }
 
@@ -93,5 +100,6 @@ actual fun parseImportFile(
     fileName: String,
     content: ByteArray
 ): List<Products> {
-    throw UnsupportedOperationException("La importación no está soportada en Android.")
+    val err = runBlocking { getString(Res.string.import_not_supported_android) }
+    throw UnsupportedOperationException(err)
 }

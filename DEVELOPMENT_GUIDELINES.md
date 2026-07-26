@@ -33,10 +33,13 @@ To avoid extremely large and monolithic user interface files, strict modular seg
 
 * **Utilities:** Common price formatting methods, quantities, or parsers should be centralized in `com.dnavarro.poskmp.util` (such as `FormatUtils.kt`).
 
+
+
 ---
 
 ## 4. User Interface (UI/UX) Requirements
-* **Language:** **Absolutely all** user-oriented text, labels, placeholders, and error messages must be in **Spanish**.
+* **Language:** **Absolutely all** user-oriented text, labels, placeholders, and error messages must be in **Spanish**. Class names, methods, variables, resources, etc. must be named in english. DON'T hardcode strings into the code, 
+* use string resources instead. 
 
 
 * **Premium Aesthetics:**
@@ -47,7 +50,7 @@ To avoid extremely large and monolithic user interface files, strict modular seg
 ---
 
 Keep in mind, the app should have adaptive layouts in compact, medium and wide screens, using canonical layouts from Compose when possible. 
-\
+
 
 ---
 

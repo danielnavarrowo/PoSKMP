@@ -2,11 +2,6 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +11,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import poskmp.shared.generated.resources.*
 
 @Composable
 fun AjustesScreen(
@@ -27,7 +25,7 @@ fun AjustesScreen(
                 title = {
                     Text(
                         modifier = Modifier.fillMaxWidth(),
-                        text = "Ajustes del Sistema",
+                        text = stringResource(Res.string.settings_title),
                         fontWeight = FontWeight.ExtraBold,
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center
@@ -68,7 +66,7 @@ fun AjustesScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.Settings,
+                            painter = painterResource(Res.drawable.settings),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(24.dp)
@@ -77,13 +75,13 @@ fun AjustesScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = "Antigravity POS",
+                            text = stringResource(Res.string.system_info_title),
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Versión 1.0.0 (Offline First)",
+                            text = stringResource(Res.string.system_version),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -101,7 +99,7 @@ fun AjustesScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "Base de Datos",
+                        text = stringResource(Res.string.database_section_title),
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -114,21 +112,21 @@ fun AjustesScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = "Local DB connected",
+                                painter = painterResource(Res.drawable.check),
+                                contentDescription = stringResource(Res.string.local_db_connected_desc),
                                 tint = Color(0xFF10B981),
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Base de Datos Local",
+                                    text = stringResource(Res.string.local_db_title),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "SQLite local activa y conectada",
+                                    text = stringResource(Res.string.local_db_status_connected),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -139,7 +137,7 @@ fun AjustesScreen(
                             contentColor = Color(0xFF065F46)
                         ) {
                             Text(
-                                "Conectada",
+                                stringResource(Res.string.status_connected),
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 fontSize = 11.sp
@@ -159,7 +157,7 @@ fun AjustesScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "Sincronización en la Nube",
+                        text = stringResource(Res.string.cloud_sync_section_title),
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -172,21 +170,21 @@ fun AjustesScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.Warning,
-                                contentDescription = "Supabase Offline",
+                                painter = painterResource(Res.drawable.warning),
+                                contentDescription = stringResource(Res.string.supabase_offline_desc),
                                 tint = Color(0xFFF59E0B),
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Servidor Supabase",
+                                    text = stringResource(Res.string.supabase_server_title),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Sincronización en segundo plano pendiente",
+                                    text = stringResource(Res.string.supabase_status_pending_desc),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -197,7 +195,7 @@ fun AjustesScreen(
                             contentColor = Color(0xFF92400E)
                         ) {
                             Text(
-                                "Pendiente",
+                                stringResource(Res.string.status_pending),
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 fontSize = 11.sp
@@ -217,13 +215,13 @@ fun AjustesScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
-                            Icons.Default.Refresh,
+                            painter = painterResource(Res.drawable.sync),
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Sincronizar ahora",
+                            text = stringResource(Res.string.sync_now_button),
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )

@@ -8,6 +8,10 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+compose.resources {
+    publicResClass = true
+}
+
 kotlin {
     jvm()
 

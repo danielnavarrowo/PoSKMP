@@ -2,20 +2,22 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
+import org.jetbrains.compose.resources.stringResource
+import poskmp.shared.generated.resources.*
 
 @Composable
 fun ProductFormDialog(
@@ -24,6 +26,9 @@ fun ProductFormDialog(
     onSave: (Products) -> Unit
 ) {
     val isNew = product == null || product.id.isEmpty()
+
+    val defaultCategory = stringResource(Res.string.default_category_abarrotes)
+    val noCategoryStr = stringResource(Res.string.no_category)
 
     // Form inputs state
     var formNombre by remember(product) { mutableStateOf(product?.nombre ?: "") }
@@ -55,7 +60,7 @@ fun ProductFormDialog(
         val wholesale = product?.precio_mayoreo
         mutableStateOf(if (wholesale == null || wholesale == 0.0) "" else wholesale.toString())
     }
-    var formCategoria by remember(product) { mutableStateOf(product?.categoria ?: "Abarrotes") }
+    var formCategoria by remember(product) { mutableStateOf(product?.categoria ?: defaultCategory) }
     var formActivo by remember(product) { mutableStateOf(product?.activo == 1L || product == null) }
     var formPorPeso by remember(product) { mutableStateOf(product?.por_peso == 1L) }
     var formEsFavorito by remember(product) { mutableStateOf(product?.es_favorito == 1L) }
@@ -74,7 +79,7 @@ fun ProductFormDialog(
             nombre = formNombre.trim(),
             precio = formPrecio.toDoubleOrNull() ?: 0.0,
             costo = formCosto.toDoubleOrNull() ?: 0.0,
-            categoria = formCategoria.trim().ifEmpty { "Sin categoría" },
+            categoria = formCategoria.trim().ifEmpty { noCategoryStr },
             activo = if (formActivo) 1L else 0L,
             por_peso = if (formPorPeso) 1L else 0L,
             precio_mayoreo = formPrecioMayoreo.toDoubleOrNull() ?: 0.0,
@@ -101,7 +106,7 @@ fun ProductFormDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
             Text(
-                text = if (isNew) "Registrar Nuevo Producto" else "Modificar Producto",
+                text = if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
                 fontWeight = FontWeight.Bold
             )
         },
@@ -114,7 +119,7 @@ fun ProductFormDialog(
                     value = formNombre,
                     onValueChange = { formNombre = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Nombre del Producto *") },
+                    label = { Text(stringResource(Res.string.product_name_label)) },
                     singleLine = true
                 )
 
@@ -122,8 +127,8 @@ fun ProductFormDialog(
                     value = formCodigo,
                     onValueChange = { formCodigo = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Código(s) de Barra (separados por coma)") },
-                    placeholder = { Text("e.g. 75010001, 75010002") },
+                    label = { Text(stringResource(Res.string.barcodes_label)) },
+                    placeholder = { Text(stringResource(Res.string.barcodes_placeholder)) },
                     singleLine = true
                 )
 
@@ -132,7 +137,7 @@ fun ProductFormDialog(
                         value = formPrecio,
                         onValueChange = { formPrecio = it },
                         modifier = Modifier.weight(1f),
-                        label = { Text("Precio de Venta *") },
+                        label = { Text(stringResource(Res.string.retail_price_required_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -140,7 +145,7 @@ fun ProductFormDialog(
                         value = formCosto,
                         onValueChange = { formCosto = it },
                         modifier = Modifier.weight(1f),
-                        label = { Text("Costo") },
+                        label = { Text(stringResource(Res.string.cost_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -150,7 +155,7 @@ fun ProductFormDialog(
                     value = formPrecioMayoreo,
                     onValueChange = { formPrecioMayoreo = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Precio Mayoreo") },
+                    label = { Text(stringResource(Res.string.wholesale_price_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
@@ -159,7 +164,7 @@ fun ProductFormDialog(
                     value = formCategoria,
                     onValueChange = { formCategoria = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Categoría") },
+                    label = { Text(stringResource(Res.string.category_label)) },
                     singleLine = true
                 )
 
@@ -175,14 +180,14 @@ fun ProductFormDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Checkbox(checked = formActivo, onCheckedChange = { formActivo = it })
-                        Text("Activo", fontSize = 14.sp)
+                        Text(stringResource(Res.string.active_label), fontSize = 14.sp)
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
                     ) {
                         Checkbox(checked = formPorPeso, onCheckedChange = { formPorPeso = it })
-                        Text("Venta p/ Peso", fontSize = 14.sp)
+                        Text(stringResource(Res.string.sell_by_weight_label), fontSize = 14.sp)
                     }
                 }
 
@@ -191,7 +196,7 @@ fun ProductFormDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
-                    Text("Marcar como Favorito", fontSize = 14.sp)
+                    Text(stringResource(Res.string.mark_as_favorite_label), fontSize = 14.sp)
                 }
             }
         },
@@ -205,12 +210,12 @@ fun ProductFormDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = MaterialTheme.shapes.small
             ) {
-                Text(if (isNew) "Guardar" else "Guardar Cambios")
+                Text(if (isNew) stringResource(Res.string.save_button) else stringResource(Res.string.save_changes_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     )

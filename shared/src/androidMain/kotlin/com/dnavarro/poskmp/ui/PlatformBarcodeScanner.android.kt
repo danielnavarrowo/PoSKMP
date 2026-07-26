@@ -33,8 +33,8 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import org.jetbrains.compose.resources.painterResource
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.photo_camera
+import org.jetbrains.compose.resources.stringResource
+import poskmp.shared.generated.resources.*
 import java.util.concurrent.Executors
 
 actual fun isCameraScannerAvailable(): Boolean = true
@@ -220,7 +220,7 @@ fun CameraPreviewScreen(
                 Icon(
                     Icons.Default.Close,
                     tint = Color.White,
-                    contentDescription = "Cerrar escáner"
+                    contentDescription = stringResource(Res.string.close_scanner_desc)
                 )
             }
 
@@ -242,14 +242,14 @@ fun CameraPreviewScreen(
                     Icon(
                         imageVector = if (isFlashEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                         tint = MaterialTheme.colorScheme.onSurface,
-                        contentDescription = "Torch",
+                        contentDescription = stringResource(Res.string.torch_desc),
                         modifier = Modifier.size(32.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Apunta la cámara al código de barras",
+                    text = stringResource(Res.string.aim_camera_hint),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
@@ -286,7 +286,7 @@ fun PermissionRationaleScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = "Permiso de cámara requerido",
+                text = stringResource(Res.string.camera_permission_required_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
@@ -294,7 +294,7 @@ fun PermissionRationaleScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Se necesita acceso a la cámara para escanear códigos de barras de los productos.",
+                text = stringResource(Res.string.camera_permission_required_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -306,7 +306,7 @@ fun PermissionRationaleScreen(
                 shape = ShapeDefaults.topListItemShape,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Conceder permiso", fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.grant_permission_button), fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(4.dp))
             OutlinedButton(
@@ -314,7 +314,7 @@ fun PermissionRationaleScreen(
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = ShapeDefaults.bottomListItemShape
             ) {
-                Text("Cancelar", fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.cancel), fontWeight = FontWeight.Bold)
             }
         }
     }

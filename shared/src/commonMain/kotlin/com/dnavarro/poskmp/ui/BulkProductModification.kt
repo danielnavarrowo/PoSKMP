@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -18,23 +19,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.db.Products
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
+import poskmp.shared.generated.resources.*
 
-enum class BulkProductOperation(val title: String, val description: String) {
-    CHANGE_PRICES("Cambiar precios", "Actualiza los precios que elijas y conserva los demás sin cambios."),
-    SET_PROFIT("Establecer porcentaje de ganancia", "Calcula los precios de venta a partir del costo de cada producto."),
-    CHANGE_CATEGORY("Modificar categoría", "Asigna la misma categoría a todos los productos seleccionados."),
-    DEACTIVATE("Marcar como no activos", "Los productos dejarán de estar disponibles para la venta."),
-    DELETE("Eliminar definitivamente", "Esta acción borra los productos seleccionados y no se puede deshacer.")
+enum class BulkProductOperation(val titleRes: StringResource, val descriptionRes: StringResource) {
+    CHANGE_PRICES(Res.string.bulk_op_change_prices_title, Res.string.bulk_op_change_prices_desc),
+    SET_PROFIT(Res.string.bulk_op_set_profit_title, Res.string.bulk_op_set_profit_desc),
+    CHANGE_CATEGORY(Res.string.bulk_op_change_category_title, Res.string.bulk_op_change_category_desc),
+    DEACTIVATE(Res.string.bulk_op_deactivate_title, Res.string.bulk_op_deactivate_desc),
+    DELETE(Res.string.bulk_op_delete_title, Res.string.bulk_op_delete_desc)
 }
 
 data class BulkProductModification(
@@ -87,24 +90,35 @@ fun BulkProductModificationDialog(
     var categoryText by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    fun numberOrError(text: String, label: String): Double? {
+    val costPriceLabel = stringResource(Res.string.bulk_label_cost_price)
+    val retailPriceLabel = stringResource(Res.string.bulk_label_retail_price)
+    val wholesalePriceLabel = stringResource(Res.string.bulk_label_wholesale_price)
+    val retailProfitLabel = stringResource(Res.string.bulk_label_retail_profit)
+    val wholesaleProfitLabel = stringResource(Res.string.bulk_label_wholesale_profit)
+    val selectPriceErr = stringResource(Res.string.bulk_select_price_error)
+    val selectProfitErr = stringResource(Res.string.bulk_select_profit_error)
+    val enterCategoryErr = stringResource(Res.string.bulk_enter_category_error)
+
+    fun numberOrError(text: String, labelStr: String, errorFmt: String): Double? {
         return text.replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0 } ?: run {
-            errorMessage = "Ingresa un valor válido para $label."
+            errorMessage = errorFmt.replace($$"%1$s", labelStr)
             null
         }
     }
+
+    val invalidValueFmt = stringResource(Res.string.bulk_invalid_value_error)
 
     fun createModification(): BulkProductModification? {
         errorMessage = null
         return when (operation) {
             BulkProductOperation.CHANGE_PRICES -> {
                 if (!changeCost && !changeRetail && !changeWholesale) {
-                    errorMessage = "Elige al menos un precio para modificar."
+                    errorMessage = selectPriceErr
                     null
                 } else {
-                    val cost = if (changeCost) numberOrError(costText, "el precio de costo") else 0.0
-                    val retail = if (changeRetail) numberOrError(retailText, "el precio de venta") else 0.0
-                    val wholesale = if (changeWholesale) numberOrError(wholesaleText, "el precio de mayoreo") else 0.0
+                    val cost = if (changeCost) numberOrError(costText, costPriceLabel, invalidValueFmt) else 0.0
+                    val retail = if (changeRetail) numberOrError(retailText, retailPriceLabel, invalidValueFmt) else 0.0
+                    val wholesale = if (changeWholesale) numberOrError(wholesaleText, wholesalePriceLabel, invalidValueFmt) else 0.0
                     if (errorMessage == null) BulkProductModification(
                         operation = operation,
                         costPrice = if (changeCost) cost else null,
@@ -115,10 +129,10 @@ fun BulkProductModificationDialog(
             }
 
             BulkProductOperation.SET_PROFIT -> {
-                val retail = retailProfitText.takeIf { it.isNotBlank() }?.let { numberOrError(it, "la ganancia de venta") }
-                val wholesale = wholesaleProfitText.takeIf { it.isNotBlank() }?.let { numberOrError(it, "la ganancia de mayoreo") }
+                val retail = retailProfitText.takeIf { it.isNotBlank() }?.let { numberOrError(it, retailProfitLabel, invalidValueFmt) }
+                val wholesale = wholesaleProfitText.takeIf { it.isNotBlank() }?.let { numberOrError(it, wholesaleProfitLabel, invalidValueFmt) }
                 if (errorMessage == null && retail == null && wholesale == null) {
-                    errorMessage = "Ingresa al menos un porcentaje de ganancia."
+                    errorMessage = selectProfitErr
                 }
                 if (errorMessage == null) BulkProductModification(operation, retailProfitPercentage = retail, wholesaleProfitPercentage = wholesale) else null
             }
@@ -126,7 +140,7 @@ fun BulkProductModificationDialog(
             BulkProductOperation.CHANGE_CATEGORY -> {
                 val category = categoryText.trim()
                 if (category.isEmpty()) {
-                    errorMessage = "Ingresa la categoría que se asignará."
+                    errorMessage = enterCategoryErr
                     null
                 } else BulkProductModification(operation, category = category)
             }
@@ -137,10 +151,13 @@ fun BulkProductModificationDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Modificación masiva") },
+        title = { Text(stringResource(Res.string.bulk_mod_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("$selectedCount producto(s) seleccionado(s) · Paso $step de 2", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(Res.string.bulk_mod_subtitle, selectedCount, step),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 HorizontalDivider()
                 if (step == 1) {
                     BulkProductOperation.entries.forEach { item ->
@@ -151,49 +168,56 @@ fun BulkProductModificationDialog(
                             RadioButton(selected = operation == item, onClick = { operation = item })
                             Spacer(Modifier.width(8.dp))
                             Column {
-                                Text(item.title, style = MaterialTheme.typography.titleSmall)
-                                Text(item.description, style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(item.titleRes), style = MaterialTheme.typography.titleSmall)
+                                Text(stringResource(item.descriptionRes), style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
                 } else {
                     when (operation) {
                         BulkProductOperation.CHANGE_PRICES -> {
-                            PriceOption("Precio de costo", changeCost, { changeCost = it }, costText, { costText = it })
-                            PriceOption("Precio de venta", changeRetail, { changeRetail = it }, retailText, { retailText = it })
-                            PriceOption("Precio de mayoreo", changeWholesale, { changeWholesale = it }, wholesaleText, { wholesaleText = it })
+                            PriceOption(stringResource(Res.string.cost_price), changeCost, { changeCost = it }, costText, { costText = it })
+                            PriceOption(stringResource(Res.string.retail_price), changeRetail, { changeRetail = it }, retailText, { retailText = it })
+                            PriceOption(stringResource(Res.string.wholesale_price), changeWholesale, { changeWholesale = it }, wholesaleText, { wholesaleText = it })
                         }
 
                         BulkProductOperation.SET_PROFIT -> {
-                            Text("Solo se actualizarán los productos que tengan precio de costo.")
-                            DecimalInput("Ganancia de venta (%)", retailProfitText) { retailProfitText = it }
-                            DecimalInput("Ganancia de mayoreo (%)", wholesaleProfitText) { wholesaleProfitText = it }
+                            Text(stringResource(Res.string.bulk_profit_cost_requirement))
+                            DecimalInput(stringResource(Res.string.retail_profit_pct), retailProfitText) { retailProfitText = it }
+                            DecimalInput(stringResource(Res.string.wholesale_profit_pct), wholesaleProfitText) { wholesaleProfitText = it }
                         }
 
                         BulkProductOperation.CHANGE_CATEGORY -> OutlinedTextField(
                             value = categoryText,
                             onValueChange = { categoryText = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Nueva categoría") },
+                            label = { Text(stringResource(Res.string.new_category)) },
                             singleLine = true
                         )
 
-                        BulkProductOperation.DEACTIVATE -> Text("Los $selectedCount productos seleccionados quedarán inactivos.")
-                        BulkProductOperation.DELETE -> Text("¿Confirmas la eliminación definitiva de los $selectedCount productos seleccionados?", color = MaterialTheme.colorScheme.error)
+                        BulkProductOperation.DEACTIVATE -> Text(stringResource(Res.string.bulk_deactivate_confirmation, selectedCount))
+                        BulkProductOperation.DELETE -> Text(
+                            stringResource(Res.string.bulk_delete_confirmation, selectedCount),
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                     errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             }
         },
         dismissButton = {
-            if (step == 1) TextButton(onClick = onDismiss) { Text("Cancelar") }
-            else TextButton(onClick = { step = 1; errorMessage = null }) { Text("Atrás") }
+            if (step == 1) TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+            else TextButton(onClick = { step = 1; errorMessage = null }) { Text(stringResource(Res.string.back_button)) }
         },
         confirmButton = {
             Button(onClick = {
                 if (step == 1) step = 2 else createModification()?.let(onApply)
             }) {
-                Text(if (step == 1) "Siguiente" else if (operation == BulkProductOperation.DELETE) "Eliminar" else "Aplicar cambios")
+                Text(
+                    if (step == 1) stringResource(Res.string.next_button)
+                    else if (operation == BulkProductOperation.DELETE) stringResource(Res.string.delete_button)
+                    else stringResource(Res.string.apply_changes_button)
+                )
             }
         }
     )
