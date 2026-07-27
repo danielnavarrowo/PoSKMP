@@ -52,6 +52,7 @@ data class CartItem(
     val originalPrice: Double = product.precio
 )
 
+@Suppress("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun VentaScreen(
@@ -330,14 +331,13 @@ fun VentaScreen(
                         }
                 } else Modifier
             )
-    ) { paddingValues ->
+    ) {
         SupportingPaneScaffold(
             directive = navigator.scaffoldDirective,
             value = navigator.scaffoldValue,
             paneExpansionState = paneExpansionState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background),
             mainPane = {
                 AnimatedPane {
