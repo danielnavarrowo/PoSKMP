@@ -41,7 +41,6 @@ private val presetSeedColors = listOf(
     Color(0xFF2E7D32)  // Verde Bosque
 )
 
-@Suppress("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AjustesScreen(
@@ -75,11 +74,12 @@ fun AjustesScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize()
-    ) {
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 0.dp),
+                .padding(top = innerPadding.calculateTopPadding())
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 

@@ -270,9 +270,9 @@ fun ProductosScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(top = paddingValues.calculateTopPadding())
                 .background(MaterialTheme.colorScheme.background)
-                .padding(24.dp)
+                .padding(horizontal = 16.dp)
         ) {
             // TOP HEADER
             Row(
