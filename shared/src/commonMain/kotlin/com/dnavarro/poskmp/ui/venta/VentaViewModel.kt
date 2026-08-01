@@ -13,24 +13,24 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
+import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
 
 /**
  * ViewModel for Venta screen managing product flow, barcode search, and cart updates.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class VentaViewModel(
-    private val repository: ProductRepository
+    private val repository: ProductRepository,
+    private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
+    private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository)
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     private val _selectedCategory = MutableStateFlow<String?>(null)
 
     private val _productsFlow = _searchQuery.flatMapLatest { query ->
-        if (query.isBlank()) {
-            repository.getActiveProducts()
-        } else {
-            repository.searchProducts(query)
-        }
+        getProductsUseCase(query = query, activeOnly = true)
     }
 
     val uiState: StateFlow<VentaUiState> = combine(
@@ -75,6 +75,6 @@ class VentaViewModel(
     }
 
     suspend fun findProductByBarcode(barcode: String): Products? {
-        return repository.findProductByBarcode(barcode)
+        return findProductByBarcodeUseCase(barcode)
     }
 }

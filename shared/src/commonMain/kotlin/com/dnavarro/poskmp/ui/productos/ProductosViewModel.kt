@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.usecase.ApplyBulkModificationUseCase
+import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
+import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.BulkProductModification
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
-import com.dnavarro.poskmp.ui.applyBulkProductModification
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,22 +31,21 @@ private data class DisplayState(
 )
 
 /**
- * ViewModel for Productos screen, hosting state and handling UI events according to Google UI Layer architecture.
+ * ViewModel for Productos screen, hosting state and handling UI events according to Google UI & Domain Layer architecture.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProductosViewModel(
-    private val repository: ProductRepository
+    private val repository: ProductRepository,
+    private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
+    private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
+    private val applyBulkModificationUseCase: ApplyBulkModificationUseCase = ApplyBulkModificationUseCase(repository)
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     private val _displayState = MutableStateFlow(DisplayState())
 
     private val _productsFlow = _searchQuery.flatMapLatest { query ->
-        if (query.isBlank()) {
-            repository.getAllProducts()
-        } else {
-            repository.searchProducts(query)
-        }
+        getProductsUseCase(query = query, activeOnly = false)
     }
 
     val uiState: StateFlow<ProductosUiState> = combine(
@@ -117,11 +118,7 @@ class ProductosViewModel(
 
     fun saveProduct(product: Products) {
         viewModelScope.launch {
-            if (_displayState.value.showProductDialogFor?.id?.isEmpty() == true) {
-                repository.insertProduct(product)
-            } else {
-                repository.updateProduct(product)
-            }
+            saveProductUseCase(product)
             _displayState.update { it.copy(showProductDialogFor = null) }
         }
     }
@@ -140,21 +137,7 @@ class ProductosViewModel(
 
     fun applyBulkModification(modification: BulkProductModification) {
         viewModelScope.launch {
-            val selectedIds = _displayState.value.selectedProductIds
-            val allProducts = repository.getAllProductsList()
-            allProducts.filter { it.id in selectedIds }.forEach { product ->
-                val updated = applyBulkProductModification(product, modification)
-                if (updated == null) {
-                    repository.deleteProductHard(product.id)
-                } else {
-                    repository.updateProduct(
-                        updated.copy(
-                            updated_at = currentTimeMillis(),
-                            sync_state = "PENDING_UPDATE"
-                        )
-                    )
-                }
-            }
+            applyBulkModificationUseCase(_displayState.value.selectedProductIds, modification)
             _displayState.update {
                 it.copy(
                     selectedProductIds = emptySet(),
