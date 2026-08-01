@@ -604,13 +604,22 @@ fun ProductosScreen(
                                 }
                             }
 
+                            val isAllFilteredSelected = sortedProducts.isNotEmpty() && sortedProducts.all { it.id in selectedProductIds }
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(MaterialTheme.colorScheme.surfaceContainer)
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Checkbox(
+                                    checked = isAllFilteredSelected,
+                                    onCheckedChange = {
+                                        viewModel.onSelectAllProducts(sortedProducts.map { it.id })
+                                    },
+                                    modifier = Modifier.weight(0.05f)
+                                )
                                 TableHeader(
                                     stringResource(Res.string.header_codes),
                                     0.18f,

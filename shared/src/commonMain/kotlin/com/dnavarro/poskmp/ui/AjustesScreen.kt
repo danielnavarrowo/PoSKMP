@@ -2,6 +2,7 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import androidx.compose.animation.fadeIn
@@ -21,7 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.DarkMode
@@ -47,7 +48,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -88,16 +91,59 @@ import poskmp.shared.generated.resources.system_version
 import poskmp.shared.generated.resources.theme_section_title
 import poskmp.shared.generated.resources.warning
 
-private val presetSeedColors = listOf(
-    Color(0xFF0061A4), // Azul Clásico
-    Color(0xFF2FC991), // Verde Esmeralda (PoS)
-    Color(0xFF6750A4), // Púrpura Material
-    Color(0xFF00897B), // Teal / Turquesa
-    Color(0xFFE65100), // Naranja Puesta de Sol
-    Color(0xFFB71C1C), // Rojo Carmesí
-    Color(0xFF4A148C), // Violeta Profundo
-    Color(0xFF2E7D32)  // Verde Bosque
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+
+data class PresetColorItem(
+    val color: Color,
+    val name: String,
+    val shape: Shape
 )
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun rememberPresetSeedColorItems(): List<PresetColorItem> {
+    val sunny = MaterialShapes.Sunny.toShape()
+    val verySunny = MaterialShapes.VerySunny.toShape()
+    val clover4 = MaterialShapes.Clover4Leaf.toShape()
+    val cookie6 = MaterialShapes.Cookie6Sided.toShape()
+    val cookie7 = MaterialShapes.Cookie7Sided.toShape()
+    val burst = MaterialShapes.Burst.toShape()
+    val pixelCircle = MaterialShapes.PixelCircle.toShape()
+    val pentagon = MaterialShapes.Pentagon.toShape()
+    val pixelTriangle = MaterialShapes.PixelTriangle.toShape()
+    val cookie9 = MaterialShapes.Cookie9Sided.toShape()
+    val clamShell = MaterialShapes.ClamShell.toShape()
+    val clover8 = MaterialShapes.Clover8Leaf.toShape()
+    val oval = MaterialShapes.Oval.toShape()
+    val cookie4 = MaterialShapes.Cookie4Sided.toShape()
+    val flower = MaterialShapes.Flower.toShape()
+    val arch = MaterialShapes.Arch.toShape()
+
+    return remember(
+        sunny, verySunny, clover4, cookie6, cookie7, burst,
+        pixelCircle, pentagon, pixelTriangle, cookie9, clamShell,
+        clover8, oval, cookie4, flower, arch
+    ) {
+        listOf(
+            PresetColorItem(Color(0xFF0061A4), "Azul Clásico", sunny),
+            PresetColorItem(Color(0xFF2FC991), "Verde Esmeralda", verySunny),
+            PresetColorItem(Color(0xFF6750A4), "Púrpura Material", clover4),
+            PresetColorItem(Color(0xFFE65100), "Naranja Sol", cookie7),
+            PresetColorItem(Color(0xFFB71C1C), "Rojo Carmesí", burst),
+            PresetColorItem(Color(0xFF4A148C), "Violeta Profundo", pixelCircle),
+            PresetColorItem(Color(0xFF2E7D32), "Verde Bosque", pentagon),
+            PresetColorItem(Color(0xFFD81B60), "Rosa Neón", pixelTriangle),
+            PresetColorItem(Color(0xFFF57F17), "Ámbar Dorado", cookie9),
+            PresetColorItem(Color(0xFF00ACC1), "Cian Eléctrico", clamShell),
+            PresetColorItem(Color(0xFF8E24AA), "Orquídea", clover8),
+            PresetColorItem(Color(0xFF3949AB), "Índigo Profundo", oval),
+            PresetColorItem(Color(0xFFC0CA33), "Lima Vibrante", cookie4),
+            PresetColorItem(Color(0xFF5D4037), "Mocha", flower)
+        )
+    }
+}
 
 @Composable
 fun AjustesScreen(
@@ -131,6 +177,7 @@ fun AjustesScreen(
     darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
     onDarkModeConfigChange: (DarkModeConfig) -> Unit = {}
 ) {
+    val presetColorItems = rememberPresetSeedColorItems()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -396,24 +443,26 @@ fun AjustesScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                Row(
+                                LazyRow(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    presetSeedColors.forEach { color ->
+                                    items(presetColorItems) { preset ->
+                                        val color = preset.color
+                                        val shape = preset.shape
                                         val isSelected = !useDynamicColor && seedColor == color
                                         Box(
                                             modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
+                                                .size(42.dp)
+                                                .clip(shape)
                                                 .background(color)
                                                 .then(
                                                     if (isSelected) {
                                                         Modifier.border(
                                                             width = 3.dp,
                                                             color = MaterialTheme.colorScheme.onSurface,
-                                                            shape = CircleShape
+                                                            shape = shape
                                                         )
                                                     } else Modifier
                                                 )
@@ -428,9 +477,9 @@ fun AjustesScreen(
                                             if (isSelected) {
                                                 Icon(
                                                     painter = painterResource(Res.drawable.check),
-                                                    contentDescription = null,
+                                                    contentDescription = preset.name,
                                                     tint = Color.White,
-                                                    modifier = Modifier.size(18.dp)
+                                                    modifier = Modifier.size(20.dp)
                                                 )
                                             }
                                         }

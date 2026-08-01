@@ -107,7 +107,13 @@ class ProductosViewModel(
 
     fun onSelectAllProducts(productIds: List<String>) {
         _displayState.update { state ->
-            val updated = if (state.selectedProductIds.containsAll(productIds)) emptySet() else productIds.toSet()
+            if (productIds.isEmpty()) return@update state
+            val containsAll = state.selectedProductIds.containsAll(productIds)
+            val updated = if (containsAll) {
+                state.selectedProductIds - productIds.toSet()
+            } else {
+                state.selectedProductIds + productIds.toSet()
+            }
             state.copy(selectedProductIds = updated)
         }
     }

@@ -251,5 +251,6 @@
     <string name="default_quantity_placeholder">1</string>
     <string name="add_to_ticket_button">Añadir al Ticket</string>
     <string name="save_unregistered_to_db">Guardar producto en la base de datos</string>
+    <string name="select_all_label">Seleccionar todos</string>
     <string name="per_kg_suffix"> / Kg</string>
 </resources>
