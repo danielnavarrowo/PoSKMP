@@ -60,8 +60,7 @@ actual fun PlatformBarcodeScanner(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            if (cameraPermissionState.status.isGranted)
-                    CameraPreviewScreen(onScanResult = onScanResult, onClose = onClose)
+            if (cameraPermissionState.status.isGranted) CameraPreviewScreen(onScanResult = onScanResult, onClose = onClose)
                 else {
                     PermissionRationaleScreen(
                         onRequestPermission = { cameraPermissionState.launchPermissionRequest() },

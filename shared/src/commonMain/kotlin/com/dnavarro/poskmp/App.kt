@@ -3,21 +3,53 @@ package com.dnavarro.poskmp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
-import androidx.compose.runtime.*
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
@@ -25,20 +57,38 @@ import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.createDatabase
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
-import com.dnavarro.poskmp.ui.*
+import com.dnavarro.poskmp.ui.AjustesScreen
+import com.dnavarro.poskmp.ui.CartItem
+import com.dnavarro.poskmp.ui.ChecadorDialog
+import com.dnavarro.poskmp.ui.ProductosScreen
+import com.dnavarro.poskmp.ui.Screen
+import com.dnavarro.poskmp.ui.VentaScreen
+import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
+import com.dnavarro.poskmp.ui.productos.ProductosViewModel
+import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.isAndroid
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
-
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.settings
+import poskmp.shared.generated.resources.tab_ajustes
+import poskmp.shared.generated.resources.tab_checador
+import poskmp.shared.generated.resources.tab_checador_desktop
+import poskmp.shared.generated.resources.tab_productos
+import poskmp.shared.generated.resources.tab_productos_desktop
+import poskmp.shared.generated.resources.tab_venta
+import poskmp.shared.generated.resources.tab_venta_desktop
 
 internal fun navigationSuiteTypeForWidth(width: Dp): NavigationSuiteType = when {
     width >= 1200.dp -> NavigationSuiteType.WideNavigationRailExpanded
     width >= 800.dp -> NavigationSuiteType.WideNavigationRailCollapsed
     else -> NavigationSuiteType.None
 }
+
 @OptIn(
     ExperimentalMaterial3ExpressiveApi::class
 )
@@ -48,9 +98,17 @@ fun App() {
     val repository = remember {
         val factory = DatabaseDriverFactory()
         val db = createDatabase(factory)
-        val repo = ProductRepository(db)
-        repo.insertDummyDataIfEmpty()
-        repo
+        ProductRepository(db)
+    }
+
+    val settingsRepository = remember { SettingsRepository() }
+
+    val ventaViewModel = remember(repository) { VentaViewModel(repository) }
+    val productosViewModel = remember(repository) { ProductosViewModel(repository) }
+    val ajustesViewModel = remember(settingsRepository) { AjustesViewModel(settingsRepository) }
+
+    LaunchedEffect(repository) {
+        repository.insertDummyDataIfEmpty()
     }
 
     // 2. Navigation State
@@ -95,12 +153,11 @@ fun App() {
 
 
 
-    val settingsRepository = remember { SettingsRepository() }
-    val useDynamicColor by settingsRepository.useDynamicColorFlow.collectAsState(initial = isAndroid())
-    val seedColor by settingsRepository.seedColorFlow.collectAsState(initial = Color(0xFF0061A4))
-    val isAmoled by settingsRepository.isAmoledFlow.collectAsState(initial = false)
-    val darkModeConfig by settingsRepository.darkModeConfigFlow.collectAsState(initial = DarkModeConfig.SYSTEM)
-    val coroutineScope = rememberCoroutineScope()
+    val ajustesUiState by ajustesViewModel.uiState.collectAsState()
+    val useDynamicColor = ajustesUiState.useDynamicColor
+    val seedColor = ajustesUiState.seedColor
+    val isAmoled = ajustesUiState.isAmoled
+    val darkModeConfig = ajustesUiState.darkModeConfig
 
     val systemInDark = isSystemInDarkTheme()
     val darkTheme = when (darkModeConfig) {
@@ -238,29 +295,12 @@ fun App() {
                     ) {
                         when (currentScreen) {
                             Screen.VENTA -> VentaScreen(
-                                repository = repository,
+                                viewModel = ventaViewModel,
                                 isCompact = isCompact,
                                 cartItems = cartItems
                             )
-                            Screen.PRODUCTOS -> ProductosScreen(repository = repository)
-                            Screen.AJUSTES -> AjustesScreen(
-                                useDynamicColor = useDynamicColor,
-                                onUseDynamicColorChange = { newValue ->
-                                    coroutineScope.launch { settingsRepository.setUseDynamicColor(newValue) }
-                                },
-                                seedColor = seedColor,
-                                onSeedColorChange = { newColor ->
-                                    coroutineScope.launch { settingsRepository.setSeedColor(newColor) }
-                                },
-                                isAmoled = isAmoled,
-                                onIsAmoledChange = { newAmoled ->
-                                    coroutineScope.launch { settingsRepository.setIsAmoled(newAmoled) }
-                                },
-                                darkModeConfig = darkModeConfig,
-                                onDarkModeConfigChange = { newConfig ->
-                                    coroutineScope.launch { settingsRepository.setDarkModeConfig(newConfig) }
-                                }
-                            )
+                            Screen.PRODUCTOS -> ProductosScreen(viewModel = productosViewModel)
+                            Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
                         }
                     }
                 }

@@ -21,7 +21,8 @@ compose.desktop {
         mainClass = "com.dnavarro.poskmp.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Pkg, TargetFormat.AppImage)
+            targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Exe, TargetFormat.AppImage,
+                TargetFormat.Pkg)
             packageName = "com.dnavarro.poskmp"
             packageVersion = "1.0.0"
         }

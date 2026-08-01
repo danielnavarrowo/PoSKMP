@@ -23,8 +23,6 @@ actual fun pickFile(
     val err = runBlocking { getString(Res.string.import_not_supported_android) }
     onError(err)
 }
-
-// Callback holder for Android file saving
 object AndroidSaveFileHandler {
     var content: String? = null
     var defaultFileName: String? = null
@@ -32,7 +30,6 @@ object AndroidSaveFileHandler {
     var onError: ((String) -> Unit)? = null
 }
 
-// Transparent activity to launch the SAF CreateDocument chooser
 class SaveFileHelperActivity : ComponentActivity() {
 
     private val createDocumentLauncher = registerForActivityResult(

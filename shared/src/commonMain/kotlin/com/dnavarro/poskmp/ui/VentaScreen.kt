@@ -1,19 +1,58 @@
 package com.dnavarro.poskmp.ui
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.layout.*
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.SupportingPaneScaffold
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
+import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation.rememberSupportingPaneScaffoldNavigator
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,7 +60,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -32,17 +78,46 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dnavarro.poskmp.data.ProductRepository
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add_button
+import poskmp.shared.generated.resources.add_to_ticket_button
+import poskmp.shared.generated.resources.barcode_not_found_message
+import poskmp.shared.generated.resources.barcode_not_found_title
+import poskmp.shared.generated.resources.cancel
+import poskmp.shared.generated.resources.cash_received_label
+import poskmp.shared.generated.resources.change_delivered_label
+import poskmp.shared.generated.resources.change_to_deliver_label
+import poskmp.shared.generated.resources.checkout_sale_title
+import poskmp.shared.generated.resources.default_quantity_placeholder
+import poskmp.shared.generated.resources.header_product_name
+import poskmp.shared.generated.resources.insufficient_amount_error
+import poskmp.shared.generated.resources.kg_suffix
+import poskmp.shared.generated.resources.not_registered
+import poskmp.shared.generated.resources.pesos_currency_label
+import poskmp.shared.generated.resources.price_per_kg_label
+import poskmp.shared.generated.resources.quantity_prompt_title
+import poskmp.shared.generated.resources.quantity_weight_label
+import poskmp.shared.generated.resources.register_sale_button
+import poskmp.shared.generated.resources.sale_success_message
+import poskmp.shared.generated.resources.sale_success_title
+import poskmp.shared.generated.resources.sell_unregistered_title
+import poskmp.shared.generated.resources.total_charged_label
+import poskmp.shared.generated.resources.total_to_pay_label
+import poskmp.shared.generated.resources.understood_button
+import poskmp.shared.generated.resources.understood_enter_button
+import poskmp.shared.generated.resources.unit_price_label
+import poskmp.shared.generated.resources.unregistered_name_placeholder
+import poskmp.shared.generated.resources.weight_kg_label
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -56,13 +131,14 @@ data class CartItem(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun VentaScreen(
-    repository: ProductRepository,
+    viewModel: VentaViewModel,
     isCompact: Boolean,
     cartItems: SnapshotStateList<CartItem>,
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var productsList by remember { mutableStateOf<List<Products>>(emptyList()) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var searchQuery = uiState.searchQuery
+    val productsList = uiState.activeProducts
     var selectedIndex by remember { mutableIntStateOf(-1) }
 
     // Weight Dialog state
@@ -134,29 +210,13 @@ fun VentaScreen(
     }
 
     fun toggleProductFavorite(product: Products) {
-        val updated = product.copy(
-            es_favorito = if (product.es_favorito == 1L) 0L else 1L,
-            updated_at = currentTimeMillis(),
-            sync_state = "PENDING_UPDATE"
-        )
-        repository.updateProduct(updated)
+        viewModel.toggleProductFavorite(product)
         reclaimSearchBarFocus()
     }
 
 
 
-    // Observe products from DB
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isBlank()) {
-            repository.getActiveProducts().collectLatest {
-                productsList = it
-            }
-        } else {
-            repository.searchProducts(searchQuery).collectLatest {
-                productsList = it
-            }
-        }
-    }
+    // Active products are observed via viewModel.uiState
 
     val desktopFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -220,7 +280,7 @@ fun VentaScreen(
     val barcodeScanCallback: (String) -> Unit = { barcode ->
         coroutineScope.launch {
             val trimmed = barcode.trim()
-            val p = repository.findProductByBarcode(trimmed)
+            val p = viewModel.findProductByBarcode(trimmed)
             if (p != null) {
                 if (p.por_peso == 1L) {
                     weightInput = "1.000"
@@ -228,10 +288,10 @@ fun VentaScreen(
                 } else {
                     addProductToCart(p, 1.0)
                 }
-                searchQuery = ""
+                viewModel.onSearchQueryChanged("")
             } else {
                 showBarcodeNotFoundQuery = trimmed
-                searchQuery = ""
+                viewModel.onSearchQueryChanged("")
             }
         }
     }
@@ -1046,7 +1106,7 @@ fun VentaScreen(
             product = showProductDialogFor,
             onDismiss = { showProductDialogFor = null },
             onSave = { updatedProduct ->
-                repository.updateProduct(updatedProduct)
+                viewModel.updateProduct(updatedProduct)
                 showProductDialogFor = null
             }
         )

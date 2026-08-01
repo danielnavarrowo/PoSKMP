@@ -1,19 +1,48 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material3.*
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,11 +53,40 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.theme.DarkModeConfig
-import com.dnavarro.poskmp.theme.isDynamicColorSupported
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.amoled_mode_subtitle
+import poskmp.shared.generated.resources.amoled_mode_title
+import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.cloud_sync_section_title
+import poskmp.shared.generated.resources.dark_mode_off
+import poskmp.shared.generated.resources.dark_mode_on
+import poskmp.shared.generated.resources.dark_mode_subtitle
+import poskmp.shared.generated.resources.dark_mode_system
+import poskmp.shared.generated.resources.dark_mode_title
+import poskmp.shared.generated.resources.database_section_title
+import poskmp.shared.generated.resources.dynamic_color_subtitle
+import poskmp.shared.generated.resources.dynamic_color_title
+import poskmp.shared.generated.resources.local_db_connected_desc
+import poskmp.shared.generated.resources.local_db_status_connected
+import poskmp.shared.generated.resources.local_db_title
+import poskmp.shared.generated.resources.seed_color_subtitle
+import poskmp.shared.generated.resources.seed_color_title
+import poskmp.shared.generated.resources.settings
+import poskmp.shared.generated.resources.settings_title
+import poskmp.shared.generated.resources.status_connected
+import poskmp.shared.generated.resources.status_pending
+import poskmp.shared.generated.resources.supabase_offline_desc
+import poskmp.shared.generated.resources.supabase_server_title
+import poskmp.shared.generated.resources.supabase_status_pending_desc
+import poskmp.shared.generated.resources.sync
+import poskmp.shared.generated.resources.sync_now_button
+import poskmp.shared.generated.resources.system_info_title
+import poskmp.shared.generated.resources.system_version
+import poskmp.shared.generated.resources.theme_section_title
+import poskmp.shared.generated.resources.warning
 
 private val presetSeedColors = listOf(
     Color(0xFF0061A4), // Azul Clásico
@@ -41,9 +99,29 @@ private val presetSeedColors = listOf(
     Color(0xFF2E7D32)  // Verde Bosque
 )
 
+@Composable
+fun AjustesScreen(
+    viewModel: AjustesViewModel,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    AjustesScreen(
+        modifier = modifier,
+        useDynamicColor = uiState.useDynamicColor,
+        onUseDynamicColorChange = { viewModel.setUseDynamicColor(it) },
+        seedColor = uiState.seedColor,
+        onSeedColorChange = { viewModel.setSeedColor(it) },
+        isAmoled = uiState.isAmoled,
+        onIsAmoledChange = { viewModel.setIsAmoled(it) },
+        darkModeConfig = uiState.darkModeConfig,
+        onDarkModeConfigChange = { viewModel.setDarkModeConfig(it) }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AjustesScreen(
+    modifier: Modifier = Modifier,
     useDynamicColor: Boolean = isAndroid(),
     onUseDynamicColorChange: (Boolean) -> Unit = {},
     seedColor: Color = Color(0xFF0061A4),
@@ -51,8 +129,7 @@ fun AjustesScreen(
     isAmoled: Boolean = false,
     onIsAmoledChange: (Boolean) -> Unit = {},
     darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
-    onDarkModeConfigChange: (DarkModeConfig) -> Unit = {},
-    modifier: Modifier = Modifier
+    onDarkModeConfigChange: (DarkModeConfig) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -294,7 +371,7 @@ fun AjustesScreen(
 
                         // Seed Color Picker (visible when Dynamic Color is disabled or always for selection)
                         AnimatedVisibility(
-                            visible = !useDynamicColor || !isDynamicColorSupported(),
+                            visible = !useDynamicColor,
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {

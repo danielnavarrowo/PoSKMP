@@ -44,7 +44,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -62,8 +61,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
@@ -72,7 +73,6 @@ import com.dnavarro.poskmp.util.pickFile
 import com.dnavarro.poskmp.util.saveFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
@@ -199,70 +199,22 @@ fun RowScope.TableHeader(
 
 @Composable
 fun ProductosScreen(
-    repository: ProductRepository,
+    viewModel: ProductosViewModel,
+    repository: ProductRepository? = null,
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var productsList by remember { mutableStateOf<List<Products>>(emptyList()) }
-
-    var sortField by remember { mutableStateOf(ProductSortField.NOMBRE) }
-    var sortOrder by remember { mutableStateOf(ProductSortOrder.ASC) }
-
-    // Dialog control states
-    var showProductDialogFor by remember { mutableStateOf<Products?>(null) } // Null means not showing, a Product with empty ID means "New"
-    var showImportDialog by remember { mutableStateOf(false) }
-    var showBulkModificationDialog by remember { mutableStateOf(false) }
-    var selectedProductIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchQuery = uiState.searchQuery
+    val sortedProducts = uiState.sortedProducts
+    val sortField = uiState.sortField
+    val sortOrder = uiState.sortOrder
+    val showProductDialogFor = uiState.showProductDialogFor
+    val showImportDialog = uiState.showImportDialog
+    val showBulkModificationDialog = uiState.showBulkModificationDialog
+    val selectedProductIds = uiState.selectedProductIds
 
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
-
-    // Observe products from DB
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isBlank()) {
-            repository.getAllProducts().collectLatest {
-                productsList = it
-            }
-        } else {
-            repository.searchProducts(searchQuery).collectLatest {
-                productsList = it
-            }
-        }
-    }
-
-    val sortedProducts = remember(productsList, sortField, sortOrder) {
-        productsList.sortedWith { p1, p2 ->
-            val f1 = p1.es_favorito == 1L
-            val f2 = p2.es_favorito == 1L
-            if (f1 != f2) {
-                return@sortedWith if (f1) -1 else 1
-            }
-            val comparison = when (sortField) {
-                ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
-                ProductSortField.CODIGO -> {
-                    val c1 = try {
-                        p1.codigos.replace("[", "").replace("]", "").replace("\"", "")
-                    } catch (_: Exception) {
-                        ""
-                    }
-                    val c2 = try {
-                        p2.codigos.replace("[", "").replace("]", "").replace("\"", "")
-                    } catch (_: Exception) {
-                        ""
-                    }
-                    c1.compareTo(c2)
-                }
-
-                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase()
-                    .compareTo((p2.categoria ?: "").lowercase())
-
-                ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
-                ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
-                ProductSortField.ESTADO -> p1.activo.compareTo(p2.activo)
-            }
-            if (sortOrder == ProductSortOrder.ASC) comparison else -comparison
-        }
-    }
 
     Scaffold(
         modifier = modifier
@@ -298,7 +250,7 @@ fun ProductosScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (selectedProductIds.isNotEmpty()) {
                         Button(
-                            onClick = { showBulkModificationDialog = true },
+                            onClick = { viewModel.onShowBulkModificationDialog(true) },
                             shape = MaterialTheme.shapes.small
                         ) {
                             Text(
@@ -312,7 +264,7 @@ fun ProductosScreen(
 
                     if (!isAndroid()) {
                         Button(
-                            onClick = { showImportDialog = true },
+                            onClick = { viewModel.onShowImportDialog(true) },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                             shape = MaterialTheme.shapes.small
                         ) {
@@ -330,17 +282,17 @@ fun ProductosScreen(
                         onClick = {
                             val csvBuilder =
                                 StringBuilder("id,codigos,nombre,precio,costo,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
-                            for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito) in productsList) {
-                                csvBuilder.append("$id,")
-                                csvBuilder.append("\"${codigos.replace("\"", "\"\"")}\",")
-                                csvBuilder.append("\"${nombre.replace("\"", "\"\"")}\",")
-                                csvBuilder.append("$precio,")
-                                csvBuilder.append("$costo,")
-                                csvBuilder.append("\"${(categoria ?: "").replace("\"", "\"\"")}\",")
-                                csvBuilder.append("$activo,")
-                                csvBuilder.append("$por_peso,")
-                                csvBuilder.append("$precio_mayoreo,")
-                                csvBuilder.append("$es_favorito\n")
+                            for (p in sortedProducts) {
+                                csvBuilder.append("${p.id},")
+                                csvBuilder.append("\"${p.codigos.replace("\"", "\"\"")}\",")
+                                csvBuilder.append("\"${p.nombre.replace("\"", "\"\"")}\",")
+                                csvBuilder.append("${p.precio},")
+                                csvBuilder.append("${p.costo},")
+                                csvBuilder.append("\"${(p.categoria ?: "").replace("\"", "\"\"")}\",")
+                                csvBuilder.append("${p.activo},")
+                                csvBuilder.append("${p.por_peso},")
+                                csvBuilder.append("${p.precio_mayoreo},")
+                                csvBuilder.append("${p.es_favorito}\n")
                             }
                             val csvText = csvBuilder.toString()
                             saveFile(
@@ -369,8 +321,9 @@ fun ProductosScreen(
 
                     Button(
                         onClick = {
-                            showProductDialogFor =
+                            viewModel.onShowProductDialog(
                                 Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
+                            )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = MaterialTheme.shapes.small
@@ -385,7 +338,7 @@ fun ProductosScreen(
             // SEARCH BAR
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
+                onValueChange = { viewModel.onSearchQueryChanged(it) },
                 modifier = Modifier.fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small),
                 placeholder = { Text(stringResource(Res.string.search_placeholder)) },
@@ -397,7 +350,7 @@ fun ProductosScreen(
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
+                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
                             Icon(
                                 painter = painterResource(Res.drawable.close),
                                 contentDescription = stringResource(Res.string.clear_desc)
@@ -427,7 +380,7 @@ fun ProductosScreen(
                 ) {
                     if (isCompact) {
                         // Mobile Compact List
-                        if (productsList.isEmpty()) {
+                        if (sortedProducts.isEmpty()) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
@@ -467,7 +420,7 @@ fun ProductosScreen(
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { showProductDialogFor = product },
+                                            .clickable { viewModel.onShowProductDialog(product) },
                                         shape = shape,
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
                                         border = BorderStroke(
@@ -483,10 +436,7 @@ fun ProductosScreen(
                                             ) {
                                                 Checkbox(
                                                     checked = product.id in selectedProductIds,
-                                                    onCheckedChange = { isSelected ->
-                                                        selectedProductIds =
-                                                            if (isSelected) selectedProductIds + product.id else selectedProductIds - product.id
-                                                    }
+                                                    onCheckedChange = { viewModel.onToggleSelectProduct(product.id) }
                                                 )
                                                 Text(
                                                     text = product.nombre,
@@ -500,7 +450,7 @@ fun ProductosScreen(
                                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                                     IconButton(
                                                         onClick = {
-                                                            showProductDialogFor = product
+                                                            viewModel.onShowProductDialog(product)
                                                         },
                                                         modifier = Modifier.size(28.dp)
                                                     ) {
@@ -511,10 +461,7 @@ fun ProductosScreen(
                                                     }
                                                     IconButton(
                                                         onClick = {
-                                                            repository.deleteProductSoft(
-                                                                product.id,
-                                                                currentTimeMillis()
-                                                            )
+                                                            viewModel.deleteProductSoft(product.id)
                                                         },
                                                         modifier = Modifier.size(28.dp)
                                                     ) {
@@ -647,11 +594,12 @@ fun ProductosScreen(
                         Column(modifier = Modifier.fillMaxSize()) {
                             val onHeaderClick = { field: ProductSortField ->
                                 if (sortField == field) {
-                                    sortOrder =
+                                    viewModel.onSortOrderChanged(
                                         if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
+                                    )
                                 } else {
-                                    sortField = field
-                                    sortOrder = ProductSortOrder.ASC
+                                    viewModel.onSortFieldChanged(field)
+                                    viewModel.onSortOrderChanged(ProductSortOrder.ASC)
                                 }
                             }
 
@@ -719,7 +667,7 @@ fun ProductosScreen(
                                 )
                             }
 
-                            if (productsList.isEmpty()) {
+                            if (sortedProducts.isEmpty()) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
@@ -761,7 +709,7 @@ fun ProductosScreen(
                                                 .fillMaxWidth()
                                                 .clip(shape)
                                                 .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                                                .clickable { showProductDialogFor = product }
+                                                .clickable { viewModel.onShowProductDialog(product) }
                                                 .border(
                                                     BorderStroke(
                                                         0.5.dp,
@@ -773,10 +721,7 @@ fun ProductosScreen(
                                         ) {
                                             Checkbox(
                                                 checked = product.id in selectedProductIds,
-                                                onCheckedChange = { isSelected ->
-                                                    selectedProductIds =
-                                                        if (isSelected) selectedProductIds + product.id else selectedProductIds - product.id
-                                                },
+                                                onCheckedChange = { viewModel.onToggleSelectProduct(product.id) },
                                                 modifier = Modifier.weight(0.05f)
                                             )
                                             val codesDisplay = try {
@@ -885,26 +830,23 @@ fun ProductosScreen(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 IconButton(
-                                                    onClick = { showProductDialogFor = product },
-                                                    modifier = Modifier.size(28.dp)
-                                                ) {
-                                                    Icon(
-                                                      painter = painterResource(Res.drawable.edit),
-                                                        contentDescription = stringResource(Res.string.edit_desc),
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(16.dp)
-                                                    )
-                                                }
+                                                     onClick = { viewModel.onShowProductDialog(product) },
+                                                     modifier = Modifier.size(28.dp)
+                                                 ) {
+                                                     Icon(
+                                                       painter = painterResource(Res.drawable.edit),
+                                                         contentDescription = stringResource(Res.string.edit_desc),
+                                                         tint = MaterialTheme.colorScheme.primary,
+                                                         modifier = Modifier.size(16.dp)
+                                                     )
+                                                 }
 
-                                                IconButton(
-                                                    onClick = {
-                                                        repository.deleteProductSoft(
-                                                            product.id,
-                                                            currentTimeMillis()
-                                                        )
-                                                    },
-                                                    modifier = Modifier.size(28.dp)
-                                                ) {
+                                                 IconButton(
+                                                     onClick = {
+                                                         viewModel.deleteProductSoft(product.id)
+                                                     },
+                                                     modifier = Modifier.size(28.dp)
+                                                 ) {
                                                     Icon(
                                                       painter = painterResource(Res.drawable.delete),
                                                         contentDescription = stringResource(Res.string.remove_desc),
@@ -926,23 +868,18 @@ fun ProductosScreen(
         // PRODUCT FORM DIALOG
         if (showProductDialogFor != null) {
             ProductFormDialog(
-                product = if (showProductDialogFor!!.id.isEmpty()) null else showProductDialogFor,
-                onDismiss = { showProductDialogFor = null },
+                product = if (showProductDialogFor.id.isEmpty()) null else showProductDialogFor,
+                onDismiss = { viewModel.onDismissProductDialog() },
                 onSave = { updatedProduct ->
-                    if (showProductDialogFor!!.id.isEmpty()) {
-                        repository.insertProduct(updatedProduct)
-                    } else {
-                        repository.updateProduct(updatedProduct)
-                    }
-                    showProductDialogFor = null
+                    viewModel.saveProduct(updatedProduct)
                 }
             )
         }
 
         // NEW IMPORT/EXPORT DIALOGS
-        if (showImportDialog) {
+        if (showImportDialog && repository != null) {
             ImportProductsDialog(
-                onDismiss = { showImportDialog = false },
+                onDismiss = { viewModel.onShowImportDialog(false) },
                 repository = repository
             )
         }
@@ -950,25 +887,9 @@ fun ProductosScreen(
         if (showBulkModificationDialog) {
             BulkProductModificationDialog(
                 selectedCount = selectedProductIds.size,
-                onDismiss = { showBulkModificationDialog = false },
+                onDismiss = { viewModel.onShowBulkModificationDialog(false) },
                 onApply = { modification ->
-                    repository.getAllProductsList()
-                        .filter { it.id in selectedProductIds }
-                        .forEach { product ->
-                            val updatedProduct = applyBulkProductModification(product, modification)
-                            if (updatedProduct == null) {
-                                repository.deleteProductHard(product.id)
-                            } else {
-                                repository.updateProduct(
-                                    updatedProduct.copy(
-                                        updated_at = currentTimeMillis(),
-                                        sync_state = "PENDING_UPDATE"
-                                    )
-                                )
-                            }
-                        }
-                    selectedProductIds = emptySet()
-                    showBulkModificationDialog = false
+                    viewModel.applyBulkModification(modification)
                 }
             )
         }

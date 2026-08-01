@@ -5,9 +5,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.DynamicMaterialExpressiveTheme
-
-expect fun isDynamicColorSupported(): Boolean
 
 @Composable
 expect fun SystemDynamicTheme(
@@ -19,12 +18,12 @@ expect fun SystemDynamicTheme(
 @Composable
 fun AppTheme(
     seedColor: Color = Color(0xFF0061A4),
-    useDynamicColor: Boolean = isDynamicColorSupported(),
+    useDynamicColor: Boolean = isAndroid(),
     isAmoled: Boolean = false,
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    if (useDynamicColor && isDynamicColorSupported()) {
+    if (useDynamicColor && isAndroid()) {
         SystemDynamicTheme(
             darkTheme = darkTheme,
             content = content
