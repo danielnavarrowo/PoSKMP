@@ -6,11 +6,25 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,10 +38,12 @@ import androidx.compose.ui.window.WindowState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.app_window_title
+import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.maximize
+import poskmp.shared.generated.resources.minimize
 import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.restore
 import java.awt.MouseInfo
 import java.awt.Point
 import java.time.LocalDateTime
@@ -41,20 +57,18 @@ private fun formatCurrentDateTime(dateTime: LocalDateTime = LocalDateTime.now())
     val dayOfWeek = dateTime.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
     val dayOfMonth = dateTime.dayOfMonth
     val month = dateTime.month.getDisplayName(TextStyle.FULL, locale)
-    val year = dateTime.year
 
     val hour12 = dateTime.format(DateTimeFormatter.ofPattern("h:mm", locale))
     val amPm = dateTime.format(DateTimeFormatter.ofPattern("a", locale))
 
 
-    return "$dayOfWeek, $dayOfMonth de $month del $year - $hour12 $amPm"
+    return "$dayOfWeek, $dayOfMonth de $month - $hour12 $amPm"
 }
 
 @Composable
 fun FrameWindowScope.CustomTitleBar(
     state: WindowState,
-    onCloseRequest: () -> Unit,
-    title: String = stringResource(Res.string.app_window_title)
+    onCloseRequest: () -> Unit
 ) {
     var initialMouseLoc by remember { mutableStateOf<Point?>(null) }
     var initialWindowLoc by remember { mutableStateOf<Point?>(null) }
@@ -82,7 +96,8 @@ fun FrameWindowScope.CustomTitleBar(
                             try {
                                 initialMouseLoc = MouseInfo.getPointerInfo().location
                                 initialWindowLoc = window.location
-                            } catch (_: Exception) {}
+                            } catch (_: Exception) {
+                            }
                         },
                         onDrag = { change, _ ->
                             change.consume()
@@ -95,7 +110,8 @@ fun FrameWindowScope.CustomTitleBar(
                                     val dy = currentMouseLoc.y - startMouseLoc.y
                                     window.setLocation(startWinLoc.x + dx, startWinLoc.y + dy)
                                 }
-                            } catch (_: Exception) {}
+                            } catch (_: Exception) {
+                            }
                         }
                     )
                 }
@@ -103,9 +119,8 @@ fun FrameWindowScope.CustomTitleBar(
             // Left: Logo & App Title
             Row(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .padding(horizontal = 12.dp),
+                    .align(Alignment.Center)
+                    .fillMaxHeight(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -117,21 +132,14 @@ fun FrameWindowScope.CustomTitleBar(
                 )
 
                 Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = currentDateTimeText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             // Center: Spanish Date & Time Ticker
-            Text(
-                text = currentDateTimeText,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center)
-            )
 
             // Right: Window Control Buttons (Minimize, Maximize/Restore, Close)
             Row(
@@ -144,27 +152,43 @@ fun FrameWindowScope.CustomTitleBar(
                 WindowControlButton(
                     onClick = { state.isMinimized = true },
                     hoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.minimize),
+                        contentDescription = "Minimizar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
 
                 // Maximize / Restore Button
                 val isMaximized = state.placement == WindowPlacement.Maximized
                 WindowControlButton(
                     onClick = {
-                        state.placement = if (isMaximized) WindowPlacement.Floating else WindowPlacement.Maximized
+                        state.placement =
+                            if (isMaximized) WindowPlacement.Floating else WindowPlacement.Maximized
                     },
                     hoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
+                ) {
+                    Icon(
+                        painterResource(if (isMaximized) Res.drawable.restore else Res.drawable.maximize),
+                        contentDescription = if (isMaximized) "Restaurar" else "Maximizar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
 
                 // Close Button
                 WindowControlButton(
                     onClick = onCloseRequest,
-                    hoverColor = MaterialTheme.colorScheme.error
+                    hoverColor = MaterialTheme.colorScheme.error,
+                    hoverContentColor = MaterialTheme.colorScheme.onError
                 ) { isHovered ->
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        painter = painterResource(Res.drawable.close),
                         contentDescription = "Cerrar",
                         tint = if (isHovered) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
@@ -176,7 +200,8 @@ fun FrameWindowScope.CustomTitleBar(
 private fun WindowControlButton(
     onClick: () -> Unit,
     hoverColor: Color,
-    content: @Composable (isHovered: Boolean) -> Unit = { }
+    hoverContentColor: Color? = null,
+    content: @Composable (isHovered: Boolean) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
