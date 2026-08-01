@@ -53,7 +53,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -133,12 +132,12 @@ data class CartItem(
 fun VentaScreen(
     viewModel: VentaViewModel,
     isCompact: Boolean,
-    cartItems: SnapshotStateList<CartItem>,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var searchQuery = uiState.searchQuery
+    val searchQuery = uiState.searchQuery
     val productsList = uiState.activeProducts
+    val cartItems = uiState.cartItems
     var selectedIndex by remember { mutableIntStateOf(-1) }
 
     // Weight Dialog state
@@ -230,50 +229,17 @@ fun VentaScreen(
 
     // Helper: Add/Update product quantity in cart
     fun addProductToCart(product: Products, qty: Double) {
-        val existingIndex = cartItems.indexOfFirst { it.product.id == product.id }
-        if (existingIndex != -1) {
-            val item = cartItems[existingIndex]
-            val newQty = ((item.quantity + qty) * 100.0).roundToInt() / 100.0
-            if (newQty <= 0.0) {
-                cartItems.removeAt(existingIndex)
-            } else {
-                cartItems[existingIndex] = item.copy(quantity = newQty)
-            }
-        } else if (qty > 0.0) {
-            cartItems.add(CartItem(product, qty))
-        }
+        viewModel.addProductToCart(product, qty)
         reclaimSearchBarFocus()
     }
 
     fun setProductQuantityInCart(product: Products, qty: Double) {
-        val existingIndex = cartItems.indexOfFirst { it.product.id == product.id }
-        if (existingIndex != -1) {
-            if (qty <= 0.0) {
-                cartItems.removeAt(existingIndex)
-            } else {
-                val roundedQty = (qty * 100.0).roundToInt() / 100.0
-                cartItems[existingIndex] = cartItems[existingIndex].copy(quantity = roundedQty)
-            }
-        } else if (qty > 0.0) {
-            val roundedQty = (qty * 100.0).roundToInt() / 100.0
-            cartItems.add(CartItem(product, roundedQty))
-        }
+        viewModel.setProductQuantityInCart(product, qty)
         reclaimSearchBarFocus()
     }
 
     fun toggleWholesalePrice() {
-        val eligibleItems = cartItems.filter { it.product.precio_mayoreo > 0.0 }
-        if (eligibleItems.isEmpty()) return
-
-        val allWholesale = eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
-        for (i in cartItems.indices) {
-            val item = cartItems[i]
-            if (item.product.precio_mayoreo > 0.0) {
-                val targetPrice = if (allWholesale) item.originalPrice else item.product.precio_mayoreo
-                val newProduct = item.product.copy(precio = targetPrice)
-                cartItems[i] = item.copy(product = newProduct)
-            }
-        }
+        viewModel.toggleWholesalePrice()
         reclaimSearchBarFocus()
     }
 
@@ -337,7 +303,7 @@ fun VentaScreen(
                         }
 
                         else -> {
-                            cartItems.removeAt(currentIndex)
+                            viewModel.removeCartItem(currentItem)
                             if (selectedIndex >= cartItems.size) {
                                 selectedIndex = cartItems.size - 1
                             }
@@ -403,7 +369,7 @@ fun VentaScreen(
                 AnimatedPane {
                     CatalogSection(
                         searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
+                        onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
                         productsList = productsList,
                         onProductClick = { product ->
                             if (product.por_peso == 1L) {
@@ -440,10 +406,10 @@ fun VentaScreen(
                     TicketSection(
                         cartItems = cartItems,
                         total = total,
-                        onClearCart = { cartItems.clear() },
+                        onClearCart = { viewModel.clearCart() },
                         onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
                         onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                        onRemoveItem = { item -> cartItems.remove(item) },
+                        onRemoveItem = { item -> viewModel.removeCartItem(item) },
                         onCheckout = {
                             paymentAmountInput = ""
                             showCheckoutDialog = true
@@ -802,7 +768,7 @@ fun VentaScreen(
                     lastSaleChange = change
                     showCheckoutDialog = false
                     showSuccessDialog = true
-                    cartItems.clear()
+                    viewModel.clearCart()
                     true
                 } else false
             },
@@ -879,7 +845,7 @@ fun VentaScreen(
                         lastSaleChange = change
                         showCheckoutDialog = false
                         showSuccessDialog = true
-                        cartItems.clear()
+                        viewModel.clearCart()
                     },
                     enabled = paymentAmount >= total || paymentAmountInput.isEmpty(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),

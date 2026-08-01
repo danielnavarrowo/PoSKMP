@@ -182,6 +182,24 @@ All new features, refactors, and screens must strictly follow Google's Modern An
   * `viewModelModule`: `ProductosViewModel`, `VentaViewModel`, and `AjustesViewModel` declared as ViewModels (`viewModelOf`).
 * **Compose Root Context**: Koin is initialized at the Compose composition root using `KoinApplication(application = { modules(appModule) }) { ... }` in `App.kt`. ViewModels and repositories are injected into composables using `koinViewModel<MyViewModel>()` and `koinInject<MyRepository>()`.
 
+### 6.18 Layer-Specific Data Models & Mapping
+* **Distinct Layer Models**: Separate data models according to layer responsibility:
+  1. **Data Layer Models (Network DTOs / Database Entities)**: Represent raw storage or API payloads (e.g. SQLDelight `Products` generated table entities, Supabase remote DTOs).
+  2. **Domain Layer Models (Business Entities)**: Represent pure domain concepts independent of database column names or API JSON structures.
+  3. **UI Layer Models (UI State & Component Models)**: Represent screen rendering data (e.g., `ProductosUiState`, `CartItem`, formatted string values, dialog flags).
+* **Data Mapping Mappers**: Repositories and Data Sources must convert raw database/network models into domain and UI models before exposing them to higher layers.
+* **Schema Isolation**: Changes to SQLite tables or remote network APIs must be handled in Data Source mappers without forcing breaking changes on ViewModels or Composable screens.
+
+### 6.19 Single-Activity & Type-Safe Navigation Architecture (Navigation 3)
+* **Single Activity / Single Window Root**: Android targets must use a **single `MainActivity`** entry point, and Desktop targets a single `Window` entry point. Do not launch multiple Activities for different screens.
+* **Type-Safe Compose Navigation (Navigation 3 / KMP Navigation Compose)**:
+  * Use type-safe destination classes/objects (`@Serializable` routes) when defining screen destinations instead of hardcoded string routes (e.g., `@Serializable object VentaRoute`, `@Serializable data class ProductDetailRoute(val productId: String)`).
+  * Navigation backstacks, deep links, and route arguments must be type-checked at compile time.
+* **Seamless Shared State & Transitions**: Single-activity architecture combined with Compose Navigation preserves ViewModel scopes, hoisted UI states, and Material 3 adaptive layout transitions (`NavigationSuiteScaffold`) across Android and Desktop platforms without window recreation overhead.
+
+
+
+
 
 
 

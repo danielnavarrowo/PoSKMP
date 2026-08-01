@@ -33,9 +33,9 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +56,6 @@ import com.dnavarro.poskmp.di.appModule
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.AjustesScreen
-import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.ui.ChecadorDialog
 import com.dnavarro.poskmp.ui.ProductosScreen
 import com.dnavarro.poskmp.ui.Screen
@@ -116,9 +115,8 @@ fun App() {
             }
 
             // 2. Navigation State
-            var currentScreen by remember { mutableStateOf(Screen.VENTA) }
-            val cartItems = remember { mutableStateListOf<CartItem>() }
-            var showPriceCheckerDialog by remember { mutableStateOf(false) }
+            var currentScreen by rememberSaveable { mutableStateOf(Screen.VENTA) }
+            var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
 
             val isDesktop = !isAndroid()
             val tabVentaLabel =
@@ -310,8 +308,7 @@ fun App() {
                                 when (currentScreen) {
                                     Screen.VENTA -> VentaScreen(
                                         viewModel = ventaViewModel,
-                                        isCompact = isCompact,
-                                        cartItems = cartItems
+                                        isCompact = isCompact
                                     )
 
                                     Screen.PRODUCTOS -> ProductosScreen(viewModel = productosViewModel)
