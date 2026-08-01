@@ -72,6 +72,8 @@ import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -224,6 +226,8 @@ fun VentaScreen(
 
     // Active products are observed via viewModel.uiState
 
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val desktopFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
@@ -231,6 +235,10 @@ fun VentaScreen(
             try {
                 searchBarFocusRequester.requestFocus()
             } catch (_: Exception) {}
+        } else {
+            delay(100.milliseconds)
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
         }
     }
 

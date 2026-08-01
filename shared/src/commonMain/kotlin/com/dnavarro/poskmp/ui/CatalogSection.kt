@@ -14,12 +14,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,11 +56,28 @@ fun CatalogSection(
     onBarcodeScan: ((String) -> Unit)? = null,
     onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        if (isAndroid()) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .widthIn(min = 320.dp)
             .padding(16.dp)
+            .then(
+                if (isAndroid()) {
+                    Modifier
+                        .focusProperties { canFocus = true }
+                        .focusable()
+                } else Modifier
+            )
     ) {
         // Search Bar & Fast Codes
         OutlinedTextField(
@@ -65,7 +86,7 @@ fun CatalogSection(
             modifier = Modifier.fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
                 .let { mod ->
-                    if (searchFocusRequester != null) mod.focusRequester(searchFocusRequester) else mod
+                    if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(searchFocusRequester) else mod
                 }
                 .onPreviewKeyEvent { keyEvent ->
                     onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || !isAndroid() &&
@@ -217,6 +238,22 @@ fun CatalogSection(
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                         }
+                                    }
+                                }
+
+                                if (product.es_favorito == 1L) {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.star_filled),
+                                            contentDescription = stringResource(Res.string.favorite_desc),
+                                            modifier = Modifier.size(12.dp)
+                                        )
                                     }
                                 }
 

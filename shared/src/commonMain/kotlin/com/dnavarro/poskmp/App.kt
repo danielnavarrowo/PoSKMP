@@ -11,6 +11,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -107,7 +108,10 @@ private data class ToolbarItem(
     ExperimentalMaterial3ExpressiveApi::class
 )
 @Composable
-fun App() {
+fun App(
+    modifier: Modifier = Modifier,
+    windowTitleBar: (@Composable () -> Unit)? = null
+) {
     KoinApplication(
         configuration = koinConfiguration(declaration = { modules(appModule) }),
         content = {
@@ -189,7 +193,11 @@ fun App() {
                 isAmoled = isAmoled,
                 darkTheme = darkTheme
             ) {
-                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = modifier.fillMaxSize()) {
+                    if (windowTitleBar != null) {
+                        windowTitleBar()
+                    }
+                    BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val isCompact = maxWidth < 600.dp
                     val navigationLayoutType = navigationSuiteTypeForWidth(maxWidth)
 
@@ -340,5 +348,6 @@ fun App() {
                     )
                 }
             }
-        })
+        }
+    })
 }
