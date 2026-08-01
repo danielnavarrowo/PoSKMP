@@ -111,36 +111,29 @@ fun rememberPresetSeedColorItems(): List<PresetColorItem> {
     val cookie7 = MaterialShapes.Cookie7Sided.toShape()
     val burst = MaterialShapes.Burst.toShape()
     val pixelCircle = MaterialShapes.PixelCircle.toShape()
-    val pentagon = MaterialShapes.Pentagon.toShape()
-    val pixelTriangle = MaterialShapes.PixelTriangle.toShape()
     val cookie9 = MaterialShapes.Cookie9Sided.toShape()
-    val clamShell = MaterialShapes.ClamShell.toShape()
+    val puffyDiamond = MaterialShapes.PuffyDiamond.toShape()
     val clover8 = MaterialShapes.Clover8Leaf.toShape()
     val oval = MaterialShapes.Oval.toShape()
     val cookie4 = MaterialShapes.Cookie4Sided.toShape()
     val flower = MaterialShapes.Flower.toShape()
-    val arch = MaterialShapes.Arch.toShape()
+    val softBurst = MaterialShapes.SoftBurst.toShape()
 
     return remember(
         sunny, verySunny, clover4, cookie6, cookie7, burst,
-        pixelCircle, pentagon, pixelTriangle, cookie9, clamShell,
-        clover8, oval, cookie4, flower, arch
+        pixelCircle, cookie9, puffyDiamond,
+        clover8, oval, cookie4, flower, softBurst
     ) {
         listOf(
-            PresetColorItem(Color(0xFF0061A4), "Azul Clásico", sunny),
+            PresetColorItem(Color(0xFFEB4CFF), "Azul Clásico", sunny),
             PresetColorItem(Color(0xFF2FC991), "Verde Esmeralda", verySunny),
             PresetColorItem(Color(0xFF6750A4), "Púrpura Material", clover4),
-            PresetColorItem(Color(0xFFE65100), "Naranja Sol", cookie7),
-            PresetColorItem(Color(0xFFB71C1C), "Rojo Carmesí", burst),
-            PresetColorItem(Color(0xFF4A148C), "Violeta Profundo", pixelCircle),
-            PresetColorItem(Color(0xFF2E7D32), "Verde Bosque", pentagon),
-            PresetColorItem(Color(0xFFD81B60), "Rosa Neón", pixelTriangle),
-            PresetColorItem(Color(0xFFF57F17), "Ámbar Dorado", cookie9),
-            PresetColorItem(Color(0xFF00ACC1), "Cian Eléctrico", clamShell),
-            PresetColorItem(Color(0xFF8E24AA), "Orquídea", clover8),
-            PresetColorItem(Color(0xFF3949AB), "Índigo Profundo", oval),
-            PresetColorItem(Color(0xFFC0CA33), "Lima Vibrante", cookie4),
-            PresetColorItem(Color(0xFF5D4037), "Mocha", flower)
+            PresetColorItem(Color(0xFFEC7E00), "Naranja Sol", cookie7),
+            PresetColorItem(Color(0xFFF7FF00), "Verde Bosque", cookie6),
+            PresetColorItem(Color(0xFFFF88B4), "Rosa Neón", pixelCircle),
+            PresetColorItem(Color(0xFF00ACC1), "Cian Eléctrico", puffyDiamond),
+            PresetColorItem(Color(0xFFFA8072), "Índigo Profundo", softBurst),
+            PresetColorItem(Color(0xFF664F49), "Mocha", flower)
         )
     }
 }
