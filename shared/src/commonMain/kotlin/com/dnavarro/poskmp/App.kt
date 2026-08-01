@@ -1,5 +1,11 @@
 package com.dnavarro.poskmp
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -305,14 +311,23 @@ fun App() {
                                     .fillMaxSize()
                                     .padding(contentPadding)
                             ) {
-                                when (currentScreen) {
-                                    Screen.VENTA -> VentaScreen(
-                                        viewModel = ventaViewModel,
-                                        isCompact = isCompact
-                                    )
+                                AnimatedContent(
+                                    targetState = currentScreen,
+                                    transitionSpec = {
+                                        (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220))) togetherWith
+                                                fadeOut(animationSpec = tween(180))
+                                    },
+                                    label = "ScreenTransition"
+                                ) { targetScreen ->
+                                    when (targetScreen) {
+                                        Screen.VENTA -> VentaScreen(
+                                            viewModel = ventaViewModel,
+                                            isCompact = isCompact
+                                        )
 
-                                    Screen.PRODUCTOS -> ProductosScreen(viewModel = productosViewModel)
-                                    Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
+                                        Screen.PRODUCTOS -> ProductosScreen(viewModel = productosViewModel)
+                                        Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
+                                    }
                                 }
                             }
                         }

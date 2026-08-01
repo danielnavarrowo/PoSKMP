@@ -250,5 +250,6 @@
     <string name="quantity_weight_label">Cantidad / Peso</string>
     <string name="default_quantity_placeholder">1</string>
     <string name="add_to_ticket_button">Añadir al Ticket</string>
+    <string name="save_unregistered_to_db">Guardar producto en la base de datos</string>
     <string name="per_kg_suffix"> / Kg</string>
 </resources>

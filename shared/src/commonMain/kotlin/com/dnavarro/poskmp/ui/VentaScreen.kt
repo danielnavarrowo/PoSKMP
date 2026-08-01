@@ -5,10 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +28,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -75,6 +77,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -109,6 +112,7 @@ import poskmp.shared.generated.resources.quantity_weight_label
 import poskmp.shared.generated.resources.register_sale_button
 import poskmp.shared.generated.resources.sale_success_message
 import poskmp.shared.generated.resources.sale_success_title
+import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
 import poskmp.shared.generated.resources.total_charged_label
 import poskmp.shared.generated.resources.total_to_pay_label
@@ -156,12 +160,14 @@ fun VentaScreen(
     var unregisteredName by remember { mutableStateOf("") }
     var unregisteredPrice by remember { mutableStateOf("") }
     var unregisteredQuantity by remember { mutableStateOf("1") }
+    var saveUnregisteredToDatabase by remember { mutableStateOf(false) }
     val unregisteredFocusRequester = remember { FocusRequester() }
 
     fun openUnregisteredDialog() {
         unregisteredName = ""
         unregisteredPrice = ""
         unregisteredQuantity = "1"
+        saveUnregisteredToDatabase = false
         showUnregisteredDialog = true
     }
 
@@ -181,6 +187,7 @@ fun VentaScreen(
         scaffoldDirective = scaffoldDirective
     )
     val paneExpansionState = rememberPaneExpansionState()
+    var userCatalogWidthDp by remember { mutableStateOf<Dp?>(null) }
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
@@ -358,97 +365,173 @@ fun VentaScreen(
                 } else Modifier
             )
     ) {
-        SupportingPaneScaffold(
-            directive = navigator.scaffoldDirective,
-            value = navigator.scaffoldValue,
-            paneExpansionState = paneExpansionState,
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            mainPane = {
-                AnimatedPane {
-                    CatalogSection(
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
-                        productsList = productsList,
-                        onProductClick = { product ->
-                            if (product.por_peso == 1L) {
-                                weightInput = "1.000"
-                                showWeightDialogForProduct = product
-                            } else {
-                                addProductToCart(product, 1.0)
-                            }
-                        },
-                        onToggleFavorite = { product -> toggleProductFavorite(product) },
-                        onModifyProduct = { product -> showProductDialogFor = product },
-                        isCompact = isCompact,
-                        onViewCartClick = {
-                            coroutineScope.launch {
-                                navigator.navigateTo(ThreePaneScaffoldRole.Secondary)
-                            }
-                        },
-                        cartCount = cartItems.size,
-                        cartTotal = total,
-                        onSellUnregisteredClick = { openUnregisteredDialog() },
-                        onApplyWholesaleClick = { toggleWholesalePrice() },
-                        onCheckoutClick = {
-                            paymentAmountInput = ""
-                            showCheckoutDialog = true
-                        },
-                        searchFocusRequester = searchBarFocusRequester,
-                        onBarcodeScan = barcodeScanCallback,
-                        onSearchKeyIntercept = handleSearchKeyIntercept
-                    )
-                }
-            },
-            supportingPane = {
-                AnimatedPane {
-                    TicketSection(
-                        cartItems = cartItems,
-                        total = total,
-                        onClearCart = { viewModel.clearCart() },
-                        onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
-                        onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                        onRemoveItem = { item -> viewModel.removeCartItem(item) },
-                        onCheckout = {
-                            paymentAmountInput = ""
-                            showCheckoutDialog = true
-                        },
-                        selectedIndex = selectedIndex,
-                        onSelectedIndexChange = { selectedIndex = it },
-                        onBackClick = if (navigator.canNavigateBack()) {
-                            {
-                                coroutineScope.launch {
-                                    navigator.navigateBack()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            val totalWidth = maxWidth
+            val minCatalogWidth = 320.dp
+            val minTicketWidth = 280.dp
+            val splitterWidth = 10.dp
+            val isTwoPaneWide = totalWidth >= (minCatalogWidth + minTicketWidth + splitterWidth) && !isCompact
+
+            if (isTwoPaneWide) {
+                val maxCatalogAllowed = totalWidth - minTicketWidth - splitterWidth
+                val defaultCatalogWidth = (totalWidth - splitterWidth) * 0.6f
+                val catalogWidth = (userCatalogWidthDp ?: defaultCatalogWidth).coerceIn(
+                    minCatalogWidth,
+                    maxCatalogAllowed
+                )
+
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.width(catalogWidth).fillMaxHeight()) {
+                        CatalogSection(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                            productsList = productsList,
+                            onProductClick = { product ->
+                                if (product.por_peso == 1L) {
+                                    weightInput = "1.000"
+                                    showWeightDialogForProduct = product
+                                } else {
+                                    addProductToCart(product, 1.0)
                                 }
-                            }
-                        } else null
-                    )
-                }
-            },
-            paneExpansionDragHandle = { state ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(10.dp)
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .paneExpansionDraggable(
-                            state = state,
-                            minTouchTargetSize = 48.dp,
-                            interactionSource = remember { MutableInteractionSource() }
+                            },
+                            onToggleFavorite = { product -> toggleProductFavorite(product) },
+                            onModifyProduct = { product -> showProductDialogFor = product },
+                            isCompact = false,
+                            onViewCartClick = null,
+                            cartCount = cartItems.size,
+                            cartTotal = total,
+                            onSellUnregisteredClick = { openUnregisteredDialog() },
+                            onApplyWholesaleClick = { toggleWholesalePrice() },
+                            onCheckoutClick = {
+                                paymentAmountInput = ""
+                                showCheckoutDialog = true
+                            },
+                            searchFocusRequester = searchBarFocusRequester,
+                            onBarcodeScan = barcodeScanCallback,
+                            onSearchKeyIntercept = handleSearchKeyIntercept
                         )
-                        .background(MaterialTheme.colorScheme.background),
-                    contentAlignment = Alignment.Center
-                ) {
+                    }
+
+                    // Draggable Splitter with strict min width bounds
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .width(2.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
+                            .width(splitterWidth)
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .pointerInput(totalWidth) {
+                                detectHorizontalDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    val dragAmountDp = dragAmount.toDp()
+                                    val currentW = userCatalogWidthDp ?: defaultCatalogWidth
+                                    val maxAllowed = totalWidth - minTicketWidth - splitterWidth
+                                    userCatalogWidthDp = (currentW + dragAmountDp).coerceIn(minCatalogWidth, maxAllowed)
+                                }
+                            }
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(2.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+                    }
+
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        TicketSection(
+                            cartItems = cartItems,
+                            total = total,
+                            onClearCart = { viewModel.clearCart() },
+                            onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
+                            onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
+                            onRemoveItem = { item -> viewModel.removeCartItem(item) },
+                            onCheckout = {
+                                paymentAmountInput = ""
+                                showCheckoutDialog = true
+                            },
+                            selectedIndex = selectedIndex,
+                            onSelectedIndexChange = { selectedIndex = it },
+                            onBackClick = null
+                        )
+                    }
                 }
+            } else {
+                SupportingPaneScaffold(
+                    directive = navigator.scaffoldDirective,
+                    value = navigator.scaffoldValue,
+                    paneExpansionState = paneExpansionState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    mainPane = {
+                        AnimatedPane {
+                            CatalogSection(
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                                productsList = productsList,
+                                onProductClick = { product ->
+                                    if (product.por_peso == 1L) {
+                                        weightInput = "1.000"
+                                        showWeightDialogForProduct = product
+                                    } else {
+                                        addProductToCart(product, 1.0)
+                                    }
+                                },
+                                onToggleFavorite = { product -> toggleProductFavorite(product) },
+                                onModifyProduct = { product -> showProductDialogFor = product },
+                                isCompact = isCompact,
+                                onViewCartClick = {
+                                    coroutineScope.launch {
+                                        navigator.navigateTo(ThreePaneScaffoldRole.Secondary)
+                                    }
+                                },
+                                cartCount = cartItems.size,
+                                cartTotal = total,
+                                onSellUnregisteredClick = { openUnregisteredDialog() },
+                                onApplyWholesaleClick = { toggleWholesalePrice() },
+                                onCheckoutClick = {
+                                    paymentAmountInput = ""
+                                    showCheckoutDialog = true
+                                },
+                                searchFocusRequester = searchBarFocusRequester,
+                                onBarcodeScan = barcodeScanCallback,
+                                onSearchKeyIntercept = handleSearchKeyIntercept
+                            )
+                        }
+                    },
+                    supportingPane = {
+                        AnimatedPane {
+                            TicketSection(
+                                cartItems = cartItems,
+                                total = total,
+                                onClearCart = { viewModel.clearCart() },
+                                onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
+                                onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
+                                onRemoveItem = { item -> viewModel.removeCartItem(item) },
+                                onCheckout = {
+                                    paymentAmountInput = ""
+                                    showCheckoutDialog = true
+                                },
+                                selectedIndex = selectedIndex,
+                                onSelectedIndexChange = { selectedIndex = it },
+                                onBackClick = if (navigator.canNavigateBack()) {
+                                    {
+                                        coroutineScope.launch {
+                                            navigator.navigateBack()
+                                        }
+                                    }
+                                } else null
+                            )
+                        }
+                    }
+                )
             }
-        )
+        }
     }
 
     // Barcode Not Found Warning Dialog
@@ -948,6 +1031,9 @@ fun VentaScreen(
                             updated_at = currentTimeMillis(),
                             sync_state = "PENDING_INSERT"
                         )
+                        if (saveUnregisteredToDatabase) {
+                            viewModel.saveProduct(dummyProduct)
+                        }
                         addProductToCart(dummyProduct, qtyVal)
                         showUnregisteredDialog = false
                         true
@@ -1021,6 +1107,24 @@ fun VentaScreen(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { saveUnregisteredToDatabase = !saveUnregisteredToDatabase },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = saveUnregisteredToDatabase,
+                            onCheckedChange = { saveUnregisteredToDatabase = it }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(Res.string.save_unregistered_to_db),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -1047,6 +1151,9 @@ fun VentaScreen(
                                 updated_at = currentTimeMillis(),
                                 sync_state = "PENDING_INSERT"
                             )
+                            if (saveUnregisteredToDatabase) {
+                                viewModel.saveProduct(dummyProduct)
+                            }
                             addProductToCart(dummyProduct, qtyVal)
                             showUnregisteredDialog = false
                         }

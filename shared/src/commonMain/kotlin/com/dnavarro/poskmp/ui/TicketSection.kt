@@ -79,6 +79,7 @@ fun TicketSection(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .widthIn(min = 280.dp)
             .padding(16.dp)
     ) {
         // Section Header

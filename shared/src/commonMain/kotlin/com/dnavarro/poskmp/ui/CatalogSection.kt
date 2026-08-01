@@ -54,6 +54,7 @@ fun CatalogSection(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .widthIn(min = 320.dp)
             .padding(16.dp)
     ) {
         // Search Bar & Fast Codes

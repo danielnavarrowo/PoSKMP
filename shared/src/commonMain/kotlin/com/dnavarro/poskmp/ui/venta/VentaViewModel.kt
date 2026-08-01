@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
+import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 
 import com.dnavarro.poskmp.ui.CartItem
 import kotlin.math.roundToInt
@@ -26,7 +27,8 @@ import kotlin.math.roundToInt
 class VentaViewModel(
     private val repository: ProductRepository,
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
-    private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository)
+    private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository),
+    private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository)
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -136,6 +138,12 @@ class VentaViewModel(
     fun updateProduct(product: Products) {
         viewModelScope.launch {
             repository.updateProduct(product)
+        }
+    }
+
+    fun saveProduct(product: Products) {
+        viewModelScope.launch {
+            saveProductUseCase(product)
         }
     }
 

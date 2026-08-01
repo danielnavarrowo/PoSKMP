@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
+import org.koin.compose.koinInject
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.util.currentTimeMillis
@@ -200,7 +201,7 @@ fun RowScope.TableHeader(
 @Composable
 fun ProductosScreen(
     viewModel: ProductosViewModel,
-    repository: ProductRepository? = null,
+    repository: ProductRepository = koinInject(),
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -877,7 +878,7 @@ fun ProductosScreen(
         }
 
         // NEW IMPORT/EXPORT DIALOGS
-        if (showImportDialog && repository != null) {
+        if (showImportDialog) {
             ImportProductsDialog(
                 onDismiss = { viewModel.onShowImportDialog(false) },
                 repository = repository
