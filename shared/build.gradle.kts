@@ -61,6 +61,9 @@ kotlin {
             implementation(libs.sqldelight.coroutines)
             implementation(libs.androidx.datastore.preferences)
             implementation(libs.androidx.datastore.core)
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
