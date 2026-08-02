@@ -18,6 +18,15 @@ actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
 actual fun isAndroid(): Boolean = false
 
+actual fun playSoundAlert(bytes: ByteArray) {
+    kotlin.concurrent.thread(isDaemon = true) {
+        try {
+            val player = javazoom.jl.player.Player(ByteArrayInputStream(bytes))
+            player.play()
+        } catch (_: Exception) {}
+    }
+}
+
 actual fun pickFile(
     allowedExtensions: List<String>,
     onFilePicked: (fileName: String, content: ByteArray) -> Unit,

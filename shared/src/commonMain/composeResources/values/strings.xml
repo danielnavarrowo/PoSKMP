@@ -12,6 +12,7 @@
     <string name="accept_button">Aceptar</string>
     <string name="no_category">Sin categoría</string>
     <string name="clear_desc">Limpiar</string>
+    <string name="undo_button_desc">Deshacer último cambio</string>
 
     <!-- App / Navigation Tabs -->
     <string name="tab_venta">Venta</string>

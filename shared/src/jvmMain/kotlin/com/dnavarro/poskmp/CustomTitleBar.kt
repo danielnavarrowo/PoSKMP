@@ -139,8 +139,6 @@ fun FrameWindowScope.CustomTitleBar(
                 )
             }
 
-            // Center: Spanish Date & Time Ticker
-
             // Right: Window Control Buttons (Minimize, Maximize/Restore, Close)
             Row(
                 modifier = Modifier

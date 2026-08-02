@@ -11,6 +11,7 @@ data class VentaUiState(
     val activeProducts: List<Products> = emptyList(),
     val selectedCategory: String? = null,
     val cartItems: List<CartItem> = emptyList(),
+    val canUndo: Boolean = false,
     val isLoading: Boolean = false
 ) {
     val total: Double

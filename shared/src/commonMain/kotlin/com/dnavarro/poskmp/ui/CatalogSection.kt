@@ -2,23 +2,58 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -34,7 +69,31 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.checkout_button
+import poskmp.shared.generated.resources.checkout_hotkey
+import poskmp.shared.generated.resources.clear_desc
+import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.edit
+import poskmp.shared.generated.resources.empty_icon_desc
+import poskmp.shared.generated.resources.favorite_desc
+import poskmp.shared.generated.resources.mark_as_favorite
+import poskmp.shared.generated.resources.modify
+import poskmp.shared.generated.resources.no_category
+import poskmp.shared.generated.resources.no_products_found
+import poskmp.shared.generated.resources.not_registered
+import poskmp.shared.generated.resources.not_registered_hotkey
+import poskmp.shared.generated.resources.remove_from_favorites
+import poskmp.shared.generated.resources.sad_face
+import poskmp.shared.generated.resources.search
+import poskmp.shared.generated.resources.search_desc
+import poskmp.shared.generated.resources.search_placeholder
+import poskmp.shared.generated.resources.star
+import poskmp.shared.generated.resources.star_filled
+import poskmp.shared.generated.resources.tab_ticket
+import poskmp.shared.generated.resources.view_ticket_fab
+import poskmp.shared.generated.resources.wholesale_ticket
+import poskmp.shared.generated.resources.wholesale_ticket_hotkey
 
 @Composable
 fun CatalogSection(
@@ -112,10 +171,12 @@ fun CatalogSection(
             },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
-                    Icon(
-                        painter = painterResource(Res.drawable.close),
-                        contentDescription = stringResource(Res.string.clear_desc),
-                    )
+                    IconButton(onClick = { onSearchQueryChange("") }) {
+                        Icon(
+                            painter = painterResource(Res.drawable.close),
+                            contentDescription = stringResource(Res.string.clear_desc),
+                        )
+                    }
                 }
             },
             singleLine = true,

@@ -15,6 +15,25 @@ actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
 actual fun isAndroid(): Boolean = true
 
+actual fun playSoundAlert(bytes: ByteArray) {
+    kotlin.concurrent.thread(isDaemon = true) {
+        try {
+            val tempFile = java.io.File.createTempFile("sound_alert", ".mp3")
+            tempFile.deleteOnExit()
+            tempFile.writeBytes(bytes)
+
+            val mediaPlayer = android.media.MediaPlayer()
+            mediaPlayer.setDataSource(tempFile.absolutePath)
+            mediaPlayer.prepare()
+            mediaPlayer.setOnCompletionListener { mp ->
+                mp.release()
+                try { tempFile.delete() } catch (_: Exception) {}
+            }
+            mediaPlayer.start()
+        } catch (_: Exception) {}
+    }
+}
+
 actual fun pickFile(
     allowedExtensions: List<String>,
     onFilePicked: (fileName: String, content: ByteArray) -> Unit,

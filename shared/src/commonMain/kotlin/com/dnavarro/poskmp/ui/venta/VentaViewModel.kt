@@ -34,6 +34,8 @@ class VentaViewModel(
     private val _searchQuery = MutableStateFlow("")
     private val _selectedCategory = MutableStateFlow<String?>(null)
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
+    private val _cartHistory = mutableListOf<List<CartItem>>()
+    private val _canUndo = MutableStateFlow(false)
 
     private val _productsFlow = _searchQuery.flatMapLatest { query ->
         getProductsUseCase(query = query, activeOnly = true)
@@ -43,19 +45,41 @@ class VentaViewModel(
         _searchQuery,
         _productsFlow,
         _selectedCategory,
-        _cartItems
-    ) { query, products, category, cart ->
+        _cartItems,
+        _canUndo
+    ) { query, products, category, cart, canUndo ->
         VentaUiState(
             searchQuery = query,
             activeProducts = products,
             selectedCategory = category,
-            cartItems = cart
+            cartItems = cart,
+            canUndo = canUndo
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VentaUiState()
     )
+
+    private fun pushCartHistory() {
+        val current = _cartItems.value
+        if (_cartHistory.isNotEmpty() && _cartHistory.last() == current) {
+            return
+        }
+        _cartHistory.add(current)
+        if (_cartHistory.size > 50) {
+            _cartHistory.removeAt(0)
+        }
+        _canUndo.value = true
+    }
+
+    fun undoLastCartChange() {
+        if (_cartHistory.isNotEmpty()) {
+            val previousState = _cartHistory.removeAt(_cartHistory.lastIndex)
+            _cartItems.value = previousState
+            _canUndo.value = _cartHistory.isNotEmpty()
+        }
+    }
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
@@ -66,6 +90,7 @@ class VentaViewModel(
     }
 
     fun addProductToCart(product: Products, qty: Double) {
+        pushCartHistory()
         val currentList = _cartItems.value.toMutableList()
         val existingIndex = currentList.indexOfFirst { it.product.id == product.id }
         if (existingIndex != -1) {
@@ -86,13 +111,16 @@ class VentaViewModel(
         val currentList = _cartItems.value.toMutableList()
         val existingIndex = currentList.indexOfFirst { it.product.id == product.id }
         if (existingIndex != -1) {
+            val roundedQty = (qty * 100.0).roundToInt() / 100.0
+            if (currentList[existingIndex].quantity == roundedQty) return
+            pushCartHistory()
             if (qty <= 0.0) {
                 currentList.removeAt(existingIndex)
             } else {
-                val roundedQty = (qty * 100.0).roundToInt() / 100.0
                 currentList[existingIndex] = currentList[existingIndex].copy(quantity = roundedQty)
             }
         } else if (qty > 0.0) {
+            pushCartHistory()
             val roundedQty = (qty * 100.0).roundToInt() / 100.0
             currentList.add(CartItem(product, roundedQty))
         }
@@ -100,11 +128,15 @@ class VentaViewModel(
     }
 
     fun removeCartItem(item: CartItem) {
+        pushCartHistory()
         _cartItems.value = _cartItems.value.filterNot { it.product.id == item.product.id }
     }
 
     fun clearCart() {
-        _cartItems.value = emptyList()
+        if (_cartItems.value.isNotEmpty()) {
+            pushCartHistory()
+            _cartItems.value = emptyList()
+        }
     }
 
     fun toggleWholesalePrice() {
@@ -112,6 +144,7 @@ class VentaViewModel(
         val eligibleItems = currentList.filter { it.product.precio_mayoreo > 0.0 }
         if (eligibleItems.isEmpty()) return
 
+        pushCartHistory()
         val allWholesale = eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
         _cartItems.value = currentList.map { item ->
             if (item.product.precio_mayoreo > 0.0) {

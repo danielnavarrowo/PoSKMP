@@ -3,15 +3,41 @@ package com.dnavarro.poskmp.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,7 +45,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -30,12 +60,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
-import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add
+import poskmp.shared.generated.resources.back
+import poskmp.shared.generated.resources.back_to_catalog_desc
+import poskmp.shared.generated.resources.checkout_button
+import poskmp.shared.generated.resources.clear_all_button
+import poskmp.shared.generated.resources.current_ticket_title
+import poskmp.shared.generated.resources.decrease_desc
+import poskmp.shared.generated.resources.increase_desc
+import poskmp.shared.generated.resources.items_count_label
+import poskmp.shared.generated.resources.money
+import poskmp.shared.generated.resources.pieces_count_label
+import poskmp.shared.generated.resources.remove
+import poskmp.shared.generated.resources.shopping_cart
+import poskmp.shared.generated.resources.ticket_empty_message
+import poskmp.shared.generated.resources.total_label
+import poskmp.shared.generated.resources.trash
+import poskmp.shared.generated.resources.undo
+import poskmp.shared.generated.resources.undo_button_desc
+import poskmp.shared.generated.resources.wholesale_badge
 import kotlin.math.roundToInt
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun TicketSection(
@@ -49,7 +96,9 @@ fun TicketSection(
     modifier: Modifier = Modifier,
     selectedIndex: Int = -1,
     onSelectedIndexChange: (Int) -> Unit = {},
-    onBackClick: (() -> Unit)? = null
+    onBackClick: (() -> Unit)? = null,
+    canUndo: Boolean = false,
+    onUndo: () -> Unit = {}
 ) {
     val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
     var previousSize by remember { mutableIntStateOf(0) }
@@ -63,12 +112,6 @@ fun TicketSection(
                 else -> selectedIndex
             }
             onSelectedIndexChange(targetIndex)
-            delay(50.milliseconds)
-            try {
-                if (targetIndex < cartItems.size) {
-                    focusRequesters[targetIndex]?.requestFocus()
-                }
-            } catch (_: Exception) {}
         } else {
             onSelectedIndexChange(-1)
         }
@@ -105,12 +148,23 @@ fun TicketSection(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            if (cartItems.isNotEmpty()) {
-                IconButton(onClick = onClearCart) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onUndo,
+                    enabled = canUndo
+                ) {
                     Icon(
-                        painter = painterResource(Res.drawable.trash),
-                        contentDescription = stringResource(Res.string.clear_all_button)
+                        painter = painterResource(Res.drawable.undo),
+                        contentDescription = stringResource(Res.string.undo_button_desc)
                     )
+                }
+                if (cartItems.isNotEmpty()) {
+                    IconButton(onClick = onClearCart) {
+                        Icon(
+                            painter = painterResource(Res.drawable.trash),
+                            contentDescription = stringResource(Res.string.clear_all_button)
+                        )
+                    }
                 }
             }
         }
@@ -205,7 +259,7 @@ fun TicketSection(
                                         true
                                     }
 
-                                    Key.Delete, Key.Backspace -> {
+                                    Key.Delete -> {
                                         onRemoveItem(item)
                                         true
                                     }
@@ -337,7 +391,9 @@ fun TicketSection(
                                             if (!focusState.isFocused) {
                                                 val parsed = textValue.toDoubleOrNull()
                                                 if (parsed != null && parsed > 0.0) {
-                                                    onSetQuantity(item, parsed)
+                                                    if (parsed != item.quantity) {
+                                                        onSetQuantity(item, parsed)
+                                                    }
                                                 } else if (parsed == 0.0) {
                                                     onRemoveItem(item)
                                                 } else {

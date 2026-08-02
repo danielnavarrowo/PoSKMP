@@ -89,6 +89,7 @@ import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.SoundManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -211,6 +212,18 @@ fun VentaScreen(
         }
     }
 
+    LaunchedEffect(showUnregisteredDialog) {
+        if (showUnregisteredDialog) {
+            SoundManager.playErrorSound()
+        }
+    }
+
+    LaunchedEffect(showWeightDialogForProduct) {
+        if (showWeightDialogForProduct != null) {
+            SoundManager.playErrorSound()
+        }
+    }
+
     LaunchedEffect(showWeightDialogForProduct, showCheckoutDialog, showUnregisteredDialog, showProductDialogFor, showBarcodeNotFoundQuery) {
         if (showWeightDialogForProduct == null && !showCheckoutDialog && !showUnregisteredDialog && showProductDialogFor == null && showBarcodeNotFoundQuery == null) {
             reclaimSearchBarFocus()
@@ -258,6 +271,21 @@ fun VentaScreen(
         reclaimSearchBarFocus()
     }
 
+    fun removeCartItem(item: CartItem) {
+        viewModel.removeCartItem(item)
+        reclaimSearchBarFocus()
+    }
+
+    fun clearCart() {
+        viewModel.clearCart()
+        reclaimSearchBarFocus()
+    }
+
+    fun undoLastCartChange() {
+        viewModel.undoLastCartChange()
+        reclaimSearchBarFocus()
+    }
+
     val barcodeScanCallback: (String) -> Unit = { barcode ->
         coroutineScope.launch {
             val trimmed = barcode.trim()
@@ -286,12 +314,8 @@ fun VentaScreen(
             val isUp = key == Key.DirectionUp
             val isDown = key == Key.DirectionDown
             val isDelete = key == Key.Delete
-            val isBackspace = key == Key.Backspace
 
-            val shouldIntercept = isUp || isDown || isDelete ||
-                    isPlus ||
-                    isMinus ||
-                    (isBackspace && searchQuery.isEmpty())
+            val shouldIntercept = isUp || isDown || isDelete || isPlus || isMinus
 
             if (shouldIntercept) {
                 if (keyEvent.type == KeyEventType.KeyDown) {
@@ -316,13 +340,11 @@ fun VentaScreen(
                             val decrement = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
                             addProductToCart(currentItem.product, -decrement)
                         }
-
-                        else -> {
-                            viewModel.removeCartItem(currentItem)
+                        isDelete -> {
+                            removeCartItem(currentItem)
                             if (selectedIndex >= cartItems.size) {
                                 selectedIndex = cartItems.size - 1
                             }
-                            reclaimSearchBarFocus()
                         }
                     }
                 }
@@ -454,17 +476,19 @@ fun VentaScreen(
                         TicketSection(
                             cartItems = cartItems,
                             total = total,
-                            onClearCart = { viewModel.clearCart() },
+                            onClearCart = { clearCart() },
                             onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
                             onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                            onRemoveItem = { item -> viewModel.removeCartItem(item) },
+                            onRemoveItem = { item -> removeCartItem(item) },
                             onCheckout = {
                                 paymentAmountInput = ""
                                 showCheckoutDialog = true
                             },
                             selectedIndex = selectedIndex,
                             onSelectedIndexChange = { selectedIndex = it },
-                            onBackClick = null
+                            onBackClick = null,
+                            canUndo = uiState.canUndo,
+                            onUndo = { undoLastCartChange() }
                         )
                     }
                 }
@@ -517,10 +541,10 @@ fun VentaScreen(
                             TicketSection(
                                 cartItems = cartItems,
                                 total = total,
-                                onClearCart = { viewModel.clearCart() },
+                                onClearCart = { clearCart() },
                                 onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
                                 onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                                onRemoveItem = { item -> viewModel.removeCartItem(item) },
+                                onRemoveItem = { item -> removeCartItem(item) },
                                 onCheckout = {
                                     paymentAmountInput = ""
                                     showCheckoutDialog = true
@@ -533,7 +557,9 @@ fun VentaScreen(
                                             navigator.navigateBack()
                                         }
                                     }
-                                } else null
+                                } else null,
+                                canUndo = uiState.canUndo,
+                                onUndo = { undoLastCartChange() }
                             )
                         }
                     }
@@ -544,6 +570,14 @@ fun VentaScreen(
 
     // Barcode Not Found Warning Dialog
     if (showBarcodeNotFoundQuery != null) {
+        val notFoundButtonFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            delay(50.milliseconds)
+            try {
+                notFoundButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+
         AlertDialog(
             onDismissRequest = { showBarcodeNotFoundQuery = null },
             title = {
@@ -568,7 +602,8 @@ fun VentaScreen(
                 Button(
                     onClick = { showBarcodeNotFoundQuery = null },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shape = MaterialTheme.shapes.small
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.focusRequester(notFoundButtonFocusRequester)
                 ) {
                     Text(stringResource(Res.string.understood_enter_button))
                 }

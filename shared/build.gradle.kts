@@ -43,6 +43,7 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.sqldelight.jvm)
+            implementation(libs.jlayer)
         }
         commonMain.dependencies {
             implementation(libs.material.kolor)
