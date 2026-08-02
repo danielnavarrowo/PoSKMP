@@ -11,9 +11,17 @@ import org.jetbrains.compose.resources.getString
 import poskmp.shared.generated.resources.*
 import java.util.UUID
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.Composable
+
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
 actual fun isAndroid(): Boolean = true
+
+@Composable
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    BackHandler(enabled = enabled, onBack = onBack)
+}
 
 actual fun playSoundAlert(bytes: ByteArray) {
     kotlin.concurrent.thread(isDaemon = true) {

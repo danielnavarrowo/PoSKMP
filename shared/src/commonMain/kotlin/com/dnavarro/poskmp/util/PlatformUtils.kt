@@ -1,11 +1,15 @@
 package com.dnavarro.poskmp.util
 
+import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.Products
 
 expect fun currentTimeMillis(): Long
 expect fun generateUUID(): String
 expect fun isAndroid(): Boolean
 expect fun playSoundAlert(bytes: ByteArray)
+
+@Composable
+expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)
 
 expect fun pickFile(
     allowedExtensions: List<String>,

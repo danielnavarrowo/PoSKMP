@@ -89,6 +89,7 @@ import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -189,6 +190,12 @@ fun VentaScreen(
     val navigator = rememberSupportingPaneScaffoldNavigator<Nothing>(
         scaffoldDirective = scaffoldDirective
     )
+
+    PlatformBackHandler(enabled = navigator.canNavigateBack()) {
+        coroutineScope.launch {
+            navigator.navigateBack()
+        }
+    }
     val paneExpansionState = rememberPaneExpansionState()
     var userCatalogWidthDp by remember { mutableStateOf<Dp?>(null) }
 
@@ -207,14 +214,9 @@ fun VentaScreen(
 
     LaunchedEffect(showBarcodeNotFoundQuery) {
         if (showBarcodeNotFoundQuery != null) {
+            SoundManager.playErrorSound()
             delay(2500.milliseconds)
             showBarcodeNotFoundQuery = null
-        }
-    }
-
-    LaunchedEffect(showUnregisteredDialog) {
-        if (showUnregisteredDialog) {
-            SoundManager.playErrorSound()
         }
     }
 
@@ -340,7 +342,8 @@ fun VentaScreen(
                             val decrement = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
                             addProductToCart(currentItem.product, -decrement)
                         }
-                        isDelete -> {
+
+                        else -> {
                             removeCartItem(currentItem)
                             if (selectedIndex >= cartItems.size) {
                                 selectedIndex = cartItems.size - 1

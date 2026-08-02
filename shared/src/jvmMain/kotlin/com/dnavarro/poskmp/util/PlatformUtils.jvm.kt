@@ -14,9 +14,16 @@ import javax.swing.SwingUtilities
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Element
 
+import androidx.compose.runtime.Composable
+
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
 actual fun isAndroid(): Boolean = false
+
+@Composable
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    // No-op on Desktop JVM
+}
 
 actual fun playSoundAlert(bytes: ByteArray) {
     kotlin.concurrent.thread(isDaemon = true) {
