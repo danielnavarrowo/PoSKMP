@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,6 +79,7 @@ import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.shopping_cart
 import poskmp.shared.generated.resources.ticket_empty_message
 import poskmp.shared.generated.resources.total_label
+import poskmp.shared.generated.resources.total_without_discount_label
 import poskmp.shared.generated.resources.trash
 import poskmp.shared.generated.resources.undo
 import poskmp.shared.generated.resources.undo_button_desc
@@ -312,7 +314,7 @@ fun TicketSection(
                                         text = stringResource(Res.string.wholesale_badge),
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        modifier = Modifier.padding(horizontal = 2.dp)
                                     )
                                 }
                             }
@@ -475,6 +477,29 @@ fun TicketSection(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
+            }
+
+            val originalTotal = cartItems.sumOf { it.originalPrice * it.quantity }
+            if (originalTotal > total + 0.001) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(Res.string.total_without_discount_label),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        "$${originalTotal.toString().formatPrice()}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        style = TextStyle(textDecoration = TextDecoration.LineThrough)
+                    )
+                }
             }
 
             Row(

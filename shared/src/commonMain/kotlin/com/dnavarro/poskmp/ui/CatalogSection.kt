@@ -3,7 +3,6 @@ package com.dnavarro.poskmp.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Badge
@@ -92,6 +91,8 @@ import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.tab_ticket
 import poskmp.shared.generated.resources.view_ticket_fab
+import poskmp.shared.generated.resources.wholesale_item
+import poskmp.shared.generated.resources.wholesale_item_hotkey
 import poskmp.shared.generated.resources.wholesale_ticket
 import poskmp.shared.generated.resources.wholesale_ticket_hotkey
 
@@ -109,6 +110,7 @@ fun CatalogSection(
     cartCount: Int = 0,
     cartTotal: Double = 0.0,
     onSellUnregisteredClick: () -> Unit,
+    onApplyItemWholesaleClick: () -> Unit = {},
     onApplyWholesaleClick: () -> Unit = {},
     onCheckoutClick: () -> Unit = {},
     searchFocusRequester: FocusRequester? = null,
@@ -379,39 +381,58 @@ fun CatalogSection(
         Spacer(modifier = Modifier.height(8.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SuggestionChip(
-                onClick = onSellUnregisteredClick,
-                label = { Text(if (isCompact) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey), fontWeight = FontWeight.Bold) },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            )
-            SuggestionChip(
-                onClick = onApplyWholesaleClick,
-                label = {
-                    Text(
-                        if (isCompact) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey),
-                        fontWeight = FontWeight.Bold
+            item {
+                SuggestionChip(
+                    onClick = onSellUnregisteredClick,
+                    label = { Text(if (isCompact) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey), fontWeight = FontWeight.Bold) },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
-                },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 )
-            )
-            SuggestionChip(
-                onClick = onCheckoutClick,
-                label = { Text(if (isCompact) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey), fontWeight = FontWeight.Bold) },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            }
+            item {
+                SuggestionChip(
+                    onClick = onApplyItemWholesaleClick,
+                    label = {
+                        Text(
+                            if (isCompact) stringResource(Res.string.wholesale_item) else stringResource(Res.string.wholesale_item_hotkey),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
                 )
-            )
+            }
+            item {
+                SuggestionChip(
+                    onClick = onApplyWholesaleClick,
+                    label = {
+                        Text(
+                            if (isCompact) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                )
+            }
+
+            item {
+                SuggestionChip(
+                    onClick = onCheckoutClick,
+                    label = { Text(if (isCompact) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey), fontWeight = FontWeight.Bold) },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                )
+            }
         }
     }
 }

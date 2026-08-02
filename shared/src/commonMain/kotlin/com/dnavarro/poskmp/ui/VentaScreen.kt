@@ -381,9 +381,16 @@ fun VentaScreen(
 
                                 Key.F11 -> {
                                     if (keyEvent.isShiftPressed) {
-                                        toggleWholesalePrice()
+                                        viewModel.toggleWholesalePrice()
                                         true
-                                    } else false
+                                    } else {
+                                        if (cartItems.isNotEmpty()) {
+                                            val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                                            val currentItem = cartItems[currentIndex]
+                                            viewModel.toggleWholesalePriceForItem(currentItem)
+                                            true
+                                        } else false
+                                    }
                                 }
 
                                 Key.F12 -> {
@@ -438,6 +445,14 @@ fun VentaScreen(
                             cartCount = cartItems.size,
                             cartTotal = total,
                             onSellUnregisteredClick = { openUnregisteredDialog() },
+                            onApplyItemWholesaleClick = {
+                                if (cartItems.isNotEmpty()) {
+                                    val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                                    val currentItem = cartItems[currentIndex]
+                                    viewModel.toggleWholesalePriceForItem(currentItem)
+                                    reclaimSearchBarFocus()
+                                }
+                            },
                             onApplyWholesaleClick = { toggleWholesalePrice() },
                             onCheckoutClick = {
                                 paymentAmountInput = ""
@@ -528,6 +543,14 @@ fun VentaScreen(
                                 cartCount = cartItems.size,
                                 cartTotal = total,
                                 onSellUnregisteredClick = { openUnregisteredDialog() },
+                                onApplyItemWholesaleClick = {
+                                    if (cartItems.isNotEmpty()) {
+                                        val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                                        val currentItem = cartItems[currentIndex]
+                                        viewModel.toggleWholesalePriceForItem(currentItem)
+                                        reclaimSearchBarFocus()
+                                    }
+                                },
                                 onApplyWholesaleClick = { toggleWholesalePrice() },
                                 onCheckoutClick = {
                                     paymentAmountInput = ""

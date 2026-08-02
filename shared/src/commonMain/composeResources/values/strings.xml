@@ -145,8 +145,11 @@
     <string name="view_ticket_fab">Ver Ticket (%1$d) • $%2$s</string>
     <string name="not_registered">No Registrado</string>
     <string name="not_registered_hotkey">F7: No Registrado</string>
+    <string name="wholesale_item">Mayoreo a Producto</string>
+    <string name="wholesale_item_hotkey">F11: Mayoreo a Producto</string>
     <string name="wholesale_ticket">Mayoreo a Ticket</string>
     <string name="wholesale_ticket_hotkey">Shift + F11: Mayoreo a Ticket</string>
+    <string name="total_without_discount_label">Total sin descuento</string>
     <string name="checkout_hotkey">F12: Cobrar</string>
 
     <!-- ProductFormDialog -->

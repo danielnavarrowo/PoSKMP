@@ -156,6 +156,22 @@ class VentaViewModel(
             }
         }
     }
+    fun toggleWholesalePriceForItem(item: CartItem) {
+        if (item.product.precio_mayoreo <= 0.0) return
+        val currentList = _cartItems.value
+        val index = currentList.indexOfFirst { it.product.id == item.product.id }
+        if (index < 0) return
+
+        pushCartHistory()
+        val targetItem = currentList[index]
+        val isCurrentlyWholesale = targetItem.product.precio == targetItem.product.precio_mayoreo
+        val targetPrice = if (isCurrentlyWholesale) targetItem.originalPrice else targetItem.product.precio_mayoreo
+
+        val updatedProduct = targetItem.product.copy(precio = targetPrice)
+        val updatedList = currentList.toMutableList()
+        updatedList[index] = targetItem.copy(product = updatedProduct)
+        _cartItems.value = updatedList
+    }
 
     fun toggleProductFavorite(product: Products) {
         viewModelScope.launch {
