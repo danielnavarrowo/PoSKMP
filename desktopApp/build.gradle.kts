@@ -20,9 +20,13 @@ compose.desktop {
     application {
         mainClass = "com.dnavarro.poskmp.MainKt"
 
+        buildTypes.release.proguard {
+            configurationFiles.from(project.file("proguard-rules.pro"))
+        }
+
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Exe, TargetFormat.AppImage,
-                TargetFormat.Pkg)
+            modules("java.instrument", "java.sql", "jdk.unsupported")
+            targetFormats(TargetFormat.AppImage)
             packageName = "com.dnavarro.poskmp"
             packageVersion = "1.0.0"
         }
