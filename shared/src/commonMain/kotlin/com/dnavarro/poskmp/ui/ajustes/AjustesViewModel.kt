@@ -22,13 +22,15 @@ class AjustesViewModel(
         repository.useDynamicColorFlow,
         repository.seedColorFlow,
         repository.isAmoledFlow,
-        repository.darkModeConfigFlow
-    ) { useDynamicColor, seedColor, isAmoled, darkModeConfig ->
+        repository.darkModeConfigFlow,
+        repository.appScaleFlow
+    ) { useDynamicColor, seedColor, isAmoled, darkModeConfig, appScale ->
         AjustesUiState(
             useDynamicColor = useDynamicColor,
             seedColor = seedColor,
             isAmoled = isAmoled,
-            darkModeConfig = darkModeConfig
+            darkModeConfig = darkModeConfig,
+            appScale = appScale
         )
     }.stateIn(
         scope = viewModelScope,
@@ -57,6 +59,12 @@ class AjustesViewModel(
     fun setDarkModeConfig(config: DarkModeConfig) {
         viewModelScope.launch {
             repository.setDarkModeConfig(config)
+        }
+    }
+
+    fun setAppScale(scale: Float) {
+        viewModelScope.launch {
+            repository.setAppScale(scale)
         }
     }
 }

@@ -95,6 +95,16 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.toShape
 
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.TextButton
+import poskmp.shared.generated.resources.app_scale_subtitle
+import poskmp.shared.generated.resources.app_scale_title
+import poskmp.shared.generated.resources.reset_scale_button
+import kotlin.math.roundToInt
+
 data class PresetColorItem(
     val color: Color,
     val name: String,
@@ -153,7 +163,9 @@ fun AjustesScreen(
         isAmoled = uiState.isAmoled,
         onIsAmoledChange = { viewModel.setIsAmoled(it) },
         darkModeConfig = uiState.darkModeConfig,
-        onDarkModeConfigChange = { viewModel.setDarkModeConfig(it) }
+        onDarkModeConfigChange = { viewModel.setDarkModeConfig(it) },
+        appScale = uiState.appScale,
+        onAppScaleChange = { viewModel.setAppScale(it) }
     )
 }
 
@@ -168,7 +180,9 @@ fun AjustesScreen(
     isAmoled: Boolean = false,
     onIsAmoledChange: (Boolean) -> Unit = {},
     darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
-    onDarkModeConfigChange: (DarkModeConfig) -> Unit = {}
+    onDarkModeConfigChange: (DarkModeConfig) -> Unit = {},
+    appScale: Float = 1.0f,
+    onAppScaleChange: (Float) -> Unit = {}
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
     Scaffold(
@@ -371,6 +385,103 @@ fun AjustesScreen(
                                     ) {
                                         Text(text = label, maxLines = 1)
                                     }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // App Scale Section
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                    Text(
+                                        text = stringResource(Res.string.app_scale_title),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(Res.string.app_scale_subtitle),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ) {
+                                    Text(
+                                        text = "${(appScale * 100).roundToInt()}%",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        val newScale = (appScale - 0.05f).coerceAtLeast(0.75f)
+                                        onAppScaleChange((newScale * 100).roundToInt() / 100f)
+                                    },
+                                    enabled = appScale > 0.75f
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Remove,
+                                        contentDescription = "Disminuir escala"
+                                    )
+                                }
+
+                                Slider(
+                                    value = appScale,
+                                    onValueChange = { onAppScaleChange((it * 100).roundToInt() / 100f) },
+                                    valueRange = 0.75f..1.35f,
+                                    steps = 11,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                IconButton(
+                                    onClick = {
+                                        val newScale = (appScale + 0.05f).coerceAtMost(1.35f)
+                                        onAppScaleChange((newScale * 100).roundToInt() / 100f)
+                                    },
+                                    enabled = appScale < 1.35f
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Add,
+                                        contentDescription = "Aumentar escala"
+                                    )
+                                }
+                            }
+
+                            if ((appScale * 100).roundToInt() != 100) {
+                                TextButton(
+                                    onClick = { onAppScaleChange(1.0f) },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.reset_scale_button),
+                                        fontSize = 12.sp
+                                    )
                                 }
                             }
                         }

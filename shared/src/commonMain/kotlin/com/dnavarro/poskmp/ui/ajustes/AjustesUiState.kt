@@ -11,5 +11,6 @@ data class AjustesUiState(
     val useDynamicColor: Boolean = isAndroid(),
     val seedColor: Color = Color(0xFF0061A4),
     val isAmoled: Boolean = false,
-    val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM
+    val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
+    val appScale: Float = 1.0f
 )

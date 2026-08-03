@@ -13,6 +13,8 @@ import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+import androidx.datastore.preferences.core.floatPreferencesKey
+
 /**
  * Interface defining settings data operations.
  */
@@ -21,11 +23,13 @@ interface SettingsRepository {
     val seedColorFlow: Flow<Color>
     val isAmoledFlow: Flow<Boolean>
     val darkModeConfigFlow: Flow<DarkModeConfig>
+    val appScaleFlow: Flow<Float>
 
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
     suspend fun setIsAmoled(isAmoled: Boolean)
     suspend fun setDarkModeConfig(config: DarkModeConfig)
+    suspend fun setAppScale(scale: Float)
 }
 
 /**
@@ -47,6 +51,7 @@ class SettingsRepositoryImpl(
         val SEED_COLOR = intPreferencesKey("seed_color_argb")
         val IS_AMOLED = booleanPreferencesKey("is_amoled")
         val DARK_MODE_CONFIG = stringPreferencesKey("dark_mode_config")
+        val APP_SCALE = floatPreferencesKey("app_scale")
     }
 
     override val useDynamicColorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -71,6 +76,10 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override val appScaleFlow: Flow<Float> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.APP_SCALE] ?: 1.0f
+    }
+
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.USE_DYNAMIC_COLOR] = useDynamic
@@ -92,6 +101,12 @@ class SettingsRepositoryImpl(
     override suspend fun setDarkModeConfig(config: DarkModeConfig) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.DARK_MODE_CONFIG] = config.name
+        }
+    }
+
+    override suspend fun setAppScale(scale: Float) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.APP_SCALE] = scale
         }
     }
 }

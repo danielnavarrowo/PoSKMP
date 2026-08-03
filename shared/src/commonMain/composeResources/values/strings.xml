@@ -53,6 +53,9 @@
     <string name="dark_mode_system">Sistema</string>
     <string name="dark_mode_off">Claro</string>
     <string name="dark_mode_on">Oscuro</string>
+    <string name="app_scale_title">Escala de la Interfaz</string>
+    <string name="app_scale_subtitle">Ajusta el tamaño del texto y de la interfaz de toda la aplicación</string>
+    <string name="reset_scale_button">Restablecer (100%)</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>

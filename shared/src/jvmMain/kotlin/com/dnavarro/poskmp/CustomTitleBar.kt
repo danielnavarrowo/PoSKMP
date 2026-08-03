@@ -3,6 +3,7 @@ package com.dnavarro.poskmp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
@@ -20,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,10 +36,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.app_window_title
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.maximize
 import poskmp.shared.generated.resources.minimize
@@ -46,24 +47,6 @@ import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.restore
 import java.awt.MouseInfo
 import java.awt.Point
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
-import kotlin.time.Duration.Companion.seconds
-
-private fun formatCurrentDateTime(dateTime: LocalDateTime = LocalDateTime.now()): String {
-    val locale = Locale.forLanguageTag("es-MX")
-    val dayOfWeek = dateTime.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
-    val dayOfMonth = dateTime.dayOfMonth
-    val month = dateTime.month.getDisplayName(TextStyle.FULL, locale)
-
-    val hour12 = dateTime.format(DateTimeFormatter.ofPattern("h:mm", locale))
-    val amPm = dateTime.format(DateTimeFormatter.ofPattern("a", locale))
-
-
-    return "$dayOfWeek, $dayOfMonth de $month - $hour12 $amPm"
-}
 
 @Composable
 fun FrameWindowScope.CustomTitleBar(
@@ -73,15 +56,6 @@ fun FrameWindowScope.CustomTitleBar(
     var initialMouseLoc by remember { mutableStateOf<Point?>(null) }
     var initialWindowLoc by remember { mutableStateOf<Point?>(null) }
 
-    var currentDateTimeText by remember { mutableStateOf(formatCurrentDateTime()) }
-
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            currentDateTimeText = formatCurrentDateTime()
-            delay(1.seconds)
-        }
-    }
-
     Surface(
         modifier = Modifier.fillMaxWidth().height(36.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -90,12 +64,25 @@ fun FrameWindowScope.CustomTitleBar(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .pointerInput(state.placement) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            state.placement = if (state.placement == WindowPlacement.Maximized) {
+                                WindowPlacement.Floating
+                            } else {
+                                WindowPlacement.Maximized
+                            }
+                        }
+                    )
+                }
+                .pointerInput(state.placement) {
+                    var isUnmaximizing = false
                     detectDragGestures(
                         onDragStart = {
                             try {
                                 initialMouseLoc = MouseInfo.getPointerInfo().location
                                 initialWindowLoc = window.location
+                                isUnmaximizing = false
                             } catch (_: Exception) {
                             }
                         },
@@ -105,10 +92,42 @@ fun FrameWindowScope.CustomTitleBar(
                                 val currentMouseLoc = MouseInfo.getPointerInfo().location
                                 val startMouseLoc = initialMouseLoc
                                 val startWinLoc = initialWindowLoc
-                                if (currentMouseLoc != null && startMouseLoc != null && startWinLoc != null) {
-                                    val dx = currentMouseLoc.x - startMouseLoc.x
-                                    val dy = currentMouseLoc.y - startMouseLoc.y
-                                    window.setLocation(startWinLoc.x + dx, startWinLoc.y + dy)
+
+                                if (currentMouseLoc != null) {
+                                    val screenBounds = window.graphicsConfiguration?.bounds
+                                        ?: java.awt.Rectangle(0, 0, 1920, 1080)
+
+                                    if (state.placement == WindowPlacement.Maximized && !isUnmaximizing) {
+                                        isUnmaximizing = true
+                                        val mouseXInScreen = currentMouseLoc.x - screenBounds.x
+                                        val ratio = mouseXInScreen.toDouble() / screenBounds.width.coerceAtLeast(1)
+
+                                        state.placement = WindowPlacement.Floating
+
+                                        val newWidth = window.width
+                                        val newX = (currentMouseLoc.x - (newWidth * ratio)).toInt()
+                                        val newY = currentMouseLoc.y - 18
+                                        window.setLocation(newX, newY)
+
+                                        initialMouseLoc = currentMouseLoc
+                                        initialWindowLoc = Point(newX, newY)
+                                    } else if (startMouseLoc != null && startWinLoc != null) {
+                                        val dx = currentMouseLoc.x - startMouseLoc.x
+                                        val dy = currentMouseLoc.y - startMouseLoc.y
+                                        window.setLocation(startWinLoc.x + dx, startWinLoc.y + dy)
+                                    }
+                                }
+                            } catch (_: Exception) {
+                            }
+                        },
+                        onDragEnd = {
+                            try {
+                                val currentMouseLoc = MouseInfo.getPointerInfo()?.location
+                                val screenBounds = window.graphicsConfiguration?.bounds
+                                    ?: java.awt.Rectangle(0, 0, 1920, 1080)
+
+                                if (currentMouseLoc != null && currentMouseLoc.y <= screenBounds.y + 10) {
+                                    state.placement = WindowPlacement.Maximized
                                 }
                             } catch (_: Exception) {
                             }
@@ -119,7 +138,8 @@ fun FrameWindowScope.CustomTitleBar(
             // Left: Logo & App Title
             Row(
                 modifier = Modifier
-                    .align(Alignment.Center)
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp)
                     .fillMaxHeight(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -132,7 +152,7 @@ fun FrameWindowScope.CustomTitleBar(
                 )
 
                 Text(
-                    text = currentDateTimeText,
+                    text = stringResource(Res.string.app_window_title),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

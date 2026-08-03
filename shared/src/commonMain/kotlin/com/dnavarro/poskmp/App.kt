@@ -9,11 +9,13 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,19 +28,27 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,8 +63,11 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +84,8 @@ import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -90,11 +105,29 @@ import poskmp.shared.generated.resources.tab_productos
 import poskmp.shared.generated.resources.tab_productos_desktop
 import poskmp.shared.generated.resources.tab_venta
 import poskmp.shared.generated.resources.tab_venta_desktop
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
+import kotlin.time.Duration.Companion.seconds
 
 internal fun navigationSuiteTypeForWidth(width: Dp): NavigationSuiteType = when {
     width >= 1200.dp -> NavigationSuiteType.WideNavigationRailExpanded
     width >= 800.dp -> NavigationSuiteType.WideNavigationRailCollapsed
     else -> NavigationSuiteType.None
+}
+
+private fun formatCurrentDateTime(dateTime: LocalDateTime = LocalDateTime.now()): String {
+    val locale = Locale.forLanguageTag("es-MX")
+    val dayOfWeek = dateTime.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+    val dayOfMonth = dateTime.dayOfMonth
+    val month = dateTime.month.getDisplayName(TextStyle.FULL, locale)
+
+    val hour12 = dateTime.format(DateTimeFormatter.ofPattern("h:mm", locale))
+    val amPm = dateTime.format(DateTimeFormatter.ofPattern("a", locale))
+
+    return "$dayOfWeek, $dayOfMonth de $month\n$hour12 $amPm"
 }
 
 private data class ToolbarItem(
@@ -127,6 +160,14 @@ fun App(
             // 2. Navigation State
             var currentScreen by rememberSaveable { mutableStateOf(Screen.VENTA) }
             var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
+
+            var currentDateTimeText by remember { mutableStateOf(formatCurrentDateTime()) }
+            LaunchedEffect(Unit) {
+                while (isActive) {
+                    currentDateTimeText = formatCurrentDateTime()
+                    delay(1.seconds)
+                }
+            }
 
             val isDesktop = !isAndroid()
             val tabVentaLabel =
@@ -180,6 +221,8 @@ fun App(
             val isAmoled = ajustesUiState.isAmoled
             val darkModeConfig = ajustesUiState.darkModeConfig
 
+            val appScale = ajustesUiState.appScale
+
             val systemInDark = isSystemInDarkTheme()
             val darkTheme = when (darkModeConfig) {
                 DarkModeConfig.SYSTEM -> systemInDark
@@ -187,13 +230,22 @@ fun App(
                 DarkModeConfig.DARK -> true
             }
 
-            AppTheme(
-                seedColor = seedColor,
-                useDynamicColor = useDynamicColor,
-                isAmoled = isAmoled,
-                darkTheme = darkTheme
-            ) {
-                Column(modifier = modifier.fillMaxSize()) {
+            val currentDensity = LocalDensity.current
+            val customDensity = remember(currentDensity, appScale) {
+                Density(
+                    density = currentDensity.density * appScale,
+                    fontScale = currentDensity.fontScale * appScale
+                )
+            }
+
+            CompositionLocalProvider(LocalDensity provides customDensity) {
+                AppTheme(
+                    seedColor = seedColor,
+                    useDynamicColor = useDynamicColor,
+                    isAmoled = isAmoled,
+                    darkTheme = darkTheme
+                ) {
+                    Column(modifier = modifier.fillMaxSize()) {
                     if (windowTitleBar != null) {
                         windowTitleBar()
                     }
@@ -211,21 +263,100 @@ fun App(
                         }
                     }
 
-                    NavigationSuiteScaffold(
+                    NavigationSuiteScaffoldLayout(
                         layoutType = navigationLayoutType,
-                        navigationSuiteItems = {
-                            toolbarItems.fastForEach { navItem ->
-                                item(
-                                    selected = navItem.isSelected,
-                                    onClick = { navItem.onCheckedChange(true) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(navItem.icon),
-                                            contentDescription = navItem.label
+                        navigationSuite = {
+                            if (navigationLayoutType != NavigationSuiteType.None) {
+                                val isExpanded = navigationLayoutType == NavigationSuiteType.WideNavigationRailExpanded
+                                Surface(
+                                    modifier = Modifier
+                                        .width(if (isExpanded) 180.dp else 80.dp)
+                                        .fillMaxHeight(),
+                                    color = NavigationSuiteDefaults.colors().navigationRailContainerColor,
+                                    contentColor = NavigationSuiteDefaults.colors().navigationRailContentColor
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            toolbarItems.fastForEach { navItem ->
+                                                if (isExpanded) {
+                                                    NavigationDrawerItem(
+                                                        selected = navItem.isSelected,
+                                                        onClick = { navItem.onCheckedChange(true) },
+                                                        icon = {
+                                                            Icon(
+                                                                painter = painterResource(navItem.icon),
+                                                                contentDescription = navItem.label
+                                                            )
+                                                        },
+                                                        label = { Text(navItem.label) },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                } else {
+                                                    NavigationRailItem(
+                                                        selected = navItem.isSelected,
+                                                        onClick = { navItem.onCheckedChange(true) },
+                                                        icon = {
+                                                            Icon(
+                                                                painter = painterResource(navItem.icon),
+                                                                contentDescription = navItem.label
+                                                            )
+                                                        },
+                                                        label = { Text(navItem.label) }
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = MaterialTheme.shapes.medium,
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text(
+                                                    text = currentDateTimeText,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    textAlign = TextAlign.Center,
+                                                    fontSize = if (isExpanded) 11.sp else 9.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    lineHeight = 13.sp
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                NavigationSuite(
+                                    layoutType = navigationLayoutType
+                                ) {
+                                    toolbarItems.fastForEach { navItem ->
+                                        item(
+                                            selected = navItem.isSelected,
+                                            onClick = { navItem.onCheckedChange(true) },
+                                            icon = {
+                                                Icon(
+                                                    painter = painterResource(navItem.icon),
+                                                    contentDescription = navItem.label
+                                                )
+                                            },
+                                            label = { Text(navItem.label) }
                                         )
-                                    },
-                                    label = { Text(navItem.label) }
-                                )
+                                    }
+                                }
                             }
                         }
                     ) {
@@ -349,5 +480,6 @@ fun App(
                 }
             }
         }
-    })
+    }
+})
 }
