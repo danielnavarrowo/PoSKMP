@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.ui.Screen
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -19,18 +20,27 @@ class AjustesViewModel(
 ) : ViewModel() {
 
     val uiState: StateFlow<AjustesUiState> = combine(
-        repository.useDynamicColorFlow,
-        repository.seedColorFlow,
-        repository.isAmoledFlow,
-        repository.darkModeConfigFlow,
-        repository.appScaleFlow
-    ) { useDynamicColor, seedColor, isAmoled, darkModeConfig, appScale ->
-        AjustesUiState(
-            useDynamicColor = useDynamicColor,
-            seedColor = seedColor,
-            isAmoled = isAmoled,
-            darkModeConfig = darkModeConfig,
-            appScale = appScale
+        combine(
+            repository.useDynamicColorFlow,
+            repository.seedColorFlow,
+            repository.isAmoledFlow,
+            repository.darkModeConfigFlow,
+            repository.appScaleFlow
+        ) { useDynamicColor, seedColor, isAmoled, darkModeConfig, appScale ->
+            AjustesUiState(
+                useDynamicColor = useDynamicColor,
+                seedColor = seedColor,
+                isAmoled = isAmoled,
+                darkModeConfig = darkModeConfig,
+                appScale = appScale
+            )
+        },
+        repository.defaultScreenFlow,
+        repository.isChecadorDialogFlow
+    ) { state, defaultScreen, isChecadorDialog ->
+        state.copy(
+            defaultScreen = defaultScreen,
+            isChecadorDialog = isChecadorDialog
         )
     }.stateIn(
         scope = viewModelScope,
@@ -65,6 +75,18 @@ class AjustesViewModel(
     fun setAppScale(scale: Float) {
         viewModelScope.launch {
             repository.setAppScale(scale)
+        }
+    }
+
+    fun setDefaultScreen(screen: Screen) {
+        viewModelScope.launch {
+            repository.setDefaultScreen(screen)
+        }
+    }
+
+    fun setIsChecadorDialog(isDialog: Boolean) {
+        viewModelScope.launch {
+            repository.setIsChecadorDialog(isDialog)
         }
     }
 }

@@ -2,17 +2,22 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,7 +25,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +56,7 @@ import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.formatPrice
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -68,15 +77,13 @@ import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.warning
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChecadorDialog(
-    showDialog: Boolean,
-    onDismiss: () -> Unit,
-    repository: ProductRepository
+fun ChecadorContent(
+    repository: ProductRepository,
+    onClose: (() -> Unit)? = null,
+    showHeaderTitle: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
-    if (!showDialog) return
-
     var barcodeInputValue by remember {
         mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero))
     }
@@ -95,7 +102,6 @@ fun ChecadorDialog(
             val result = repository.findProductByBarcode(code)
             searchedProduct = result
             hasSearched = true
-            // Select all text in the field so the next scan overrides it automatically
             barcodeInputValue = TextFieldValue(
                 text = barcodeInputValue.text,
                 selection = TextRange(0, barcodeInputValue.text.length)
@@ -103,177 +109,175 @@ fun ChecadorDialog(
         }
     }
 
+    // Persistent focus loop: ensure focus is always kept on the barcode input field
     LaunchedEffect(Unit) {
         if (isCameraScannerAvailable()) {
             showCameraScanner = true
         }
-        delay(50.milliseconds)
-        focusRequester.requestFocus()
+        while (isActive) {
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {
+            }
+            delay(250.milliseconds)
+        }
     }
 
-
-    BasicAlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.background(
-            MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
-        )
-            .padding(24.dp)
+    Column(
+        modifier = modifier
             .fillMaxWidth()
             .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown && 
+                if (keyEvent.type == KeyEventType.KeyDown &&
                     (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
                 ) {
                     performSearch()
                     true
                 } else false
             },
-        content = {
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (showHeaderTitle) {
+            Text(
+                text = stringResource(Res.string.price_checker_title),
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Input field
+        OutlinedTextField(
+            value = barcodeInputValue,
+            onValueChange = { barcodeInputValue = it },
+            placeholder = { Text(stringResource(Res.string.barcode_input_placeholder)) },
+            leadingIcon = { Icon(painter = painterResource(Res.drawable.search), contentDescription = null) },
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isCameraScannerAvailable()) {
+                        IconButton(onClick = { showCameraScanner = true }) {
+                            Icon(painter = painterResource(Res.drawable.barcode_scanner), contentDescription = stringResource(Res.string.scan_with_camera_desc))
+                        }
+                    }
+                    if (barcodeInputValue.text.isNotEmpty()) {
+                        IconButton(onClick = {
+                            barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+                            searchedProduct = null
+                            hasSearched = false
+                            focusRequester.requestFocus()
+                        }) {
+                            Icon(painter = painterResource(Res.drawable.close), contentDescription = stringResource(Res.string.clear_desc))
+                        }
+                    }
+                }
+            },
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+            )
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Product details display area
+        if (searchedProduct != null) {
+            val product = searchedProduct!!
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.medium)
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header
                 Text(
-                    text = stringResource(Res.string.price_checker_title),
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 20.sp,
+                    text = product.nombre,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Input field
-                OutlinedTextField(
-                    value = barcodeInputValue,
-                    onValueChange = { barcodeInputValue = it },
-                    placeholder = { Text(stringResource(Res.string.barcode_input_placeholder)) },
-                    leadingIcon = { Icon(painter = painterResource(Res.drawable.search), contentDescription = null) },
-                    trailingIcon = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isCameraScannerAvailable()) {
-                                IconButton(onClick = { showCameraScanner = true }) {
-                                    Icon(painter = painterResource(Res.drawable.barcode_scanner), contentDescription = stringResource(Res.string.scan_with_camera_desc))
-                                }
-                            }
-                            if (barcodeInputValue.text.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
-                                    searchedProduct = null
-                                    hasSearched = false
-                                    focusRequester.requestFocus()
-                                }) {
-                                    Icon(painter = painterResource(Res.drawable.close), contentDescription = stringResource(Res.string.clear_desc))
-                                }
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.medium,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                    )
+                val perKgSuffix = stringResource(Res.string.per_kg_suffix)
+                val suffix = if (product.por_peso == 1L) perKgSuffix else ""
+                Text(
+                    text = "$${product.precio.toString().formatPrice()}$suffix",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 42.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Product details display area
-                if (searchedProduct != null) {
-                    val product = searchedProduct!!
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.medium)
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = product.nombre,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Large beautiful price text
-                        val perKgSuffix = stringResource(Res.string.per_kg_suffix)
-                        val suffix = if (product.por_peso == 1L) perKgSuffix else ""
-                        Text(
-                            text = "$${product.precio.toString().formatPrice()}$suffix",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 42.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        val categoryText = product.categoria ?: stringResource(Res.string.no_category)
-                        Text(
-                            text = stringResource(Res.string.category_label_format, categoryText),
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else if (hasSearched) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.medium)
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                           painter = painterResource(Res.drawable.warning),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(Res.string.product_not_found),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontSize = 15.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Action buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(stringResource(Res.string.close_button))
-                    }
-
-                    Button(
-                        onClick = { performSearch() },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text(stringResource(Res.string.query_button))
-                    }
-                }
+                val categoryText = product.categoria ?: stringResource(Res.string.no_category)
+                Text(
+                    text = stringResource(Res.string.category_label_format, categoryText),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (hasSearched) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.medium)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.warning),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = stringResource(Res.string.product_not_found),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    fontSize = 15.sp
+                )
             }
         }
-    )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Action buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (onClose != null) {
+                OutlinedButton(
+                    onClick = onClose,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(stringResource(Res.string.close_button))
+                }
+            }
+
+            Button(
+                onClick = { performSearch() },
+                modifier = Modifier.weight(if (onClose != null) 1f else 2f),
+                shape = MaterialTheme.shapes.small,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text(stringResource(Res.string.query_button))
+            }
+        }
+    }
 
     if (showCameraScanner) {
         PlatformBarcodeScanner(
@@ -287,5 +291,87 @@ fun ChecadorDialog(
             },
             onClose = { showCameraScanner = false }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChecadorDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    repository: ProductRepository
+) {
+    if (!showDialog) return
+
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier
+            .background(
+                MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
+            )
+            .padding(24.dp)
+            .fillMaxWidth(),
+        content = {
+            ChecadorContent(
+                repository = repository,
+                onClose = onDismiss,
+                showHeaderTitle = true
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChecadorScreen(
+    repository: ProductRepository,
+    modifier: Modifier = Modifier
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(Res.string.price_checker_title),
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+        modifier = modifier.fillMaxSize()
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(24.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 600.dp)
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    ChecadorContent(
+                        repository = repository,
+                        onClose = null,
+                        showHeaderTitle = false
+                    )
+                }
+            }
+        }
     }
 }

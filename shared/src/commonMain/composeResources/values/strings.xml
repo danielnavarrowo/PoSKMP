@@ -56,6 +56,12 @@
     <string name="app_scale_title">Escala de la Interfaz</string>
     <string name="app_scale_subtitle">Ajusta el tamaño del texto y de la interfaz de toda la aplicación</string>
     <string name="reset_scale_button">Restablecer (100%)</string>
+    <string name="default_screen_title">Pantalla Principal al Abrir</string>
+    <string name="default_screen_subtitle">Selecciona la pantalla que se mostrará al iniciar la aplicación</string>
+    <string name="checador_layout_title">Modo del Checador de Precios</string>
+    <string name="checador_layout_subtitle">Elige si prefieres el checador como ventana modal o en pantalla completa</string>
+    <string name="checador_layout_dialog">Diálogo Modal</string>
+    <string name="checador_layout_fullscreen">Pantalla Completa</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>

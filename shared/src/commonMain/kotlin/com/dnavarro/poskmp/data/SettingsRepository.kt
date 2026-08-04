@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,12 +25,16 @@ interface SettingsRepository {
     val isAmoledFlow: Flow<Boolean>
     val darkModeConfigFlow: Flow<DarkModeConfig>
     val appScaleFlow: Flow<Float>
+    val defaultScreenFlow: Flow<Screen>
+    val isChecadorDialogFlow: Flow<Boolean>
 
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
     suspend fun setIsAmoled(isAmoled: Boolean)
     suspend fun setDarkModeConfig(config: DarkModeConfig)
     suspend fun setAppScale(scale: Float)
+    suspend fun setDefaultScreen(screen: Screen)
+    suspend fun setIsChecadorDialog(isDialog: Boolean)
 }
 
 /**
@@ -52,6 +57,8 @@ class SettingsRepositoryImpl(
         val IS_AMOLED = booleanPreferencesKey("is_amoled")
         val DARK_MODE_CONFIG = stringPreferencesKey("dark_mode_config")
         val APP_SCALE = floatPreferencesKey("app_scale")
+        val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
+        val IS_CHECADOR_DIALOG = booleanPreferencesKey("is_checador_dialog")
     }
 
     override val useDynamicColorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -78,6 +85,20 @@ class SettingsRepositoryImpl(
 
     override val appScaleFlow: Flow<Float> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.APP_SCALE] ?: 1.0f
+    }
+
+    override val defaultScreenFlow: Flow<Screen> = dataStore.data.map { preferences ->
+        val screenName = preferences[PreferenceKeys.DEFAULT_SCREEN] ?: Screen.VENTA.name
+        try {
+            val screen = Screen.valueOf(screenName)
+            if (screen == Screen.AJUSTES) Screen.VENTA else screen
+        } catch (_: Exception) {
+            Screen.VENTA
+        }
+    }
+
+    override val isChecadorDialogFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.IS_CHECADOR_DIALOG] ?: true
     }
 
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
@@ -107,6 +128,18 @@ class SettingsRepositoryImpl(
     override suspend fun setAppScale(scale: Float) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.APP_SCALE] = scale
+        }
+    }
+
+    override suspend fun setDefaultScreen(screen: Screen) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DEFAULT_SCREEN] = screen.name
+        }
+    }
+
+    override suspend fun setIsChecadorDialog(isDialog: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.IS_CHECADOR_DIALOG] = isDialog
         }
     }
 }

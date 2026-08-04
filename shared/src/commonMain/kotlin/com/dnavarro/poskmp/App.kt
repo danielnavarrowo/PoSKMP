@@ -77,6 +77,7 @@ import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.AjustesScreen
 import com.dnavarro.poskmp.ui.ChecadorDialog
+import com.dnavarro.poskmp.ui.ChecadorScreen
 import com.dnavarro.poskmp.ui.ProductosScreen
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.ui.VentaScreen
@@ -157,8 +158,12 @@ fun App(
                 repository.insertDummyDataIfEmpty()
             }
 
+            val ajustesUiState by ajustesViewModel.uiState.collectAsStateWithLifecycle()
+            val defaultScreen = ajustesUiState.defaultScreen
+
             // 2. Navigation State
-            var currentScreen by rememberSaveable { mutableStateOf(Screen.VENTA) }
+            var selectedScreen by rememberSaveable { mutableStateOf<Screen?>(null) }
+            val currentScreen = selectedScreen ?: defaultScreen
             var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
 
             var currentDateTimeText by remember { mutableStateOf(formatCurrentDateTime()) }
@@ -178,9 +183,12 @@ fun App(
                 stringResource(if (isDesktop) Res.string.tab_checador_desktop else Res.string.tab_checador)
             val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
 
+            val isChecadorDialog = ajustesUiState.isChecadorDialog
+
             val toolbarItems = remember(
                 currentScreen,
                 isDesktop,
+                isChecadorDialog,
                 tabVentaLabel,
                 tabProductosLabel,
                 tabChecadorLabel,
@@ -191,31 +199,35 @@ fun App(
                         label = tabVentaLabel,
                         icon = Res.drawable.point_of_sale,
                         isSelected = currentScreen == Screen.VENTA,
-                        onCheckedChange = { if (it) currentScreen = Screen.VENTA }
+                        onCheckedChange = { if (it) selectedScreen = Screen.VENTA }
                     ),
                     ToolbarItem(
                         label = tabProductosLabel,
                         icon = Res.drawable.products,
                         isSelected = currentScreen == Screen.PRODUCTOS,
-                        onCheckedChange = { if (it) currentScreen = Screen.PRODUCTOS }
+                        onCheckedChange = { if (it) selectedScreen = Screen.PRODUCTOS }
                     ),
                     ToolbarItem(
                         label = tabChecadorLabel,
                         icon = Res.drawable.barcode_scanner,
-                        isSelected = false,
-                        onCheckedChange = { showPriceCheckerDialog = true }
+                        isSelected = if (isChecadorDialog) showPriceCheckerDialog else currentScreen == Screen.CHECADOR,
+                        onCheckedChange = {
+                            if (isChecadorDialog) {
+                                showPriceCheckerDialog = true
+                            } else if (it) {
+                                selectedScreen = Screen.CHECADOR
+                            }
+                        }
                     ),
                     ToolbarItem(
                         label = tabAjustesLabel,
                         icon = Res.drawable.settings,
                         isSelected = currentScreen == Screen.AJUSTES,
-                        onCheckedChange = { if (it) currentScreen = Screen.AJUSTES }
+                        onCheckedChange = { if (it) selectedScreen = Screen.AJUSTES }
                     )
                 )
             }
 
-
-            val ajustesUiState by ajustesViewModel.uiState.collectAsStateWithLifecycle()
             val useDynamicColor = ajustesUiState.useDynamicColor
             val seedColor = ajustesUiState.seedColor
             val isAmoled = ajustesUiState.isAmoled
@@ -251,10 +263,14 @@ fun App(
                     }
                     BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val isCompact = maxWidth < 600.dp
-                    val navigationLayoutType = navigationSuiteTypeForWidth(maxWidth)
+                    val showNavLayout = !(currentScreen == Screen.CHECADOR && !isChecadorDialog)
+                    val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(maxWidth) else NavigationSuiteType.None
 
                     val focusRequester = remember { FocusRequester() }
-                    LaunchedEffect(currentScreen) {
+                    LaunchedEffect(currentScreen, isChecadorDialog) {
+                        if (currentScreen == Screen.CHECADOR && isChecadorDialog) {
+                            showPriceCheckerDialog = true
+                        }
                         if (!isAndroid() && currentScreen != Screen.VENTA) {
                             try {
                                 focusRequester.requestFocus()
@@ -372,17 +388,21 @@ fun App(
                                             .onPreviewKeyEvent { keyEvent ->
                                                 keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
                                                     Key.F1 -> {
-                                                        currentScreen = Screen.VENTA
+                                                        selectedScreen = Screen.VENTA
                                                         true
                                                     }
 
                                                     Key.F2 -> {
-                                                        showPriceCheckerDialog = true
+                                                        if (isChecadorDialog) {
+                                                            showPriceCheckerDialog = true
+                                                        } else {
+                                                            selectedScreen = Screen.CHECADOR
+                                                        }
                                                         true
                                                     }
 
                                                     Key.F3 -> {
-                                                        currentScreen = Screen.PRODUCTOS
+                                                        selectedScreen = Screen.PRODUCTOS
                                                         true
                                                     }
 
@@ -393,7 +413,7 @@ fun App(
                                 ),
                             containerColor = MaterialTheme.colorScheme.background,
                             bottomBar = {
-                                if (navigationLayoutType == NavigationSuiteType.None) {
+                                if (showNavLayout && navigationLayoutType == NavigationSuiteType.None) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -466,6 +486,16 @@ fun App(
 
                                         Screen.PRODUCTOS -> ProductosScreen(viewModel = productosViewModel)
                                         Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
+                                        Screen.CHECADOR -> {
+                                            if (isChecadorDialog) {
+                                                VentaScreen(
+                                                    viewModel = ventaViewModel,
+                                                    isCompact = isCompact
+                                                )
+                                            } else {
+                                                ChecadorScreen(repository = repository)
+                                            }
+                                        }
                                     }
                                 }
                             }

@@ -100,9 +100,23 @@ import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Fullscreen
+import poskmp.shared.generated.resources.checador_layout_dialog
+import poskmp.shared.generated.resources.checador_layout_fullscreen
+import poskmp.shared.generated.resources.checador_layout_subtitle
+import poskmp.shared.generated.resources.checador_layout_title
 import poskmp.shared.generated.resources.app_scale_subtitle
 import poskmp.shared.generated.resources.app_scale_title
+import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.default_screen_subtitle
+import poskmp.shared.generated.resources.default_screen_title
+import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.reset_scale_button
+import poskmp.shared.generated.resources.tab_checador
+import poskmp.shared.generated.resources.tab_productos
+import poskmp.shared.generated.resources.tab_venta
 import kotlin.math.roundToInt
 
 data class PresetColorItem(
@@ -165,7 +179,11 @@ fun AjustesScreen(
         darkModeConfig = uiState.darkModeConfig,
         onDarkModeConfigChange = { viewModel.setDarkModeConfig(it) },
         appScale = uiState.appScale,
-        onAppScaleChange = { viewModel.setAppScale(it) }
+        onAppScaleChange = { viewModel.setAppScale(it) },
+        defaultScreen = uiState.defaultScreen,
+        onDefaultScreenChange = { viewModel.setDefaultScreen(it) },
+        isChecadorDialog = uiState.isChecadorDialog,
+        onIsChecadorDialogChange = { viewModel.setIsChecadorDialog(it) }
     )
 }
 
@@ -182,7 +200,11 @@ fun AjustesScreen(
     darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
     onDarkModeConfigChange: (DarkModeConfig) -> Unit = {},
     appScale: Float = 1.0f,
-    onAppScaleChange: (Float) -> Unit = {}
+    onAppScaleChange: (Float) -> Unit = {},
+    defaultScreen: Screen = Screen.VENTA,
+    onDefaultScreenChange: (Screen) -> Unit = {},
+    isChecadorDialog: Boolean = true,
+    onIsChecadorDialogChange: (Boolean) -> Unit = {}
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
     Scaffold(
@@ -275,6 +297,135 @@ fun AjustesScreen(
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Row 0: Default Screen (Pantalla Principal al Abrir)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = stringResource(Res.string.default_screen_title),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(Res.string.default_screen_subtitle),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            SingleChoiceSegmentedButtonRow(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                val options = listOf(
+                                    Triple(
+                                        Screen.VENTA,
+                                        stringResource(Res.string.tab_venta),
+                                        Res.drawable.point_of_sale
+                                    ),
+                                    Triple(
+                                        Screen.PRODUCTOS,
+                                        stringResource(Res.string.tab_productos),
+                                        Res.drawable.products
+                                    ),
+                                    Triple(
+                                        Screen.CHECADOR,
+                                        stringResource(Res.string.tab_checador),
+                                        Res.drawable.barcode_scanner
+                                    )
+                                )
+                                options.forEachIndexed { index, (screenOption, label, iconRes) ->
+                                    SegmentedButton(
+                                        shape = SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = options.size
+                                        ),
+                                        onClick = { onDefaultScreenChange(screenOption) },
+                                        selected = defaultScreen == screenOption,
+                                        icon = {
+                                            SegmentedButtonDefaults.Icon(active = defaultScreen == screenOption) {
+                                                Icon(
+                                                    painter = painterResource(iconRes),
+                                                    contentDescription = label,
+                                                    modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        Text(text = label, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Row 0.5: Checador Mode Toggle (Dialog vs Fullscreen)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = stringResource(Res.string.checador_layout_title),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(Res.string.checador_layout_subtitle),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            SingleChoiceSegmentedButtonRow(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                val checadorOptions = listOf(
+                                    Triple(
+                                        true,
+                                        stringResource(Res.string.checador_layout_dialog),
+                                        Icons.AutoMirrored.Outlined.OpenInNew
+                                    ),
+                                    Triple(
+                                        false,
+                                        stringResource(Res.string.checador_layout_fullscreen),
+                                        Icons.Outlined.Fullscreen
+                                    )
+                                )
+                                checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
+                                    SegmentedButton(
+                                        shape = SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = checadorOptions.size
+                                        ),
+                                        onClick = { onIsChecadorDialogChange(isDialogOption) },
+                                        selected = isChecadorDialog == isDialogOption,
+                                        icon = {
+                                            SegmentedButtonDefaults.Icon(active = isChecadorDialog == isDialogOption) {
+                                                Icon(
+                                                    imageVector = icon,
+                                                    contentDescription = label,
+                                                    modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        Text(text = label, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
