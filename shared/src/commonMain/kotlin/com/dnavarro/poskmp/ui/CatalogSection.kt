@@ -19,8 +19,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -87,6 +85,7 @@ import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
+import poskmp.shared.generated.resources.shopping_cart
 import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.tab_ticket
@@ -367,7 +366,7 @@ fun CatalogSection(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
-                        Icon(Icons.Default.ShoppingCart, contentDescription = null)
+                       Icon(painter = painterResource(Res.drawable.shopping_cart), contentDescription = stringResource(Res.string.tab_ticket))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             if (cartCount > 0) stringResource(Res.string.view_ticket_fab, cartCount, cartTotal.toString().formatPrice())

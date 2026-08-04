@@ -1,10 +1,6 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -23,62 +19,87 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BrightnessAuto
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.amoled_mode_subtitle
 import poskmp.shared.generated.resources.amoled_mode_title
+import poskmp.shared.generated.resources.app_scale_subtitle
+import poskmp.shared.generated.resources.app_scale_title
+import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.checador_layout_dialog
+import poskmp.shared.generated.resources.checador_layout_fullscreen
+import poskmp.shared.generated.resources.checador_layout_subtitle
+import poskmp.shared.generated.resources.checador_layout_title
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.cloud_sync_section_title
+import poskmp.shared.generated.resources.dark_mode
 import poskmp.shared.generated.resources.dark_mode_off
 import poskmp.shared.generated.resources.dark_mode_on
 import poskmp.shared.generated.resources.dark_mode_subtitle
 import poskmp.shared.generated.resources.dark_mode_system
 import poskmp.shared.generated.resources.dark_mode_title
 import poskmp.shared.generated.resources.database_section_title
+import poskmp.shared.generated.resources.default_screen_subtitle
+import poskmp.shared.generated.resources.default_screen_title
 import poskmp.shared.generated.resources.dynamic_color_subtitle
 import poskmp.shared.generated.resources.dynamic_color_title
+import poskmp.shared.generated.resources.fullscreen
+import poskmp.shared.generated.resources.light_mode
 import poskmp.shared.generated.resources.local_db_connected_desc
 import poskmp.shared.generated.resources.local_db_status_connected
 import poskmp.shared.generated.resources.local_db_title
+import poskmp.shared.generated.resources.pip
+import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.remove
+import poskmp.shared.generated.resources.reset_scale_button
 import poskmp.shared.generated.resources.seed_color_subtitle
 import poskmp.shared.generated.resources.seed_color_title
 import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.settings_title
+import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.status_connected
 import poskmp.shared.generated.resources.status_pending
 import poskmp.shared.generated.resources.supabase_offline_desc
@@ -88,35 +109,11 @@ import poskmp.shared.generated.resources.sync
 import poskmp.shared.generated.resources.sync_now_button
 import poskmp.shared.generated.resources.system_info_title
 import poskmp.shared.generated.resources.system_version
-import poskmp.shared.generated.resources.theme_section_title
-import poskmp.shared.generated.resources.warning
-
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialShapes
-import androidx.compose.material3.toShape
-
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Remove
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Fullscreen
-import poskmp.shared.generated.resources.checador_layout_dialog
-import poskmp.shared.generated.resources.checador_layout_fullscreen
-import poskmp.shared.generated.resources.checador_layout_subtitle
-import poskmp.shared.generated.resources.checador_layout_title
-import poskmp.shared.generated.resources.app_scale_subtitle
-import poskmp.shared.generated.resources.app_scale_title
-import poskmp.shared.generated.resources.barcode_scanner
-import poskmp.shared.generated.resources.default_screen_subtitle
-import poskmp.shared.generated.resources.default_screen_title
-import poskmp.shared.generated.resources.point_of_sale
-import poskmp.shared.generated.resources.products
-import poskmp.shared.generated.resources.reset_scale_button
 import poskmp.shared.generated.resources.tab_checador
 import poskmp.shared.generated.resources.tab_productos
 import poskmp.shared.generated.resources.tab_venta
+import poskmp.shared.generated.resources.theme_section_title
+import poskmp.shared.generated.resources.warning
 import kotlin.math.roundToInt
 
 data class PresetColorItem(
@@ -390,12 +387,12 @@ fun AjustesScreen(
                                     Triple(
                                         true,
                                         stringResource(Res.string.checador_layout_dialog),
-                                        Icons.AutoMirrored.Outlined.OpenInNew
+                                        Res.drawable.pip
                                     ),
                                     Triple(
                                         false,
                                         stringResource(Res.string.checador_layout_fullscreen),
-                                        Icons.Outlined.Fullscreen
+                                        Res.drawable.fullscreen
                                     )
                                 )
                                 checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
@@ -409,7 +406,7 @@ fun AjustesScreen(
                                         icon = {
                                             SegmentedButtonDefaults.Icon(active = isChecadorDialog == isDialogOption) {
                                                 Icon(
-                                                    imageVector = icon,
+                                                    painter = painterResource(icon),
                                                     contentDescription = label,
                                                     modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
                                                 )
@@ -503,17 +500,17 @@ fun AjustesScreen(
                                     Triple(
                                         DarkModeConfig.SYSTEM,
                                         stringResource(Res.string.dark_mode_system),
-                                        Icons.Outlined.BrightnessAuto
+                                        Res.drawable.star
                                     ),
                                     Triple(
                                         DarkModeConfig.LIGHT,
                                         stringResource(Res.string.dark_mode_off),
-                                        Icons.Outlined.LightMode
+                                        Res.drawable.light_mode
                                     ),
                                     Triple(
                                         DarkModeConfig.DARK,
                                         stringResource(Res.string.dark_mode_on),
-                                        Icons.Outlined.DarkMode
+                                        Res.drawable.dark_mode
                                     )
                                 )
                                 options.forEachIndexed { index, (config, label, icon) ->
@@ -527,7 +524,7 @@ fun AjustesScreen(
                                         icon = {
                                             SegmentedButtonDefaults.Icon(active = darkModeConfig == config) {
                                                 Icon(
-                                                    imageVector = icon,
+                                                    painter = painterResource(icon),
                                                     contentDescription = label,
                                                     modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
                                                 )
@@ -597,8 +594,7 @@ fun AjustesScreen(
                                     enabled = appScale > 0.75f
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Remove,
-                                        contentDescription = "Disminuir escala"
+                                        painter = painterResource(Res.drawable.remove), contentDescription = null
                                     )
                                 }
 
@@ -618,7 +614,7 @@ fun AjustesScreen(
                                     enabled = appScale < 1.35f
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Add,
+                                       painterResource(Res.drawable.add),
                                         contentDescription = "Aumentar escala"
                                     )
                                 }

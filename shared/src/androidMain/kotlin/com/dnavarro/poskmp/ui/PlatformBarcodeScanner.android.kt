@@ -8,10 +8,6 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -217,7 +213,7 @@ fun CameraPreviewScreen(
                     .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             ) {
                 Icon(
-                    Icons.Default.Close,
+                    painterResource(Res.drawable.close),
                     tint = Color.White,
                     contentDescription = stringResource(Res.string.close_scanner_desc)
                 )
@@ -239,7 +235,7 @@ fun CameraPreviewScreen(
                     onClick = { isFlashEnabled = !isFlashEnabled },
                 ) {
                     Icon(
-                        imageVector = if (isFlashEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                        painter = if (isFlashEnabled) painterResource(Res.drawable.flash_on) else painterResource(Res.drawable.flash_off),
                         tint = MaterialTheme.colorScheme.onSurface,
                         contentDescription = stringResource(Res.string.torch_desc),
                         modifier = Modifier.size(32.dp)

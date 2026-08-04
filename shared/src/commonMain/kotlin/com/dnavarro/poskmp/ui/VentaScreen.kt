@@ -21,9 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
@@ -93,6 +90,7 @@ import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add_button
@@ -103,6 +101,7 @@ import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.cash_received_label
 import poskmp.shared.generated.resources.change_delivered_label
 import poskmp.shared.generated.resources.change_to_deliver_label
+import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.checkout_sale_title
 import poskmp.shared.generated.resources.default_quantity_placeholder
 import poskmp.shared.generated.resources.header_product_name
@@ -114,6 +113,7 @@ import poskmp.shared.generated.resources.price_per_kg_label
 import poskmp.shared.generated.resources.quantity_prompt_title
 import poskmp.shared.generated.resources.quantity_weight_label
 import poskmp.shared.generated.resources.register_sale_button
+import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.sale_success_message
 import poskmp.shared.generated.resources.sale_success_title
 import poskmp.shared.generated.resources.save_unregistered_to_db
@@ -609,7 +609,7 @@ fun VentaScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Warning,
+                        painter = painterResource(Res.drawable.sad_face),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(28.dp)
@@ -1030,7 +1030,7 @@ fun VentaScreen(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             icon = {
                 Icon(
-                    Icons.Default.CheckCircle,
+                    painter = painterResource(Res.drawable.check),
                     contentDescription = null,
                     tint = Color(0xFF10B981),
                     modifier = Modifier.size(48.dp)
