@@ -199,8 +199,7 @@ fun FrameWindowScope.CustomTitleBar(
                 // Close Button
                 WindowControlButton(
                     onClick = onCloseRequest,
-                    hoverColor = MaterialTheme.colorScheme.error,
-                    hoverContentColor = MaterialTheme.colorScheme.onError
+                    hoverColor = MaterialTheme.colorScheme.error
                 ) { isHovered ->
                     Icon(
                         painter = painterResource(Res.drawable.close),
@@ -218,7 +217,6 @@ fun FrameWindowScope.CustomTitleBar(
 private fun WindowControlButton(
     onClick: () -> Unit,
     hoverColor: Color,
-    hoverContentColor: Color? = null,
     content: @Composable (isHovered: Boolean) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }

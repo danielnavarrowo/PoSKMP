@@ -33,6 +33,7 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 import java.util.concurrent.Executors
 
+@Suppress("SameReturnValue")
 actual fun isCameraScannerAvailable(): Boolean = true
 
 @OptIn(ExperimentalPermissionsApi::class)

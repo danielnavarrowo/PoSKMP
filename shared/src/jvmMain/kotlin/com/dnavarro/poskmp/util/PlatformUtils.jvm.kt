@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
+
+@Suppress("SameReturnValue")
 actual fun isAndroid(): Boolean = false
 
 @Composable

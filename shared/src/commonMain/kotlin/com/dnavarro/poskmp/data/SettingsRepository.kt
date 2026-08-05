@@ -38,13 +38,6 @@ interface SettingsRepository {
 }
 
 /**
- * Factory function for SettingsRepository.
- */
-fun SettingsRepository(dataStore: DataStore<Preferences> = getDataStore()): SettingsRepository {
-    return SettingsRepositoryImpl(dataStore)
-}
-
-/**
  * Concrete DataStore implementation of [SettingsRepository].
  */
 class SettingsRepositoryImpl(

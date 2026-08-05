@@ -356,7 +356,7 @@ fun VentaScreen(
         } else false
     }
 
-    val total = cartItems.sumOf { it.product.precio * it.quantity }
+    val total = uiState.total
 
     Scaffold(
         modifier = modifier

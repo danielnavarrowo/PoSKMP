@@ -1,8 +1,6 @@
 package com.dnavarro.poskmp.data
 
 import com.dnavarro.poskmp.data.source.local.ProductLocalDataSource
-import com.dnavarro.poskmp.data.source.local.SqlDelightProductDataSource
-import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.flow.Flow
@@ -27,13 +25,6 @@ interface ProductRepository {
     suspend fun updateSyncStatus(id: String, syncState: String, updatedAt: Long)
     suspend fun insertDummyDataIfEmpty()
     suspend fun findProductByBarcode(barcode: String): Products?
-}
-
-/**
- * Factory function to easily construct a ProductRepository with an AppDatabase instance.
- */
-fun ProductRepository(database: AppDatabase): ProductRepository {
-    return ProductRepositoryImpl(SqlDelightProductDataSource(database))
 }
 
 /**

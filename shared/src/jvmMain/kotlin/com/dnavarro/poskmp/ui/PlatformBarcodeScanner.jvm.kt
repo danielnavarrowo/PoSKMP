@@ -12,4 +12,5 @@ actual fun PlatformBarcodeScanner(
     // No-op on JVM/Desktop target
 }
 
+@Suppress("SameReturnValue")
 actual fun isCameraScannerAvailable(): Boolean = false
