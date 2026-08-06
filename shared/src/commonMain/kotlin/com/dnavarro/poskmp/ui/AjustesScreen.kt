@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,13 +34,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
@@ -51,8 +51,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -184,7 +188,7 @@ fun AjustesScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AjustesScreen(
     modifier: Modifier = Modifier,
@@ -313,7 +317,8 @@ fun AjustesScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            SingleChoiceSegmentedButtonRow(
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 val options = listOf(
@@ -334,24 +339,43 @@ fun AjustesScreen(
                                     )
                                 )
                                 options.forEachIndexed { index, (screenOption, label, iconRes) ->
-                                    SegmentedButton(
-                                        shape = SegmentedButtonDefaults.itemShape(
-                                            index = index,
-                                            count = options.size
+                                    val isSelected = defaultScreen == screenOption
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onDefaultScreenChange(screenOption) },
+                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
                                         ),
-                                        onClick = { onDefaultScreenChange(screenOption) },
-                                        selected = defaultScreen == screenOption,
-                                        icon = {
-                                            SegmentedButtonDefaults.Icon(active = defaultScreen == screenOption) {
-                                                Icon(
-                                                    painter = painterResource(iconRes),
-                                                    contentDescription = label,
-                                                    modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
-                                                )
-                                            }
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                         }
                                     ) {
-                                        Text(text = label, maxLines = 1)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(iconRes),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = label,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -380,7 +404,8 @@ fun AjustesScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            SingleChoiceSegmentedButtonRow(
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 val checadorOptions = listOf(
@@ -396,24 +421,43 @@ fun AjustesScreen(
                                     )
                                 )
                                 checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
-                                    SegmentedButton(
-                                        shape = SegmentedButtonDefaults.itemShape(
-                                            index = index,
-                                            count = checadorOptions.size
+                                    val isSelected = isChecadorDialog == isDialogOption
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
+                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
                                         ),
-                                        onClick = { onIsChecadorDialogChange(isDialogOption) },
-                                        selected = isChecadorDialog == isDialogOption,
-                                        icon = {
-                                            SegmentedButtonDefaults.Icon(active = isChecadorDialog == isDialogOption) {
-                                                Icon(
-                                                    painter = painterResource(icon),
-                                                    contentDescription = label,
-                                                    modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
-                                                )
-                                            }
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            checadorOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                         }
                                     ) {
-                                        Text(text = label, maxLines = 1)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(icon),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = label,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -493,7 +537,8 @@ fun AjustesScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            SingleChoiceSegmentedButtonRow(
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 val options = listOf(
@@ -514,24 +559,43 @@ fun AjustesScreen(
                                     )
                                 )
                                 options.forEachIndexed { index, (config, label, icon) ->
-                                    SegmentedButton(
-                                        shape = SegmentedButtonDefaults.itemShape(
-                                            index = index,
-                                            count = options.size
+                                    val isSelected = darkModeConfig == config
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onDarkModeConfigChange(config) },
+                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
                                         ),
-                                        onClick = { onDarkModeConfigChange(config) },
-                                        selected = darkModeConfig == config,
-                                        icon = {
-                                            SegmentedButtonDefaults.Icon(active = darkModeConfig == config) {
-                                                Icon(
-                                                    painter = painterResource(icon),
-                                                    contentDescription = label,
-                                                    modifier = Modifier.size(SegmentedButtonDefaults.IconSize)
-                                                )
-                                            }
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                         }
                                     ) {
-                                        Text(text = label, maxLines = 1)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(icon),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = label,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }

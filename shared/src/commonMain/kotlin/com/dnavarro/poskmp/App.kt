@@ -47,8 +47,6 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,8 +61,10 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,9 +81,11 @@ import com.dnavarro.poskmp.ui.ChecadorScreen
 import com.dnavarro.poskmp.ui.ProductosScreen
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.ui.VentaScreen
+import com.dnavarro.poskmp.ui.VentasScreen
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
+import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -95,6 +97,7 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.dsl.koinConfiguration
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
@@ -106,6 +109,8 @@ import poskmp.shared.generated.resources.tab_productos
 import poskmp.shared.generated.resources.tab_productos_desktop
 import poskmp.shared.generated.resources.tab_venta
 import poskmp.shared.generated.resources.tab_venta_desktop
+import poskmp.shared.generated.resources.tab_ventas_historial
+import poskmp.shared.generated.resources.tab_ventas_historial_desktop
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -153,6 +158,7 @@ fun App(
             val ventaViewModel = koinViewModel<VentaViewModel>()
             val productosViewModel = koinViewModel<ProductosViewModel>()
             val ajustesViewModel = koinViewModel<AjustesViewModel>()
+            val ventasViewModel = koinViewModel<VentasViewModel>()
 
             LaunchedEffect(repository) {
                 repository.insertDummyDataIfEmpty()
@@ -179,6 +185,8 @@ fun App(
                 stringResource(if (isDesktop) Res.string.tab_venta_desktop else Res.string.tab_venta)
             val tabProductosLabel =
                 stringResource(if (isDesktop) Res.string.tab_productos_desktop else Res.string.tab_productos)
+            val tabVentasLabel =
+                stringResource(if (isDesktop) Res.string.tab_ventas_historial_desktop else Res.string.tab_ventas_historial)
             val tabChecadorLabel =
                 stringResource(if (isDesktop) Res.string.tab_checador_desktop else Res.string.tab_checador)
             val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
@@ -191,6 +199,7 @@ fun App(
                 isChecadorDialog,
                 tabVentaLabel,
                 tabProductosLabel,
+                tabVentasLabel,
                 tabChecadorLabel,
                 tabAjustesLabel
             ) {
@@ -200,12 +209,6 @@ fun App(
                         icon = Res.drawable.point_of_sale,
                         isSelected = currentScreen == Screen.VENTA,
                         onCheckedChange = { if (it) selectedScreen = Screen.VENTA }
-                    ),
-                    ToolbarItem(
-                        label = tabProductosLabel,
-                        icon = Res.drawable.products,
-                        isSelected = currentScreen == Screen.PRODUCTOS,
-                        onCheckedChange = { if (it) selectedScreen = Screen.PRODUCTOS }
                     ),
                     ToolbarItem(
                         label = tabChecadorLabel,
@@ -218,6 +221,18 @@ fun App(
                                 selectedScreen = Screen.CHECADOR
                             }
                         }
+                    ),
+                    ToolbarItem(
+                        label = tabProductosLabel,
+                        icon = Res.drawable.products,
+                        isSelected = currentScreen == Screen.PRODUCTOS,
+                        onCheckedChange = { if (it) selectedScreen = Screen.PRODUCTOS }
+                    ),
+                    ToolbarItem(
+                        label = tabVentasLabel,
+                        icon = Res.drawable.analytics,
+                        isSelected = currentScreen == Screen.VENTAS,
+                        onCheckedChange = { if (it) selectedScreen = Screen.VENTAS }
                     ),
                     ToolbarItem(
                         label = tabAjustesLabel,
@@ -406,6 +421,11 @@ fun App(
                                                         true
                                                     }
 
+                                                    Key.F4 -> {
+                                                        selectedScreen = Screen.VENTAS
+                                                        true
+                                                    }
+
                                                     else -> false
                                                 }
                                             }
@@ -485,6 +505,7 @@ fun App(
                                         )
 
                                         Screen.PRODUCTOS -> ProductosScreen(viewModel = productosViewModel)
+                                        Screen.VENTAS -> VentasScreen(viewModel = ventasViewModel)
                                         Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
                                         Screen.CHECADOR -> {
                                             if (isChecadorDialog) {

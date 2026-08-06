@@ -1,5 +1,5 @@
 package com.dnavarro.poskmp.ui
 
 enum class Screen {
-    VENTA, PRODUCTOS, AJUSTES, CHECADOR
+    VENTA, PRODUCTOS, VENTAS, AJUSTES, CHECADOR
 }

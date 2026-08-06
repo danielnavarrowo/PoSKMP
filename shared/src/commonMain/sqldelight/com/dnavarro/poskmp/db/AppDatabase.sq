@@ -63,3 +63,116 @@ WHERE id = ?;
 searchProducts:
 SELECT * FROM products 
 WHERE activo = 1 AND (nombre LIKE '%' || ? || '%' OR codigos LIKE '%' || ? || '%' OR categoria LIKE '%' || ? || '%');
+
+-- ============================================
+-- SALES & ANALYTICS TABLES & QUERIES
+-- ============================================
+
+CREATE TABLE sales (
+    id             TEXT    PRIMARY KEY NOT NULL,
+    folio          INTEGER NOT NULL,
+    total          REAL    NOT NULL,
+    total_original REAL    NOT NULL,
+    total_costo    REAL    NOT NULL,
+    ganancia       REAL    NOT NULL,
+    pago_con       REAL    NOT NULL,
+    cambio         REAL    NOT NULL,
+    metodo_pago    TEXT    NOT NULL DEFAULT 'EFECTIVO',
+    total_items    REAL    NOT NULL DEFAULT 0,
+    created_at     INTEGER NOT NULL,
+    sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+);
+
+CREATE INDEX idx_sales_created_at ON sales(created_at);
+
+CREATE TABLE sale_items (
+    id              TEXT    PRIMARY KEY NOT NULL,
+    sale_id         TEXT    NOT NULL,
+    product_id      TEXT,
+    product_nombre  TEXT    NOT NULL,
+    cantidad        REAL    NOT NULL,
+    precio_unitario REAL    NOT NULL,
+    costo_unitario  REAL    NOT NULL,
+    subtotal        REAL    NOT NULL,
+    ganancia        REAL    NOT NULL,
+    es_mayoreo      INTEGER NOT NULL DEFAULT 0,
+    created_at      INTEGER NOT NULL,
+    FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
+CREATE INDEX idx_sale_items_product_id ON sale_items(product_id);
+CREATE INDEX idx_sale_items_created_at ON sale_items(created_at);
+
+-- Sales Queries
+
+insertSale:
+INSERT INTO sales (
+    id, folio, total, total_original, total_costo, ganancia,
+    pago_con, cambio, metodo_pago, total_items, created_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertSaleItem:
+INSERT INTO sale_items (
+    id, sale_id, product_id, product_nombre, cantidad,
+    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getNextFolio:
+SELECT COALESCE(MAX(folio), 0) + 1 AS next_folio FROM sales;
+
+selectSalesSummaryBetween:
+SELECT 
+    COALESCE(SUM(total), 0.0) AS total_ventas,
+    COALESCE(SUM(total_original), 0.0) AS total_sin_descuento,
+    COALESCE(SUM(total_costo), 0.0) AS total_costo,
+    COALESCE(SUM(ganancia), 0.0) AS total_ganancia,
+    CASE 
+        WHEN SUM(total_costo) > 0 THEN ((SUM(ganancia) / SUM(total_costo)) * 100.0)
+        ELSE 0.0 
+    END AS porcentaje_ganancia,
+    COUNT(id) AS total_ticket_count,
+    COALESCE(AVG(total), 0.0) AS promedio_ticket
+FROM sales 
+WHERE created_at >= :startTime AND created_at <= :endTime;
+
+selectTopSellingProductsBetween:
+SELECT 
+    product_id,
+    product_nombre,
+    SUM(cantidad) AS total_unidades,
+    SUM(subtotal) AS total_recaudado,
+    SUM(ganancia) AS ganancia_generada
+FROM sale_items
+WHERE created_at >= :startTime AND created_at <= :endTime
+GROUP BY product_id, product_nombre
+ORDER BY total_unidades DESC
+LIMIT :limit;
+
+selectLeastSellingProductsBetween:
+SELECT 
+    product_id,
+    product_nombre,
+    SUM(cantidad) AS total_unidades,
+    SUM(subtotal) AS total_recaudado,
+    SUM(ganancia) AS ganancia_generada
+FROM sale_items
+WHERE created_at >= :startTime AND created_at <= :endTime
+GROUP BY product_id, product_nombre
+ORDER BY total_unidades ASC
+LIMIT :limit;
+
+selectRecentSales:
+SELECT * FROM sales 
+ORDER BY created_at DESC 
+LIMIT :limit OFFSET :offset;
+
+selectSaleById:
+SELECT * FROM sales WHERE id = ?;
+
+selectItemsBySaleId:
+SELECT * FROM sale_items WHERE sale_id = ?;
+
+selectAllSalesCount:
+SELECT COUNT(id) FROM sales;
+

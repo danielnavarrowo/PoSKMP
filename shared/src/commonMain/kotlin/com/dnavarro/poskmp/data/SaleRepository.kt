@@ -1,0 +1,18 @@
+package com.dnavarro.poskmp.data
+
+import com.dnavarro.poskmp.domain.model.ProductSalesMetric
+import com.dnavarro.poskmp.domain.model.Sale
+import com.dnavarro.poskmp.domain.model.SaleItem
+import com.dnavarro.poskmp.domain.model.SalesSummary
+
+interface SaleRepository {
+    suspend fun recordSale(sale: Sale, items: List<SaleItem>): Long
+    suspend fun getNextFolio(): Long
+    suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long): SalesSummary
+    suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long = 10): List<ProductSalesMetric>
+    suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long = 10): List<ProductSalesMetric>
+    suspend fun getRecentSales(limit: Long = 20, offset: Long = 0): List<Sale>
+    suspend fun getSaleById(id: String): Sale?
+    suspend fun getItemsBySaleId(saleId: String): List<SaleItem>
+    suspend fun getTotalSalesCount(): Long
+}

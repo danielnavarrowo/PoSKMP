@@ -135,16 +135,26 @@ fun ProductFormDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = formPrecio,
-                        onValueChange = { formPrecio = it },
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                formPrecio = input
+                            }
+                        },
                         modifier = Modifier.weight(1f),
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.retail_price_required_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = formCosto,
-                        onValueChange = { formCosto = it },
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                formCosto = input
+                            }
+                        },
                         modifier = Modifier.weight(1f),
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.cost_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
@@ -153,8 +163,13 @@ fun ProductFormDialog(
 
                 OutlinedTextField(
                     value = formPrecioMayoreo,
-                    onValueChange = { formPrecioMayoreo = it },
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                            formPrecioMayoreo = input
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
+                    prefix = { Text("$", fontWeight = FontWeight.Bold) },
                     label = { Text(stringResource(Res.string.wholesale_price_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true

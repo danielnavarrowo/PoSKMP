@@ -15,6 +15,7 @@ import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
+import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -23,12 +24,21 @@ import org.koin.dsl.module
 
 import com.dnavarro.poskmp.data.getDataStore
 
+import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.data.SaleRepositoryImpl
+import com.dnavarro.poskmp.data.source.local.SaleLocalDataSource
+import com.dnavarro.poskmp.data.source.local.SqlDelightSaleDataSource
+import com.dnavarro.poskmp.domain.usecase.GetSalesSummaryUseCase
+import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
+
 val dataModule = module {
     single { DatabaseDriverFactory() }
     single { createDatabase(get()) }
     single { getDataStore() }
     singleOf(::SqlDelightProductDataSource) bind ProductLocalDataSource::class
     singleOf(::ProductRepositoryImpl) bind ProductRepository::class
+    singleOf(::SqlDelightSaleDataSource) bind SaleLocalDataSource::class
+    singleOf(::SaleRepositoryImpl) bind SaleRepository::class
     singleOf(::SettingsRepositoryImpl) bind SettingsRepository::class
 }
 
@@ -37,12 +47,15 @@ val domainModule = module {
     factoryOf(::SaveProductUseCase)
     factoryOf(::FindProductByBarcodeUseCase)
     factoryOf(::ApplyBulkModificationUseCase)
+    factoryOf(::RecordSaleUseCase)
+    factoryOf(::GetSalesSummaryUseCase)
 }
 
 val viewModelModule = module {
     viewModelOf(::ProductosViewModel)
     viewModelOf(::VentaViewModel)
     viewModelOf(::AjustesViewModel)
+    viewModelOf(::VentasViewModel)
 }
 
 val appModule = listOf(dataModule, domainModule, viewModelModule)

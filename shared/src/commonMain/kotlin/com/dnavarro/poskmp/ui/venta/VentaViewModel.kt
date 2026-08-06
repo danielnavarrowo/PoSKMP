@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
+import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 
 import com.dnavarro.poskmp.ui.CartItem
@@ -28,7 +29,8 @@ class VentaViewModel(
     private val repository: ProductRepository,
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
     private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository),
-    private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository)
+    private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
+    private val recordSaleUseCase: RecordSaleUseCase
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -198,5 +200,18 @@ class VentaViewModel(
 
     suspend fun findProductByBarcode(barcode: String): Products? {
         return findProductByBarcodeUseCase(barcode)
+    }
+
+    suspend fun processCheckout(pagoCon: Double, cambio: Double, metodoPago: String = "EFECTIVO"): Long {
+        val currentItems = _cartItems.value
+        if (currentItems.isEmpty()) return 0L
+        val folio = recordSaleUseCase(
+            cartItems = currentItems,
+            pagoCon = pagoCon,
+            cambio = cambio,
+            metodoPago = metodoPago
+        )
+        clearCart()
+        return folio
     }
 }

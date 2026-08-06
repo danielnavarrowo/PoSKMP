@@ -25,8 +25,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,6 +37,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.AnimatedPane
@@ -48,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,7 +62,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -71,23 +75,27 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.model.PaymentMethod
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
+import com.dnavarro.poskmp.util.PlatformBackHandler
+import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
-import com.dnavarro.poskmp.util.PlatformBackHandler
-import com.dnavarro.poskmp.util.SoundManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -98,29 +106,33 @@ import poskmp.shared.generated.resources.add_to_ticket_button
 import poskmp.shared.generated.resources.barcode_not_found_message
 import poskmp.shared.generated.resources.barcode_not_found_title
 import poskmp.shared.generated.resources.cancel
+import poskmp.shared.generated.resources.card
 import poskmp.shared.generated.resources.cash_received_label
-import poskmp.shared.generated.resources.change_delivered_label
 import poskmp.shared.generated.resources.change_to_deliver_label
-import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.checkout_sale_title
 import poskmp.shared.generated.resources.default_quantity_placeholder
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.insufficient_amount_error
 import poskmp.shared.generated.resources.kg_suffix
+import poskmp.shared.generated.resources.mixed_payment_cash_label
+import poskmp.shared.generated.resources.mixed_payment_remaining_label
+import poskmp.shared.generated.resources.money
+import poskmp.shared.generated.resources.money_transfer
 import poskmp.shared.generated.resources.not_registered
+import poskmp.shared.generated.resources.payment_method_efectivo
+import poskmp.shared.generated.resources.payment_method_mixto
+import poskmp.shared.generated.resources.payment_method_tarjeta
+import poskmp.shared.generated.resources.payment_method_transferencia
+import poskmp.shared.generated.resources.payments
 import poskmp.shared.generated.resources.pesos_currency_label
 import poskmp.shared.generated.resources.price_per_kg_label
 import poskmp.shared.generated.resources.quantity_prompt_title
 import poskmp.shared.generated.resources.quantity_weight_label
 import poskmp.shared.generated.resources.register_sale_button
 import poskmp.shared.generated.resources.sad_face
-import poskmp.shared.generated.resources.sale_success_message
-import poskmp.shared.generated.resources.sale_success_title
 import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
-import poskmp.shared.generated.resources.total_charged_label
 import poskmp.shared.generated.resources.total_to_pay_label
-import poskmp.shared.generated.resources.understood_button
 import poskmp.shared.generated.resources.understood_enter_button
 import poskmp.shared.generated.resources.unit_price_label
 import poskmp.shared.generated.resources.unregistered_name_placeholder
@@ -135,7 +147,7 @@ data class CartItem(
 )
 
 @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VentaScreen(
     viewModel: VentaViewModel,
@@ -154,10 +166,12 @@ fun VentaScreen(
 
     // Checkout Dialog state
     var showCheckoutDialog by remember { mutableStateOf(false) }
-    var paymentAmountInput by remember { mutableStateOf("") }
-    var showSuccessDialog by remember { mutableStateOf(false) }
+    var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.EFECTIVO) }
+    var paymentAmountInput by remember { mutableStateOf(TextFieldValue("")) }
     var lastSaleTotal by remember { mutableDoubleStateOf(0.0) }
     var lastSaleChange by remember { mutableDoubleStateOf(0.0) }
+    var lastSaleFolio by remember { mutableLongStateOf(0L) }
+    val checkoutFocusRequester = remember { FocusRequester() }
 
     // Unregistered Product Dialog state
     var showUnregisteredDialog by remember { mutableStateOf(false) }
@@ -394,7 +408,7 @@ fun VentaScreen(
                                 }
 
                                 Key.F12 -> {
-                                    paymentAmountInput = ""
+                                    paymentAmountInput = TextFieldValue("")
                                     showCheckoutDialog = true
                                     true
                                 }
@@ -455,7 +469,7 @@ fun VentaScreen(
                             },
                             onApplyWholesaleClick = { toggleWholesalePrice() },
                             onCheckoutClick = {
-                                paymentAmountInput = ""
+                                paymentAmountInput = TextFieldValue("")
                                 showCheckoutDialog = true
                             },
                             searchFocusRequester = searchBarFocusRequester,
@@ -499,7 +513,7 @@ fun VentaScreen(
                             onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
                             onRemoveItem = { item -> removeCartItem(item) },
                             onCheckout = {
-                                paymentAmountInput = ""
+                                paymentAmountInput = TextFieldValue("")
                                 showCheckoutDialog = true
                             },
                             selectedIndex = selectedIndex,
@@ -553,7 +567,7 @@ fun VentaScreen(
                                 },
                                 onApplyWholesaleClick = { toggleWholesalePrice() },
                                 onCheckoutClick = {
-                                    paymentAmountInput = ""
+                                    paymentAmountInput = TextFieldValue("")
                                     showCheckoutDialog = true
                                 },
                                 searchFocusRequester = searchBarFocusRequester,
@@ -572,7 +586,7 @@ fun VentaScreen(
                                 onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
                                 onRemoveItem = { item -> removeCartItem(item) },
                                 onCheckout = {
-                                    paymentAmountInput = ""
+                                    paymentAmountInput = TextFieldValue("")
                                     showCheckoutDialog = true
                                 },
                                 selectedIndex = selectedIndex,
@@ -684,15 +698,17 @@ fun VentaScreen(
         }
 
         fun handlePriceChange(newPrice: String) {
-            priceInputValue = newPrice
-            val price = newPrice.toDoubleOrNull()
-            if (price != null && price >= 0.0) {
-                val calcWeight = price / product.precio
-                val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
-                    .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
-                weightInputValue = TextFieldValue(text = weightStr, selection = TextRange(weightStr.length))
-            } else if (newPrice.isEmpty()) {
-                weightInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+            if (newPrice.isEmpty() || newPrice.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                priceInputValue = newPrice
+                val price = newPrice.toDoubleOrNull()
+                if (price != null && price >= 0.0) {
+                    val calcWeight = price / product.precio
+                    val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
+                        .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
+                    weightInputValue = TextFieldValue(text = weightStr, selection = TextRange(weightStr.length))
+                } else if (newPrice.isEmpty()) {
+                    weightInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+                }
             }
         }
 
@@ -776,15 +792,17 @@ fun VentaScreen(
                             OutlinedTextField(
                                 value = weightInputValue,
                                 onValueChange = { newValue ->
-                                    weightInputValue = newValue
-                                    val newWeight = newValue.text
-                                    val weight = newWeight.toDoubleOrNull()
-                                    if (weight != null && weight >= 0.0) {
-                                        val calcPrice = weight * product.precio
-                                        priceInputValue = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
-                                            .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
-                                    } else if (newWeight.isEmpty()) {
-                                        priceInputValue = ""
+                                    val text = newValue.text
+                                    if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
+                                        weightInputValue = newValue
+                                        val weight = text.toDoubleOrNull()
+                                        if (weight != null && weight >= 0.0) {
+                                            val calcPrice = weight * product.precio
+                                            priceInputValue = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
+                                                .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
+                                        } else if (text.isEmpty()) {
+                                            priceInputValue = ""
+                                        }
                                     }
                                 },
                                 modifier = Modifier
@@ -850,6 +868,7 @@ fun VentaScreen(
                                 value = priceInputValue,
                                 onValueChange = { handlePriceChange(it) },
                                 modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface),
+                                prefix = { Text("$", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
@@ -908,19 +927,56 @@ fun VentaScreen(
 
     // Checkout Dialog
     if (showCheckoutDialog) {
-        val paymentAmount = paymentAmountInput.toDoubleOrNull() ?: 0.0
+        LaunchedEffect(Unit) {
+            val formattedTotal = if (total % 1.0 == 0.0) total.toInt().toString() else ((total * 100.0).roundToInt() / 100.0).toString()
+            paymentAmountInput = TextFieldValue(
+                text = formattedTotal,
+                selection = TextRange(0, formattedTotal.length)
+            )
+            delay(50.milliseconds)
+            checkoutFocusRequester.requestFocus()
+        }
+
+        val paymentText = paymentAmountInput.text
+        val paymentAmount = paymentText.toDoubleOrNull() ?: 0.0
         val change = if (paymentAmount >= total) paymentAmount - total else 0.0
+
+        val isCheckoutValid = when (selectedPaymentMethod) {
+            PaymentMethod.EFECTIVO -> paymentAmount >= total || paymentText.isEmpty()
+            PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> true
+            PaymentMethod.MIXTO -> paymentAmount <= total
+            PaymentMethod.CREDITO -> true
+        }
+
+        val performCheckout = {
+            val (finalPayment, finalChange) = when (selectedPaymentMethod) {
+                PaymentMethod.EFECTIVO -> Pair(
+                    if (paymentText.isEmpty()) total else paymentAmount,
+                    if (paymentText.isEmpty()) 0.0 else change
+                )
+                PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> Pair(total, 0.0)
+                PaymentMethod.MIXTO -> Pair(total, 0.0)
+                PaymentMethod.CREDITO -> Pair(total, 0.0)
+            }
+            lastSaleTotal = total
+            lastSaleChange = finalChange
+            showCheckoutDialog = false
+            coroutineScope.launch {
+                val folio = viewModel.processCheckout(
+                    pagoCon = finalPayment,
+                    cambio = finalChange,
+                    metodoPago = selectedPaymentMethod.name
+                )
+                lastSaleFolio = folio
+            }
+        }
 
         AlertDialog(
             onDismissRequest = { showCheckoutDialog = false },
             modifier = Modifier.onPreviewKeyEvent { keyEvent ->
                 keyEvent.type == KeyEventType.KeyDown &&
-                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (paymentAmount >= total || paymentAmountInput.isEmpty()) {
-                    lastSaleTotal = total
-                    lastSaleChange = change
-                    showCheckoutDialog = false
-                    showSuccessDialog = true
-                    viewModel.clearCart()
+                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (isCheckoutValid) {
+                    performCheckout()
                     true
                 } else false
             },
@@ -929,6 +985,73 @@ fun VentaScreen(
             title = { Text(stringResource(Res.string.checkout_sale_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                    // Payment Method Choice Buttons (2x2 Grid with ToggleButton)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val activeMethods = listOf(
+                            PaymentMethod.EFECTIVO to (stringResource(Res.string.payment_method_efectivo) to Res.drawable.money),
+                            PaymentMethod.TARJETA to (stringResource(Res.string.payment_method_tarjeta) to Res.drawable.card),
+                            PaymentMethod.TRANSFERENCIA to (stringResource(Res.string.payment_method_transferencia) to Res.drawable.money_transfer),
+                            PaymentMethod.MIXTO to (stringResource(Res.string.payment_method_mixto) to Res.drawable.payments)
+                        )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            activeMethods.chunked(2).forEach { rowMethods ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    rowMethods.forEachIndexed { index, (method, info) ->
+                                        val (label, icon) = info
+                                        val isSelected = selectedPaymentMethod == method
+                                        ToggleButton(
+                                            checked = isSelected,
+                                            onCheckedChange = {
+                                                selectedPaymentMethod = method
+                                                if (method != PaymentMethod.EFECTIVO && method != PaymentMethod.MIXTO) {
+                                                    paymentAmountInput = TextFieldValue("")
+                                                }
+                                            },
+                                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .semantics { role = Role.RadioButton },
+                                            shapes = when (index) {
+                                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                                rowMethods.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                            }
+                                        ) {
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(icon),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small)
@@ -948,58 +1071,110 @@ fun VentaScreen(
                         )
                     }
 
-                    OutlinedTextField(
-                        value = paymentAmountInput,
-                        onValueChange = { paymentAmountInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        label = { Text(stringResource(Res.string.cash_received_label)) },
-                        placeholder = { Text("0.00") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
-                    )
 
-                    if (paymentAmountInput.isNotEmpty() && paymentAmount < total) {
-                        Text(
-                            stringResource(Res.string.insufficient_amount_error, (total - paymentAmount).toString().formatPrice()),
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    } else if (paymentAmount >= total) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                stringResource(Res.string.change_to_deliver_label),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 14.sp
+
+                    // Conditional payment fields based on PaymentMethod
+                    when (selectedPaymentMethod) {
+                        PaymentMethod.EFECTIVO -> {
+                            OutlinedTextField(
+                                value = paymentAmountInput,
+                                onValueChange = { newValue ->
+                                    val text = newValue.text
+                                    if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                        paymentAmountInput = newValue
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().focusRequester(checkoutFocusRequester),
+                                prefix = { Text("$ ", fontWeight = FontWeight.Bold) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                label = { Text(stringResource(Res.string.cash_received_label)) },
+                                placeholder = { Text("0.00") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                )
                             )
-                            Text(
-                                "$${change.toString().formatPrice()}",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 20.sp
+
+                            if (paymentText.isNotEmpty() && paymentAmount < total) {
+                                Text(
+                                    stringResource(Res.string.insufficient_amount_error, (total - paymentAmount).toString().formatPrice()),
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            } else if (paymentAmount >= total) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        stringResource(Res.string.change_to_deliver_label),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        "$${change.toString().formatPrice()}",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        PaymentMethod.MIXTO -> {
+                            OutlinedTextField(
+                                value = paymentAmountInput,
+                                onValueChange = { newValue ->
+                                    val text = newValue.text
+                                    if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                        paymentAmountInput = newValue
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().focusRequester(checkoutFocusRequester),
+                                prefix = { Text("$ ", fontWeight = FontWeight.Bold) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                label = { Text(stringResource(Res.string.mixed_payment_cash_label)) },
+                                placeholder = { Text("0.00") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                )
                             )
+
+                            val remaining = if (total > paymentAmount) total - paymentAmount else 0.0
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    stringResource(Res.string.mixed_payment_remaining_label),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    "$${remaining.toString().formatPrice()}",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 18.sp
+                                )
+                            }
+                        }
+
+                        PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA, PaymentMethod.CREDITO -> {
+                            // Exact payment for digital or credit transactions
                         }
                     }
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = {
-                        lastSaleTotal = total
-                        lastSaleChange = change
-                        showCheckoutDialog = false
-                        showSuccessDialog = true
-                        viewModel.clearCart()
-                    },
-                    enabled = paymentAmount >= total || paymentAmountInput.isEmpty(),
+                    onClick = { performCheckout() },
+                    enabled = isCheckoutValid,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = MaterialTheme.shapes.small
                 ) {
@@ -1009,57 +1184,6 @@ fun VentaScreen(
             dismissButton = {
                 TextButton(onClick = { showCheckoutDialog = false }) {
                     Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        )
-    }
-
-    // Success Dialog
-    if (showSuccessDialog) {
-        AlertDialog(
-            onDismissRequest = { showSuccessDialog = false },
-            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown && 
-                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                ) {
-                    showSuccessDialog = false
-                    true
-                } else false
-            },
-            shape = MaterialTheme.shapes.large,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            icon = {
-                Icon(
-                    painter = painterResource(Res.drawable.check),
-                    contentDescription = null,
-                    tint = Color(0xFF10B981),
-                    modifier = Modifier.size(48.dp)
-                )
-            },
-            title = { Text(stringResource(Res.string.sale_success_title), fontWeight = FontWeight.Bold) },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(Res.string.sale_success_message), textAlign = TextAlign.Center)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        stringResource(Res.string.total_charged_label, lastSaleTotal.toString().formatPrice()),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        stringResource(Res.string.change_delivered_label, lastSaleChange.toString().formatPrice()),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showSuccessDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(stringResource(Res.string.understood_button))
                 }
             }
         )
@@ -1142,12 +1266,13 @@ fun VentaScreen(
                     OutlinedTextField(
                         value = unregisteredPrice,
                         onValueChange = { input ->
-                            if (input.isEmpty() || input.toDoubleOrNull() != null || input.endsWith(".")) {
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
                                 unregisteredPrice = input
                             }
                         },
                         label = { Text(stringResource(Res.string.unit_price_label)) },
                         placeholder = { Text("0.00") },
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
                         singleLine = true,
                         shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1161,7 +1286,7 @@ fun VentaScreen(
                     OutlinedTextField(
                         value = unregisteredQuantity,
                         onValueChange = { input ->
-                            if (input.isEmpty() || input.toDoubleOrNull() != null || input.endsWith(".")) {
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
                                 unregisteredQuantity = input
                             }
                         },

@@ -229,8 +229,13 @@ private fun PriceOption(label: String, checked: Boolean, onCheckedChange: (Boole
         Checkbox(checked = checked, onCheckedChange = onCheckedChange)
         OutlinedTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { input ->
+                if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                    onValueChange(input)
+                }
+            },
             modifier = Modifier.fillMaxWidth().padding(start = 4.dp),
+            prefix = { Text("$") },
             label = { Text(label) },
             enabled = checked,
             singleLine = true,
@@ -243,7 +248,11 @@ private fun PriceOption(label: String, checked: Boolean, onCheckedChange: (Boole
 private fun DecimalInput(label: String, value: String, onValueChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { input ->
+            if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                onValueChange(input)
+            }
+        },
         modifier = Modifier.fillMaxWidth(),
         label = { Text(label) },
         singleLine = true,

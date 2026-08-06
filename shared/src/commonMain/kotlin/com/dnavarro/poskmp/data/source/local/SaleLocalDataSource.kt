@@ -1,0 +1,128 @@
+package com.dnavarro.poskmp.data.source.local
+
+import com.dnavarro.poskmp.db.AppDatabase
+import com.dnavarro.poskmp.db.Sales
+import com.dnavarro.poskmp.db.Sale_items
+import com.dnavarro.poskmp.domain.model.ProductSalesMetric
+import com.dnavarro.poskmp.domain.model.SalesSummary
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+interface SaleLocalDataSource {
+    suspend fun recordSale(sale: Sales, items: List<Sale_items>): Long
+    suspend fun getNextFolio(): Long
+    suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long): SalesSummary
+    suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long): List<ProductSalesMetric>
+    suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long): List<ProductSalesMetric>
+    suspend fun getRecentSales(limit: Long, offset: Long): List<Sales>
+    suspend fun getSaleById(id: String): Sales?
+    suspend fun getItemsBySaleId(saleId: String): List<Sale_items>
+    suspend fun getTotalSalesCount(): Long
+}
+
+class SqlDelightSaleDataSource(
+    private val database: AppDatabase
+) : SaleLocalDataSource {
+    private val queries = database.appDatabaseQueries
+
+    override suspend fun recordSale(sale: Sales, items: List<Sale_items>): Long = withContext(Dispatchers.IO) {
+        database.transactionWithResult {
+            queries.insertSale(
+                id = sale.id,
+                folio = sale.folio,
+                total = sale.total,
+                total_original = sale.total_original,
+                total_costo = sale.total_costo,
+                ganancia = sale.ganancia,
+                pago_con = sale.pago_con,
+                cambio = sale.cambio,
+                metodo_pago = sale.metodo_pago,
+                total_items = sale.total_items,
+                created_at = sale.created_at,
+                sync_state = sale.sync_state
+            )
+
+            items.forEach { item ->
+                queries.insertSaleItem(
+                    id = item.id,
+                    sale_id = item.sale_id,
+                    product_id = item.product_id,
+                    product_nombre = item.product_nombre,
+                    cantidad = item.cantidad,
+                    precio_unitario = item.precio_unitario,
+                    costo_unitario = item.costo_unitario,
+                    subtotal = item.subtotal,
+                    ganancia = item.ganancia,
+                    es_mayoreo = item.es_mayoreo,
+                    created_at = item.created_at
+                )
+            }
+            sale.folio
+        }
+    }
+
+    override suspend fun getNextFolio(): Long = withContext(Dispatchers.IO) {
+        queries.getNextFolio().executeAsOne()
+    }
+
+    override suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long): SalesSummary = withContext(Dispatchers.IO) {
+        val result = queries.selectSalesSummaryBetween(startTime, endTime).executeAsOne()
+        SalesSummary(
+            totalVentas = result.total_ventas,
+            totalSinDescuento = result.total_sin_descuento,
+            totalCosto = result.total_costo,
+            totalGanancia = result.total_ganancia,
+            porcentajeGanancia = result.porcentaje_ganancia ?: 0.0,
+            totalTicketCount = result.total_ticket_count,
+            promedioTicket = result.promedio_ticket
+        )
+    }
+
+    override suspend fun getTopSellingProductsBetween(
+        startTime: Long,
+        endTime: Long,
+        limit: Long
+    ): List<ProductSalesMetric> = withContext(Dispatchers.IO) {
+        queries.selectTopSellingProductsBetween(startTime, endTime, limit).executeAsList().map { row ->
+            ProductSalesMetric(
+                productId = row.product_id,
+                productNombre = row.product_nombre,
+                totalUnidades = row.total_unidades ?: 0.0,
+                totalRecaudado = row.total_recaudado ?: 0.0,
+                gananciaGenerada = row.ganancia_generada ?: 0.0
+            )
+        }
+    }
+
+    override suspend fun getLeastSellingProductsBetween(
+        startTime: Long,
+        endTime: Long,
+        limit: Long
+    ): List<ProductSalesMetric> = withContext(Dispatchers.IO) {
+        queries.selectLeastSellingProductsBetween(startTime, endTime, limit).executeAsList().map { row ->
+            ProductSalesMetric(
+                productId = row.product_id,
+                productNombre = row.product_nombre,
+                totalUnidades = row.total_unidades ?: 0.0,
+                totalRecaudado = row.total_recaudado ?: 0.0,
+                gananciaGenerada = row.ganancia_generada ?: 0.0
+            )
+        }
+    }
+
+    override suspend fun getRecentSales(limit: Long, offset: Long): List<Sales> = withContext(Dispatchers.IO) {
+        queries.selectRecentSales(limit, offset).executeAsList()
+    }
+
+    override suspend fun getSaleById(id: String): Sales? = withContext(Dispatchers.IO) {
+        queries.selectSaleById(id).executeAsOneOrNull()
+    }
+
+    override suspend fun getItemsBySaleId(saleId: String): List<Sale_items> = withContext(Dispatchers.IO) {
+        queries.selectItemsBySaleId(saleId).executeAsList()
+    }
+
+    override suspend fun getTotalSalesCount(): Long = withContext(Dispatchers.IO) {
+        queries.selectAllSalesCount().executeAsOne()
+    }
+}

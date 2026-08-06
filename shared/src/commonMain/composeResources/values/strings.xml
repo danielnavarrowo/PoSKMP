@@ -19,6 +19,8 @@
     <string name="tab_venta_desktop">Venta (F1)</string>
     <string name="tab_productos">Productos</string>
     <string name="tab_productos_desktop">Productos (F3)</string>
+    <string name="tab_ventas_historial">Historial de Ventas</string>
+    <string name="tab_ventas_historial_desktop">Ventas (F4)</string>
     <string name="tab_checador">Checador</string>
     <string name="tab_checador_desktop">Checador (F2)</string>
     <string name="tab_ajustes">Ajustes</string>
@@ -246,6 +248,14 @@
     <string name="pesos_currency_label">PESOS ($)</string>
     <string name="add_button">Agregar</string>
     <string name="checkout_sale_title">Cobro de Venta</string>
+    <string name="payment_method_label">Método de Pago</string>
+    <string name="payment_method_efectivo">Efectivo</string>
+    <string name="payment_method_tarjeta">Tarjeta</string>
+    <string name="payment_method_transferencia">Transferencia</string>
+    <string name="payment_method_mixto">Mixto</string>
+    <string name="payment_method_credito">Crédito</string>
+    <string name="mixed_payment_cash_label">Monto en Efectivo</string>
+    <string name="mixed_payment_remaining_label">Restante (Tarjeta/Transferencia):</string>
     <string name="total_to_pay_label">Total a Pagar:</string>
     <string name="cash_received_label">Efectivo Recibido</string>
     <string name="zero_price_placeholder">0.00</string>
@@ -266,4 +276,31 @@
     <string name="save_unregistered_to_db">Guardar producto en la base de datos</string>
     <string name="select_all_label">Seleccionar todos</string>
     <string name="per_kg_suffix"> / Kg</string>
+
+    <!-- VentasScreen / Analytics -->
+    <string name="ventas_title">Ventas y Reportes</string>
+    <string name="period_today">Hoy</string>
+    <string name="period_yesterday">Ayer</string>
+    <string name="period_this_week">Esta Semana</string>
+    <string name="period_this_month">Este Mes</string>
+    <string name="kpi_total_sales">Ventas Totales</string>
+    <string name="kpi_without_discount">Sin desc: $%1$s</string>
+    <string name="kpi_gross_total">Total bruto</string>
+    <string name="kpi_net_profit">Ganancia Neta</string>
+    <string name="kpi_margin">Margen: %1$s%%</string>
+    <string name="kpi_issued_tickets">Tickets Emitidos</string>
+    <string name="kpi_average_ticket">Prom: $%1$s</string>
+    <string name="title_top_sellers">Productos Más Vendidos</string>
+    <string name="title_least_sellers">Productos Menos Vendidos</string>
+    <string name="empty_period_sales">No hay ventas registradas en este período.</string>
+    <string name="title_recent_sales_history">Historial de Ventas Recientes</string>
+    <string name="empty_recent_sales_history">Aún no se han registrado ventas.</string>
+    <string name="units_sold_count">%1$s unidades vendidas</string>
+    <string name="ticket_folio_format">Ticket #%1$d</string>
+    <string name="ticket_folio_simple">Folio #%1$d</string>
+    <string name="ticket_items_and_method">%1$s artículos • %2$s</string>
+    <string name="ticket_profit_label">Ganancia: +$%1$s</string>
+    <string name="ticket_detail_title">Detalle de Ticket #%1$d</string>
+    <string name="ticket_detail_total">Total: $%1$s</string>
+    <string name="ticket_detail_profit">Ganancia: +$%1$s</string>
 </resources>
