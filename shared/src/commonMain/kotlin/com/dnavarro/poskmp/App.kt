@@ -148,8 +148,7 @@ private data class ToolbarItem(
 )
 @Composable
 fun App(
-    modifier: Modifier = Modifier,
-    windowTitleBar: (@Composable () -> Unit)? = null
+    modifier: Modifier = Modifier
 ) {
     KoinApplication(
         configuration = koinConfiguration(declaration = { modules(appModule) }),
@@ -272,11 +271,7 @@ fun App(
                     isAmoled = isAmoled,
                     darkTheme = darkTheme
                 ) {
-                    Column(modifier = modifier.fillMaxSize()) {
-                    if (windowTitleBar != null) {
-                        windowTitleBar()
-                    }
-                    BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
                     val isCompact = maxWidth < 600.dp
                     val showNavLayout = !(currentScreen == Screen.CHECADOR && !isChecadorDialog)
                     val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(maxWidth) else NavigationSuiteType.None
@@ -532,5 +527,5 @@ fun App(
             }
         }
     }
-})
+)
 }

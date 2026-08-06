@@ -20,16 +20,8 @@ fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
         state = windowState,
-        title = stringResource(Res.string.app_window_title),
-        undecorated = true
+        title = stringResource(Res.string.app_window_title)
     ) {
-        App(
-            windowTitleBar = {
-                CustomTitleBar(
-                    state = windowState,
-                    onCloseRequest = ::exitApplication
-                )
-            }
-        )
+        App()
     }
 }
