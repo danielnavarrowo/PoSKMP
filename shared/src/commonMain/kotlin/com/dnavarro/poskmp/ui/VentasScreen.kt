@@ -19,12 +19,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +74,7 @@ import poskmp.shared.generated.resources.title_top_sellers
 import poskmp.shared.generated.resources.units_sold_count
 import poskmp.shared.generated.resources.ventas_title
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VentasScreen(
     viewModel: VentasViewModel,
@@ -99,23 +106,40 @@ fun VentasScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SalesPeriodPreset.entries.forEach { preset ->
-                    FilterChip(
-                        selected = state.selectedPeriod == preset,
-                        onClick = { viewModel.selectPeriod(preset) },
-                        label = {
-                            Text(
-                                text = when (preset) {
-                                    SalesPeriodPreset.HOY -> stringResource(Res.string.period_today)
-                                    SalesPeriodPreset.AYER -> stringResource(Res.string.period_yesterday)
-                                    SalesPeriodPreset.ESTA_SEMANA -> stringResource(Res.string.period_this_week)
-                                    SalesPeriodPreset.ESTE_MES -> stringResource(Res.string.period_this_month)
-                                },
-                                fontWeight = FontWeight.SemiBold
-                            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+            ) {
+                val presets = SalesPeriodPreset.entries
+                presets.forEachIndexed { index, preset ->
+                    val isSelected = state.selectedPeriod == preset
+                    ToggleButton(
+                        checked = isSelected,
+                        onCheckedChange = { viewModel.selectPeriod(preset) },
+                        colors = ToggleButtonDefaults.toggleButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.semantics { role = Role.RadioButton },
+                        shapes = when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            presets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                         }
-                    )
+                    ) {
+                        Text(
+                            text = when (preset) {
+                                SalesPeriodPreset.HOY -> stringResource(Res.string.period_today)
+                                SalesPeriodPreset.AYER -> stringResource(Res.string.period_yesterday)
+                                SalesPeriodPreset.ESTA_SEMANA -> stringResource(Res.string.period_this_week)
+                                SalesPeriodPreset.ESTE_MES -> stringResource(Res.string.period_this_month)
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }

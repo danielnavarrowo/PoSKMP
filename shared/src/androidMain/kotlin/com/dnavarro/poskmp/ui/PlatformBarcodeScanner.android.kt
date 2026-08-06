@@ -79,12 +79,35 @@ fun CameraPreviewScreen(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val executor = remember { Executors.newSingleThreadExecutor() }
+    val barcodeScanner = remember {
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(
+                Barcode.FORMAT_CODE_128,
+                Barcode.FORMAT_CODE_39,
+                Barcode.FORMAT_CODE_93,
+                Barcode.FORMAT_CODABAR,
+                Barcode.FORMAT_EAN_13,
+                Barcode.FORMAT_EAN_8,
+                Barcode.FORMAT_ITF,
+                Barcode.FORMAT_UPC_A,
+                Barcode.FORMAT_UPC_E
+            )
+            .build()
+        BarcodeScanning.getClient(options)
+    }
     var isProcessing by remember { mutableStateOf(false) }
     var isFlashEnabled by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<Camera?>(null) }
 
     DisposableEffect(Unit) {
         onDispose {
+            try {
+                if (cameraProviderFuture.isDone) {
+                    cameraProviderFuture.get().unbindAll()
+                }
+            } catch (_: Exception) {
+            }
+            barcodeScanner.close()
             executor.shutdown()
         }
     }
@@ -101,22 +124,6 @@ fun CameraPreviewScreen(
                 val preview = Preview.Builder().build().also {
                     it.surfaceProvider = previewView.surfaceProvider
                 }
-
-                val options = BarcodeScannerOptions.Builder()
-                    .setBarcodeFormats(
-                        Barcode.FORMAT_CODE_128,
-                        Barcode.FORMAT_CODE_39,
-                        Barcode.FORMAT_CODE_93,
-                        Barcode.FORMAT_CODABAR,
-                        Barcode.FORMAT_EAN_13,
-                        Barcode.FORMAT_EAN_8,
-                        Barcode.FORMAT_ITF,
-                        Barcode.FORMAT_UPC_A,
-                        Barcode.FORMAT_UPC_E
-                    )
-                    .build()
-
-                val barcodeScanner = BarcodeScanning.getClient(options)
 
                 val imageAnalysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
