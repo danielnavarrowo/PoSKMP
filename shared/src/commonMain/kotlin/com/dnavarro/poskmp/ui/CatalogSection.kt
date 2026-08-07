@@ -24,7 +24,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,10 +69,12 @@ import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.checkout_button
 import poskmp.shared.generated.resources.checkout_hotkey
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.close_scanner_desc
 import poskmp.shared.generated.resources.edit
 import poskmp.shared.generated.resources.empty_icon_desc
 import poskmp.shared.generated.resources.favorite_desc
@@ -95,6 +99,7 @@ import poskmp.shared.generated.resources.wholesale_item_hotkey
 import poskmp.shared.generated.resources.wholesale_ticket
 import poskmp.shared.generated.resources.wholesale_ticket_hotkey
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CatalogSection(
     modifier: Modifier = Modifier,
@@ -106,6 +111,7 @@ fun CatalogSection(
     onModifyProduct: (Products) -> Unit,
     isCompact: Boolean,
     onViewCartClick: (() -> Unit)? = null,
+    onOpenScanner: (() -> Unit)? = null,
     cartCount: Int = 0,
     cartTotal: Double = 0.0,
     onSellUnregisteredClick: () -> Unit,
@@ -358,20 +364,50 @@ fun CatalogSection(
                     }
                 }
 
-                // Mobile bottom overlay to access cart
-                if (isCompact && onViewCartClick != null) {
-                    ExtendedFloatingActionButton(
-                        onClick = onViewCartClick,
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
+                // FABs overlay (Scanner FAB + Cart FAB)
+                val openScanner = onOpenScanner
+                val viewCart = onViewCartClick
+                val showScannerFab = openScanner != null && isCameraScannerAvailable()
+                val showCartFab = isCompact && viewCart != null
+
+                if (showScannerFab || showCartFab) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                       Icon(painter = painterResource(Res.drawable.shopping_cart), contentDescription = stringResource(Res.string.tab_ticket))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            if (cartCount > 0) stringResource(Res.string.view_ticket_fab, cartCount, cartTotal.toString().formatPrice())
-                            else stringResource(Res.string.tab_ticket)
-                        )
+                        if (openScanner != null && isCameraScannerAvailable()) {
+                            FloatingActionButton(
+                                onClick = openScanner,
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.barcode_scanner),
+                                    contentDescription = stringResource(Res.string.close_scanner_desc)
+                                )
+                            }
+                        }
+
+                        if (isCompact && viewCart != null) {
+                            ExtendedFloatingActionButton(
+                                onClick = viewCart,
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.shopping_cart),
+                                    contentDescription = stringResource(Res.string.tab_ticket)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    if (cartCount > 0) stringResource(Res.string.view_ticket_fab, cartCount, cartTotal.toString().formatPrice())
+                                    else stringResource(Res.string.tab_ticket)
+                                )
+                            }
+                        }
                     }
                 }
             }

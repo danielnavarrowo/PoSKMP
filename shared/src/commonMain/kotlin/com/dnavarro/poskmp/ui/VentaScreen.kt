@@ -192,6 +192,18 @@ fun VentaScreen(
     // Edit Product Dialog state (from context menu)
     var showProductDialogFor by remember { mutableStateOf<Products?>(null) }
 
+    // Camera Barcode Scanner state
+    var showCameraScanner by remember { mutableStateOf(false) }
+    var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
+    var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(cameraScannerFeedback) {
+        if (cameraScannerFeedback != null) {
+            delay(2500.milliseconds)
+            cameraScannerFeedback = null
+        }
+    }
+
     val coroutineScope = rememberCoroutineScope()
     val searchBarFocusRequester = remember { FocusRequester() }
 
@@ -317,6 +329,56 @@ fun VentaScreen(
             } else {
                 showBarcodeNotFoundQuery = trimmed
                 viewModel.onSearchQueryChanged("")
+            }
+        }
+    }
+
+    val cameraScanCallback: (String) -> Unit = { barcode ->
+        coroutineScope.launch {
+            val trimmed = barcode.trim()
+            val p = viewModel.findProductByBarcode(trimmed)
+            if (p != null) {
+                if (p.por_peso == 1L) {
+                    weightInput = "1.000"
+                    showWeightDialogForProduct = p
+                    lastScannedProduct = p
+                    cameraScannerFeedback = null
+                } else {
+                    addProductToCart(p, 1.0)
+                    lastScannedProduct = p
+                    cameraScannerFeedback = null
+                }
+                viewModel.onSearchQueryChanged("")
+            } else {
+                lastScannedProduct = null
+                cameraScannerFeedback = "Producto no encontrado: $trimmed"
+                SoundManager.playErrorSound()
+                viewModel.onSearchQueryChanged("")
+            }
+        }
+    }
+
+    val currentScannedQuantity = remember(cartItems, lastScannedProduct) {
+        cartItems.find { it.product.id == lastScannedProduct?.id }?.quantity ?: 1.0
+    }
+
+    val handleUndoLastScan: () -> Unit = {
+        lastScannedProduct?.let { product ->
+            val cartItem = cartItems.find { it.product.id == product.id }
+            if (cartItem != null) {
+                removeCartItem(cartItem)
+            }
+        }
+        lastScannedProduct = null
+        cameraScannerFeedback = null
+    }
+
+    val handleQuantityChange: (Double) -> Unit = { delta ->
+        lastScannedProduct?.let { product ->
+            addProductToCart(product, delta)
+            val updatedItem = cartItems.find { it.product.id == product.id }
+            if (updatedItem == null || updatedItem.quantity <= 0.0) {
+                lastScannedProduct = null
             }
         }
     }
@@ -456,6 +518,7 @@ fun VentaScreen(
                             onModifyProduct = { product -> showProductDialogFor = product },
                             isCompact = false,
                             onViewCartClick = null,
+                            onOpenScanner = { showCameraScanner = true },
                             cartCount = cartItems.size,
                             cartTotal = total,
                             onSellUnregisteredClick = { openUnregisteredDialog() },
@@ -554,6 +617,7 @@ fun VentaScreen(
                                         navigator.navigateTo(ThreePaneScaffoldRole.Secondary)
                                     }
                                 },
+                                onOpenScanner = { showCameraScanner = true },
                                 cartCount = cartItems.size,
                                 cartTotal = total,
                                 onSellUnregisteredClick = { openUnregisteredDialog() },
@@ -1376,6 +1440,23 @@ fun VentaScreen(
                 viewModel.updateProduct(updatedProduct)
                 showProductDialogFor = null
             }
+        )
+    }
+
+    // Camera Scanner Dialog
+    if (showCameraScanner) {
+        PlatformBarcodeScanner(
+            onScanResult = { scannedBarcode -> cameraScanCallback(scannedBarcode) },
+            onClose = {
+                showCameraScanner = false
+                lastScannedProduct = null
+                cameraScannerFeedback = null
+            },
+            statusMessage = cameraScannerFeedback,
+            lastScannedProduct = lastScannedProduct,
+            lastScannedQuantity = currentScannedQuantity,
+            onUndo = handleUndoLastScan,
+            onQuantityChange = handleQuantityChange
         )
     }
 }

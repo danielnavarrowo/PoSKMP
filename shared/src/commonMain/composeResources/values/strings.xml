@@ -72,6 +72,8 @@
     <string name="camera_permission_required_title">Permiso de cámara requerido</string>
     <string name="camera_permission_required_desc">Se necesita acceso a la cámara para escanear códigos de barras de los productos.</string>
     <string name="grant_permission_button">Conceder permiso</string>
+    <string name="product_added_message">Producto agregado al carrito.</string>
+    <string name="undo">Deshacer</string>
 
     <!-- PlatformUtils -->
     <string name="import_not_supported_android">La importación no está soportada en Android.</string>
