@@ -14,7 +14,8 @@ actual fun PlatformBarcodeScanner(
     lastScannedProduct: Products?,
     lastScannedQuantity: Double,
     onUndo: (() -> Unit)?,
-    onQuantityChange: ((Double) -> Unit)?
+    onQuantityChange: ((Double) -> Unit)?,
+    isChecadorMode: Boolean
 ) {
     // No-op on JVM/Desktop target
 }

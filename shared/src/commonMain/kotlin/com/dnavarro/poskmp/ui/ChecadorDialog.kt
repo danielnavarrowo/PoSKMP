@@ -54,7 +54,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -90,6 +92,9 @@ fun ChecadorContent(
     var searchedProduct by remember { mutableStateOf<Products?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
     var showCameraScanner by remember { mutableStateOf(false) }
+    var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
+    var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
+    var checadorQuantity by remember { mutableStateOf(1.0) }
 
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
@@ -102,6 +107,12 @@ fun ChecadorContent(
             val result = repository.findProductByBarcode(code)
             searchedProduct = result
             hasSearched = true
+            lastScannedProduct = result
+            checadorQuantity = 1.0
+            cameraScannerFeedback = if (result == null) "Producto no encontrado: $code" else null
+            if (result == null) {
+                SoundManager.playErrorSound()
+            }
             barcodeInputValue = TextFieldValue(
                 text = barcodeInputValue.text,
                 selection = TextRange(0, barcodeInputValue.text.length)
@@ -123,158 +134,160 @@ fun ChecadorContent(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown &&
-                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                ) {
-                    performSearch()
-                    true
-                } else false
-            },
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (showHeaderTitle) {
-            Text(
-                text = stringResource(Res.string.price_checker_title),
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Input field
-        OutlinedTextField(
-            value = barcodeInputValue,
-            onValueChange = { barcodeInputValue = it },
-            placeholder = { Text(stringResource(Res.string.barcode_input_placeholder)) },
-            leadingIcon = { Icon(painter = painterResource(Res.drawable.search), contentDescription = null) },
-            trailingIcon = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isCameraScannerAvailable()) {
-                        IconButton(onClick = { showCameraScanner = true }) {
-                            Icon(painter = painterResource(Res.drawable.barcode_scanner), contentDescription = stringResource(Res.string.scan_with_camera_desc))
-                        }
-                    }
-                    if (barcodeInputValue.text.isNotEmpty()) {
-                        IconButton(onClick = {
-                            barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
-                            searchedProduct = null
-                            hasSearched = false
-                            focusRequester.requestFocus()
-                        }) {
-                            Icon(painter = painterResource(Res.drawable.close), contentDescription = stringResource(Res.string.clear_desc))
-                        }
-                    }
-                }
-            },
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier
+    if (!showCameraScanner) {
+        Column(
+            modifier = modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-            )
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Product details display area
-        if (searchedProduct != null) {
-            val product = searchedProduct!!
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.medium)
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown &&
+                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                    ) {
+                        performSearch()
+                        true
+                    } else false
+                },
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (showHeaderTitle) {
                 Text(
-                    text = product.nombre,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    text = stringResource(Res.string.price_checker_title),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                val perKgSuffix = stringResource(Res.string.per_kg_suffix)
-                val suffix = if (product.por_peso == 1L) perKgSuffix else ""
-                Text(
-                    text = "$${product.precio.toString().formatPrice()}$suffix",
-                    fontWeight = FontWeight.Black,
-                    fontSize = 42.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val categoryText = product.categoria ?: stringResource(Res.string.no_category)
-                Text(
-                    text = stringResource(Res.string.category_label_format, categoryText),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
-        } else if (hasSearched) {
-            Row(
+
+            // Input field
+            OutlinedTextField(
+                value = barcodeInputValue,
+                onValueChange = { barcodeInputValue = it },
+                placeholder = { Text(stringResource(Res.string.barcode_input_placeholder)) },
+                leadingIcon = { Icon(painter = painterResource(Res.drawable.search), contentDescription = null) },
+                trailingIcon = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isCameraScannerAvailable()) {
+                            IconButton(onClick = { showCameraScanner = true }) {
+                                Icon(painter = painterResource(Res.drawable.barcode_scanner), contentDescription = stringResource(Res.string.scan_with_camera_desc))
+                            }
+                        }
+                        if (barcodeInputValue.text.isNotEmpty()) {
+                            IconButton(onClick = {
+                                barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+                                searchedProduct = null
+                                hasSearched = false
+                                focusRequester.requestFocus()
+                            }) {
+                                Icon(painter = painterResource(Res.drawable.close), contentDescription = stringResource(Res.string.clear_desc))
+                            }
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.medium)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.warning),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
+                    .focusRequester(focusRequester),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = stringResource(Res.string.product_not_found),
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    fontSize = 15.sp
-                )
-            }
-        }
+            )
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-        // Action buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (onClose != null) {
-                OutlinedButton(
-                    onClick = onClose,
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.small
+            // Product details display area (For Desktop or manual search when camera scanner is not active)
+            if (searchedProduct != null && (!isAndroid() || !isCameraScannerAvailable())) {
+                val product = searchedProduct!!
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.medium)
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(stringResource(Res.string.close_button))
+                    Text(
+                        text = product.nombre,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val perKgSuffix = stringResource(Res.string.per_kg_suffix)
+                    val suffix = if (product.por_peso == 1L) perKgSuffix else ""
+                    Text(
+                        text = "$${product.precio.toString().formatPrice()}$suffix",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 42.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val categoryText = product.categoria ?: stringResource(Res.string.no_category)
+                    Text(
+                        text = stringResource(Res.string.category_label_format, categoryText),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (hasSearched) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.medium)
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.warning),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(Res.string.product_not_found),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontSize = 15.sp
+                    )
                 }
             }
 
-            Button(
-                onClick = { performSearch() },
-                modifier = Modifier.weight(if (onClose != null) 1f else 2f),
-                shape = MaterialTheme.shapes.small,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(Res.string.query_button))
+                if (onClose != null) {
+                    OutlinedButton(
+                        onClick = onClose,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(stringResource(Res.string.close_button))
+                    }
+                }
+
+                Button(
+                    onClick = { performSearch() },
+                    modifier = Modifier.weight(if (onClose != null) 1f else 2f),
+                    shape = MaterialTheme.shapes.small,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(stringResource(Res.string.query_button))
+                }
             }
         }
     }
@@ -282,14 +295,41 @@ fun ChecadorContent(
     if (showCameraScanner) {
         PlatformBarcodeScanner(
             onScanResult = { scannedCode ->
-                barcodeInputValue = TextFieldValue(
-                    text = scannedCode,
-                    selection = TextRange(0, scannedCode.length)
-                )
-                showCameraScanner = false
-                performSearch()
+                scope.launch {
+                    val code = scannedCode.trim()
+                    val product = repository.findProductByBarcode(code)
+                    if (product != null) {
+                        searchedProduct = product
+                        hasSearched = true
+                        lastScannedProduct = product
+                        checadorQuantity = 1.0
+                        cameraScannerFeedback = null
+                        barcodeInputValue = TextFieldValue(
+                            text = code,
+                            selection = TextRange(0, code.length)
+                        )
+                    } else {
+                        lastScannedProduct = null
+                        cameraScannerFeedback = "Producto no encontrado: $code"
+                        SoundManager.playErrorSound()
+                    }
+                }
             },
-            onClose = { showCameraScanner = false }
+            onClose = {
+                showCameraScanner = false
+                lastScannedProduct = null
+                cameraScannerFeedback = null
+                if (isAndroid() && isCameraScannerAvailable() && onClose != null) {
+                    onClose()
+                }
+            },
+            statusMessage = cameraScannerFeedback,
+            lastScannedProduct = lastScannedProduct,
+            lastScannedQuantity = checadorQuantity,
+            onQuantityChange = { delta ->
+                checadorQuantity = (checadorQuantity + delta).coerceAtLeast(1.0)
+            },
+            isChecadorMode = true
         )
     }
 }
@@ -303,22 +343,30 @@ fun ChecadorDialog(
 ) {
     if (!showDialog) return
 
-    BasicAlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = Modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
-            )
-            .padding(24.dp)
-            .fillMaxWidth(),
-        content = {
-            ChecadorContent(
-                repository = repository,
-                onClose = onDismiss,
-                showHeaderTitle = true
-            )
-        }
-    )
+    if (isAndroid() && isCameraScannerAvailable()) {
+        ChecadorContent(
+            repository = repository,
+            onClose = onDismiss,
+            showHeaderTitle = false
+        )
+    } else {
+        BasicAlertDialog(
+            onDismissRequest = onDismiss,
+            modifier = Modifier
+                .background(
+                    MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
+                )
+                .padding(24.dp)
+                .fillMaxWidth(),
+            content = {
+                ChecadorContent(
+                    repository = repository,
+                    onClose = onDismiss,
+                    showHeaderTitle = true
+                )
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -174,7 +174,7 @@
     <string name="barcodes_placeholder">e.g. 75010001, 75010002</string>
     <string name="retail_price_required_label">Precio de Venta *</string>
     <string name="cost_label">Costo</string>
-    <string name="wholesale_price_label">Precio Mayoreo</string>
+    <string name="wholesale">Mayoreo</string>
     <string name="category_label">Categoría</string>
     <string name="active_label">Activo</string>
     <string name="sell_by_weight_label">Venta p/ Peso</string>
@@ -203,7 +203,7 @@
     <string name="header_codes">Código(s)</string>
     <string name="header_product_name">Nombre del Producto</string>
     <string name="header_category">Categoría</string>
-    <string name="header_retail_price">Precio Venta</string>
+    <string name="header_retail_price">Venta</string>
     <string name="header_cost">Costo</string>
     <string name="header_status">Estado</string>
     <string name="header_actions">Acciones</string>

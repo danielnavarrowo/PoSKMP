@@ -13,7 +13,8 @@ expect fun PlatformBarcodeScanner(
     lastScannedProduct: Products? = null,
     lastScannedQuantity: Double = 1.0,
     onUndo: (() -> Unit)? = null,
-    onQuantityChange: ((Double) -> Unit)? = null
+    onQuantityChange: ((Double) -> Unit)? = null,
+    isChecadorMode: Boolean = false
 )
 
 expect fun isCameraScannerAvailable(): Boolean

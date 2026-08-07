@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui
 
 import android.Manifest
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -16,7 +17,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +35,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -51,9 +57,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,6 +80,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.formatQuantity
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -72,23 +89,32 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.camera_permission_required_desc
 import poskmp.shared.generated.resources.camera_permission_required_title
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_scanner_desc
+import poskmp.shared.generated.resources.cost_label
+import poskmp.shared.generated.resources.decrease_desc
+import poskmp.shared.generated.resources.delete
+import poskmp.shared.generated.resources.delete_button
 import poskmp.shared.generated.resources.flash_off
 import poskmp.shared.generated.resources.flash_on
 import poskmp.shared.generated.resources.grant_permission_button
+import poskmp.shared.generated.resources.header_retail_price
+import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.photo_camera
 import poskmp.shared.generated.resources.product_added_message
+import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.torch_desc
-import poskmp.shared.generated.resources.undo
+import poskmp.shared.generated.resources.wholesale
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -105,7 +131,8 @@ actual fun PlatformBarcodeScanner(
     lastScannedProduct: Products?,
     lastScannedQuantity: Double,
     onUndo: (() -> Unit)?,
-    onQuantityChange: ((Double) -> Unit)?
+    onQuantityChange: ((Double) -> Unit)?,
+    isChecadorMode: Boolean
 ) {
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
@@ -129,7 +156,8 @@ actual fun PlatformBarcodeScanner(
                     lastScannedProduct = lastScannedProduct,
                     lastScannedQuantity = lastScannedQuantity,
                     onUndo = onUndo,
-                    onQuantityChange = onQuantityChange
+                    onQuantityChange = onQuantityChange,
+                    isChecadorMode = isChecadorMode
                 )
             } else {
                 PermissionRationaleScreen(
@@ -151,9 +179,12 @@ fun CameraPreviewScreen(
     lastScannedProduct: Products? = null,
     lastScannedQuantity: Double = 1.0,
     onUndo: (() -> Unit)? = null,
-    onQuantityChange: ((Double) -> Unit)? = null
+    onQuantityChange: ((Double) -> Unit)? = null,
+    isChecadorMode: Boolean = false
 ) {
     val context = LocalContext.current
+    val hapticFeedback = LocalHapticFeedback.current
+    val view = LocalView.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -177,6 +208,13 @@ fun CameraPreviewScreen(
     var isProcessing by remember { mutableStateOf(false) }
     var isFlashEnabled by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<Camera?>(null) }
+    var lastScannedBarcode by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(lastScannedProduct) {
+        if (lastScannedProduct == null && statusMessage == null) {
+            lastScannedBarcode = null
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -224,7 +262,15 @@ fun CameraPreviewScreen(
                                                 val rawValue =
                                                     barcode.rawValue?.trimStart('0') ?: ""
                                                 if (rawValue.isNotEmpty()) {
-                                                    onScanResult(rawValue)
+                                                    val trimmed = rawValue.trim()
+                                                    if (trimmed != lastScannedBarcode) {
+                                                        lastScannedBarcode = trimmed
+                                                        try {
+                                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                                        } catch (_: Exception) {}
+                                                        onScanResult(trimmed)
+                                                    }
                                                     coroutineScope.launch {
                                                         delay(1200.milliseconds)
                                                         isProcessing = false
@@ -388,13 +434,13 @@ fun CameraPreviewScreen(
                                         modifier = Modifier.height(36.dp)
                                     ) {
                                         Icon(
-                                            painter = painterResource(Res.drawable.undo),
+                                            painter = painterResource(Res.drawable.delete),
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            stringResource(Res.string.undo),
+                                            stringResource(Res.string.delete_button),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 12.sp
                                         )
@@ -417,25 +463,216 @@ fun CameraPreviewScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Text(
-                                    text = "$${
-                                        (lastScannedProduct.precio * lastScannedQuantity).toString()
-                                            .formatPrice()
-                                    }",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary
+                                if (!isChecadorMode) {
+                                    Text(
+                                        text = "$${
+                                            (lastScannedProduct.precio * lastScannedQuantity).toString()
+                                                .formatPrice()
+                                        }",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold)
                                     )
-                                )
-
+                                }
                             }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                if (onQuantityChange != null) {
+                            if (isChecadorMode) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = stringResource(Res.string.cost_label),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "$${(lastScannedProduct.costo * lastScannedQuantity).toString().formatPrice()}",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        )
+                                    }
+
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = stringResource(Res.string.header_retail_price),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "$${(lastScannedProduct.precio * lastScannedQuantity).toString().formatPrice()}",
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        )
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = stringResource(Res.string.wholesale),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "$${(lastScannedProduct.precio_mayoreo * lastScannedQuantity).toString().formatPrice()}",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (onQuantityChange != null) {
+                                val buttonScope = rememberCoroutineScope()
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(54.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    shape = RoundedCornerShape(16.dp),
+                                    border = BorderStroke(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        val step = if (lastScannedProduct.por_peso == 1L) 0.1 else 1.0
+
+                                        // Minus Button (Taller + Fast Auto-repeat on Long Press)
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(width = 54.dp, height = 48.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                                .pointerInput(lastScannedProduct.id, step) {
+                                                    detectTapGestures(
+                                                        onPress = {
+                                                            onQuantityChange(-step)
+                                                            val job = buttonScope.launch {
+                                                                delay(350.milliseconds)
+                                                                while (isActive) {
+                                                                    onQuantityChange(-step)
+                                                                    delay(80.milliseconds)
+                                                                }
+                                                            }
+                                                            tryAwaitRelease()
+                                                            job.cancel()
+                                                        }
+                                                    )
+                                                }
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.remove),
+                                                contentDescription = stringResource(Res.string.decrease_desc),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+
+                                        val isWeight = lastScannedProduct.por_peso == 1L
+                                        var textValue by remember(lastScannedQuantity, lastScannedProduct.id) {
+                                            mutableStateOf(lastScannedQuantity.formatQuantity(isWeight))
+                                        }
+
+                                        val commitQuantity = {
+                                            val parsed = textValue.toDoubleOrNull()
+                                            if (parsed != null && parsed > 0.0) {
+                                                val delta = parsed - lastScannedQuantity
+                                                if (kotlin.math.abs(delta) > 0.0001) {
+                                                    onQuantityChange(delta)
+                                                }
+                                            } else {
+                                                textValue = lastScannedQuantity.formatQuantity(isWeight)
+                                            }
+                                        }
+
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 8.dp)
+                                        ) {
+                                            BasicTextField(
+                                                value = textValue,
+                                                onValueChange = { newValue ->
+                                                    val filtered = if (isWeight) {
+                                                        newValue.filter { it.isDigit() || it == '.' }
+                                                    } else {
+                                                        newValue.filter { it.isDigit() }
+                                                    }
+                                                    textValue = filtered
+                                                },
+                                                textStyle = TextStyle(
+                                                    fontSize = 18.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    textAlign = TextAlign.Center
+                                                ),
+                                                singleLine = true,
+                                                keyboardOptions = KeyboardOptions(
+                                                    keyboardType = if (isWeight) KeyboardType.Decimal else KeyboardType.Number,
+                                                    imeAction = ImeAction.Done
+                                                ),
+                                                keyboardActions = KeyboardActions(
+                                                    onDone = {
+                                                        commitQuantity()
+                                                    }
+                                                ),
+                                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .onFocusChanged { focusState ->
+                                                        if (!focusState.isFocused) {
+                                                            commitQuantity()
+                                                        }
+                                                    }
+                                            )
+                                        }
+
+                                        // Plus Button (Taller + Fast Auto-repeat on Long Press)
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(width = 54.dp, height = 48.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                                .pointerInput(lastScannedProduct.id, step) {
+                                                    detectTapGestures(
+                                                        onPress = {
+                                                            onQuantityChange(step)
+                                                            val job = buttonScope.launch {
+                                                                delay(350.milliseconds)
+                                                                while (isActive) {
+                                                                    onQuantityChange(step)
+                                                                    delay(80.milliseconds)
+                                                                }
+                                                            }
+                                                            tryAwaitRelease()
+                                                            job.cancel()
+                                                        }
+                                                    )
+                                                }
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.add),
+                                                contentDescription = stringResource(Res.string.increase_desc),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
 

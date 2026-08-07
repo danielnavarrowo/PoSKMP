@@ -170,7 +170,7 @@ fun ProductFormDialog(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                    label = { Text(stringResource(Res.string.wholesale_price_label)) },
+                    label = { Text(stringResource(Res.string.wholesale)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
