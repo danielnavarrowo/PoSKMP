@@ -64,6 +64,8 @@
     <string name="checador_layout_subtitle">Elige si prefieres el checador como ventana modal o en pantalla completa</string>
     <string name="checador_layout_dialog">Diálogo Modal</string>
     <string name="checador_layout_fullscreen">Pantalla Completa</string>
+    <string name="show_extra_prices_checador_title">Mostrar Costo y Mayoreo en Checador</string>
+    <string name="show_extra_prices_checador_subtitle">Muestra el precio de costo y precio de mayoreo al consultar productos en el checador</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>
@@ -94,8 +96,8 @@
     <string name="excel_invalid_headers_error">Encabezados inválidos en la primera fila. Se requiere al menos las columnas \'nombre\' y \'precio\'.</string>
 
     <!-- ChecadorDialog -->
-    <string name="price_checker_title">Verificador de Precios</string>
-    <string name="barcode_input_placeholder">Escribe o escanea código de barras...</string>
+    <string name="price_checker_title">Checador de Precios</string>
+    <string name="barcode_input_placeholder">Acerca el código de barras al escáner</string>
     <string name="scan_with_camera_desc">Escanear con cámara</string>
     <string name="category_label_format">Categoría: %1$s</string>
     <string name="product_not_found">Producto no encontrado</string>

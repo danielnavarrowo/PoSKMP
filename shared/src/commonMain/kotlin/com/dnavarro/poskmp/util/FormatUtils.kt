@@ -73,3 +73,26 @@ fun parseCsvLine(line: String): List<String> {
     result.add(curVal.toString().trim())
     return result
 }
+
+fun formatCurrentDateTime(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
+    val date = formatCurrentDate(dateTime)
+    val time = formatCurrentTime(dateTime)
+    return "$date\n$time"
+}
+
+fun formatCurrentDate(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
+    val locale = java.util.Locale.forLanguageTag("es-MX")
+    val dayOfWeek = dateTime.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+    val dayOfMonth = dateTime.dayOfMonth
+    val month = dateTime.month.getDisplayName(java.time.format.TextStyle.FULL, locale)
+
+    return "$dayOfWeek, $dayOfMonth de $month"
+}
+
+fun formatCurrentTime(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
+    val locale = java.util.Locale.forLanguageTag("es-MX")
+    val hour12 = dateTime.format(java.time.format.DateTimeFormatter.ofPattern("h:mm", locale))
+
+    return "$hour12"
+}

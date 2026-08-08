@@ -1,6 +1,9 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,12 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,21 +30,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -69,21 +76,25 @@ import poskmp.shared.generated.resources.category_label_format
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_button
+import poskmp.shared.generated.resources.cost_label
+import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.per_kg_suffix
 import poskmp.shared.generated.resources.price_checker_title
 import poskmp.shared.generated.resources.product_not_found
-import poskmp.shared.generated.resources.query_button
 import poskmp.shared.generated.resources.scan_with_camera_desc
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.warning
+import poskmp.shared.generated.resources.wholesale
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun ChecadorContent(
     repository: ProductRepository,
     onClose: (() -> Unit)? = null,
     showHeaderTitle: Boolean = true,
+    showExtraPrices: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var barcodeInputValue by remember {
@@ -94,7 +105,7 @@ fun ChecadorContent(
     var showCameraScanner by remember { mutableStateOf(false) }
     var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
     var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
-    var checadorQuantity by remember { mutableStateOf(1.0) }
+    var checadorQuantity by remember { mutableDoubleStateOf(1.0) }
 
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
@@ -117,6 +128,16 @@ fun ChecadorContent(
                 text = barcodeInputValue.text,
                 selection = TextRange(0, barcodeInputValue.text.length)
             )
+        }
+    }
+
+    // 10-second auto-reset timer back to initial state after scanning a product or error
+    LaunchedEffect(searchedProduct, hasSearched) {
+        if (hasSearched || searchedProduct != null) {
+            delay(10.seconds)
+            searchedProduct = null
+            hasSearched = false
+            barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
         }
     }
 
@@ -221,13 +242,69 @@ fun ChecadorContent(
 
                     val perKgSuffix = stringResource(Res.string.per_kg_suffix)
                     val suffix = if (product.por_peso == 1L) perKgSuffix else ""
-                    Text(
-                        text = "$${product.precio.toString().formatPrice()}$suffix",
-                        fontWeight = FontWeight.Black,
-                        fontSize = 42.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center
-                    )
+
+                    if (showExtraPrices) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(horizontalAlignment = Alignment.Start) {
+                                Text(
+                                    text = stringResource(Res.string.cost_label),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$${product.costo.toString().formatPrice()}",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = stringResource(Res.string.header_retail_price),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$${product.precio.toString().formatPrice()}$suffix",
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = stringResource(Res.string.wholesale),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "$${product.precio.toString().formatPrice()}$suffix",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 42.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -279,15 +356,6 @@ fun ChecadorContent(
                         Text(stringResource(Res.string.close_button))
                     }
                 }
-
-                Button(
-                    onClick = { performSearch() },
-                    modifier = Modifier.weight(if (onClose != null) 1f else 2f),
-                    shape = MaterialTheme.shapes.small,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text(stringResource(Res.string.query_button))
-                }
             }
         }
     }
@@ -329,7 +397,7 @@ fun ChecadorContent(
             onQuantityChange = { delta ->
                 checadorQuantity = (checadorQuantity + delta).coerceAtLeast(1.0)
             },
-            isChecadorMode = true
+            isChecadorMode = showExtraPrices
         )
     }
 }
@@ -339,7 +407,8 @@ fun ChecadorContent(
 fun ChecadorDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit,
-    repository: ProductRepository
+    repository: ProductRepository,
+    showExtraPrices: Boolean = false
 ) {
     if (!showDialog) return
 
@@ -347,7 +416,8 @@ fun ChecadorDialog(
         ChecadorContent(
             repository = repository,
             onClose = onDismiss,
-            showHeaderTitle = false
+            showHeaderTitle = false,
+            showExtraPrices = showExtraPrices
         )
     } else {
         BasicAlertDialog(
@@ -362,7 +432,8 @@ fun ChecadorDialog(
                 ChecadorContent(
                     repository = repository,
                     onClose = onDismiss,
-                    showHeaderTitle = true
+                    showHeaderTitle = true,
+                    showExtraPrices = showExtraPrices
                 )
             }
         )
@@ -373,50 +444,364 @@ fun ChecadorDialog(
 @Composable
 fun ChecadorScreen(
     repository: ProductRepository,
+    showExtraPrices: Boolean = false,
+    currentDateText: String = "",
+    currentTimeText: String = "",
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = stringResource(Res.string.price_checker_title),
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.titleLarge,
-                        textAlign = TextAlign.Center
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+    var barcodeInputValue by remember {
+        mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero))
+    }
+    var searchedProduct by remember { mutableStateOf<Products?>(null) }
+    var hasSearched by remember { mutableStateOf(false) }
+    var showCameraScanner by remember { mutableStateOf(false) }
+    var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
+    var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
+    var checadorQuantity by remember { mutableDoubleStateOf(1.0) }
+
+    val focusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+
+    fun performSearch() {
+        val code = barcodeInputValue.text.trim()
+        if (code.isEmpty()) return
+
+        scope.launch {
+            val result = repository.findProductByBarcode(code)
+            searchedProduct = result
+            hasSearched = true
+            lastScannedProduct = result
+            checadorQuantity = 1.0
+            cameraScannerFeedback = if (result == null) "Producto no encontrado: $code" else null
+            if (result == null) {
+                SoundManager.playErrorSound()
+            }
+            barcodeInputValue = TextFieldValue(
+                text = code,
+                selection = TextRange(0, code.length)
+            )
+        }
+    }
+
+    // 10-second auto-reset timer back to initial state after scanning a product or error
+    LaunchedEffect(searchedProduct, hasSearched) {
+        if (hasSearched || searchedProduct != null) {
+            delay(10.seconds)
+            searchedProduct = null
+            hasSearched = false
+            barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+        }
+    }
+
+    // Persistent focus loop: ensure focus is always kept on the barcode input field
+    LaunchedEffect(Unit) {
+        if (isCameraScannerAvailable()) {
+            showCameraScanner = true
+        }
+        while (isActive) {
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {
+            }
+            delay(250.milliseconds)
+        }
+    }
+
+    if (showCameraScanner && isAndroid() && isCameraScannerAvailable()) {
+        PlatformBarcodeScanner(
+            onScanResult = { scannedCode ->
+                scope.launch {
+                    val code = scannedCode.trim()
+                    val product = repository.findProductByBarcode(code)
+                    if (product != null) {
+                        searchedProduct = product
+                        hasSearched = true
+                        lastScannedProduct = product
+                        checadorQuantity = 1.0
+                        cameraScannerFeedback = null
+                        barcodeInputValue = TextFieldValue(
+                            text = code,
+                            selection = TextRange(0, code.length)
+                        )
+                    } else {
+                        lastScannedProduct = null
+                        cameraScannerFeedback = "Producto no encontrado: $code"
+                        SoundManager.playErrorSound()
+                    }
+                }
+            },
+            onClose = {
+                showCameraScanner = false
+                lastScannedProduct = null
+                cameraScannerFeedback = null
+            },
+            statusMessage = cameraScannerFeedback,
+            lastScannedProduct = lastScannedProduct,
+            lastScannedQuantity = checadorQuantity,
+            onQuantityChange = { delta ->
+                checadorQuantity = (checadorQuantity + delta).coerceAtLeast(1.0)
+            },
+            isChecadorMode = showExtraPrices
+        )
+    } else {
+        val backgroundGradient = remember {
+            Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFF8C3A4D),
+                    Color(0xFF6B305B),
+                    Color(0xFF3A3660),
+                    Color(0xFF1C4352),
+                    Color(0xFF134C54)
                 )
             )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier.fillMaxSize()
-    ) { innerPadding ->
+        }
+
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(24.dp),
-            contentAlignment = Alignment.TopCenter
+                .background(backgroundGradient)
+                .clickable { focusRequester.requestFocus() }
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown &&
+                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                    ) {
+                        performSearch()
+                        true
+                    } else false
+                }
         ) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
-                ),
-                shape = MaterialTheme.shapes.medium,
+            // Hidden but always-focused Input TextField to process scanner/keyboard input seamlessly
+            BasicTextField(
+                value = barcodeInputValue,
+                onValueChange = { newValue ->
+                    barcodeInputValue = newValue
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardActions = KeyboardActions(onDone = { performSearch() }),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 600.dp)
+                    .size(1.dp)
+                    .alpha(0.01f)
+                    .focusRequester(focusRequester)
+            )
+
+            // Centered Content Area
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(0.9f)
+                    .widthIn(max = 750.dp)
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    ChecadorContent(
-                        repository = repository,
-                        onClose = null,
-                        showHeaderTitle = false
+                // Header Title
+                Text(
+                    text = stringResource(Res.string.price_checker_title),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(36.dp))
+
+                if (searchedProduct != null) {
+                    val product = searchedProduct!!
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White.copy(alpha = 0.15f)
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = product.nombre,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            val perKgSuffix = stringResource(Res.string.per_kg_suffix)
+                            val suffix = if (product.por_peso == 1L) perKgSuffix else ""
+
+                            if (showExtraPrices) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(horizontalAlignment = Alignment.Start) {
+                                        Text(
+                                            text = stringResource(Res.string.cost_label),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "$${product.costo.toString().formatPrice()}",
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+                                        )
+                                    }
+
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = stringResource(Res.string.header_retail_price),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "$${product.precio.toString().formatPrice()}$suffix",
+                                            style = MaterialTheme.typography.headlineLarge.copy(
+                                                fontWeight = FontWeight.Black,
+                                                color = Color.White
+                                            )
+                                        )
+                                    }
+
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = stringResource(Res.string.wholesale),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        )
+                                    }
+                                }
+                            } else {
+                                Text(
+                                    text = "$${product.precio.toString().formatPrice()}$suffix",
+                                   style = MaterialTheme.typography.displayMedium,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+                } else if (hasSearched) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.warning),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = stringResource(Res.string.product_not_found),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    // Visual Translucent Input Bar (When no product is scanned yet)
+                    BasicTextField(
+                        value = barcodeInputValue,
+                        onValueChange = { newValue ->
+                            barcodeInputValue = newValue
+                        },
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        ),
+                        cursorBrush = SolidColor(Color.White),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardActions = KeyboardActions(onDone = { performSearch() }),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .background(
+                                        color = Color.White.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = 0.25f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (barcodeInputValue.text.isEmpty()) {
+                                    Text(
+                                        text = stringResource(Res.string.barcode_input_placeholder),
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White.copy(alpha = 0.75f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                        modifier = Modifier.focusRequester(focusRequester)
+                    )
+                }
+            }
+
+            // Bottom Date and Time Pills
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Bottom Left Pill: Date
+                Box {
+                    Text(
+                        text = currentDateText,
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
+
+                // Bottom Right Pill: Time
+                Box {
+                    Text(
+                        text = currentTimeText,
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium
                     )
                 }
             }

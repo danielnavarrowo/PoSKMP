@@ -17,9 +17,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,15 +34,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -57,16 +63,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -89,7 +93,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -121,7 +125,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Suppress("SameReturnValue")
 actual fun isCameraScannerAvailable(): Boolean = true
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 actual fun PlatformBarcodeScanner(
     onScanResult: (String) -> Unit,
@@ -170,6 +174,7 @@ actual fun PlatformBarcodeScanner(
 }
 
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 fun CameraPreviewScreen(
@@ -528,82 +533,112 @@ fun CameraPreviewScreen(
                             }
 
                             if (onQuantityChange != null) {
-                                val buttonScope = rememberCoroutineScope()
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(54.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = BorderStroke(
-                                        width = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 4.dp, vertical = 3.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        val step = if (lastScannedProduct.por_peso == 1L) 0.1 else 1.0
+                                val interactionSourceMinus = remember { MutableInteractionSource() }
+                                val interactionSourcePlus = remember { MutableInteractionSource() }
+                                val viewConfiguration = LocalViewConfiguration.current
+                                val step = if (lastScannedProduct.por_peso == 1L) 0.1 else 1.0
 
-                                        // Minus Button (Taller + Fast Auto-repeat on Long Press)
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier
-                                                .size(width = 54.dp, height = 48.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                                                .pointerInput(lastScannedProduct.id, step) {
-                                                    detectTapGestures(
-                                                        onPress = {
-                                                            onQuantityChange(-step)
-                                                            val job = buttonScope.launch {
-                                                                delay(350.milliseconds)
-                                                                while (isActive) {
-                                                                    onQuantityChange(-step)
-                                                                    delay(80.milliseconds)
-                                                                }
-                                                            }
-                                                            tryAwaitRelease()
-                                                            job.cancel()
-                                                        }
-                                                    )
+                                LaunchedEffect(interactionSourceMinus, lastScannedProduct.id, step) {
+                                    var isLongClick = false
+                                    interactionSourceMinus.interactions.collectLatest { interaction ->
+                                        when (interaction) {
+                                            is PressInteraction.Press -> {
+                                                isLongClick = false
+                                                delay(viewConfiguration.longPressTimeoutMillis.milliseconds)
+                                                isLongClick = true
+                                                while (true) {
+                                                    onQuantityChange(-step)
+                                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    delay(80.milliseconds)
                                                 }
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(Res.drawable.remove),
-                                                contentDescription = stringResource(Res.string.decrease_desc),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(22.dp)
-                                            )
-                                        }
-
-                                        val isWeight = lastScannedProduct.por_peso == 1L
-                                        var textValue by remember(lastScannedQuantity, lastScannedProduct.id) {
-                                            mutableStateOf(lastScannedQuantity.formatQuantity(isWeight))
-                                        }
-
-                                        val commitQuantity = {
-                                            val parsed = textValue.toDoubleOrNull()
-                                            if (parsed != null && parsed > 0.0) {
-                                                val delta = parsed - lastScannedQuantity
-                                                if (kotlin.math.abs(delta) > 0.0001) {
-                                                    onQuantityChange(delta)
+                                            }
+                                            is PressInteraction.Release -> {
+                                                if (!isLongClick) {
+                                                    onQuantityChange(-step)
+                                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 }
-                                            } else {
-                                                textValue = lastScannedQuantity.formatQuantity(isWeight)
                                             }
                                         }
+                                    }
+                                }
 
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(horizontal = 8.dp)
-                                        ) {
+                                LaunchedEffect(interactionSourcePlus, lastScannedProduct.id, step) {
+                                    var isLongClick = false
+                                    interactionSourcePlus.interactions.collectLatest { interaction ->
+                                        when (interaction) {
+                                            is PressInteraction.Press -> {
+                                                isLongClick = false
+                                                delay(viewConfiguration.longPressTimeoutMillis.milliseconds)
+                                                isLongClick = true
+                                                while (true) {
+                                                    onQuantityChange(step)
+                                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    delay(80.milliseconds)
+                                                }
+                                            }
+                                            is PressInteraction.Release -> {
+                                                if (!isLongClick) {
+                                                    onQuantityChange(step)
+                                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                val isWeight = lastScannedProduct.por_peso == 1L
+                                var textValue by remember(lastScannedQuantity, lastScannedProduct.id) {
+                                    mutableStateOf(lastScannedQuantity.formatQuantity(isWeight))
+                                }
+
+                                val commitQuantity = {
+                                    val parsed = textValue.toDoubleOrNull()
+                                    if (parsed != null && parsed > 0.0) {
+                                        val delta = parsed - lastScannedQuantity
+                                        if (kotlin.math.abs(delta) > 0.0001) {
+                                            onQuantityChange(delta)
+                                        }
+                                    } else {
+                                        textValue = lastScannedQuantity.formatQuantity(isWeight)
+                                    }
+                                }
+
+                                ButtonGroup(
+                                    overflowIndicator = { state ->
+                                        ButtonGroupDefaults.OverflowIndicator(
+                                            state,
+                                            colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                                            modifier = Modifier.size(32.dp, 48.dp)
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    customItem(
+                                        {
+                                            FilledTonalIconButton(
+                                                onClick = {},
+                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                                ),
+                                                shapes = IconButtonDefaults.shapes(),
+                                                interactionSource = interactionSourceMinus,
+                                                modifier = Modifier
+                                                    .size(96.dp, 48.dp)
+                                                    .animateWidth(interactionSourceMinus)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(Res.drawable.remove),
+                                                    contentDescription = stringResource(Res.string.decrease_desc),
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                                )
+                                            }
+                                        },
+                                        { _ -> }
+                                    )
+
+                                    customItem(
+                                        {
                                             BasicTextField(
                                                 value = textValue,
                                                 onValueChange = { newValue ->
@@ -614,10 +649,8 @@ fun CameraPreviewScreen(
                                                     }
                                                     textValue = filtered
                                                 },
-                                                textStyle = TextStyle(
-                                                    fontSize = 18.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                textStyle = MaterialTheme.typography.titleLarge.copy(
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                                                     textAlign = TextAlign.Center
                                                 ),
                                                 singleLine = true,
@@ -626,53 +659,50 @@ fun CameraPreviewScreen(
                                                     imeAction = ImeAction.Done
                                                 ),
                                                 keyboardActions = KeyboardActions(
-                                                    onDone = {
-                                                        commitQuantity()
-                                                    }
+                                                    onDone = { commitQuantity() }
                                                 ),
                                                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                                 modifier = Modifier
-                                                    .fillMaxWidth()
+                                                    .weight(1f)
+                                                    .height(48.dp)
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(.5f),
+                                                        shape = RoundedCornerShape(8.dp)
+                                                    )
+                                                    .wrapContentSize(Alignment.Center)
                                                     .onFocusChanged { focusState ->
                                                         if (!focusState.isFocused) {
                                                             commitQuantity()
                                                         }
                                                     }
                                             )
-                                        }
+                                        },
+                                        {}
+                                    )
 
-                                        // Plus Button (Taller + Fast Auto-repeat on Long Press)
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier
-                                                .size(width = 54.dp, height = 48.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                                                .pointerInput(lastScannedProduct.id, step) {
-                                                    detectTapGestures(
-                                                        onPress = {
-                                                            onQuantityChange(step)
-                                                            val job = buttonScope.launch {
-                                                                delay(350.milliseconds)
-                                                                while (isActive) {
-                                                                    onQuantityChange(step)
-                                                                    delay(80.milliseconds)
-                                                                }
-                                                            }
-                                                            tryAwaitRelease()
-                                                            job.cancel()
-                                                        }
-                                                    )
-                                                }
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(Res.drawable.add),
-                                                contentDescription = stringResource(Res.string.increase_desc),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(22.dp)
-                                            )
-                                        }
-                                    }
+                                    customItem(
+                                        {
+                                            FilledTonalIconButton(
+                                                onClick = {},
+                                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                                ),
+                                                shapes = IconButtonDefaults.shapes(),
+                                                interactionSource = interactionSourcePlus,
+                                                modifier = Modifier
+                                                    .size(96.dp, 48.dp)
+                                                    .animateWidth(interactionSourcePlus)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(Res.drawable.add),
+                                                    contentDescription = stringResource(Res.string.increase_desc),
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                                )
+                                            }
+                                        },
+                                        { _ -> }
+                                    )
                                 }
                             }
 

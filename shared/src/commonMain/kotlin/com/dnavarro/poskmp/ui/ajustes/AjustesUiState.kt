@@ -15,5 +15,6 @@ data class AjustesUiState(
     val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
     val appScale: Float = 1.0f,
     val defaultScreen: Screen = Screen.VENTA,
-    val isChecadorDialog: Boolean = true
+    val isChecadorDialog: Boolean = true,
+    val showExtraPricesChecador: Boolean = false
 )

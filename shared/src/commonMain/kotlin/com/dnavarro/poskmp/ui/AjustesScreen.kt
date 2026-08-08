@@ -103,6 +103,8 @@ import poskmp.shared.generated.resources.seed_color_subtitle
 import poskmp.shared.generated.resources.seed_color_title
 import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.settings_title
+import poskmp.shared.generated.resources.show_extra_prices_checador_subtitle
+import poskmp.shared.generated.resources.show_extra_prices_checador_title
 import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.status_connected
 import poskmp.shared.generated.resources.status_pending
@@ -184,7 +186,9 @@ fun AjustesScreen(
         defaultScreen = uiState.defaultScreen,
         onDefaultScreenChange = { viewModel.setDefaultScreen(it) },
         isChecadorDialog = uiState.isChecadorDialog,
-        onIsChecadorDialogChange = { viewModel.setIsChecadorDialog(it) }
+        onIsChecadorDialogChange = { viewModel.setIsChecadorDialog(it) },
+        showExtraPricesChecador = uiState.showExtraPricesChecador,
+        onShowExtraPricesChecadorChange = { viewModel.setShowExtraPricesChecador(it) }
     )
 }
 
@@ -205,7 +209,9 @@ fun AjustesScreen(
     defaultScreen: Screen = Screen.VENTA,
     onDefaultScreenChange: (Screen) -> Unit = {},
     isChecadorDialog: Boolean = true,
-    onIsChecadorDialogChange: (Boolean) -> Unit = {}
+    onIsChecadorDialogChange: (Boolean) -> Unit = {},
+    showExtraPricesChecador: Boolean = false,
+    onShowExtraPricesChecadorChange: (Boolean) -> Unit = {}
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
     Scaffold(
@@ -461,6 +467,35 @@ fun AjustesScreen(
                                     }
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Show Extra Prices in Checador Toggle (Costo y Mayoreo)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                Text(
+                                    text = stringResource(Res.string.show_extra_prices_checador_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.show_extra_prices_checador_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Switch(
+                                checked = showExtraPricesChecador,
+                                onCheckedChange = onShowExtraPricesChecadorChange
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

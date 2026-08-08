@@ -86,6 +86,8 @@ import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
+import com.dnavarro.poskmp.util.formatCurrentDate
+import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -112,28 +114,12 @@ import poskmp.shared.generated.resources.tab_venta_desktop
 import poskmp.shared.generated.resources.tab_ventas_historial
 import poskmp.shared.generated.resources.tab_ventas_historial_desktop
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
 internal fun navigationSuiteTypeForWidth(width: Dp): NavigationSuiteType = when {
     width >= 1200.dp -> NavigationSuiteType.WideNavigationRailExpanded
     width >= 800.dp -> NavigationSuiteType.WideNavigationRailCollapsed
     else -> NavigationSuiteType.None
-}
-
-private fun formatCurrentDateTime(dateTime: LocalDateTime = LocalDateTime.now()): String {
-    val locale = Locale.forLanguageTag("es-MX")
-    val dayOfWeek = dateTime.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
-        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
-    val dayOfMonth = dateTime.dayOfMonth
-    val month = dateTime.month.getDisplayName(TextStyle.FULL, locale)
-
-    val hour12 = dateTime.format(DateTimeFormatter.ofPattern("h:mm", locale))
-    val amPm = dateTime.format(DateTimeFormatter.ofPattern("a", locale))
-
-    return "$dayOfWeek, $dayOfMonth de $month\n$hour12 $amPm"
 }
 
 private data class ToolbarItem(
@@ -171,10 +157,15 @@ fun App(
             val currentScreen = selectedScreen ?: defaultScreen
             var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
 
-            var currentDateTimeText by remember { mutableStateOf(formatCurrentDateTime()) }
+            var currentDateText by remember { mutableStateOf(formatCurrentDate()) }
+            var currentTimeText by remember { mutableStateOf(formatCurrentTime()) }
+            val currentDateTimeText = remember(currentDateText, currentTimeText) { "$currentDateText\n$currentTimeText" }
+
             LaunchedEffect(Unit) {
                 while (isActive) {
-                    currentDateTimeText = formatCurrentDateTime()
+                    val now = LocalDateTime.now()
+                    currentDateText = formatCurrentDate(now)
+                    currentTimeText = formatCurrentTime(now)
                     delay(1.seconds)
                 }
             }
@@ -509,7 +500,12 @@ fun App(
                                                     isCompact = isCompact
                                                 )
                                             } else {
-                                                ChecadorScreen(repository = repository)
+                                                ChecadorScreen(
+                                                    repository = repository,
+                                                    showExtraPrices = ajustesUiState.showExtraPricesChecador,
+                                                    currentDateText = currentDateText,
+                                                    currentTimeText = currentTimeText
+                                                )
                                             }
                                         }
                                     }
@@ -521,7 +517,8 @@ fun App(
                     ChecadorDialog(
                         showDialog = showPriceCheckerDialog,
                         onDismiss = { showPriceCheckerDialog = false },
-                        repository = repository
+                        repository = repository,
+                        showExtraPrices = ajustesUiState.showExtraPricesChecador
                     )
                 }
             }

@@ -27,6 +27,7 @@ interface SettingsRepository {
     val appScaleFlow: Flow<Float>
     val defaultScreenFlow: Flow<Screen>
     val isChecadorDialogFlow: Flow<Boolean>
+    val showExtraPricesChecadorFlow: Flow<Boolean>
 
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
@@ -35,6 +36,7 @@ interface SettingsRepository {
     suspend fun setAppScale(scale: Float)
     suspend fun setDefaultScreen(screen: Screen)
     suspend fun setIsChecadorDialog(isDialog: Boolean)
+    suspend fun setShowExtraPricesChecador(show: Boolean)
 }
 
 /**
@@ -52,6 +54,7 @@ class SettingsRepositoryImpl(
         val APP_SCALE = floatPreferencesKey("app_scale")
         val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
         val IS_CHECADOR_DIALOG = booleanPreferencesKey("is_checador_dialog")
+        val SHOW_EXTRA_PRICES_CHECADOR = booleanPreferencesKey("show_extra_prices_checador")
     }
 
     override val useDynamicColorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -94,6 +97,10 @@ class SettingsRepositoryImpl(
         preferences[PreferenceKeys.IS_CHECADOR_DIALOG] ?: true
     }
 
+    override val showExtraPricesChecadorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] ?: false
+    }
+
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.USE_DYNAMIC_COLOR] = useDynamic
@@ -133,6 +140,12 @@ class SettingsRepositoryImpl(
     override suspend fun setIsChecadorDialog(isDialog: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.IS_CHECADOR_DIALOG] = isDialog
+        }
+    }
+
+    override suspend fun setShowExtraPricesChecador(show: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] = show
         }
     }
 }

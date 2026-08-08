@@ -36,11 +36,13 @@ class AjustesViewModel(
             )
         },
         repository.defaultScreenFlow,
-        repository.isChecadorDialogFlow
-    ) { state, defaultScreen, isChecadorDialog ->
+        repository.isChecadorDialogFlow,
+        repository.showExtraPricesChecadorFlow
+    ) { state, defaultScreen, isChecadorDialog, showExtraPricesChecador ->
         state.copy(
             defaultScreen = defaultScreen,
-            isChecadorDialog = isChecadorDialog
+            isChecadorDialog = isChecadorDialog,
+            showExtraPricesChecador = showExtraPricesChecador
         )
     }.stateIn(
         scope = viewModelScope,
@@ -87,6 +89,12 @@ class AjustesViewModel(
     fun setIsChecadorDialog(isDialog: Boolean) {
         viewModelScope.launch {
             repository.setIsChecadorDialog(isDialog)
+        }
+    }
+
+    fun setShowExtraPricesChecador(show: Boolean) {
+        viewModelScope.launch {
+            repository.setShowExtraPricesChecador(show)
         }
     }
 }
