@@ -395,7 +395,7 @@ fun CatalogSection(
                             ExtendedFloatingActionButton(
                                 onClick = viewCart,
                                 containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.shopping_cart),

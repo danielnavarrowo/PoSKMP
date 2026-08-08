@@ -1,5 +1,12 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,6 +41,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +55,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -54,11 +65,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +82,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
+import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.parseImportFile
@@ -84,6 +98,11 @@ import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.accept_button
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.back_button
+import poskmp.shared.generated.resources.bulk_op_change_category_title
+import poskmp.shared.generated.resources.bulk_op_change_prices_title
+import poskmp.shared.generated.resources.bulk_op_deactivate_title
+import poskmp.shared.generated.resources.bulk_op_delete_title
+import poskmp.shared.generated.resources.bulk_op_set_profit_title
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.category_label_format
 import poskmp.shared.generated.resources.check
@@ -136,6 +155,7 @@ import poskmp.shared.generated.resources.import_success_title
 import poskmp.shared.generated.resources.import_success_update_message
 import poskmp.shared.generated.resources.import_warning_replace_all
 import poskmp.shared.generated.resources.modify_count_button
+import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.next_button
 import poskmp.shared.generated.resources.no_catalog_products
@@ -143,6 +163,8 @@ import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
 import poskmp.shared.generated.resources.price_display_label
 import poskmp.shared.generated.resources.product_admin_title
+import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.remove_desc
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
@@ -214,6 +236,7 @@ fun ProductosScreen(
 
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
+    var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -234,19 +257,84 @@ fun ProductosScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    viewModel.onShowProductDialog(
-                        Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
-                    )
-                },
-                icon = {
-                    Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-                },
-                text = {
-                    Text(stringResource(Res.string.new_product_button))
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                // Menu FAB for Bulk Operations (Appears ABOVE when products are selected)
+                AnimatedVisibility(
+                    visible = selectedProductIds.isNotEmpty(),
+                    enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                            scaleIn(initialScale = 0.8f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                    exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                           scaleOut(targetScale = 0.8f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                ) {
+                    PlatformBackHandler(enabled = isFabMenuExpanded) {
+                        isFabMenuExpanded = false
+                    }
+                    FloatingActionButtonMenu(
+                        modifier = Modifier.align(Alignment.End).offset(x = 16.dp),
+                        expanded = isFabMenuExpanded,
+                        button = {
+                            ToggleFloatingActionButton(
+                                checked = isFabMenuExpanded,
+                                onCheckedChange = { isFabMenuExpanded = !isFabMenuExpanded }
+                            ) {
+                                val iconRes = if (checkedProgress > 0.5f) Res.drawable.close else Res.drawable.edit
+                                Icon(
+                                    painter = painterResource(iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.graphicsLayer {
+                                        rotationZ = checkedProgress * 180f
+                                    }
+                                )
+                            }
+                        }
+                    ) {
+                        FloatingActionButtonMenuItem(
+                            onClick = { isFabMenuExpanded = false },
+                            icon = { Icon(painter = painterResource(Res.drawable.money), contentDescription = null) },
+                            text = { Text(stringResource(Res.string.bulk_op_change_prices_title)) }
+                        )
+                        FloatingActionButtonMenuItem(
+                            onClick = { isFabMenuExpanded = false },
+                            icon = { Icon(painter = painterResource(Res.drawable.edit), contentDescription = null) },
+                            text = { Text(stringResource(Res.string.bulk_op_set_profit_title)) }
+                        )
+                        FloatingActionButtonMenuItem(
+                            onClick = { isFabMenuExpanded = false },
+                            icon = { Icon(painter = painterResource(Res.drawable.products), contentDescription = null) },
+                            text = { Text(stringResource(Res.string.bulk_op_change_category_title)) }
+                        )
+                        FloatingActionButtonMenuItem(
+                            onClick = { isFabMenuExpanded = false },
+                            icon = { Icon(painter = painterResource(Res.drawable.remove), contentDescription = null) },
+                            text = { Text(stringResource(Res.string.bulk_op_deactivate_title)) }
+                        )
+                        FloatingActionButtonMenuItem(
+                            onClick = { isFabMenuExpanded = false },
+                            icon = { Icon(painter = painterResource(Res.drawable.delete), contentDescription = null) },
+                            text = { Text(stringResource(Res.string.bulk_op_delete_title)) }
+                        )
+                    }
                 }
-            )
+
+                // New Product FAB (Stays visible ALL THE TIME at the bottom)
+                ExtendedFloatingActionButton(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    onClick = {
+                        viewModel.onShowProductDialog(
+                            Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
+                        )
+                    },
+                    icon = {
+                        Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
+                    },
+                    text = {
+                        Text(stringResource(Res.string.new_product_button))
+                    }
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize()
