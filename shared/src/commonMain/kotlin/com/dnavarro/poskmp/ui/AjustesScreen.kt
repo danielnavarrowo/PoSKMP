@@ -45,7 +45,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,11 +63,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.saveFile
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.amoled_mode_subtitle
@@ -87,9 +94,13 @@ import poskmp.shared.generated.resources.dark_mode_title
 import poskmp.shared.generated.resources.database_section_title
 import poskmp.shared.generated.resources.default_screen_subtitle
 import poskmp.shared.generated.resources.default_screen_title
+import poskmp.shared.generated.resources.download
 import poskmp.shared.generated.resources.dynamic_color_subtitle
 import poskmp.shared.generated.resources.dynamic_color_title
+import poskmp.shared.generated.resources.export_button
+import poskmp.shared.generated.resources.export_success_message
 import poskmp.shared.generated.resources.fullscreen
+import poskmp.shared.generated.resources.import_button
 import poskmp.shared.generated.resources.light_mode
 import poskmp.shared.generated.resources.local_db_connected_desc
 import poskmp.shared.generated.resources.local_db_status_connected
@@ -119,6 +130,7 @@ import poskmp.shared.generated.resources.tab_checador
 import poskmp.shared.generated.resources.tab_productos
 import poskmp.shared.generated.resources.tab_venta
 import poskmp.shared.generated.resources.theme_section_title
+import poskmp.shared.generated.resources.upload
 import poskmp.shared.generated.resources.warning
 import kotlin.math.roundToInt
 
@@ -211,9 +223,14 @@ fun AjustesScreen(
     isChecadorDialog: Boolean = true,
     onIsChecadorDialogChange: (Boolean) -> Unit = {},
     showExtraPricesChecador: Boolean = false,
-    onShowExtraPricesChecadorChange: (Boolean) -> Unit = {}
+    onShowExtraPricesChecadorChange: (Boolean) -> Unit = {},
+    repository: ProductRepository = koinInject()
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
+    var showImportDialog by remember { mutableStateOf(false) }
+    var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
+    var exportErrorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -987,7 +1004,130 @@ fun AjustesScreen(
                 }
             }
 
+            // Card 4: Gestión de Catálogo (Importar y Exportar)
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "Gestión del Catálogo",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Importa o exporta el catálogo de productos en CSV / Excel",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
 
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (!isAndroid()) {
+                                Button(
+                                    onClick = { showImportDialog = true },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ),
+                                    shape = MaterialTheme.shapes.small,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.upload),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = stringResource(Res.string.import_button),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            val defaultExportSuccess = stringResource(Res.string.export_success_message)
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val products = repository.getAllProductsList()
+                                        val csvBuilder =
+                                            StringBuilder("id,codigos,nombre,precio,costo,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
+                                        for (p in products) {
+                                            csvBuilder.append("${p.id},")
+                                            csvBuilder.append("\"${p.codigos.replace("\"", "\"\"")}\",")
+                                            csvBuilder.append("\"${p.nombre.replace("\"", "\"\"")}\",")
+                                            csvBuilder.append("${p.precio},")
+                                            csvBuilder.append("${p.costo},")
+                                            csvBuilder.append("\"${(p.categoria ?: "").replace("\"", "\"\"")}\",")
+                                            csvBuilder.append("${p.activo},")
+                                            csvBuilder.append("${p.por_peso},")
+                                            csvBuilder.append("${p.precio_mayoreo},")
+                                            csvBuilder.append("${p.es_favorito}\n")
+                                        }
+                                        val csvText = csvBuilder.toString()
+                                        saveFile(
+                                            defaultFileName = "productos_exportados.csv",
+                                            content = csvText,
+                                            onSuccess = {
+                                                exportSuccessMessage = defaultExportSuccess
+                                                exportErrorMessage = null
+                                            },
+                                            onError = {
+                                                exportErrorMessage = it
+                                                exportSuccessMessage = null
+                                            }
+                                        )
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.download),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(Res.string.export_button),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        if (exportSuccessMessage != null || exportErrorMessage != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = exportSuccessMessage ?: exportErrorMessage ?: "",
+                                fontSize = 12.sp,
+                                color = if (exportSuccessMessage != null) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showImportDialog) {
+            ImportProductsDialog(
+                onDismiss = { showImportDialog = false },
+                repository = repository
+            )
         }
     }
 }

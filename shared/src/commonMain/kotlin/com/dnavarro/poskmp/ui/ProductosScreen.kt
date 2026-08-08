@@ -31,6 +31,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +45,8 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -63,21 +67,19 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
-import org.koin.compose.koinInject
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
-import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.parseImportFile
 import com.dnavarro.poskmp.util.pickFile
-import com.dnavarro.poskmp.util.saveFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.accept_button
 import poskmp.shared.generated.resources.add
@@ -94,12 +96,9 @@ import poskmp.shared.generated.resources.cost_display_label
 import poskmp.shared.generated.resources.delete
 import poskmp.shared.generated.resources.delete_and_replace_button
 import poskmp.shared.generated.resources.delete_desc
-import poskmp.shared.generated.resources.download
 import poskmp.shared.generated.resources.edit
 import poskmp.shared.generated.resources.edit_desc
-import poskmp.shared.generated.resources.export_button
 import poskmp.shared.generated.resources.export_error_title
-import poskmp.shared.generated.resources.export_success_message
 import poskmp.shared.generated.resources.export_success_title
 import poskmp.shared.generated.resources.favorite_desc
 import poskmp.shared.generated.resources.header_actions
@@ -111,7 +110,6 @@ import poskmp.shared.generated.resources.header_price
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.header_status
-import poskmp.shared.generated.resources.import_button
 import poskmp.shared.generated.resources.import_choose_action
 import poskmp.shared.generated.resources.import_col_name_req
 import poskmp.shared.generated.resources.import_col_price_req
@@ -144,7 +142,6 @@ import poskmp.shared.generated.resources.no_catalog_products
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
 import poskmp.shared.generated.resources.price_display_label
-import poskmp.shared.generated.resources.product_admin_subtitle
 import poskmp.shared.generated.resources.product_admin_title
 import poskmp.shared.generated.resources.remove_desc
 import poskmp.shared.generated.resources.search
@@ -198,6 +195,7 @@ fun RowScope.TableHeader(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ProductosScreen(
     viewModel: ProductosViewModel,
@@ -218,120 +216,65 @@ fun ProductosScreen(
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
-        modifier = modifier
-    ) { paddingValues ->
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(Res.string.product_admin_title),
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = {
+                    viewModel.onShowProductDialog(
+                        Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
+                    )
+                },
+                icon = {
+                    Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
+                },
+                text = {
+                    Text(stringResource(Res.string.new_product_button))
+                }
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+        modifier = modifier.fillMaxSize()
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
+                .padding(top = innerPadding.calculateTopPadding())
                 .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 16.dp)
         ) {
             // TOP HEADER
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = stringResource(Res.string.product_admin_title),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = stringResource(Res.string.product_admin_subtitle),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Quick Actions
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (selectedProductIds.isNotEmpty()) {
-                        Button(
-                            onClick = { viewModel.onShowBulkModificationDialog(true) },
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            Text(
-                                stringResource(
-                                    Res.string.modify_count_button,
-                                    selectedProductIds.size
-                                )
-                            )
-                        }
-                    }
-
-                    if (!isAndroid()) {
-                        Button(
-                            onClick = { viewModel.onShowImportDialog(true) },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.upload),
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(Res.string.import_button))
-                        }
-                    }
-
-                    val defaultExportSuccess = stringResource(Res.string.export_success_message)
+            if (selectedProductIds.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Button(
-                        onClick = {
-                            val csvBuilder =
-                                StringBuilder("id,codigos,nombre,precio,costo,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
-                            for (p in sortedProducts) {
-                                csvBuilder.append("${p.id},")
-                                csvBuilder.append("\"${p.codigos.replace("\"", "\"\"")}\",")
-                                csvBuilder.append("\"${p.nombre.replace("\"", "\"\"")}\",")
-                                csvBuilder.append("${p.precio},")
-                                csvBuilder.append("${p.costo},")
-                                csvBuilder.append("\"${(p.categoria ?: "").replace("\"", "\"\"")}\",")
-                                csvBuilder.append("${p.activo},")
-                                csvBuilder.append("${p.por_peso},")
-                                csvBuilder.append("${p.precio_mayoreo},")
-                                csvBuilder.append("${p.es_favorito}\n")
-                            }
-                            val csvText = csvBuilder.toString()
-                            saveFile(
-                                defaultFileName = "productos_exportados.csv",
-                                content = csvText,
-                                onSuccess = {
-                                    exportSuccessMessage = defaultExportSuccess
-                                    exportErrorMessage = null
-                                },
-                                onError = {
-                                    exportErrorMessage = it
-                                    exportSuccessMessage = null
-                                }
-                            )
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        onClick = { viewModel.onShowBulkModificationDialog(true) },
                         shape = MaterialTheme.shapes.small
                     ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.download),
-                            contentDescription = null
+                        Text(
+                            stringResource(
+                                Res.string.modify_count_button,
+                                selectedProductIds.size
+                            )
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(Res.string.export_button))
-                    }
-
-                    Button(
-                        onClick = {
-                            viewModel.onShowProductDialog(
-                                Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
-                            )
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(Res.string.new_product_button))
                     }
                 }
             }
