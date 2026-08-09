@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,6 +36,7 @@ import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -46,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -86,8 +86,8 @@ import poskmp.shared.generated.resources.codes_display_label
 import poskmp.shared.generated.resources.cost_display_label
 import poskmp.shared.generated.resources.delete
 import poskmp.shared.generated.resources.delete_desc
+import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.edit
-import poskmp.shared.generated.resources.edit_desc
 import poskmp.shared.generated.resources.favorite_desc
 import poskmp.shared.generated.resources.header_category
 import poskmp.shared.generated.resources.header_codes
@@ -107,7 +107,6 @@ import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
 import poskmp.shared.generated.resources.star_filled
-import poskmp.shared.generated.resources.status_active
 import poskmp.shared.generated.resources.status_inactive
 import poskmp.shared.generated.resources.wholesale
 
@@ -349,14 +348,13 @@ fun ProductosScreen(
             }
         },
         containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize().padding(16.dp)
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
                 .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 16.dp)
         ) {
             // SEARCH BAR
             OutlinedTextField(
@@ -431,49 +429,33 @@ fun ProductosScreen(
                             Text(
                                 stringResource(Res.string.no_products_registered),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.headlineMedium,
                             )
                         }
                     } else {
                         if (isCompact) {
                             // Mobile Compact List
-
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize().padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                                contentPadding = PaddingValues(bottom = 12.dp)
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 itemsIndexed(sortedProducts) { index, product ->
                                     val shape = if (sortedProducts.size == 1) {
-                                        MaterialTheme.shapes.medium
+                                        ShapeDefaults.cardShape
                                     } else if (index == 0) {
-                                        RoundedCornerShape(
-                                            topStart = MaterialTheme.shapes.medium.topStart,
-                                            topEnd = MaterialTheme.shapes.medium.topEnd,
-                                            bottomStart = MaterialTheme.shapes.extraSmall.bottomStart,
-                                            bottomEnd = MaterialTheme.shapes.extraSmall.bottomEnd
-                                        )
+                                        ShapeDefaults.topListItemShape
                                     } else if (index == sortedProducts.lastIndex) {
-                                        RoundedCornerShape(
-                                            topStart = MaterialTheme.shapes.extraSmall.topStart,
-                                            topEnd = MaterialTheme.shapes.extraSmall.topEnd,
-                                            bottomStart = MaterialTheme.shapes.medium.bottomStart,
-                                            bottomEnd = MaterialTheme.shapes.medium.bottomEnd
-                                        )
+                                        ShapeDefaults.bottomListItemShape
                                     } else {
-                                        RoundedCornerShape(MaterialTheme.shapes.extraSmall.topStart)
+                                        ShapeDefaults.middleListItemShape
                                     }
-
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { viewModel.onShowProductDialog(product) },
                                         shape = shape,
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                                        border = BorderStroke(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outlineVariant
-                                        )
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                                     ) {
                                         Column(modifier = Modifier.padding(12.dp)) {
                                             Row(
@@ -498,30 +480,19 @@ fun ProductosScreen(
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis
                                                 )
-                                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            viewModel.onShowProductDialog(product)
-                                                        },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.edit),
-                                                            contentDescription = stringResource(Res.string.edit_desc)
-                                                        )
-                                                    }
-                                                    IconButton(
-                                                        onClick = {
-                                                            viewModel.deleteProductSoft(product.id)
-                                                        },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.delete),
-                                                            contentDescription = stringResource(Res.string.delete_desc)
-                                                        )
-                                                    }
+
+                                                IconButton(
+                                                    onClick = {
+                                                        viewModel.deleteProductSoft(product.id)
+                                                    },
+                                                    modifier = Modifier.size(28.dp)
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.delete),
+                                                        contentDescription = stringResource(Res.string.delete_desc)
+                                                    )
                                                 }
+
                                             }
 
                                             Spacer(modifier = Modifier.height(4.dp))
@@ -592,44 +563,26 @@ fun ProductosScreen(
                                                     if (product.es_favorito == 1L) {
                                                         Badge(
                                                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                            modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape()).size(28.dp)
                                                         ) {
-                                                            Text(
-                                                                "★",
-                                                                fontSize = 10.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                modifier = Modifier.padding(
-                                                                    horizontal = 4.dp
-                                                                )
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.star_filled),
+                                                                contentDescription = stringResource(Res.string.favorite_desc),
+                                                                modifier = Modifier.size(18.dp)
                                                             )
                                                         }
                                                     }
-                                                    if (product.activo == 1L) {
-                                                        Badge(
-                                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                                        ) {
-                                                            Text(
-                                                                stringResource(Res.string.status_active),
-                                                                fontSize = 10.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                modifier = Modifier.padding(
-                                                                    horizontal = 4.dp
-                                                                )
-                                                            )
-                                                        }
-                                                    } else {
+                                                    if (product.activo == 0L) {
                                                         Badge(
                                                             containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                                            modifier = Modifier.clip(MaterialShapes.Sunny.toShape()).size(28.dp)
                                                         ) {
-                                                            Text(
-                                                                stringResource(Res.string.status_inactive),
-                                                                fontSize = 10.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                modifier = Modifier.padding(
-                                                                    horizontal = 4.dp
-                                                                )
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.disabled),
+                                                                contentDescription = stringResource(Res.string.status_inactive),
+                                                                modifier = Modifier.size(18.dp)
                                                             )
                                                         }
                                                     }
@@ -726,8 +679,9 @@ fun ProductosScreen(
                                     contentPadding = PaddingValues(bottom = 12.dp)
                                 ) {
                                     itemsIndexed(sortedProducts) { index, product ->
-                                        val shape = if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
-                                         else ShapeDefaults.middleListItemShape
+                                        val shape =
+                                            if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
+                                            else ShapeDefaults.middleListItemShape
 
                                         Row(
                                             modifier = Modifier
@@ -762,7 +716,7 @@ fun ProductosScreen(
                                             Text(
                                                 text = codesDisplay,
                                                 modifier = Modifier.weight(0.18f),
-                                               style = MaterialTheme.typography.bodyMedium,
+                                                style = MaterialTheme.typography.bodyMedium,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
@@ -781,12 +735,34 @@ fun ProductosScreen(
                                                 if (product.es_favorito == 1L) {
                                                     Spacer(modifier = Modifier.width(4.dp))
 
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.star_filled),
-                                                        contentDescription = stringResource(Res.string.favorite_desc),
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(14.dp)
-                                                    )
+                                                    Badge(
+                                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                        modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape()).size(28.dp)
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.star_filled),
+                                                            contentDescription = stringResource(Res.string.favorite_desc),
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
+                                                }
+                                                if (
+                                                    product.activo == 0L
+                                                    ) {
+                                                    Spacer(modifier = Modifier.width(4.dp))
+
+                                                    Badge(
+                                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                                        modifier = Modifier.clip(MaterialShapes.Sunny.toShape()).size(28.dp)
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.disabled),
+                                                            contentDescription = stringResource(Res.string.status_inactive),
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
                                                 }
                                             }
 
@@ -815,7 +791,9 @@ fun ProductosScreen(
                                             )
 
                                             Text(
-                                                text = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                                text = "$${
+                                                    product.precio_mayoreo.toString().formatPrice()
+                                                }",
                                                 modifier = Modifier.weight(0.10f),
                                                 style = MaterialTheme.typography.bodyMedium,
                                             )
