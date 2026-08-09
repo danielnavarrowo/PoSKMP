@@ -14,7 +14,6 @@ data class ProductosUiState(
     val sortField: ProductSortField = ProductSortField.NOMBRE,
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
     val showProductDialogFor: Products? = null,
-    val showImportDialog: Boolean = false,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet(),
     val isLoading: Boolean = false
@@ -36,7 +35,7 @@ data class ProductosUiState(
                     ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
                     ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                     ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
-                    ProductSortField.ESTADO -> p1.activo.compareTo(p2.activo)
+                    ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
                 }
 
                 if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp

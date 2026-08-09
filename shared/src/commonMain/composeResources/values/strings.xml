@@ -207,7 +207,6 @@
     <string name="header_category">Categoría</string>
     <string name="header_retail_price">Venta</string>
     <string name="header_cost">Costo</string>
-    <string name="header_status">Estado</string>
     <string name="header_actions">Acciones</string>
     <string name="no_catalog_products">No hay productos registrados en el catálogo.</string>
     <string name="favorite_desc">Favorito</string>

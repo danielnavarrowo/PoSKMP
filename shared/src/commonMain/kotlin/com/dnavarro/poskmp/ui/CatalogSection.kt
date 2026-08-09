@@ -366,9 +366,8 @@ fun CatalogSection(
 
                 // FABs overlay (Scanner FAB + Cart FAB)
                 val openScanner = onOpenScanner
-                val viewCart = onViewCartClick
                 val showScannerFab = openScanner != null && isCameraScannerAvailable()
-                val showCartFab = isCompact && viewCart != null
+                val showCartFab = isCompact && onViewCartClick != null
 
                 if (showScannerFab || showCartFab) {
                     Column(
@@ -391,9 +390,9 @@ fun CatalogSection(
                             }
                         }
 
-                        if (isCompact && viewCart != null) {
+                        if (isCompact && onViewCartClick != null) {
                             ExtendedFloatingActionButton(
-                                onClick = viewCart,
+                                onClick = onViewCartClick,
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                             ) {
@@ -424,7 +423,7 @@ fun CatalogSection(
             item {
                 SuggestionChip(
                     onClick = onSellUnregisteredClick,
-                    label = { Text(if (isCompact) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey), fontWeight = FontWeight.Bold) },
+                    label = { Text(if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey), fontWeight = FontWeight.Bold) },
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
@@ -435,7 +434,7 @@ fun CatalogSection(
                     onClick = onApplyItemWholesaleClick,
                     label = {
                         Text(
-                            if (isCompact) stringResource(Res.string.wholesale_item) else stringResource(Res.string.wholesale_item_hotkey),
+                            if (isAndroid()) stringResource(Res.string.wholesale_item) else stringResource(Res.string.wholesale_item_hotkey),
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -449,7 +448,7 @@ fun CatalogSection(
                     onClick = onApplyWholesaleClick,
                     label = {
                         Text(
-                            if (isCompact) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey),
+                            if (isAndroid()) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey),
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -462,7 +461,7 @@ fun CatalogSection(
             item {
                 SuggestionChip(
                     onClick = onCheckoutClick,
-                    label = { Text(if (isCompact) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey), fontWeight = FontWeight.Bold) },
+                    label = { Text(if (isAndroid()) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey), fontWeight = FontWeight.Bold) },
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )

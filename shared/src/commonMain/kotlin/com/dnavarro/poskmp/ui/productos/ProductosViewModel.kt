@@ -26,7 +26,6 @@ private data class DisplayState(
     val sortField: ProductSortField = ProductSortField.NOMBRE,
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
     val showProductDialogFor: Products? = null,
-    val showImportDialog: Boolean = false,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet()
 )
@@ -60,7 +59,6 @@ class ProductosViewModel(
             sortField = display.sortField,
             sortOrder = display.sortOrder,
             showProductDialogFor = display.showProductDialogFor,
-            showImportDialog = display.showImportDialog,
             showBulkModificationFor = display.showBulkModificationFor,
             selectedProductIds = display.selectedProductIds
         )
@@ -88,10 +86,6 @@ class ProductosViewModel(
 
     fun onDismissProductDialog() {
         _displayState.update { it.copy(showProductDialogFor = null) }
-    }
-
-    fun onShowImportDialog(show: Boolean) {
-        _displayState.update { it.copy(showImportDialog = show) }
     }
 
     fun onShowBulkModificationDialog(op: BulkProductOperation?) {
