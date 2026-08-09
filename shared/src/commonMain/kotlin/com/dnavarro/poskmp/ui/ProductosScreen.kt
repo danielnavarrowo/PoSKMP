@@ -59,6 +59,7 @@ import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -85,6 +86,7 @@ import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.parseImportFile
 import com.dnavarro.poskmp.util.pickFile
 import kotlinx.coroutines.Dispatchers
@@ -98,6 +100,7 @@ import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.accept_button
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.back_button
+import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.bulk_op_change_category_title
 import poskmp.shared.generated.resources.bulk_op_change_prices_title
 import poskmp.shared.generated.resources.bulk_op_deactivate_title
@@ -236,7 +239,28 @@ fun ProductosScreen(
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var showCameraScanner by remember { mutableStateOf(false) }
+    var pendingScanCode by remember { mutableStateOf<String?>(null) }
     val fabContainerColor = MaterialTheme.colorScheme.secondary
+
+    LaunchedEffect(pendingScanCode, sortedProducts) {
+        val code = pendingScanCode
+        if (!code.isNullOrBlank()) {
+            val matched = sortedProducts.find { p ->
+                val cleanCodes = p.codigos
+                    .replace("[", "")
+                    .replace("]", "")
+                    .replace("\"", "")
+                    .split(",")
+                    .map { it.trim() }
+                cleanCodes.contains(code) || p.codigos.contains(code) || p.id == code
+            }
+            if (matched != null) {
+                viewModel.onShowProductDialog(matched)
+                pendingScanCode = null
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -387,12 +411,25 @@ fun ProductosScreen(
                     )
                 },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                            Icon(
-                                painter = painterResource(Res.drawable.close),
-                                contentDescription = stringResource(Res.string.clear_desc)
-                            )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = {
+                                viewModel.onSearchQueryChanged("")
+                                pendingScanCode = null
+                            }) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.close),
+                                    contentDescription = stringResource(Res.string.clear_desc)
+                                )
+                            }
+                        }
+                        if (isAndroid()) {
+                            IconButton(onClick = { showCameraScanner = true }) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.barcode_scanner),
+                                    contentDescription = null
+                                )
+                            }
                         }
                     }
                 },
@@ -939,6 +976,20 @@ fun ProductosScreen(
                 onApply = { modification ->
                     viewModel.applyBulkModification(modification)
                 }
+            )
+        }
+
+        if (showCameraScanner) {
+            PlatformBarcodeScanner(
+                onScanResult = { scannedCode ->
+                    showCameraScanner = false
+                    val code = scannedCode.trim()
+                    if (code.isNotEmpty()) {
+                        viewModel.onSearchQueryChanged(code)
+                        pendingScanCode = code
+                    }
+                },
+                onClose = { showCameraScanner = false }
             )
         }
 

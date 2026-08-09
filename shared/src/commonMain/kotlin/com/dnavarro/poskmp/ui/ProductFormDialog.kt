@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
+import com.dnavarro.poskmp.util.isAndroid
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 
@@ -64,6 +66,7 @@ fun ProductFormDialog(
     var formActivo by remember(product) { mutableStateOf(product?.activo == 1L || product == null) }
     var formPorPeso by remember(product) { mutableStateOf(product?.por_peso == 1L) }
     var formEsFavorito by remember(product) { mutableStateOf(product?.es_favorito == 1L) }
+    var showCameraScanner by remember { mutableStateOf(false) }
 
     fun submitForm() {
         val id = product?.id?.ifEmpty { generateUUID() } ?: generateUUID()
@@ -129,6 +132,16 @@ fun ProductFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(Res.string.barcodes_label)) },
                     placeholder = { Text(stringResource(Res.string.barcodes_placeholder)) },
+                    trailingIcon = {
+                        if (isAndroid()) {
+                            IconButton(onClick = { showCameraScanner = true }) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.barcode_scanner),
+                                    contentDescription = null
+                                )
+                            }
+                        }
+                    },
                     singleLine = true
                 )
 
@@ -234,4 +247,24 @@ fun ProductFormDialog(
             }
         }
     )
+
+    if (showCameraScanner) {
+        PlatformBarcodeScanner(
+            onScanResult = { scannedBarcode ->
+                showCameraScanner = false
+                val code = scannedBarcode.trim()
+                if (code.isNotEmpty()) {
+                    val existing = formCodigo.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    formCodigo = if (existing.contains(code)) {
+                        formCodigo
+                    } else if (formCodigo.isBlank()) {
+                        code
+                    } else {
+                        "$formCodigo, $code"
+                    }
+                }
+            },
+            onClose = { showCameraScanner = false }
+        )
+    }
 }

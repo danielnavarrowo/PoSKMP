@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -120,7 +121,6 @@ fun TicketSection(
         previousSize = cartItems.size
     }
 
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -137,7 +137,7 @@ fun TicketSection(
                 if (onBackClick != null) {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            painter = (painterResource(Res.drawable.back)),
+                            painter = painterResource(Res.drawable.back),
                             contentDescription = stringResource(Res.string.back_to_catalog_desc)
                         )
                     }
@@ -221,227 +221,20 @@ fun TicketSection(
 
                     val focusRequester = remember(index) { focusRequesters.getOrPut(index) { FocusRequester() } }
                     val isRowFocused = selectedIndex == index
-                    var isTextFieldFocused by remember { mutableStateOf(false) }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(shape)
-                            .focusRequester(focusRequester)
-                            .onFocusChanged { focusState ->
-                                if (focusState.isFocused || focusState.hasFocus) {
-                                    onSelectedIndexChange(index)
-                                }
-                            }
-                            .onKeyEvent { keyEvent ->
-                                !isTextFieldFocused && keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-                                    Key.DirectionUp -> {
-                                        if (index > 0) {
-                                            focusRequesters[index - 1]?.requestFocus()
-                                        }
-                                        true
-                                    }
-
-                                    Key.DirectionDown -> {
-                                        if (index < cartItems.size - 1) {
-                                            focusRequesters[index + 1]?.requestFocus()
-                                        }
-                                        true
-                                    }
-
-                                    Key.Plus, Key.NumPadAdd, Key.Equals -> {
-                                        val increment = if (item.product.por_peso == 1L) 0.1 else 1.0
-                                        onUpdateQuantity(item, increment)
-                                        true
-                                    }
-
-                                    Key.Minus, Key.NumPadSubtract -> {
-                                        val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
-                                        onUpdateQuantity(item, -decrement)
-                                        true
-                                    }
-
-                                    Key.Delete -> {
-                                        onRemoveItem(item)
-                                        true
-                                    }
-
-                                    else -> false
-                                }
-                            }
-                            .clickable {
-                                focusRequester.requestFocus()
-                                onSelectedIndexChange(index)
-                            }
-                            .background(
-                                if (isRowFocused) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                else MaterialTheme.colorScheme.surfaceContainerLow
-                            )
-                            .then(
-                                if (isRowFocused) {
-                                    Modifier.border(
-                                        width = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = shape
-                                    )
-                                } else Modifier
-                            )
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(Modifier, verticalAlignment = Alignment.CenterVertically)
-                        {
-                            Text(
-                                text = item.product.nombre,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
-                            )
-
-                            val isApplied = item.product.precio == item.product.precio_mayoreo
-                            if (isApplied){
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    shape = MaterialTheme.shapes.extraSmall
-                                ) {
-                                    Text(
-                                        text = stringResource(Res.string.wholesale_badge),
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Row{
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                // Decrease quantity
-                                IconButton(
-                                    onClick = {
-                                        val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
-                                        onUpdateQuantity(item, -decrement)
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                     painter = painterResource(Res.drawable.remove),
-                                        contentDescription = stringResource(Res.string.decrease_desc),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-
-                                var textValue by remember(item.quantity) {
-                                    mutableStateOf(item.quantity.formatQuantity(item.product.por_peso == 1L))
-                                }
-
-                                BasicTextField(
-                                    value = textValue,
-                                    onValueChange = { newValue ->
-                                        val filtered = if (item.product.por_peso == 1L) {
-                                            newValue.filter { it.isDigit() || it == '.' }
-                                        } else {
-                                            newValue.filter { it.isDigit() }
-                                        }
-                                        textValue = filtered
-                                    },
-                                    textStyle = TextStyle(
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        textAlign = TextAlign.Center
-                                    ),
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = if (item.product.por_peso == 1L) KeyboardType.Decimal else KeyboardType.Number,
-                                        imeAction = ImeAction.Done
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onDone = {
-                                            val parsed = textValue.toDoubleOrNull()
-                                            if (parsed != null && parsed > 0.0) {
-                                                onSetQuantity(item, parsed)
-                                            } else if (parsed == 0.0) {
-                                                onRemoveItem(item)
-                                            } else {
-                                                textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
-                                            }
-                                            focusRequester.requestFocus()
-                                        }
-                                    ),
-                                    modifier = Modifier
-                                        .width(44.dp)
-                                        .background(
-                                            if (isTextFieldFocused) MaterialTheme.colorScheme.surface
-                                            else Color.Transparent,
-                                        )
-                                        .padding(vertical = 2.dp)
-                                        .onFocusChanged { focusState ->
-                                            isTextFieldFocused = focusState.isFocused
-                                            if (focusState.isFocused) {
-                                                onSelectedIndexChange(index)
-                                            }
-                                            if (!focusState.isFocused) {
-                                                val parsed = textValue.toDoubleOrNull()
-                                                if (parsed != null && parsed > 0.0) {
-                                                    if (parsed != item.quantity) {
-                                                        onSetQuantity(item, parsed)
-                                                    }
-                                                } else if (parsed == 0.0) {
-                                                    onRemoveItem(item)
-                                                } else {
-                                                    textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
-                                                }
-                                            }
-                                        },
-                                    singleLine = true
-                                )
-
-                                // Increase quantity
-                                IconButton(
-                                    onClick = {
-                                        val increment = if (item.product.por_peso == 1L) 0.1 else 1.0
-                                        onUpdateQuantity(item, increment)
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.add),
-                                        contentDescription = stringResource(Res.string.increase_desc),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "$${
-                                    item.product.precio.toString().formatPrice()
-                                } x ${item.quantity.formatQuantity(item.product.por_peso == 1L)}",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Text(
-                                text = "$${(item.product.precio * item.quantity).toString().formatPrice()}",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.widthIn(min = 55.dp),
-                                textAlign = TextAlign.End
-                            )
-                        }
-                    }
+                    TicketItemRow(
+                        item = item,
+                        index = index,
+                        cartItemsSize = cartItems.size,
+                        shape = shape,
+                        isRowFocused = isRowFocused,
+                        focusRequester = focusRequester,
+                        focusRequesters = focusRequesters,
+                        onSelectedIndexChange = onSelectedIndexChange,
+                        onUpdateQuantity = onUpdateQuantity,
+                        onSetQuantity = onSetQuantity,
+                        onRemoveItem = onRemoveItem
+                    )
                 }
             }
         }
@@ -463,37 +256,37 @@ fun TicketSection(
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    stringResource(Res.string.items_count_label, productCount),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
+                    text = stringResource(Res.string.items_count_label, productCount),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    stringResource(Res.string.pieces_count_label, formattedPieces),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
+                    text = stringResource(Res.string.pieces_count_label, formattedPieces),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            val originalTotal = cartItems.sumOf { it.originalPrice * it.quantity }
-            if (originalTotal > total + 0.001) {
+            val totalWithoutDiscount = cartItems.sumOf { it.originalPrice * it.quantity }
+            val hasDiscount = cartItems.any { it.product.precio < it.originalPrice }
+
+            if (hasDiscount) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         stringResource(Res.string.total_without_discount_label),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 13.sp
                     )
                     Text(
-                        "$${originalTotal.toString().formatPrice()}",
+                        "$${totalWithoutDiscount.toString().formatPrice()}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
@@ -538,4 +331,325 @@ fun TicketSection(
             }
         }
     }
+}
+
+@Composable
+private fun TicketItemRow(
+    item: CartItem,
+    index: Int,
+    cartItemsSize: Int,
+    shape: androidx.compose.ui.graphics.Shape,
+    isRowFocused: Boolean,
+    focusRequester: FocusRequester,
+    focusRequesters: Map<Int, FocusRequester>,
+    onSelectedIndexChange: (Int) -> Unit,
+    onUpdateQuantity: (CartItem, Double) -> Unit,
+    onSetQuantity: (CartItem, Double) -> Unit,
+    onRemoveItem: (CartItem) -> Unit
+) {
+    var isTextFieldFocused by remember { mutableStateOf(false) }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .focusRequester(focusRequester)
+            .onFocusChanged { focusState ->
+                if (focusState.isFocused || focusState.hasFocus) {
+                    onSelectedIndexChange(index)
+                }
+            }
+            .onKeyEvent { keyEvent ->
+                !isTextFieldFocused && keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                    Key.DirectionUp -> {
+                        if (index > 0) {
+                            focusRequesters[index - 1]?.requestFocus()
+                        }
+                        true
+                    }
+
+                    Key.DirectionDown -> {
+                        if (index < cartItemsSize - 1) {
+                            focusRequesters[index + 1]?.requestFocus()
+                        }
+                        true
+                    }
+
+                    Key.Plus, Key.NumPadAdd, Key.Equals -> {
+                        val increment = if (item.product.por_peso == 1L) 0.1 else 1.0
+                        onUpdateQuantity(item, increment)
+                        true
+                    }
+
+                    Key.Minus, Key.NumPadSubtract -> {
+                        val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
+                        onUpdateQuantity(item, -decrement)
+                        true
+                    }
+
+                    Key.Delete -> {
+                        onRemoveItem(item)
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+            .clickable {
+                focusRequester.requestFocus()
+                onSelectedIndexChange(index)
+            }
+            .background(
+                if (isRowFocused) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                else MaterialTheme.colorScheme.surfaceContainerLow
+            )
+            .then(
+                if (isRowFocused) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = shape
+                    )
+                } else Modifier
+            )
+            .padding(12.dp)
+    ) {
+        val isNarrow = maxWidth < 380.dp
+
+        if (isNarrow) {
+            // NARROW VIEW (< 380dp): 2-Row Layout
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // TOP ROW: Product Name & Wholesale Badge (Left) | Total Price (Right)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ProductTitleAndBadge(item = item, modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ItemTotalPriceText(item = item)
+                }
+
+                // BOTTOM ROW: Quantity Controls (Left) | Unit Price calculation (Right)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ItemQuantityControls(
+                        item = item,
+                        index = index,
+                        isTextFieldFocused = isTextFieldFocused,
+                        onFocusChanged = { isTextFieldFocused = it },
+                        onUpdateQuantity = onUpdateQuantity,
+                        onSetQuantity = onSetQuantity,
+                        onRemoveItem = onRemoveItem,
+                        focusRequester = focusRequester,
+                        onSelectedIndexChange = onSelectedIndexChange
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ItemUnitPriceCalcText(item = item)
+                }
+            }
+        } else {
+            // WIDE VIEW (>= 380dp): Single-Row Layout
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ProductTitleAndBadge(item = item, modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    ItemQuantityControls(
+                        item = item,
+                        index = index,
+                        isTextFieldFocused = isTextFieldFocused,
+                        onFocusChanged = { isTextFieldFocused = it },
+                        onUpdateQuantity = onUpdateQuantity,
+                        onSetQuantity = onSetQuantity,
+                        onRemoveItem = onRemoveItem,
+                        focusRequester = focusRequester,
+                        onSelectedIndexChange = onSelectedIndexChange
+                    )
+                    ItemUnitPriceCalcText(item = item)
+                    ItemTotalPriceText(item = item)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductTitleAndBadge(item: CartItem, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = item.product.nombre,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        val isApplied = item.product.precio == item.product.precio_mayoreo
+        if (isApplied) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = MaterialTheme.shapes.extraSmall
+            ) {
+                Text(
+                    text = stringResource(Res.string.wholesale_badge),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemQuantityControls(
+    item: CartItem,
+    index: Int,
+    isTextFieldFocused: Boolean,
+    onFocusChanged: (Boolean) -> Unit,
+    onUpdateQuantity: (CartItem, Double) -> Unit,
+    onSetQuantity: (CartItem, Double) -> Unit,
+    onRemoveItem: (CartItem) -> Unit,
+    focusRequester: FocusRequester,
+    onSelectedIndexChange: (Int) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        IconButton(
+            onClick = {
+                val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
+                onUpdateQuantity(item, -decrement)
+            },
+            modifier = Modifier.size(24.dp)
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.remove),
+                contentDescription = stringResource(Res.string.decrease_desc),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        var textValue by remember(item.quantity) {
+            mutableStateOf(item.quantity.formatQuantity(item.product.por_peso == 1L))
+        }
+
+        BasicTextField(
+            value = textValue,
+            onValueChange = { newValue ->
+                val filtered = if (item.product.por_peso == 1L) {
+                    newValue.filter { it.isDigit() || it == '.' }
+                } else {
+                    newValue.filter { it.isDigit() }
+                }
+                textValue = filtered
+            },
+            textStyle = TextStyle(
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (item.product.por_peso == 1L) KeyboardType.Decimal else KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    val parsed = textValue.toDoubleOrNull()
+                    if (parsed != null && parsed > 0.0) {
+                        onSetQuantity(item, parsed)
+                    } else if (parsed == 0.0) {
+                        onRemoveItem(item)
+                    } else {
+                        textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
+                    }
+                    focusRequester.requestFocus()
+                }
+            ),
+            modifier = Modifier
+                .width(44.dp)
+                .background(
+                    if (isTextFieldFocused) MaterialTheme.colorScheme.surface
+                    else Color.Transparent,
+                )
+                .padding(vertical = 2.dp)
+                .onFocusChanged { focusState ->
+                    onFocusChanged(focusState.isFocused)
+                    if (focusState.isFocused) {
+                        onSelectedIndexChange(index)
+                    }
+                    if (!focusState.isFocused) {
+                        val parsed = textValue.toDoubleOrNull()
+                        if (parsed != null && parsed > 0.0) {
+                            if (parsed != item.quantity) {
+                                onSetQuantity(item, parsed)
+                            }
+                        } else if (parsed == 0.0) {
+                            onRemoveItem(item)
+                        } else {
+                            textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
+                        }
+                    }
+                },
+            singleLine = true
+        )
+
+        IconButton(
+            onClick = {
+                val increment = if (item.product.por_peso == 1L) 0.1 else 1.0
+                onUpdateQuantity(item, increment)
+            },
+            modifier = Modifier.size(24.dp)
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.add),
+                contentDescription = stringResource(Res.string.increase_desc),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ItemUnitPriceCalcText(item: CartItem) {
+    Text(
+        text = "$${item.product.precio.toString().formatPrice()} x ${item.quantity.formatQuantity(item.product.por_peso == 1L)}",
+        fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        softWrap = false
+    )
+}
+
+@Composable
+private fun ItemTotalPriceText(item: CartItem) {
+    Text(
+        text = "$${(item.product.precio * item.quantity).toString().formatPrice()}",
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        softWrap = false,
+        textAlign = TextAlign.End
+    )
 }
