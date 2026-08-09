@@ -8,6 +8,7 @@ import com.dnavarro.poskmp.domain.usecase.ApplyBulkModificationUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.BulkProductModification
+import com.dnavarro.poskmp.ui.BulkProductOperation
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.util.currentTimeMillis
@@ -26,7 +27,7 @@ private data class DisplayState(
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
     val showProductDialogFor: Products? = null,
     val showImportDialog: Boolean = false,
-    val showBulkModificationDialog: Boolean = false,
+    val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet()
 )
 
@@ -60,7 +61,7 @@ class ProductosViewModel(
             sortOrder = display.sortOrder,
             showProductDialogFor = display.showProductDialogFor,
             showImportDialog = display.showImportDialog,
-            showBulkModificationDialog = display.showBulkModificationDialog,
+            showBulkModificationFor = display.showBulkModificationFor,
             selectedProductIds = display.selectedProductIds
         )
     }.stateIn(
@@ -93,8 +94,8 @@ class ProductosViewModel(
         _displayState.update { it.copy(showImportDialog = show) }
     }
 
-    fun onShowBulkModificationDialog(show: Boolean) {
-        _displayState.update { it.copy(showBulkModificationDialog = show) }
+    fun onShowBulkModificationDialog(op: BulkProductOperation?) {
+        _displayState.update { it.copy(showBulkModificationFor = op) }
     }
 
     fun onToggleSelectProduct(productId: String) {
@@ -147,7 +148,7 @@ class ProductosViewModel(
             _displayState.update {
                 it.copy(
                     selectedProductIds = emptySet(),
-                    showBulkModificationDialog = false
+                    showBulkModificationFor = null
                 )
             }
         }

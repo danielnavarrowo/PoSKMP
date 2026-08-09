@@ -411,82 +411,83 @@ fun AjustesScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Row 0.5: Checador Mode Toggle (Dialog vs Fullscreen)
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = stringResource(Res.string.checador_layout_title),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = stringResource(Res.string.checador_layout_subtitle),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                val checadorOptions = listOf(
-                                    Triple(
-                                        true,
-                                        stringResource(Res.string.checador_layout_dialog),
-                                        Res.drawable.pip
-                                    ),
-                                    Triple(
-                                        false,
-                                        stringResource(Res.string.checador_layout_fullscreen),
-                                        Res.drawable.fullscreen
-                                    )
+                        if (!isAndroid()) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = stringResource(Res.string.checador_layout_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                                checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
-                                    val isSelected = isChecadorDialog == isDialogOption
-                                    ToggleButton(
-                                        checked = isSelected,
-                                        onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
-                                        colors = ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.checador_layout_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    val checadorOptions = listOf(
+                                        Triple(
+                                            true,
+                                            stringResource(Res.string.checador_layout_dialog),
+                                            Res.drawable.pip
                                         ),
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .semantics { role = Role.RadioButton },
-                                        shapes = when (index) {
-                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                            checadorOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                        }
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center
+                                        Triple(
+                                            false,
+                                            stringResource(Res.string.checador_layout_fullscreen),
+                                            Res.drawable.fullscreen
+                                        )
+                                    )
+                                    checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
+                                        val isSelected = isChecadorDialog == isDialogOption
+                                        ToggleButton(
+                                            checked = isSelected,
+                                            onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
+                                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .semantics { role = Role.RadioButton },
+                                            shapes = when (index) {
+                                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                                checadorOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                            }
                                         ) {
-                                            Icon(
-                                                painter = painterResource(icon),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = label,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(icon),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
                         // Show Extra Prices in Checador Toggle (Costo y Mayoreo)
                         Row(
@@ -537,23 +538,6 @@ fun AjustesScreen(
                                             fontSize = 14.sp,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        if (isAndroid()) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Badge(
-                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                            ) {
-                                                Text(
-                                                    "Android",
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(
-                                                        horizontal = 6.dp,
-                                                        vertical = 2.dp
-                                                    ),
-                                                    fontSize = 10.sp
-                                                )
-                                            }
-                                        }
                                     }
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(

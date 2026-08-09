@@ -124,7 +124,7 @@
     <string name="bulk_select_profit_error">Ingresa al menos un porcentaje de ganancia.</string>
     <string name="bulk_enter_category_error">Ingresa la categoría que se asignará.</string>
     <string name="bulk_mod_title">Modificación masiva</string>
-    <string name="bulk_mod_subtitle">%1$d producto(s) seleccionado(s) · Paso %2$d de 2</string>
+    <string name="bulk_mod_subtitle">%1$d producto(s) seleccionado(s)</string>
     <string name="cost_price">Precio de costo</string>
     <string name="retail_price">Precio de venta</string>
     <string name="wholesale_price">Precio de mayoreo</string>

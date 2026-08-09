@@ -154,7 +154,6 @@ import poskmp.shared.generated.resources.import_success_replace_message
 import poskmp.shared.generated.resources.import_success_title
 import poskmp.shared.generated.resources.import_success_update_message
 import poskmp.shared.generated.resources.import_warning_replace_all
-import poskmp.shared.generated.resources.modify_count_button
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.next_button
@@ -221,8 +220,8 @@ fun RowScope.TableHeader(
 @Composable
 fun ProductosScreen(
     viewModel: ProductosViewModel,
-    repository: ProductRepository = koinInject(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    repository: ProductRepository = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery = uiState.searchQuery
@@ -231,12 +230,13 @@ fun ProductosScreen(
     val sortOrder = uiState.sortOrder
     val showProductDialogFor = uiState.showProductDialogFor
     val showImportDialog = uiState.showImportDialog
-    val showBulkModificationDialog = uiState.showBulkModificationDialog
+    val showBulkModificationFor = uiState.showBulkModificationFor
     val selectedProductIds = uiState.selectedProductIds
 
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val fabContainerColor = MaterialTheme.colorScheme.secondary
 
     Scaffold(
         topBar = {
@@ -277,11 +277,13 @@ fun ProductosScreen(
                         button = {
                             ToggleFloatingActionButton(
                                 checked = isFabMenuExpanded,
+                                containerColor = { _ -> fabContainerColor },
                                 onCheckedChange = { isFabMenuExpanded = !isFabMenuExpanded }
                             ) {
                                 val iconRes = if (checkedProgress > 0.5f) Res.drawable.close else Res.drawable.edit
                                 Icon(
                                     painter = painterResource(iconRes),
+                                    tint = MaterialTheme.colorScheme.onSecondary,
                                     contentDescription = null,
                                     modifier = Modifier.graphicsLayer {
                                         rotationZ = checkedProgress * 180f
@@ -291,29 +293,54 @@ fun ProductosScreen(
                         }
                     ) {
                         FloatingActionButtonMenuItem(
-                            onClick = { isFabMenuExpanded = false },
+                            onClick = {
+                                isFabMenuExpanded = false
+                                viewModel.onShowBulkModificationDialog(BulkProductOperation.CHANGE_PRICES)
+                            },
                             icon = { Icon(painter = painterResource(Res.drawable.money), contentDescription = null) },
-                            text = { Text(stringResource(Res.string.bulk_op_change_prices_title)) }
+                            text = { Text(stringResource(Res.string.bulk_op_change_prices_title)) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         FloatingActionButtonMenuItem(
-                            onClick = { isFabMenuExpanded = false },
+                            onClick = {
+                                isFabMenuExpanded = false
+                                viewModel.onShowBulkModificationDialog(BulkProductOperation.SET_PROFIT)
+                            },
                             icon = { Icon(painter = painterResource(Res.drawable.edit), contentDescription = null) },
-                            text = { Text(stringResource(Res.string.bulk_op_set_profit_title)) }
+                            text = { Text(stringResource(Res.string.bulk_op_set_profit_title)) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         FloatingActionButtonMenuItem(
-                            onClick = { isFabMenuExpanded = false },
+                            onClick = {
+                                isFabMenuExpanded = false
+                                viewModel.onShowBulkModificationDialog(BulkProductOperation.CHANGE_CATEGORY)
+                            },
                             icon = { Icon(painter = painterResource(Res.drawable.products), contentDescription = null) },
-                            text = { Text(stringResource(Res.string.bulk_op_change_category_title)) }
+                            text = { Text(stringResource(Res.string.bulk_op_change_category_title)) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         FloatingActionButtonMenuItem(
-                            onClick = { isFabMenuExpanded = false },
+                            onClick = {
+                                isFabMenuExpanded = false
+                                viewModel.onShowBulkModificationDialog(BulkProductOperation.DEACTIVATE)
+                            },
                             icon = { Icon(painter = painterResource(Res.drawable.remove), contentDescription = null) },
-                            text = { Text(stringResource(Res.string.bulk_op_deactivate_title)) }
+                            text = { Text(stringResource(Res.string.bulk_op_deactivate_title)) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         FloatingActionButtonMenuItem(
-                            onClick = { isFabMenuExpanded = false },
+                            onClick = {
+                                isFabMenuExpanded = false
+                                viewModel.onShowBulkModificationDialog(BulkProductOperation.DELETE)
+                            },
                             icon = { Icon(painter = painterResource(Res.drawable.delete), contentDescription = null) },
-                            text = { Text(stringResource(Res.string.bulk_op_delete_title)) }
+                            text = { Text(stringResource(Res.string.bulk_op_delete_title)) },
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                 }
@@ -346,27 +373,6 @@ fun ProductosScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 16.dp)
         ) {
-            // TOP HEADER
-            if (selectedProductIds.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Button(
-                        onClick = { viewModel.onShowBulkModificationDialog(true) },
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            stringResource(
-                                Res.string.modify_count_button,
-                                selectedProductIds.size
-                            )
-                        )
-                    }
-                }
-            }
-
             // SEARCH BAR
             OutlinedTextField(
                 value = searchQuery,
@@ -925,10 +931,11 @@ fun ProductosScreen(
             )
         }
 
-        if (showBulkModificationDialog) {
+        showBulkModificationFor?.let { op ->
             BulkProductModificationDialog(
                 selectedCount = selectedProductIds.size,
-                onDismiss = { viewModel.onShowBulkModificationDialog(false) },
+                operation = op,
+                onDismiss = { viewModel.onShowBulkModificationDialog(null) },
                 onApply = { modification ->
                     viewModel.applyBulkModification(modification)
                 }

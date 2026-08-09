@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.productos
 
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.ui.BulkProductOperation
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
 
@@ -14,7 +15,7 @@ data class ProductosUiState(
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
     val showProductDialogFor: Products? = null,
     val showImportDialog: Boolean = false,
-    val showBulkModificationDialog: Boolean = false,
+    val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet(),
     val isLoading: Boolean = false
 ) {
