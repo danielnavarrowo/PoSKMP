@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,8 +39,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
@@ -56,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -106,6 +108,7 @@ import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
+import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.status_inactive
 import poskmp.shared.generated.resources.wholesale
@@ -350,64 +353,148 @@ fun ProductosScreen(
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize().padding(16.dp)
     ) { innerPadding ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // SEARCH BAR
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small),
-                placeholder = { Text(stringResource(Res.string.search_placeholder)) },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(Res.drawable.search),
-                        contentDescription = stringResource(Res.string.search_desc)
-                    )
-                },
-                trailingIcon = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = {
-                                viewModel.onSearchQueryChanged("")
-                                pendingScanCode = null
-                            }) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.close),
-                                    contentDescription = stringResource(Res.string.clear_desc)
+            val isCompact = maxWidth < 720.dp
+            val isAllFilteredSelected =
+                sortedProducts.isNotEmpty() && sortedProducts.all { it.id in selectedProductIds }
+
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // SEARCH BAR
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isCompact) {
+                        Box(
+                            modifier = Modifier
+                                .clip(MaterialShapes.Clover8Leaf.toShape())
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Checkbox(
+                                checked = isAllFilteredSelected,
+                                onCheckedChange = {
+                                    viewModel.onSelectAllProducts(sortedProducts.map { it.id })
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .height(56.dp)
+                            .weight(1f)
+                            .background(
+                                color = if (searchQuery.isNotEmpty())
+                                    MaterialTheme.colorScheme.surfaceContainerLowest
+                                else
+                                    MaterialTheme.colorScheme.surfaceContainer,
+                                shape = ShapeDefaults.cardShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.search),
+                                contentDescription = stringResource(Res.string.search_desc),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = stringResource(Res.string.search_placeholder),
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        ),
+                                        textAlign = TextAlign.Start
+                                    )
+                                }
+
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { viewModel.onSearchQueryChanged(it) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Start
+                                    ),
+                                    singleLine = true
                                 )
                             }
-                        }
-                        if (isAndroid()) {
-                            IconButton(onClick = { showCameraScanner = true }) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.barcode_scanner),
-                                    contentDescription = null
-                                )
+
+                            if (searchQuery.isNotEmpty()) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    modifier = Modifier
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceContainer,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(4.dp)
+                                        .size(26.dp),
+                                    onClick = {
+                                        viewModel.onSearchQueryChanged("")
+                                        pendingScanCode = null
+                                    }
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.add),
+                                        contentDescription = stringResource(Res.string.clear_desc),
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.rotate(45f)
+                                    )
+                                }
                             }
                         }
                     }
-                },
-                singleLine = true,
-                shape = MaterialTheme.shapes.small,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                )
-            )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    if (isAndroid()) {
+                        IconButton(
+                            onClick = { showCameraScanner = true },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.barcode_scanner),
+                                contentDescription = null
+                            )
+                        }
+                    }
 
-            // PRODUCTS TABLE
-            BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                val isCompact = maxWidth < 720.dp
+                    IconButton(
+                        onClick = { /* Popup for filtering and sorting will be added here */ },
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.settings),
+                            contentDescription = null
+                        )
+                    }
+                }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // PRODUCTS TABLE
                 Card(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = ShapeDefaults.cardShape,
                 ) {
@@ -564,11 +651,14 @@ fun ProductosScreen(
                                                         Badge(
                                                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                            modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape()).size(28.dp)
+                                                            modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape())
+                                                                .size(28.dp)
                                                         ) {
                                                             Icon(
                                                                 painter = painterResource(Res.drawable.star_filled),
-                                                                contentDescription = stringResource(Res.string.favorite_desc),
+                                                                contentDescription = stringResource(
+                                                                    Res.string.favorite_desc
+                                                                ),
                                                                 modifier = Modifier.size(18.dp)
                                                             )
                                                         }
@@ -577,11 +667,14 @@ fun ProductosScreen(
                                                         Badge(
                                                             containerColor = MaterialTheme.colorScheme.errorContainer,
                                                             contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                                            modifier = Modifier.clip(MaterialShapes.Sunny.toShape()).size(28.dp)
+                                                            modifier = Modifier.clip(MaterialShapes.Sunny.toShape())
+                                                                .size(28.dp)
                                                         ) {
                                                             Icon(
                                                                 painter = painterResource(Res.drawable.disabled),
-                                                                contentDescription = stringResource(Res.string.status_inactive),
+                                                                contentDescription = stringResource(
+                                                                    Res.string.status_inactive
+                                                                ),
                                                                 modifier = Modifier.size(18.dp)
                                                             )
                                                         }
@@ -738,7 +831,8 @@ fun ProductosScreen(
                                                     Badge(
                                                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                        modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape()).size(28.dp)
+                                                        modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape())
+                                                            .size(28.dp)
                                                     ) {
                                                         Icon(
                                                             painter = painterResource(Res.drawable.star_filled),
@@ -749,13 +843,14 @@ fun ProductosScreen(
                                                 }
                                                 if (
                                                     product.activo == 0L
-                                                    ) {
+                                                ) {
                                                     Spacer(modifier = Modifier.width(4.dp))
 
                                                     Badge(
                                                         containerColor = MaterialTheme.colorScheme.errorContainer,
                                                         contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                                        modifier = Modifier.clip(MaterialShapes.Sunny.toShape()).size(28.dp)
+                                                        modifier = Modifier.clip(MaterialShapes.Sunny.toShape())
+                                                            .size(28.dp)
                                                     ) {
                                                         Icon(
                                                             painter = painterResource(Res.drawable.disabled),
