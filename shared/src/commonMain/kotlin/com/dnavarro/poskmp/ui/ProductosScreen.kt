@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Badge
@@ -374,6 +375,7 @@ fun ProductosScreen(
                     if (isCompact) {
                         Box(
                             modifier = Modifier
+                                .size(54.dp)
                                 .clip(MaterialShapes.Clover8Leaf.toShape())
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             contentAlignment = Alignment.Center
@@ -386,12 +388,12 @@ fun ProductosScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                     }
 
                     Box(
                         modifier = Modifier
-                            .height(56.dp)
+                            .height(54.dp)
                             .weight(1f)
                             .background(
                                 color = if (searchQuery.isNotEmpty())
@@ -414,7 +416,7 @@ fun ProductosScreen(
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Box(
                                 modifier = Modifier.weight(1f),
                                 contentAlignment = Alignment.CenterStart
@@ -422,7 +424,7 @@ fun ProductosScreen(
                                 if (searchQuery.isEmpty()) {
                                     Text(
                                         text = stringResource(Res.string.search_placeholder),
-                                        style = MaterialTheme.typography.titleMedium.copy(
+                                        style = MaterialTheme.typography.titleSmall.copy(
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                         ),
                                         textAlign = TextAlign.Start
@@ -442,7 +444,7 @@ fun ProductosScreen(
                             }
 
                             if (searchQuery.isNotEmpty()) {
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 IconButton(
                                     modifier = Modifier
                                         .background(
@@ -457,32 +459,34 @@ fun ProductosScreen(
                                     }
                                 ) {
                                     Icon(
-                                        painter = painterResource(Res.drawable.add),
+                                        painter = painterResource(Res.drawable.close),
                                         contentDescription = stringResource(Res.string.clear_desc),
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.rotate(45f)
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+
+                            if (isAndroid()) {
+                                IconButton(
+                                    onClick = { showCameraScanner = true },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.barcode_scanner),
+                                        contentDescription = stringResource(Res.string.search_desc),
+                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                     )
                                 }
                             }
                         }
                     }
-
-                    if (isAndroid()) {
-                        IconButton(
-                            onClick = { showCameraScanner = true },
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.barcode_scanner),
-                                contentDescription = null
-                            )
-                        }
-                    }
-
+                    Spacer(modifier = Modifier.width(6.dp))
                     IconButton(
                         onClick = { /* Popup for filtering and sorting will be added here */ },
-                        modifier = Modifier.size(56.dp)
+                        modifier = Modifier.size(56.dp).clip(MaterialShapes.VerySunny.toShape())
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                     ) {
+
                         Icon(
                             painter = painterResource(Res.drawable.settings),
                             contentDescription = null
