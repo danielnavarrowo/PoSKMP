@@ -91,7 +91,7 @@ fun VentasScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+
     ) {
         // Header Title & Period Filter Chips
         Row(

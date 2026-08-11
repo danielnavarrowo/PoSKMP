@@ -386,7 +386,7 @@ fun ProductosScreen(
             }
         },
         containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier.fillMaxSize().padding(16.dp)
+        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)
     ) { innerPadding ->
         BoxWithConstraints(
             modifier = Modifier
