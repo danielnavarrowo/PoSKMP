@@ -583,7 +583,20 @@ fun VentaScreen(
                             onSelectedIndexChange = { selectedIndex = it },
                             onBackClick = null,
                             canUndo = uiState.canUndo,
-                            onUndo = { undoLastCartChange() }
+                            onUndo = { undoLastCartChange() },
+                            heldTickets = uiState.heldTickets,
+                            onHoldTicket = {
+                                viewModel.putCurrentTicketOnHold()
+                                reclaimSearchBarFocus()
+                            },
+                            onResumeHeldTicket = { ticket ->
+                                viewModel.resumeHeldTicket(ticket)
+                                reclaimSearchBarFocus()
+                            },
+                            onDiscardHeldTicket = { ticket ->
+                                viewModel.discardHeldTicket(ticket)
+                                reclaimSearchBarFocus()
+                            }
                         )
                     }
                 }
@@ -663,7 +676,20 @@ fun VentaScreen(
                                     }
                                 } else null,
                                 canUndo = uiState.canUndo,
-                                onUndo = { undoLastCartChange() }
+                                onUndo = { undoLastCartChange() },
+                                heldTickets = uiState.heldTickets,
+                                onHoldTicket = {
+                                    viewModel.putCurrentTicketOnHold()
+                                    reclaimSearchBarFocus()
+                                },
+                                onResumeHeldTicket = { ticket ->
+                                    viewModel.resumeHeldTicket(ticket)
+                                    reclaimSearchBarFocus()
+                                },
+                                onDiscardHeldTicket = { ticket ->
+                                    viewModel.discardHeldTicket(ticket)
+                                    reclaimSearchBarFocus()
+                                }
                             )
                         }
                     }

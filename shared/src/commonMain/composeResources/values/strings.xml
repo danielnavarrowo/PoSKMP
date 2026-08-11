@@ -238,6 +238,12 @@
     <string name="last_sale_change">Cambio: $%1$s</string>
     <string name="last_sale_items">Piezas: %1$s</string>
 
+    <!-- Held Tickets (Tickets en espera) -->
+    <string name="hold_ticket_button_desc">Ticket en espera</string>
+    <string name="held_tickets_title">En espera</string>
+    <string name="held_ticket_items_count">%1$s pzs • $%2$s</string>
+    <string name="discard_held_ticket_desc">Descartar ticket</string>
+
     <string name="import_products_title">Importar Productos</string>
     <string name="import_step_format">Paso %1$d de 3</string>
     <string name="import_required_columns_title">Columnas requeridas en su archivo (.csv o .xlsx):</string>

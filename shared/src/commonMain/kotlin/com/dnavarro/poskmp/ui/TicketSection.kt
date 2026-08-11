@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -60,6 +61,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.venta.HeldTicket
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
 import org.jetbrains.compose.resources.painterResource
@@ -70,11 +73,15 @@ import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.back_to_catalog_desc
 import poskmp.shared.generated.resources.checkout_button
 import poskmp.shared.generated.resources.clear_all_button
+import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.current_ticket_title
 import poskmp.shared.generated.resources.decrease_desc
+import poskmp.shared.generated.resources.discard_held_ticket_desc
+import poskmp.shared.generated.resources.hold_ticket_button_desc
 import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.items_count_label
 import poskmp.shared.generated.resources.money
+import poskmp.shared.generated.resources.pause
 import poskmp.shared.generated.resources.pieces_count_label
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.shopping_cart
@@ -101,7 +108,11 @@ fun TicketSection(
     onSelectedIndexChange: (Int) -> Unit = {},
     onBackClick: (() -> Unit)? = null,
     canUndo: Boolean = false,
-    onUndo: () -> Unit = {}
+    onUndo: () -> Unit = {},
+    heldTickets: List<HeldTicket> = emptyList(),
+    onHoldTicket: () -> Unit = {},
+    onResumeHeldTicket: (HeldTicket) -> Unit = {},
+    onDiscardHeldTicket: (HeldTicket) -> Unit = {}
 ) {
     val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
     var previousSize by remember { mutableIntStateOf(0) }
@@ -160,12 +171,64 @@ fun TicketSection(
                         contentDescription = stringResource(Res.string.undo_button_desc)
                     )
                 }
+                IconButton(
+                    onClick = onHoldTicket,
+                    enabled = cartItems.isNotEmpty()
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.pause),
+                        contentDescription = stringResource(Res.string.hold_ticket_button_desc)
+                    )
+                }
                 if (cartItems.isNotEmpty()) {
                     IconButton(onClick = onClearCart) {
                         Icon(
                             painter = painterResource(Res.drawable.trash),
                             contentDescription = stringResource(Res.string.clear_all_button)
                         )
+                    }
+                }
+            }
+        }
+
+        // Held Tickets Row (if any)
+        if (heldTickets.isNotEmpty()) {
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp)
+                ) {
+                    itemsIndexed(heldTickets) { _, ticket ->
+                        val piecesFormatted = if (ticket.totalItemsCount % 1.0 == 0.0) ticket.totalItemsCount.toLong().toString() else ticket.totalItemsCount.toString()
+                        Surface(
+                            onClick = { onResumeHeldTicket(ticket) },
+                            shape = ShapeDefaults.cardShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(start = 10.dp, end = 4.dp)
+                            ) {
+                                Text(
+                                    text = "$piecesFormatted pzs • $${ticket.total.toString().formatPrice()}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = { onDiscardHeldTicket(ticket) },
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.close),
+                                        contentDescription = stringResource(Res.string.discard_held_ticket_desc),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

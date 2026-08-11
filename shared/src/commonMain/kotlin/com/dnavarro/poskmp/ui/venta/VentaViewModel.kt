@@ -36,6 +36,7 @@ class VentaViewModel(
     private val _searchQuery = MutableStateFlow("")
     private val _selectedCategory = MutableStateFlow<String?>(null)
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
+    private val _heldTickets = MutableStateFlow<List<HeldTicket>>(emptyList())
     private val _cartHistory = mutableListOf<List<CartItem>>()
     private val _canUndo = MutableStateFlow(false)
 
@@ -48,13 +49,25 @@ class VentaViewModel(
         _productsFlow,
         _selectedCategory,
         _cartItems,
+        _heldTickets,
         _canUndo
-    ) { query, products, category, cart, canUndo ->
+    ) { flows: Array<Any?> ->
+        val query = flows[0] as String
+        @Suppress("UNCHECKED_CAST")
+        val products = flows[1] as List<Products>
+        val category = flows[2] as String?
+        @Suppress("UNCHECKED_CAST")
+        val cart = flows[3] as List<CartItem>
+        @Suppress("UNCHECKED_CAST")
+        val held = flows[4] as List<HeldTicket>
+        val canUndo = flows[5] as Boolean
+
         VentaUiState(
             searchQuery = query,
             activeProducts = products,
             selectedCategory = category,
             cartItems = cart,
+            heldTickets = held,
             canUndo = canUndo
         )
     }.stateIn(
@@ -200,6 +213,32 @@ class VentaViewModel(
 
     suspend fun findProductByBarcode(barcode: String): Products? {
         return findProductByBarcodeUseCase(barcode)
+    }
+
+    fun putCurrentTicketOnHold() {
+        val currentCart = _cartItems.value
+        if (currentCart.isEmpty()) return
+        val held = HeldTicket(items = currentCart)
+        _heldTickets.value = _heldTickets.value + held
+        _cartItems.value = emptyList()
+        _cartHistory.clear()
+        _canUndo.value = false
+    }
+
+    fun resumeHeldTicket(heldTicket: HeldTicket) {
+        val currentCart = _cartItems.value
+        val updatedHeldList = _heldTickets.value.filterNot { it.id == heldTicket.id }.toMutableList()
+        if (currentCart.isNotEmpty()) {
+            updatedHeldList.add(0, HeldTicket(items = currentCart))
+        }
+        _heldTickets.value = updatedHeldList
+        _cartItems.value = heldTicket.items
+        _cartHistory.clear()
+        _canUndo.value = false
+    }
+
+    fun discardHeldTicket(heldTicket: HeldTicket) {
+        _heldTickets.value = _heldTickets.value.filterNot { it.id == heldTicket.id }
     }
 
     suspend fun processCheckout(pagoCon: Double, cambio: Double, metodoPago: String = "EFECTIVO"): Long {
