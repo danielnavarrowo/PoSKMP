@@ -25,6 +25,9 @@ import kotlinx.coroutines.launch
 private data class DisplayState(
     val sortField: ProductSortField = ProductSortField.NOMBRE,
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
+    val selectedCategory: String? = null,
+    val favoriteFilter: FavoriteFilterOption = FavoriteFilterOption.ALL,
+    val statusFilter: StatusFilterOption = StatusFilterOption.ALL,
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet()
@@ -58,6 +61,9 @@ class ProductosViewModel(
             rawProducts = products,
             sortField = display.sortField,
             sortOrder = display.sortOrder,
+            selectedCategory = display.selectedCategory,
+            favoriteFilter = display.favoriteFilter,
+            statusFilter = display.statusFilter,
             showProductDialogFor = display.showProductDialogFor,
             showBulkModificationFor = display.showBulkModificationFor,
             selectedProductIds = display.selectedProductIds
@@ -78,6 +84,30 @@ class ProductosViewModel(
 
     fun onSortOrderChanged(order: ProductSortOrder) {
         _displayState.update { it.copy(sortOrder = order) }
+    }
+
+    fun onCategoryFilterChanged(category: String?) {
+        _displayState.update { it.copy(selectedCategory = category) }
+    }
+
+    fun onFavoriteFilterChanged(filter: FavoriteFilterOption) {
+        _displayState.update { it.copy(favoriteFilter = filter) }
+    }
+
+    fun onStatusFilterChanged(filter: StatusFilterOption) {
+        _displayState.update { it.copy(statusFilter = filter) }
+    }
+
+    fun onResetFilters() {
+        _displayState.update {
+            it.copy(
+                selectedCategory = null,
+                favoriteFilter = FavoriteFilterOption.ALL,
+                statusFilter = StatusFilterOption.ALL,
+                sortField = ProductSortField.NOMBRE,
+                sortOrder = ProductSortOrder.ASC
+            )
+        }
     }
 
     fun onShowProductDialog(product: Products?) {

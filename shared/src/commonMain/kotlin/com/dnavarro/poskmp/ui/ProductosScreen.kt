@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -24,29 +26,37 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Badge
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,8 +68,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,7 +80,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.productos.FavoriteFilterOption
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
+import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
@@ -76,6 +90,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
+import poskmp.shared.generated.resources.apply_filters_button
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.bulk_op_change_category_title
 import poskmp.shared.generated.resources.bulk_op_change_prices_title
@@ -83,6 +98,7 @@ import poskmp.shared.generated.resources.bulk_op_deactivate_title
 import poskmp.shared.generated.resources.bulk_op_delete_title
 import poskmp.shared.generated.resources.bulk_op_set_profit_title
 import poskmp.shared.generated.resources.category_label_format
+import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.codes_display_label
@@ -92,6 +108,20 @@ import poskmp.shared.generated.resources.delete_desc
 import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.edit
 import poskmp.shared.generated.resources.favorite_desc
+import poskmp.shared.generated.resources.filter
+import poskmp.shared.generated.resources.filter_and_sort_title
+import poskmp.shared.generated.resources.filter_category_all
+import poskmp.shared.generated.resources.filter_category_title
+import poskmp.shared.generated.resources.filter_favorite_all
+import poskmp.shared.generated.resources.filter_favorite_only
+import poskmp.shared.generated.resources.filter_favorite_title
+import poskmp.shared.generated.resources.filter_non_favorite_only
+import poskmp.shared.generated.resources.filter_off
+import poskmp.shared.generated.resources.filter_on
+import poskmp.shared.generated.resources.filter_status_active_only
+import poskmp.shared.generated.resources.filter_status_all
+import poskmp.shared.generated.resources.filter_status_inactive_only
+import poskmp.shared.generated.resources.filter_status_title
 import poskmp.shared.generated.resources.header_category
 import poskmp.shared.generated.resources.header_codes
 import poskmp.shared.generated.resources.header_cost
@@ -105,11 +135,15 @@ import poskmp.shared.generated.resources.price_display_label
 import poskmp.shared.generated.resources.product_admin_title
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.remove
+import poskmp.shared.generated.resources.reset_filters
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
-import poskmp.shared.generated.resources.settings
+import poskmp.shared.generated.resources.sort_order_asc
+import poskmp.shared.generated.resources.sort_order_desc
+import poskmp.shared.generated.resources.sort_order_section_title
+import poskmp.shared.generated.resources.sort_section_title
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.status_inactive
 import poskmp.shared.generated.resources.wholesale
@@ -173,6 +207,7 @@ fun ProductosScreen(
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var showCameraScanner by remember { mutableStateOf(false) }
     var pendingScanCode by remember { mutableStateOf<String?>(null) }
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
     val fabContainerColor = MaterialTheme.colorScheme.secondary
 
     LaunchedEffect(pendingScanCode, sortedProducts) {
@@ -333,7 +368,6 @@ fun ProductosScreen(
                     }
                 }
 
-                // New Product FAB (Stays visible ALL THE TIME at the bottom)
                 ExtendedFloatingActionButton(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -444,15 +478,9 @@ fun ProductosScreen(
                             }
 
                             if (searchQuery.isNotEmpty()) {
-                                Spacer(modifier = Modifier.width(6.dp))
                                 IconButton(
                                     modifier = Modifier
-                                        .background(
-                                            color = MaterialTheme.colorScheme.surfaceContainer,
-                                            shape = RoundedCornerShape(12.dp)
-                                        )
-                                        .padding(4.dp)
-                                        .size(26.dp),
+                                        .size(32.dp),
                                     onClick = {
                                         viewModel.onSearchQueryChanged("")
                                         pendingScanCode = null
@@ -464,6 +492,7 @@ fun ProductosScreen(
                                         tint = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(6.dp))
                             }
 
                             if (isAndroid()) {
@@ -481,18 +510,38 @@ fun ProductosScreen(
                         }
                     }
                     Spacer(modifier = Modifier.width(6.dp))
-                    IconButton(
-                        onClick = { /* Popup for filtering and sorting will be added here */ },
-                        modifier = Modifier.size(56.dp).clip(MaterialShapes.VerySunny.toShape())
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    ) {
-
-                        Icon(
-                            painter = painterResource(Res.drawable.settings),
-                            contentDescription = null
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { showFilterBottomSheet = true },
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(MaterialShapes.Cookie4Sided.toShape())
+                                .background(
+                                    if (uiState.hasActiveFilters) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh
+                                ),
+                        ) {
+                            Icon(
+                                painter = if(uiState.hasActiveFilters) painterResource(Res.drawable.filter_on)
+                                else painterResource(Res.drawable.filter),
+                                contentDescription = stringResource(Res.string.filter_and_sort_title),
+                                tint = if (uiState.hasActiveFilters) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (uiState.hasActiveFilters) {
+                            Badge(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-2).dp, y = 2.dp)
+                                    .size(10.dp),
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
+
+
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -942,6 +991,349 @@ fun ProductosScreen(
                 },
                 onClose = { showCameraScanner = false }
             )
+        }
+
+        if (showFilterBottomSheet) {
+            ProductFilterAndSortBottomSheet(
+                sortField = sortField,
+                sortOrder = sortOrder,
+                selectedCategory = uiState.selectedCategory,
+                favoriteFilter = uiState.favoriteFilter,
+                statusFilter = uiState.statusFilter,
+                availableCategories = uiState.availableCategories,
+                onSortFieldSelected = { viewModel.onSortFieldChanged(it) },
+                onSortOrderSelected = { viewModel.onSortOrderChanged(it) },
+                onCategorySelected = { viewModel.onCategoryFilterChanged(it) },
+                onFavoriteFilterSelected = { viewModel.onFavoriteFilterChanged(it) },
+                onStatusFilterSelected = { viewModel.onStatusFilterChanged(it) },
+                onResetFilters = { viewModel.onResetFilters() },
+                onDismissRequest = { showFilterBottomSheet = false }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
+@Composable
+fun ProductFilterAndSortBottomSheet(
+    sortField: ProductSortField,
+    sortOrder: ProductSortOrder,
+    selectedCategory: String?,
+    favoriteFilter: FavoriteFilterOption,
+    statusFilter: StatusFilterOption,
+    availableCategories: List<String>,
+    onSortFieldSelected: (ProductSortField) -> Unit,
+    onSortOrderSelected: (ProductSortOrder) -> Unit,
+    onCategorySelected: (String?) -> Unit,
+    onFavoriteFilterSelected: (FavoriteFilterOption) -> Unit,
+    onStatusFilterSelected: (StatusFilterOption) -> Unit,
+    onResetFilters: () -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(Res.string.filter_and_sort_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(
+                    onClick = onResetFilters,
+                    modifier = Modifier.size(32.dp).clip(MaterialShapes.Ghostish.toShape())
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.filter_off),
+                        contentDescription = stringResource(Res.string.reset_filters),
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Scrollable Content
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Section 1: Sorting Field
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.sort_section_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val options = listOf(
+                                ProductSortField.CODIGO to stringResource(Res.string.header_codes),
+                                ProductSortField.NOMBRE to stringResource(Res.string.header_product_name),
+                                ProductSortField.CATEGORIA to stringResource(Res.string.header_category),
+                                ProductSortField.PRECIO to stringResource(Res.string.header_retail_price),
+                                ProductSortField.COSTO to stringResource(Res.string.header_cost),
+                                ProductSortField.MAYOREO to stringResource(Res.string.wholesale)
+                            )
+                            options.forEach { (field, label) ->
+                                FilterChip(
+                                    selected = sortField == field,
+                                    onClick = { onSortFieldSelected(field) },
+                                    label = { Text(label) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Section 2: Sort Direction (Connected ToggleButtons)
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.sort_order_section_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val orderOptions = listOf(
+                                Pair(ProductSortOrder.ASC, "▲ " + stringResource(Res.string.sort_order_asc)),
+                                Pair(ProductSortOrder.DESC, "▼ " + stringResource(Res.string.sort_order_desc))
+                            )
+                            orderOptions.forEachIndexed { index, (order, label) ->
+                                val isSelected = sortOrder == order
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onSortOrderSelected(order) },
+                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        orderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 3: Filter by Category
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.filter_category_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedCategory == null,
+                                onClick = { onCategorySelected(null) },
+                                label = { Text(stringResource(Res.string.filter_category_all)) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                            availableCategories.forEach { cat ->
+                                FilterChip(
+                                    selected = selectedCategory == cat,
+                                    onClick = { onCategorySelected(cat) },
+                                    label = { Text(cat) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                            FilterChip(
+                                selected = selectedCategory == "NO_CATEGORY",
+                                onClick = { onCategorySelected("NO_CATEGORY") },
+                                label = { Text(stringResource(Res.string.no_category)) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Section 4: Filter by Favorite (Connected ToggleButtons)
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.filter_favorite_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val favOptions = listOf(
+                                FavoriteFilterOption.ALL to stringResource(Res.string.filter_favorite_all),
+                                FavoriteFilterOption.ONLY_FAVORITES to stringResource(Res.string.filter_favorite_only),
+                                FavoriteFilterOption.ONLY_NON_FAVORITES to stringResource(Res.string.filter_non_favorite_only)
+                            )
+                            favOptions.forEachIndexed { index, (option, label) ->
+                                val isSelected = favoriteFilter == option
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onFavoriteFilterSelected(option) },
+                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        favOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 5: Filter by Status (Connected ToggleButtons)
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.filter_status_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val statusOptions = listOf(
+                                StatusFilterOption.ALL to stringResource(Res.string.filter_status_all),
+                                StatusFilterOption.ONLY_ACTIVE to stringResource(Res.string.filter_status_active_only),
+                                StatusFilterOption.ONLY_INACTIVE to stringResource(Res.string.filter_status_inactive_only)
+                            )
+                            statusOptions.forEachIndexed { index, (option, label) ->
+                                val isSelected = statusFilter == option
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onStatusFilterSelected(option) },
+                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        statusOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply Button
+            ElevatedButton(
+                onClick = onDismissRequest,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.elevatedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary
+                )
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.check),
+                    contentDescription = stringResource(Res.string.apply_filters_button),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(Res.string.apply_filters_button),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
