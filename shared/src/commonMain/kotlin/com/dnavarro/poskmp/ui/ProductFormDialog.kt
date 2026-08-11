@@ -62,6 +62,10 @@ fun ProductFormDialog(
         val wholesale = product?.precio_mayoreo
         mutableStateOf(if (wholesale == null || wholesale == 0.0) "" else wholesale.toString())
     }
+    var formPiezas by remember(product) {
+        val pieces = product?.piezas
+        mutableStateOf(if (pieces == null || pieces == 0.0) "1" else if (pieces % 1.0 == 0.0) pieces.toLong().toString() else pieces.toString())
+    }
     var formCategoria by remember(product) { mutableStateOf(product?.categoria ?: defaultCategory) }
     var formActivo by remember(product) { mutableStateOf(product?.activo == 1L || product == null) }
     var formPorPeso by remember(product) { mutableStateOf(product?.por_peso == 1L) }
@@ -87,6 +91,7 @@ fun ProductFormDialog(
             por_peso = if (formPorPeso) 1L else 0L,
             precio_mayoreo = formPrecioMayoreo.toDoubleOrNull() ?: 0.0,
             es_favorito = if (formEsFavorito) 1L else 0L,
+            piezas = formPiezas.toDoubleOrNull() ?: 1.0,
             updated_at = currentTimeMillis(),
             sync_state = if (isNew) "PENDING_INSERT" else "PENDING_UPDATE"
         )
@@ -184,6 +189,19 @@ fun ProductFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                     prefix = { Text("$", fontWeight = FontWeight.Bold) },
                     label = { Text(stringResource(Res.string.wholesale)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = formPiezas,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                            formPiezas = input
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(Res.string.product_pieces_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )

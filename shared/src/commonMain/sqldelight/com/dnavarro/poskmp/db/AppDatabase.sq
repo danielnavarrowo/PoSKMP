@@ -10,6 +10,7 @@ CREATE TABLE products (
     por_peso       INTEGER NOT NULL DEFAULT 0, -- 0 = false, 1 = true
     precio_mayoreo REAL    NOT NULL DEFAULT 0,
     es_favorito    INTEGER NOT NULL DEFAULT 0, -- 0 = false, 1 = true
+    piezas         REAL    NOT NULL DEFAULT 1.0,
     
     -- Sync fields
     updated_at     INTEGER NOT NULL, -- Unix epoch millisecond timestamp
@@ -33,14 +34,14 @@ SELECT * FROM products WHERE sync_state != 'SYNCED';
 insertProduct:
 INSERT OR REPLACE INTO products (
     id, codigos, nombre, precio, costo, 
-    categoria, activo, por_peso, precio_mayoreo, es_favorito, 
+    categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, 
     updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateProduct:
 UPDATE products
 SET codigos = ?, nombre = ?, precio = ?, costo = ?, 
-    categoria = ?, activo = ?, por_peso = ?, precio_mayoreo = ?, es_favorito = ?, 
+    categoria = ?, activo = ?, por_peso = ?, precio_mayoreo = ?, es_favorito = ?, piezas = ?, 
     updated_at = ?, sync_state = ?
 WHERE id = ?;
 

@@ -1311,6 +1311,7 @@ fun VentaScreen(
                             por_peso = if (qtyVal % 1.0 != 0.0) 1L else 0L,
                             precio_mayoreo = 0.0,
                             es_favorito = 0L,
+                            piezas = 1.0,
                             updated_at = currentTimeMillis(),
                             sync_state = "PENDING_INSERT"
                         )
@@ -1432,6 +1433,7 @@ fun VentaScreen(
                                 por_peso = if (qtyVal % 1.0 != 0.0) 1L else 0L,
                                 precio_mayoreo = 0.0,
                                 es_favorito = 0L,
+                                piezas = 1.0,
                                 updated_at = currentTimeMillis(),
                                 sync_state = "PENDING_INSERT"
                             )

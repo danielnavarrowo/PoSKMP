@@ -136,7 +136,8 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
     val weightIndex = headerCols.indexOfFirst { it == "por_peso" || it == "by_weight" }
     val wholesaleIndex = headerCols.indexOfFirst { it == "precio_mayoreo" || it == "wholesale_price" }
     val favoriteIndex = headerCols.indexOfFirst { it == "es_favorito" || it == "favorite" }
-    
+    val piezasIndex = headerCols.indexOfFirst { it == "piezas" || it == "pieces" }
+
     val products = mutableListOf<Products>()
     val startIndex = lines.indexOf(headerLine) + 1
     
@@ -180,6 +181,8 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
             if (favStr == "1" || favStr == "1.0" || favStr.lowercase() == "true") 1L else 0L
         } else 0L
         
+        val piezas = if (piezasIndex != -1) cols.getOrNull(piezasIndex)?.toDoubleOrNull() ?: 1.0 else 1.0
+
         products.add(
             Products(
                 id = id,
@@ -192,6 +195,7 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
                 por_peso = porPeso,
                 precio_mayoreo = precioMayoreo,
                 es_favorito = esFavorito,
+                piezas = piezas,
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )
@@ -301,6 +305,7 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
     val weightIndex = headerCols.indexOfFirst { it == "por_peso" || it == "by_weight" }
     val wholesaleIndex = headerCols.indexOfFirst { it == "precio_mayoreo" || it == "wholesale_price" }
     val favoriteIndex = headerCols.indexOfFirst { it == "es_favorito" || it == "favorite" }
+    val piezasIndex = headerCols.indexOfFirst { it == "piezas" || it == "pieces" }
 
     val products = mutableListOf<Products>()
     for (i in 1 until rows.size) {
@@ -340,6 +345,8 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
             if (favStr == "1" || favStr == "1.0" || favStr.lowercase() == "true") 1L else 0L
         } else 0L
         
+        val piezas = if (piezasIndex != -1) cols.getOrNull(piezasIndex)?.toDoubleOrNull() ?: 1.0 else 1.0
+
         products.add(
             Products(
                 id = id,
@@ -352,6 +359,7 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
                 por_peso = porPeso,
                 precio_mayoreo = precioMayoreo,
                 es_favorito = esFavorito,
+                piezas = piezas,
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )

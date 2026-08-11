@@ -409,7 +409,7 @@ fun ProductosScreen(
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     onClick = {
                         viewModel.onShowProductDialog(
-                            Products("", "[]", "", 0.0, 0.0, "", 1L, 0L, 0.0, 0L, 0L, "")
+                            Products(id = "", codigos = "[]", nombre = "", precio = 0.0, costo = 0.0, categoria = "", activo = 1L, por_peso = 0L, precio_mayoreo = 0.0, es_favorito = 0L, piezas = 1.0, updated_at = 0L, sync_state = "")
                         )
                     },
                     icon = {

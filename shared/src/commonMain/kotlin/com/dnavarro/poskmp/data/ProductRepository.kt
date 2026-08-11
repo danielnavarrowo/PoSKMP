@@ -70,11 +70,11 @@ class ProductRepositoryImpl(
         if (existing.isEmpty()) {
             val now = currentTimeMillis()
             val dummyList = listOf(
-                Products("1", "[\"75010001\"]", "Coca Cola 600ml", 18.0, 12.5, "Bebidas", 1, 0, 16.0, 1, now, "PENDING_INSERT"),
-                Products("2", "[\"75010002\"]", "Sabritas Sal 45g", 17.0, 11.0, "Botanas", 1, 0, 15.0, 1, now, "PENDING_INSERT"),
-                Products("3", "[\"75010003\"]", "Jitomate Saladet", 35.0, 20.0, "Frutas y Verduras", 1, 1, 30.0, 0, now, "PENDING_INSERT"),
-                Products("4", "[\"75010004\"]", "Huevo Blanco Kg", 42.0, 34.0, "Abarrotes", 1, 1, 38.0, 0, now, "PENDING_INSERT"),
-                Products("5", "[\"75010005\"]", "Gansito Marinela 50g", 15.5, 10.0, "Panadería", 1, 0, 14.0, 1, now, "PENDING_INSERT")
+                Products(id = "1", codigos = "[\"75010001\"]", nombre = "Coca Cola 600ml", precio = 18.0, costo = 12.5, categoria = "Bebidas", activo = 1, por_peso = 0, precio_mayoreo = 16.0, es_favorito = 1, piezas = 1.0, updated_at = now, sync_state = "PENDING_INSERT"),
+                Products(id = "2", codigos = "[\"75010002\"]", nombre = "Sabritas Sal 45g", precio = 17.0, costo = 11.0, categoria = "Botanas", activo = 1, por_peso = 0, precio_mayoreo = 15.0, es_favorito = 1, piezas = 1.0, updated_at = now, sync_state = "PENDING_INSERT"),
+                Products(id = "3", codigos = "[\"75010003\"]", nombre = "Jitomate Saladet", precio = 35.0, costo = 20.0, categoria = "Frutas y Verduras", activo = 1, por_peso = 1, precio_mayoreo = 30.0, es_favorito = 0, piezas = 1.0, updated_at = now, sync_state = "PENDING_INSERT"),
+                Products(id = "4", codigos = "[\"75010004\"]", nombre = "Huevo Blanco Kg", precio = 42.0, costo = 34.0, categoria = "Abarrotes", activo = 1, por_peso = 1, precio_mayoreo = 38.0, es_favorito = 0, piezas = 1.0, updated_at = now, sync_state = "PENDING_INSERT"),
+                Products(id = "5", codigos = "[\"75010005\"]", nombre = "Gansito Marinela 50g", precio = 15.5, costo = 10.0, categoria = "Panadería", activo = 1, por_peso = 0, precio_mayoreo = 14.0, es_favorito = 1, piezas = 1.0, updated_at = now, sync_state = "PENDING_INSERT")
             )
             localDataSource.insertProducts(dummyList)
         }

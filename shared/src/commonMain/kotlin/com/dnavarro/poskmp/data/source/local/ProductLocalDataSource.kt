@@ -59,6 +59,7 @@ class SqlDelightProductDataSource(
                 por_peso = product.por_peso,
                 precio_mayoreo = product.precio_mayoreo,
                 es_favorito = product.es_favorito,
+                piezas = product.piezas,
                 updated_at = product.updated_at,
                 sync_state = product.sync_state
             )
@@ -80,6 +81,7 @@ class SqlDelightProductDataSource(
                         por_peso = product.por_peso,
                         precio_mayoreo = product.precio_mayoreo,
                         es_favorito = product.es_favorito,
+                        piezas = product.piezas,
                         updated_at = product.updated_at,
                         sync_state = product.sync_state
                     )
@@ -101,6 +103,7 @@ class SqlDelightProductDataSource(
                 por_peso = product.por_peso,
                 precio_mayoreo = product.precio_mayoreo,
                 es_favorito = product.es_favorito,
+                piezas = product.piezas,
                 updated_at = product.updated_at,
                 sync_state = product.sync_state
             )
