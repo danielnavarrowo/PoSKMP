@@ -9,6 +9,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -68,7 +69,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -77,6 +80,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -91,6 +95,7 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.apply_filters_button
+import poskmp.shared.generated.resources.arrow_up
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.bulk_op_change_category_title
 import poskmp.shared.generated.resources.bulk_op_change_prices_title
@@ -163,28 +168,59 @@ fun RowScope.TableHeader(
     field: ProductSortField,
     currentField: ProductSortField,
     currentOrder: ProductSortOrder,
-    onHeaderClick: (ProductSortField) -> Unit
+    onHeaderClick: (ProductSortField) -> Unit,
+    onResize: ((Float) -> Unit)? = null
 ) {
-    Row(
-        modifier = Modifier
-            .weight(weight)
-            .clickable { onHeaderClick(field) }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier.weight(weight)
     ) {
-        Text(
-            text = text,
-            fontWeight = FontWeight.Bold,
-            color = if (field == currentField) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 13.sp
-        )
-        if (field == currentField) {
-            Spacer(modifier = Modifier.width(4.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onHeaderClick(field) }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = if (currentOrder == ProductSortOrder.ASC) "▲" else "▼",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 10.sp
+                text = text,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    color = if (field == currentField) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            if (field == currentField) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    painter = painterResource(Res.drawable.arrow_up),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.rotate(if (currentOrder == ProductSortOrder.ASC) 0f else 180f)
+                )
+            }
+        }
+        if (onResize != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(12.dp)
+                    .height(32.dp)
+                    .pointerInput(onResize) {
+                        detectHorizontalDragGestures { change, dragAmount ->
+                            change.consume()
+                            onResize(dragAmount)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(24.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+            }
         }
     }
 }
@@ -395,6 +431,7 @@ fun ProductosScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             val isCompact = maxWidth < 720.dp
+            val availableWidth = maxWidth
             val isAllFilteredSelected =
                 sortedProducts.isNotEmpty() && sortedProducts.all { it.id in selectedProductIds }
 
@@ -741,6 +778,24 @@ fun ProductosScreen(
                         } else {
                             // Desktop Table Layout
                             Column(modifier = Modifier.fillMaxSize()) {
+                                var columnWeights by rememberSaveable {
+                                    mutableStateOf(listOf(0.18f, 0.28f, 0.14f, 0.10f, 0.10f, 0.10f))
+                                }
+                                val tableWidthPx = with(LocalDensity.current) { availableWidth.toPx() }
+                                val resizeColumn = { index: Int, dragAmount: Float ->
+                                    val weightDelta = dragAmount / tableWidthPx
+                                    val current = columnWeights[index]
+                                    val next = columnWeights[index + 1]
+                                    val minimumWeight = 0.06f
+                                    val constrainedDelta = weightDelta.coerceIn(
+                                        minimumWeight - current,
+                                        next - minimumWeight
+                                    )
+                                    columnWeights = columnWeights.toMutableList().also { weights ->
+                                        weights[index] = current + constrainedDelta
+                                        weights[index + 1] = next - constrainedDelta
+                                    }
+                                }
                                 val onHeaderClick = { field: ProductSortField ->
                                     if (sortField == field) {
                                         viewModel.onSortOrderChanged(
@@ -771,47 +826,52 @@ fun ProductosScreen(
                                     )
                                     TableHeader(
                                         stringResource(Res.string.header_codes),
-                                        0.18f,
+                                        columnWeights[0],
                                         ProductSortField.CODIGO,
                                         sortField,
                                         sortOrder,
-                                        onHeaderClick
+                                        onHeaderClick,
+                                        onResize = { resizeColumn(0, it) }
                                     )
                                     TableHeader(
                                         stringResource(Res.string.header_product_name),
-                                        0.28f,
+                                        columnWeights[1],
                                         ProductSortField.NOMBRE,
                                         sortField,
                                         sortOrder,
-                                        onHeaderClick
+                                        onHeaderClick,
+                                        onResize = { resizeColumn(1, it) }
                                     )
                                     TableHeader(
                                         stringResource(Res.string.header_category),
-                                        0.14f,
+                                        columnWeights[2],
                                         ProductSortField.CATEGORIA,
                                         sortField,
                                         sortOrder,
-                                        onHeaderClick
+                                        onHeaderClick,
+                                        onResize = { resizeColumn(2, it) }
                                     )
                                     TableHeader(
                                         stringResource(Res.string.header_retail_price),
-                                        0.10f,
+                                        columnWeights[3],
                                         ProductSortField.PRECIO,
                                         sortField,
                                         sortOrder,
-                                        onHeaderClick
+                                        onHeaderClick,
+                                        onResize = { resizeColumn(3, it) }
                                     )
                                     TableHeader(
                                         stringResource(Res.string.header_cost),
-                                        0.10f,
+                                        columnWeights[4],
                                         ProductSortField.COSTO,
                                         sortField,
                                         sortOrder,
-                                        onHeaderClick
+                                        onHeaderClick,
+                                        onResize = { resizeColumn(4, it) }
                                     )
                                     TableHeader(
                                         stringResource(Res.string.wholesale),
-                                        0.10f,
+                                        columnWeights[5],
                                         ProductSortField.MAYOREO,
                                         sortField,
                                         sortOrder,
@@ -861,14 +921,14 @@ fun ProductosScreen(
                                             }
                                             Text(
                                                 text = codesDisplay,
-                                                modifier = Modifier.weight(0.18f),
+                                                modifier = Modifier.weight(columnWeights[0]),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
 
                                             Row(
-                                                modifier = Modifier.weight(0.28f),
+                                                modifier = Modifier.weight(columnWeights[1]),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text(
@@ -917,7 +977,7 @@ fun ProductosScreen(
                                             Text(
                                                 text = product.categoria
                                                     ?: stringResource(Res.string.no_category),
-                                                modifier = Modifier.weight(0.14f),
+                                                modifier = Modifier.weight(columnWeights[2]),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
@@ -927,14 +987,14 @@ fun ProductosScreen(
                                                 text = "$${
                                                     product.precio.toString().formatPrice()
                                                 }",
-                                                modifier = Modifier.weight(0.10f),
+                                                modifier = Modifier.weight(columnWeights[3]),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold
                                             )
 
                                             Text(
                                                 text = "$${product.costo.toString().formatPrice()}",
-                                                modifier = Modifier.weight(0.10f),
+                                                modifier = Modifier.weight(columnWeights[4]),
                                                 style = MaterialTheme.typography.bodyMedium,
                                             )
 
@@ -942,7 +1002,7 @@ fun ProductosScreen(
                                                 text = "$${
                                                     product.precio_mayoreo.toString().formatPrice()
                                                 }",
-                                                modifier = Modifier.weight(0.10f),
+                                                modifier = Modifier.weight(columnWeights[5]),
                                                 style = MaterialTheme.typography.bodyMedium,
                                             )
                                         }
