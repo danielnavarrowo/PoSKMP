@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -263,9 +266,10 @@ fun App(
                     darkTheme = darkTheme
                 ) {
                     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-                    val isCompact = maxWidth < 600.dp
+                    val appMaxWidth = maxWidth
+                    val isCompact = appMaxWidth < 600.dp
                     val showNavLayout = !(currentScreen == Screen.CHECADOR && !isChecadorDialog)
-                    val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(maxWidth) else NavigationSuiteType.None
+                    val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(appMaxWidth) else NavigationSuiteType.None
 
                     val focusRequester = remember { FocusRequester() }
                     LaunchedEffect(currentScreen, isChecadorDialog) {
@@ -429,42 +433,49 @@ fun App(
                                     ) {
                                         HorizontalFloatingToolbar(
                                             expanded = false,
-                                            modifier = Modifier.zIndex(1f)
+                                            modifier = Modifier
+                                                .zIndex(1f)
+                                                .widthIn(max = appMaxWidth - 32.dp)
                                         ) {
-                                            var index = 0
-                                            toolbarItems.fastForEach { item ->
-                                                TooltipBox(
-                                                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                                                        TooltipAnchorPosition.Above
-                                                    ),
-                                                    tooltip = { PlainTooltip { Text(item.label) } },
-                                                    state = rememberTooltipState(),
-                                                ) {
-                                                    ToggleButton(
-                                                        checked = item.isSelected,
-                                                        onCheckedChange = item.onCheckedChange,
-                                                        shapes = ToggleButtonDefaults.shapes(
-                                                            CircleShape,
-                                                            CircleShape,
-                                                            CircleShape
+                                            Row(
+                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                var index = 0
+                                                toolbarItems.fastForEach { item ->
+                                                    TooltipBox(
+                                                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                            TooltipAnchorPosition.Above
                                                         ),
-                                                        modifier = Modifier.height(56.dp)
+                                                        tooltip = { PlainTooltip { Text(item.label) } },
+                                                        state = rememberTooltipState(),
                                                     ) {
-                                                        Row(
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            modifier = Modifier.padding(horizontal = 8.dp)
+                                                        ToggleButton(
+                                                            checked = item.isSelected,
+                                                            onCheckedChange = item.onCheckedChange,
+                                                            shapes = ToggleButtonDefaults.shapes(
+                                                                CircleShape,
+                                                                CircleShape,
+                                                                CircleShape
+                                                            ),
+                                                            modifier = Modifier.height(56.dp)
                                                         ) {
-                                                            Icon(
-                                                                painter = painterResource(item.icon),
-                                                                contentDescription = item.label
-                                                            )
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                modifier = Modifier.padding(horizontal = 8.dp)
+                                                            ) {
+                                                                Icon(
+                                                                    painter = painterResource(item.icon),
+                                                                    contentDescription = item.label
+                                                                )
+                                                            }
                                                         }
                                                     }
+                                                    if (index < toolbarItems.lastIndex) {
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                    }
+                                                    index++
                                                 }
-                                                if (index < toolbarItems.lastIndex) {
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                }
-                                                index++
                                             }
                                         }
                                     }
