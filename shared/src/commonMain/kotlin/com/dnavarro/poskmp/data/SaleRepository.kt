@@ -4,6 +4,7 @@ import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.domain.model.SalesSummary
+import kotlinx.coroutines.flow.Flow
 
 interface SaleRepository {
     suspend fun recordSale(sale: Sale, items: List<SaleItem>): Long
@@ -15,4 +16,5 @@ interface SaleRepository {
     suspend fun getSaleById(id: String): Sale?
     suspend fun getItemsBySaleId(saleId: String): List<SaleItem>
     suspend fun getTotalSalesCount(): Long
+    fun getLastSale(): Flow<Sale?>
 }

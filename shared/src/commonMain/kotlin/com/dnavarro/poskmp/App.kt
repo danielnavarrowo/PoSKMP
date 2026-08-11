@@ -8,6 +8,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,9 +24,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -70,11 +70,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.SaleRepository
 import com.dnavarro.poskmp.di.appModule
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
@@ -91,6 +91,7 @@ import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
+import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -104,6 +105,11 @@ import org.koin.dsl.koinConfiguration
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.last_sale_change
+import poskmp.shared.generated.resources.last_sale_items
+import poskmp.shared.generated.resources.last_sale_paid
+import poskmp.shared.generated.resources.last_sale_title
+import poskmp.shared.generated.resources.last_sale_total
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.settings
@@ -243,6 +249,9 @@ fun App(
 
             val appScale = ajustesUiState.appScale
 
+            val saleRepository = koinInject<SaleRepository>()
+            val lastSale by saleRepository.getLastSale().collectAsStateWithLifecycle(initialValue = null)
+
             val systemInDark = isSystemInDarkTheme()
             val darkTheme = when (darkModeConfig) {
                 DarkModeConfig.SYSTEM -> systemInDark
@@ -338,24 +347,73 @@ fun App(
                                             }
                                         }
 
-                                        Surface(
+                                        Column(
                                             modifier = Modifier.fillMaxWidth(),
-                                            shape = MaterialTheme.shapes.medium,
-                                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            Column(
-                                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            lastSale?.let { sale ->
+                                                Surface(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = MaterialTheme.shapes.medium,
+                                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 6.dp),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(Res.string.last_sale_title),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            color = MaterialTheme.colorScheme.secondary,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                        Text(
+                                                            text = stringResource(Res.string.last_sale_total, sale.total.toString().formatPrice()),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                        Text(
+                                                            text = stringResource(Res.string.last_sale_paid, sale.pagoCon.toString().formatPrice()),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                        Text(
+                                                            text = stringResource(Res.string.last_sale_change, sale.cambio.toString().formatPrice()),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                        val itemsFormatted = if (sale.totalItems % 1.0 == 0.0) sale.totalItems.toLong().toString() else sale.totalItems.toString()
+                                                        Text(
+                                                            text = stringResource(Res.string.last_sale_items, itemsFormatted),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                            }
+
+                                            Surface(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = MaterialTheme.shapes.medium,
+                                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                             ) {
-                                                Text(
-                                                    text = currentDateTimeText,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    textAlign = TextAlign.Center,
-                                                    fontSize = if (isExpanded) 11.sp else 9.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    lineHeight = 13.sp
-                                                )
+                                                Column(
+                                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                                    horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                    Text(
+                                                        text = currentDateTimeText,
+                                                        style = MaterialTheme.typography.labelLarge,
+                                                        textAlign = TextAlign.Center,
+                                                        fontWeight = FontWeight.Medium,
+                                                    )
+                                                }
                                             }
                                         }
                                     }

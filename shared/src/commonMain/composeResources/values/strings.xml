@@ -231,6 +231,13 @@
     <string name="reset_filters">Restablecer</string>
     <string name="apply_filters_button">Aplicar</string>
 
+    <!-- Last Sale Display -->
+    <string name="last_sale_title">Última Venta</string>
+    <string name="last_sale_total">Total: $%1$s</string>
+    <string name="last_sale_paid">Pagó: $%1$s</string>
+    <string name="last_sale_change">Cambio: $%1$s</string>
+    <string name="last_sale_items">Piezas: %1$s</string>
+
     <string name="import_products_title">Importar Productos</string>
     <string name="import_step_format">Paso %1$d de 3</string>
     <string name="import_required_columns_title">Columnas requeridas en su archivo (.csv o .xlsx):</string>

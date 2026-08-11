@@ -7,6 +7,8 @@ import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.domain.model.SalesSummary
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class SaleRepositoryImpl(
     private val localDataSource: SaleLocalDataSource
@@ -120,4 +122,25 @@ class SaleRepositoryImpl(
     }
 
     override suspend fun getTotalSalesCount(): Long = localDataSource.getTotalSalesCount()
+
+    override fun getLastSale(): Flow<Sale?> {
+        return localDataSource.getLastSale().map { row ->
+            row?.let {
+                Sale(
+                    id = it.id,
+                    folio = it.folio,
+                    total = it.total,
+                    totalOriginal = it.total_original,
+                    totalCosto = it.total_costo,
+                    ganancia = it.ganancia,
+                    pagoCon = it.pago_con,
+                    cambio = it.cambio,
+                    metodoPago = it.metodo_pago,
+                    totalItems = it.total_items,
+                    createdAt = it.created_at,
+                    syncState = it.sync_state
+                )
+            }
+        }
+    }
 }

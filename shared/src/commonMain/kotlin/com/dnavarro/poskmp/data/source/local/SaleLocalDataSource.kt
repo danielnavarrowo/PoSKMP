@@ -1,11 +1,14 @@
 package com.dnavarro.poskmp.data.source.local
 
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.Sales
 import com.dnavarro.poskmp.db.Sale_items
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.SalesSummary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 interface SaleLocalDataSource {
@@ -18,6 +21,7 @@ interface SaleLocalDataSource {
     suspend fun getSaleById(id: String): Sales?
     suspend fun getItemsBySaleId(saleId: String): List<Sale_items>
     suspend fun getTotalSalesCount(): Long
+    fun getLastSale(): Flow<Sales?>
 }
 
 class SqlDelightSaleDataSource(
@@ -124,5 +128,9 @@ class SqlDelightSaleDataSource(
 
     override suspend fun getTotalSalesCount(): Long = withContext(Dispatchers.IO) {
         queries.selectAllSalesCount().executeAsOne()
+    }
+
+    override fun getLastSale(): Flow<Sales?> {
+        return queries.selectRecentSales(1, 0).asFlow().mapToOneOrNull(Dispatchers.IO)
     }
 }
