@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,8 +33,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
@@ -50,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -62,6 +62,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -149,53 +150,87 @@ fun CatalogSection(
             )
     ) {
         // Search Bar & Fast Codes
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChange,
-            modifier = Modifier.fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
-                .let { mod ->
-                    if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(searchFocusRequester) else mod
-                }
-                .onPreviewKeyEvent { keyEvent ->
-                    onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || !isAndroid() &&
-                            keyEvent.type == KeyEventType.KeyDown &&
-                            (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (onBarcodeScan != null && searchQuery.isNotBlank()) {
-                        onBarcodeScan(searchQuery)
-                        true
-                    } else false
-                },
-            placeholder = {
-                Text(
-                    stringResource(Res.string.search_placeholder),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    softWrap = false
-                )
-            },
-            leadingIcon = {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .background(
+                    color = if (searchQuery.isNotEmpty())
+                        MaterialTheme.colorScheme.surfaceContainerLowest
+                    else
+                        MaterialTheme.colorScheme.surfaceContainer,
+                    shape = ShapeDefaults.cardShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     painter = painterResource(Res.drawable.search),
                     contentDescription = stringResource(Res.string.search_desc),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.size(24.dp)
                 )
-            },
-            trailingIcon = {
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (searchQuery.isEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.search_placeholder),
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            ),
+                            textAlign = TextAlign.Start,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .let { mod ->
+                                if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(searchFocusRequester) else mod
+                            }
+                            .onPreviewKeyEvent { keyEvent ->
+                                onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || !isAndroid() &&
+                                        keyEvent.type == KeyEventType.KeyDown &&
+                                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (onBarcodeScan != null && searchQuery.isNotBlank()) {
+                                    onBarcodeScan(searchQuery)
+                                    true
+                                } else false
+                            },
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Start
+                        ),
+                        singleLine = true,
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
+                    )
+                }
+
                 if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { onSearchQueryChange("") }) {
+                    IconButton(
+                        modifier = Modifier.size(32.dp),
+                        onClick = { onSearchQueryChange("") }
+                    ) {
                         Icon(
                             painter = painterResource(Res.drawable.close),
                             contentDescription = stringResource(Res.string.clear_desc),
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
-            },
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-            )
-        )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

@@ -28,8 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
@@ -80,11 +79,13 @@ import poskmp.shared.generated.resources.cost_label
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.per_kg_suffix
+import poskmp.shared.generated.resources.pieces_count_label
 import poskmp.shared.generated.resources.price_checker_title
 import poskmp.shared.generated.resources.price_per_piece_fmt
 import poskmp.shared.generated.resources.product_not_found
 import poskmp.shared.generated.resources.scan_with_camera_desc
 import poskmp.shared.generated.resources.search
+import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.warning
 import poskmp.shared.generated.resources.wholesale
 import kotlin.time.Duration.Companion.milliseconds
@@ -152,7 +153,7 @@ fun ChecadorContent(
                 focusRequester.requestFocus()
             } catch (_: Exception) {
             }
-            delay(250.milliseconds)
+            delay(900.milliseconds)
         }
     }
 
@@ -183,41 +184,97 @@ fun ChecadorContent(
             }
 
             // Input field
-            OutlinedTextField(
-                value = barcodeInputValue,
-                onValueChange = { barcodeInputValue = it },
-                placeholder = { Text(stringResource(Res.string.barcode_input_placeholder)) },
-                leadingIcon = { Icon(painter = painterResource(Res.drawable.search), contentDescription = null) },
-                trailingIcon = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (isCameraScannerAvailable()) {
-                            IconButton(onClick = { showCameraScanner = true }) {
-                                Icon(painter = painterResource(Res.drawable.barcode_scanner), contentDescription = stringResource(Res.string.scan_with_camera_desc))
-                            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .background(
+                        color = if (barcodeInputValue.text.isNotEmpty())
+                            MaterialTheme.colorScheme.surfaceContainerLowest
+                        else
+                            MaterialTheme.colorScheme.surfaceContainer,
+                        shape = ShapeDefaults.cardShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.search),
+                        contentDescription = stringResource(Res.string.search_desc),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (barcodeInputValue.text.isEmpty()) {
+                            Text(
+                                text = stringResource(Res.string.barcode_input_placeholder),
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                ),
+                                textAlign = TextAlign.Start
+                            )
                         }
-                        if (barcodeInputValue.text.isNotEmpty()) {
-                            IconButton(onClick = {
+
+                        BasicTextField(
+                            value = barcodeInputValue,
+                            onValueChange = { barcodeInputValue = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Start
+                            ),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+
+                    if (barcodeInputValue.text.isNotEmpty()) {
+                        IconButton(
+                            modifier = Modifier.size(32.dp),
+                            onClick = {
                                 barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
                                 searchedProduct = null
                                 hasSearched = false
                                 focusRequester.requestFocus()
-                            }) {
-                                Icon(painter = painterResource(Res.drawable.close), contentDescription = stringResource(Res.string.clear_desc))
                             }
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.close),
+                                contentDescription = stringResource(Res.string.clear_desc),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
-                },
-                singleLine = true,
-                shape = MaterialTheme.shapes.medium,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                )
-            )
+
+                    if (isCameraScannerAvailable()) {
+                        if (barcodeInputValue.text.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        IconButton(
+                            modifier = Modifier.size(32.dp),
+                            onClick = { showCameraScanner = true }
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.barcode_scanner),
+                                contentDescription = stringResource(Res.string.scan_with_camera_desc),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -255,7 +312,7 @@ fun ChecadorContent(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(horizontalAlignment = Alignment.Start) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = stringResource(Res.string.cost_label),
                                     style = MaterialTheme.typography.titleMedium,
@@ -268,6 +325,15 @@ fun ChecadorContent(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 )
+                                if (hasMultiplePieces) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = stringResource(Res.string.pieces_count_label, product.piezas.toInt().toString()),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                }
                             }
 
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -284,16 +350,17 @@ fun ChecadorContent(
                                     )
                                 )
                                 if (hasMultiplePieces) {
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.tertiary
+                                        color = MaterialTheme.colorScheme.secondary
                                     )
                                 }
                             }
 
-                            Column(horizontalAlignment = Alignment.End) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = stringResource(Res.string.wholesale),
                                     style = MaterialTheme.typography.titleMedium,
@@ -307,11 +374,12 @@ fun ChecadorContent(
                                     )
                                 )
                                 if (hasMultiplePieces) {
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice()),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.tertiary
+                                        color = MaterialTheme.colorScheme.secondary
                                     )
                                 }
                             }
@@ -325,12 +393,20 @@ fun ChecadorContent(
                             textAlign = TextAlign.Center
                         )
                         if (hasMultiplePieces) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(Res.string.pieces_count_label, product.piezas.toInt().toString()),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                                textAlign = TextAlign.Center
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.tertiary,
+                                color = MaterialTheme.colorScheme.secondary,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -632,7 +708,7 @@ fun ChecadorScreen(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(36.dp))
+                Spacer(modifier = Modifier.height(48.dp))
 
                 if (searchedProduct != null) {
                     val product = searchedProduct!!
@@ -640,7 +716,7 @@ fun ChecadorScreen(
                         colors = CardDefaults.cardColors(
                             containerColor = Color.White.copy(alpha = 0.15f)
                         ),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = ShapeDefaults.cardShape,
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -743,10 +819,19 @@ fun ChecadorScreen(
                                     color = Color.White,
                                 )
                                 if (hasMultiplePieces) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = stringResource(Res.string.pieces_count_label, product.piezas.toInt().toString()),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        textAlign = TextAlign.Center
+                                    )
                                     Spacer(modifier = Modifier.height(8.dp))
+
                                     Text(
                                         text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White.copy(alpha = 0.9f),
                                         textAlign = TextAlign.Center

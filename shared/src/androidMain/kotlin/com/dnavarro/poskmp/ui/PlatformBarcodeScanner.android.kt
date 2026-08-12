@@ -115,6 +115,7 @@ import poskmp.shared.generated.resources.grant_permission_button
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.photo_camera
+import poskmp.shared.generated.resources.pieces_count_label
 import poskmp.shared.generated.resources.price_per_piece_short_fmt
 import poskmp.shared.generated.resources.product_added_message
 import poskmp.shared.generated.resources.remove
@@ -456,6 +457,10 @@ fun CameraPreviewScreen(
                                 }
                             }
 
+                            val hasMultiplePieces = lastScannedProduct.piezas != 1.0 && lastScannedProduct.piezas > 0.0
+                            val pricePerPiece = if (hasMultiplePieces) lastScannedProduct.precio / lastScannedProduct.piezas else 0.0
+                            val wholesalePerPiece = if (hasMultiplePieces) lastScannedProduct.precio_mayoreo / lastScannedProduct.piezas else 0.0
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -467,9 +472,11 @@ fun CameraPreviewScreen(
                                         fontWeight = FontWeight.Bold
                                     ),
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                                 if (!isChecadorMode) {
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "$${
                                             (lastScannedProduct.precio * lastScannedQuantity).toString()
@@ -481,13 +488,34 @@ fun CameraPreviewScreen(
                                 }
                             }
 
+                            if (!isChecadorMode && hasMultiplePieces) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.pieces_count_label, lastScannedProduct.piezas.toInt().toString()),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                    Text(
+                                        text = stringResource(Res.string.price_per_piece_short_fmt, pricePerPiece.toString().formatPrice()),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
+                            }
+
                             if (isChecadorMode) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column {
+                                    Column(horizontalAlignment = Alignment.Start) {
                                         Text(
                                             text = stringResource(Res.string.cost_label),
                                             style = MaterialTheme.typography.titleSmall,
@@ -500,11 +528,15 @@ fun CameraPreviewScreen(
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                         )
+                                        if (hasMultiplePieces) {
+                                            Text(
+                                                text = stringResource(Res.string.pieces_count_label, lastScannedProduct.piezas.toInt().toString()),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
                                     }
-
-                                    val hasMultiplePieces = lastScannedProduct.piezas != 1.0 && lastScannedProduct.piezas > 0.0
-                                    val pricePerPiece = if (hasMultiplePieces) lastScannedProduct.precio / lastScannedProduct.piezas else 0.0
-                                    val wholesalePerPiece = if (hasMultiplePieces) lastScannedProduct.precio_mayoreo / lastScannedProduct.piezas else 0.0
 
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
