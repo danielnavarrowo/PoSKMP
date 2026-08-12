@@ -23,6 +23,7 @@ interface ProductLocalDataSource {
     suspend fun getUnsyncedProducts(): List<Products>
     suspend fun updateSyncStatus(id: String, syncState: String, updatedAt: Long)
     suspend fun findProductByBarcode(barcode: String): Products?
+    suspend fun findConflictingProductForBarcodes(barcodes: List<String>, excludeProductId: String? = null): Pair<String, Products>?
 }
 
 class SqlDelightProductDataSource(
@@ -147,5 +148,41 @@ class SqlDelightProductDataSource(
         list.firstOrNull { product ->
             product.id == barcode || product.codigos.contains(barcode)
         }
+    }
+
+    override suspend fun findConflictingProductForBarcodes(
+        barcodes: List<String>,
+        excludeProductId: String?
+    ): Pair<String, Products>? = withContext(Dispatchers.IO) {
+        val cleanBarcodes = barcodes.map { it.trim().replace("\"", "") }.filter { it.isNotEmpty() }
+        if (cleanBarcodes.isEmpty()) return@withContext null
+
+        val allProducts = queries.selectAllProducts().executeAsList()
+        for (product in allProducts) {
+            if (excludeProductId != null && product.id == excludeProductId) continue
+
+            val productBarcodes = parseBarcodes(product.codigos)
+            val matchingBarcode = cleanBarcodes.firstOrNull { code ->
+                productBarcodes.contains(code) || product.id == code
+            }
+            if (matchingBarcode != null) {
+                return@withContext Pair(matchingBarcode, product)
+            }
+        }
+        null
+    }
+}
+
+private fun parseBarcodes(codigos: String): List<String> {
+    if (codigos.isBlank() || codigos == "[]") return emptyList()
+    return try {
+        codigos.replace("[", "")
+            .replace("]", "")
+            .replace("\"", "")
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    } catch (_: Exception) {
+        emptyList()
     }
 }

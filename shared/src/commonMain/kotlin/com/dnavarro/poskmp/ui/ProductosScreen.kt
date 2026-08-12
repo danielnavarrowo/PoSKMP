@@ -1024,6 +1024,9 @@ fun ProductosScreen(
                 onDismiss = { viewModel.onDismissProductDialog() },
                 onSave = { updatedProduct ->
                     viewModel.saveProduct(updatedProduct)
+                },
+                onValidateBarcodes = { codes ->
+                    viewModel.validateBarcodes(codes, showProductDialogFor.id.ifEmpty { null })
                 }
             )
         }

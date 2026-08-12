@@ -14,6 +14,12 @@ fun createDatabase(driverFactory: DatabaseDriverFactory): AppDatabase {
 
 private fun ensureTablesExist(driver: SqlDriver) {
     try {
+        driver.execute(null, "ALTER TABLE products ADD COLUMN piezas REAL NOT NULL DEFAULT 1.0;", 0)
+    } catch (_: Exception) {
+        // Column already exists
+    }
+
+    try {
         driver.execute(
             null,
             """

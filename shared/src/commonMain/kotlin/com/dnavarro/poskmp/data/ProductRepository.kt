@@ -25,6 +25,7 @@ interface ProductRepository {
     suspend fun updateSyncStatus(id: String, syncState: String, updatedAt: Long)
     suspend fun insertDummyDataIfEmpty()
     suspend fun findProductByBarcode(barcode: String): Products?
+    suspend fun findConflictingProductForBarcodes(barcodes: List<String>, excludeProductId: String? = null): Pair<String, Products>?
 }
 
 /**
@@ -64,6 +65,12 @@ class ProductRepositoryImpl(
 
     override suspend fun findProductByBarcode(barcode: String): Products? =
         localDataSource.findProductByBarcode(barcode)
+
+    override suspend fun findConflictingProductForBarcodes(
+        barcodes: List<String>,
+        excludeProductId: String?
+    ): Pair<String, Products>? =
+        localDataSource.findConflictingProductForBarcodes(barcodes, excludeProductId)
 
     override suspend fun insertDummyDataIfEmpty() {
         val existing = localDataSource.getAllProductsList()

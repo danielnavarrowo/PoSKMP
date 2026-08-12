@@ -115,6 +115,7 @@ import poskmp.shared.generated.resources.grant_permission_button
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.photo_camera
+import poskmp.shared.generated.resources.price_per_piece_short_fmt
 import poskmp.shared.generated.resources.product_added_message
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.torch_desc
@@ -501,6 +502,10 @@ fun CameraPreviewScreen(
                                         )
                                     }
 
+                                    val hasMultiplePieces = lastScannedProduct.piezas != 1.0 && lastScannedProduct.piezas > 0.0
+                                    val pricePerPiece = if (hasMultiplePieces) lastScannedProduct.precio / lastScannedProduct.piezas else 0.0
+                                    val wholesalePerPiece = if (hasMultiplePieces) lastScannedProduct.precio_mayoreo / lastScannedProduct.piezas else 0.0
+
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
                                             text = stringResource(Res.string.header_retail_price),
@@ -514,6 +519,14 @@ fun CameraPreviewScreen(
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                         )
+                                        if (hasMultiplePieces) {
+                                            Text(
+                                                text = stringResource(Res.string.price_per_piece_short_fmt, pricePerPiece.toString().formatPrice()),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.tertiary
+                                            )
+                                        }
                                     }
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
@@ -528,6 +541,14 @@ fun CameraPreviewScreen(
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                         )
+                                        if (hasMultiplePieces) {
+                                            Text(
+                                                text = stringResource(Res.string.price_per_piece_short_fmt, wholesalePerPiece.toString().formatPrice()),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.tertiary
+                                            )
+                                        }
                                     }
                                 }
                             }

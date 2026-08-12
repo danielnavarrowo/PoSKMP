@@ -225,11 +225,16 @@ fun ImportProductsDialog(
                                                 if (prods.isEmpty()) {
                                                     importError = noValidProductsErr
                                                 } else {
-                                                    selectedFileName = name
-                                                    selectedFileBytes = bytes
-                                                    parsedProducts = prods
-                                                    importError = null
-                                                    currentStep = 2
+                                                    val duplicateErr = validateImportedBarcodes(prods)
+                                                    if (duplicateErr != null) {
+                                                        importError = duplicateErr
+                                                    } else {
+                                                        selectedFileName = name
+                                                        selectedFileBytes = bytes
+                                                        parsedProducts = prods
+                                                        importError = null
+                                                        currentStep = 2
+                                                    }
                                                 }
                                             } catch (e: Exception) {
                                                 importError = e.message ?: parseErr
@@ -808,4 +813,27 @@ fun ImportProductsDialog(
             }
         }
     }
+}
+
+private fun validateImportedBarcodes(products: List<Products>): String? {
+    val seenBarcodes = mutableMapOf<String, String>() // barcode -> productName
+    for (product in products) {
+        val rawCodes = product.codigos
+        if (rawCodes.isBlank() || rawCodes == "[]") continue
+        val codes = rawCodes.replace("[", "")
+            .replace("]", "")
+            .replace("\"", "")
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+        for (code in codes) {
+            if (seenBarcodes.containsKey(code)) {
+                val otherProductName = seenBarcodes[code]
+                return "El código de barras '$code' se encuentra duplicado en el archivo importado (en los productos '$otherProductName' y '${product.nombre}')."
+            }
+            seenBarcodes[code] = product.nombre
+        }
+    }
+    return null
 }

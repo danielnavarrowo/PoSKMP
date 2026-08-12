@@ -81,6 +81,7 @@ import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.per_kg_suffix
 import poskmp.shared.generated.resources.price_checker_title
+import poskmp.shared.generated.resources.price_per_piece_fmt
 import poskmp.shared.generated.resources.product_not_found
 import poskmp.shared.generated.resources.scan_with_camera_desc
 import poskmp.shared.generated.resources.search
@@ -242,6 +243,9 @@ fun ChecadorContent(
 
                     val perKgSuffix = stringResource(Res.string.per_kg_suffix)
                     val suffix = if (product.por_peso == 1L) perKgSuffix else ""
+                    val hasMultiplePieces = product.piezas != 1.0 && product.piezas > 0.0
+                    val pricePerPiece = if (hasMultiplePieces) product.precio / product.piezas else 0.0
+                    val wholesalePerPiece = if (hasMultiplePieces) product.precio_mayoreo / product.piezas else 0.0
 
                     if (showExtraPrices) {
                         Row(
@@ -279,6 +283,14 @@ fun ChecadorContent(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 )
+                                if (hasMultiplePieces) {
+                                    Text(
+                                        text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
                             }
 
                             Column(horizontalAlignment = Alignment.End) {
@@ -294,6 +306,14 @@ fun ChecadorContent(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 )
+                                if (hasMultiplePieces) {
+                                    Text(
+                                        text = stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice()),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
                             }
                         }
                     } else {
@@ -304,6 +324,16 @@ fun ChecadorContent(
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
+                        if (hasMultiplePieces) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -633,6 +663,9 @@ fun ChecadorScreen(
 
                             val perKgSuffix = stringResource(Res.string.per_kg_suffix)
                             val suffix = if (product.por_peso == 1L) perKgSuffix else ""
+                            val hasMultiplePieces = product.piezas != 1.0 && product.piezas > 0.0
+                            val pricePerPiece = if (hasMultiplePieces) product.precio / product.piezas else 0.0
+                            val wholesalePerPiece = if (hasMultiplePieces) product.precio_mayoreo / product.piezas else 0.0
 
                             if (showExtraPrices) {
                                 Row(
@@ -670,6 +703,14 @@ fun ChecadorScreen(
                                                 color = Color.White
                                             )
                                         )
+                                        if (hasMultiplePieces) {
+                                            Text(
+                                                text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White.copy(alpha = 0.9f)
+                                            )
+                                        }
                                     }
 
                                     Column(horizontalAlignment = Alignment.End) {
@@ -685,6 +726,14 @@ fun ChecadorScreen(
                                                 color = Color.White
                                             )
                                         )
+                                        if (hasMultiplePieces) {
+                                            Text(
+                                                text = stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice()),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White.copy(alpha = 0.9f)
+                                            )
+                                        }
                                     }
                                 }
                             } else {
@@ -693,6 +742,16 @@ fun ChecadorScreen(
                                    style = MaterialTheme.typography.displayMedium,
                                     color = Color.White,
                                 )
+                                if (hasMultiplePieces) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     }

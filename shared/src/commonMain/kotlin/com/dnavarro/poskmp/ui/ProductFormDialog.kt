@@ -25,7 +25,8 @@ import poskmp.shared.generated.resources.*
 fun ProductFormDialog(
     product: Products?, // Null or product with empty ID means new product
     onDismiss: () -> Unit,
-    onSave: (Products) -> Unit
+    onSave: (Products) -> Unit,
+    onValidateBarcodes: (suspend (List<String>) -> Pair<String, Products>?)? = null
 ) {
     val isNew = product == null || product.id.isEmpty()
 
@@ -71,6 +72,44 @@ fun ProductFormDialog(
     var formPorPeso by remember(product) { mutableStateOf(product?.por_peso == 1L) }
     var formEsFavorito by remember(product) { mutableStateOf(product?.es_favorito == 1L) }
     var showCameraScanner by remember { mutableStateOf(false) }
+
+    var barcodeValidationError by remember { mutableStateOf<String?>(null) }
+    var isValidatingBarcode by remember { mutableStateOf(false) }
+
+    val dupInFormErrFmt = stringResource(Res.string.barcode_duplicate_in_form_error)
+    val alreadyExistsErrFmt = stringResource(Res.string.barcode_already_exists_error)
+
+    LaunchedEffect(formCodigo, product?.id) {
+        val codesList = formCodigo.split(",")
+            .map { it.trim().replace("\"", "") }
+            .filter { it.isNotEmpty() }
+
+        if (codesList.isEmpty()) {
+            barcodeValidationError = null
+            return@LaunchedEffect
+        }
+
+        val duplicates = codesList.groupBy { it }.filter { it.value.size > 1 }.keys
+        if (duplicates.isNotEmpty()) {
+            val dup = duplicates.first()
+            barcodeValidationError = dupInFormErrFmt.replace("%1\$s", dup)
+            return@LaunchedEffect
+        }
+
+        if (onValidateBarcodes != null) {
+            isValidatingBarcode = true
+            val conflict = onValidateBarcodes(codesList)
+            isValidatingBarcode = false
+            if (conflict != null) {
+                val (matchingCode, conflictingProduct) = conflict
+                barcodeValidationError = alreadyExistsErrFmt.replace("%1\$s", matchingCode).replace("%2\$s", conflictingProduct.nombre)
+            } else {
+                barcodeValidationError = null
+            }
+        } else {
+            barcodeValidationError = null
+        }
+    }
 
     fun submitForm() {
         val id = product?.id?.ifEmpty { generateUUID() } ?: generateUUID()
@@ -137,6 +176,7 @@ fun ProductFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(Res.string.barcodes_label)) },
                     placeholder = { Text(stringResource(Res.string.barcodes_placeholder)) },
+                    isError = barcodeValidationError != null,
                     trailingIcon = {
                         if (isAndroid()) {
                             IconButton(onClick = { showCameraScanner = true }) {
@@ -149,6 +189,15 @@ fun ProductFormDialog(
                     },
                     singleLine = true
                 )
+                if (barcodeValidationError != null) {
+                    Text(
+                        text = barcodeValidationError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    )
+                }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -252,7 +301,7 @@ fun ProductFormDialog(
 
             Button(
                 onClick = { submitForm() },
-                enabled = isNameValid && isPriceValid,
+                enabled = isNameValid && isPriceValid && barcodeValidationError == null && !isValidatingBarcode,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = MaterialTheme.shapes.small
             ) {

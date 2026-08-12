@@ -245,6 +245,10 @@
     <string name="discard_held_ticket_desc">Descartar ticket</string>
 
     <string name="product_pieces_label">Piezas</string>
+    <string name="price_per_piece_fmt">Precio por pieza: $%1$s</string>
+    <string name="price_per_piece_short_fmt">P. pieza: $%1$s</string>
+    <string name="barcode_duplicate_in_form_error">El código \'%1$s\' está duplicado en este formulario.</string>
+    <string name="barcode_already_exists_error">El código \'%1$s\' ya pertenece al producto \'%2$s\'.</string>
 
     <string name="import_products_title">Importar Productos</string>
     <string name="import_step_format">Paso %1$d de 3</string>

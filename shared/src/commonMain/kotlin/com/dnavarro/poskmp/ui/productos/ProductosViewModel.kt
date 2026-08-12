@@ -177,4 +177,8 @@ class ProductosViewModel(
             }
         }
     }
+
+    suspend fun validateBarcodes(codes: List<String>, excludeProductId: String?): Pair<String, Products>? {
+        return repository.findConflictingProductForBarcodes(codes, excludeProductId)
+    }
 }
