@@ -30,6 +30,7 @@ import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.apply_changes_button
 import poskmp.shared.generated.resources.bulk_deactivate_confirmation
 import poskmp.shared.generated.resources.bulk_delete_confirmation
+import poskmp.shared.generated.resources.bulk_favorite_confirmation
 import poskmp.shared.generated.resources.bulk_enter_category_error
 import poskmp.shared.generated.resources.bulk_invalid_value_error
 import poskmp.shared.generated.resources.bulk_label_cost_price
@@ -42,6 +43,7 @@ import poskmp.shared.generated.resources.bulk_op_change_category_title
 import poskmp.shared.generated.resources.bulk_op_change_prices_title
 import poskmp.shared.generated.resources.bulk_op_deactivate_title
 import poskmp.shared.generated.resources.bulk_op_delete_title
+import poskmp.shared.generated.resources.bulk_op_mark_as_favorite_title
 import poskmp.shared.generated.resources.bulk_op_set_profit_title
 import poskmp.shared.generated.resources.bulk_profit_cost_requirement
 import poskmp.shared.generated.resources.bulk_select_price_error
@@ -59,6 +61,7 @@ enum class BulkProductOperation(val titleRes: StringResource) {
     CHANGE_PRICES(Res.string.bulk_op_change_prices_title),
     SET_PROFIT(Res.string.bulk_op_set_profit_title),
     CHANGE_CATEGORY(Res.string.bulk_op_change_category_title),
+    MARK_AS_FAVORITE(Res.string.bulk_op_mark_as_favorite_title),
     DEACTIVATE(Res.string.bulk_op_deactivate_title),
     DELETE(Res.string.bulk_op_delete_title)
 }
@@ -90,6 +93,7 @@ fun applyBulkProductModification(product: Products, modification: BulkProductMod
     }
 
     BulkProductOperation.CHANGE_CATEGORY -> product.copy(categoria = modification.category)
+    BulkProductOperation.MARK_AS_FAVORITE -> product.copy(es_favorito = 1L)
     BulkProductOperation.DEACTIVATE -> product.copy(activo = 0L)
     BulkProductOperation.DELETE -> null
 }
@@ -167,7 +171,7 @@ fun BulkProductModificationDialog(
                 } else BulkProductModification(operation, category = category)
             }
 
-            BulkProductOperation.DEACTIVATE, BulkProductOperation.DELETE -> BulkProductModification(operation)
+            BulkProductOperation.MARK_AS_FAVORITE, BulkProductOperation.DEACTIVATE, BulkProductOperation.DELETE -> BulkProductModification(operation)
         }
     }
 
@@ -202,6 +206,7 @@ fun BulkProductModificationDialog(
                         singleLine = true
                     )
 
+                    BulkProductOperation.MARK_AS_FAVORITE -> Text(stringResource(Res.string.bulk_favorite_confirmation, selectedCount))
                     BulkProductOperation.DEACTIVATE -> Text(stringResource(Res.string.bulk_deactivate_confirmation, selectedCount))
                     BulkProductOperation.DELETE -> Text(
                         stringResource(Res.string.bulk_delete_confirmation, selectedCount),

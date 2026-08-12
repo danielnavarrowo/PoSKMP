@@ -7,8 +7,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,8 +59,10 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -101,6 +105,7 @@ import poskmp.shared.generated.resources.bulk_op_change_category_title
 import poskmp.shared.generated.resources.bulk_op_change_prices_title
 import poskmp.shared.generated.resources.bulk_op_deactivate_title
 import poskmp.shared.generated.resources.bulk_op_delete_title
+import poskmp.shared.generated.resources.bulk_op_mark_as_favorite_title
 import poskmp.shared.generated.resources.bulk_op_set_profit_title
 import poskmp.shared.generated.resources.category_label_format
 import poskmp.shared.generated.resources.check
@@ -149,6 +154,7 @@ import poskmp.shared.generated.resources.sort_order_asc
 import poskmp.shared.generated.resources.sort_order_desc
 import poskmp.shared.generated.resources.sort_order_section_title
 import poskmp.shared.generated.resources.sort_section_title
+import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.status_inactive
 import poskmp.shared.generated.resources.wholesale
@@ -225,7 +231,7 @@ fun RowScope.TableHeader(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProductosScreen(
     viewModel: ProductosViewModel,
@@ -374,6 +380,21 @@ fun ProductosScreen(
                         FloatingActionButtonMenuItem(
                             onClick = {
                                 isFabMenuExpanded = false
+                                viewModel.onShowBulkModificationDialog(BulkProductOperation.MARK_AS_FAVORITE)
+                            },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(Res.drawable.star),
+                                    contentDescription = null
+                                )
+                            },
+                            text = { Text(stringResource(Res.string.bulk_op_mark_as_favorite_title)) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        FloatingActionButtonMenuItem(
+                            onClick = {
+                                isFabMenuExpanded = false
                                 viewModel.onShowBulkModificationDialog(BulkProductOperation.DEACTIVATE)
                             },
                             icon = {
@@ -432,8 +453,13 @@ fun ProductosScreen(
         ) {
             val isCompact = maxWidth < 720.dp
             val availableWidth = maxWidth
-            val isAllFilteredSelected =
-                sortedProducts.isNotEmpty() && sortedProducts.all { it.id in selectedProductIds }
+            val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
+            val selectAllState = when {
+                sortedProducts.isEmpty() -> ToggleableState.Off
+                selectedFilteredCount == sortedProducts.size -> ToggleableState.On
+                selectedFilteredCount > 0 -> ToggleableState.Indeterminate
+                else -> ToggleableState.Off
+            }
 
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -451,9 +477,9 @@ fun ProductosScreen(
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             contentAlignment = Alignment.Center
                         ) {
-                            Checkbox(
-                                checked = isAllFilteredSelected,
-                                onCheckedChange = {
+                            TriStateCheckbox(
+                                state = selectAllState,
+                                onClick = {
                                     viewModel.onSelectAllProducts(sortedProducts.map { it.id })
                                 }
                             )
@@ -627,12 +653,26 @@ fun ProductosScreen(
                                     } else {
                                         ShapeDefaults.middleListItemShape
                                     }
+                                    val isSelected = product.id in selectedProductIds
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { viewModel.onShowProductDialog(product) },
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (selectedProductIds.isNotEmpty()) {
+                                                        viewModel.onToggleSelectProduct(product.id)
+                                                    } else {
+                                                        viewModel.onShowProductDialog(product)
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    viewModel.onToggleSelectProduct(product.id)
+                                                }
+                                            ),
                                         shape = shape,
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
+                                        ),
                                     ) {
                                         Column(modifier = Modifier.padding(12.dp)) {
                                             Row(
@@ -640,19 +680,11 @@ fun ProductosScreen(
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Checkbox(
-                                                    checked = product.id in selectedProductIds,
-                                                    onCheckedChange = {
-                                                        viewModel.onToggleSelectProduct(
-                                                            product.id
-                                                        )
-                                                    }
-                                                )
                                                 Text(
                                                     text = product.nombre,
                                                     fontSize = 15.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                                                     modifier = Modifier.weight(1f),
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis
@@ -693,7 +725,7 @@ fun ProductosScreen(
                                                     codesDisplay
                                                 ),
                                                 fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
 
                                             Spacer(modifier = Modifier.height(4.dp))
@@ -706,7 +738,7 @@ fun ProductosScreen(
                                                         ?: stringResource(Res.string.no_category)
                                                 ),
                                                 fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
 
                                             Spacer(modifier = Modifier.height(6.dp))
@@ -725,7 +757,7 @@ fun ProductosScreen(
                                                         ),
                                                         fontSize = 13.sp,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.primary
+                                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
                                                     )
                                                     Text(
                                                         stringResource(
@@ -733,7 +765,7 @@ fun ProductosScreen(
                                                             product.costo.toString().formatPrice()
                                                         ),
                                                         fontSize = 11.sp,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
                                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -807,9 +839,6 @@ fun ProductosScreen(
                                     }
                                 }
 
-                                val isAllFilteredSelected =
-                                    sortedProducts.isNotEmpty() && sortedProducts.all { it.id in selectedProductIds }
-
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -817,9 +846,9 @@ fun ProductosScreen(
                                         .padding(horizontal = 16.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Checkbox(
-                                        checked = isAllFilteredSelected,
-                                        onCheckedChange = {
+                                    TriStateCheckbox(
+                                        state = selectAllState,
+                                        onClick = {
                                             viewModel.onSelectAllProducts(sortedProducts.map { it.id })
                                         },
                                         modifier = Modifier.weight(0.05f)

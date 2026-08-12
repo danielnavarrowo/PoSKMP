@@ -284,7 +284,6 @@ fun ChecadorContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.medium)
                         .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

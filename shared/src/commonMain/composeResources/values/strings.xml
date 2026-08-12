@@ -110,6 +110,9 @@
     <string name="bulk_op_set_profit_desc">Calcula los precios de venta a partir del costo de cada producto.</string>
     <string name="bulk_op_change_category_title">Modificar categoría</string>
     <string name="bulk_op_change_category_desc">Asigna la misma categoría a todos los productos seleccionados.</string>
+    <string name="bulk_op_mark_as_favorite_title">Marcar como favoritos</string>
+    <string name="bulk_op_mark_as_favorite_desc">Los productos seleccionados se marcarán como favoritos.</string>
+    <string name="bulk_favorite_confirmation">Los %1$d productos seleccionados se marcarán como favoritos.</string>
     <string name="bulk_op_deactivate_title">Marcar como no activos</string>
     <string name="bulk_op_deactivate_desc">Los productos dejarán de estar disponibles para la venta.</string>
     <string name="bulk_op_delete_title">Eliminar definitivamente</string>
