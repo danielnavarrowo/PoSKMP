@@ -174,7 +174,7 @@
     <string name="default_category_abarrotes">Abarrotes</string>
     <string name="register_new_product_title">Registrar Nuevo Producto</string>
     <string name="modify_product_title">Modificar Producto</string>
-    <string name="product_name_label">Nombre del Producto *</string>
+    <string name="product_name_label">Nombre del Producto*</string>
     <string name="barcodes_label">Código(s) de Barra (separados por coma)</string>
     <string name="barcodes_placeholder">e.g. 75010001, 75010002</string>
     <string name="retail_price_required_label">Precio de Venta *</string>

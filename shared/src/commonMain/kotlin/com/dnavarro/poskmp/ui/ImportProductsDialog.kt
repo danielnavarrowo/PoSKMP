@@ -51,7 +51,9 @@ import androidx.compose.ui.window.Dialog
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.parseBarcodes
 import com.dnavarro.poskmp.util.parseImportFile
 import com.dnavarro.poskmp.util.pickFile
 import kotlinx.coroutines.Dispatchers
@@ -378,11 +380,8 @@ fun ImportProductsDialog(
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-                                            val displayCodes =
-                                                product.codigos.replace("[", "").replace("]", "")
-                                                    .replace("\"", "").trim()
                                             Text(
-                                                text = displayCodes.ifEmpty { "N/A" },
+                                                text = product.formatBarcodesForDisplay(),
                                                 modifier = Modifier.weight(0.25f),
                                                 fontSize = 11.sp,
                                                 maxLines = 1,
@@ -621,17 +620,7 @@ fun ImportProductsDialog(
                                                     val existingByBarcode =
                                                         mutableMapOf<String, Products>()
                                                     existingProducts.forEach { prod ->
-                                                        val codes = try {
-                                                            prod.codigos
-                                                                .replace("[", "")
-                                                                .replace("]", "")
-                                                                .replace("\"", "")
-                                                                .split(",")
-                                                                .map { it.trim() }
-                                                                .filter { it.isNotEmpty() }
-                                                        } catch (_: Exception) {
-                                                            emptyList()
-                                                        }
+                                                        val codes = prod.parseBarcodes()
                                                         codes.forEach { code ->
                                                             existingByBarcode[code] = prod
                                                         }
@@ -648,17 +637,7 @@ fun ImportProductsDialog(
                                                         if (existingById.containsKey(targetId)) {
                                                             isExisting = true
                                                         } else {
-                                                            val pCodes = try {
-                                                                p.codigos
-                                                                    .replace("[", "")
-                                                                    .replace("]", "")
-                                                                    .replace("\"", "")
-                                                                    .split(",")
-                                                                    .map { it.trim() }
-                                                                    .filter { it.isNotEmpty() }
-                                                            } catch (_: Exception) {
-                                                                emptyList()
-                                                            }
+                                                            val pCodes = p.parseBarcodes()
                                                             for (code in pCodes) {
                                                                 val matched =
                                                                     existingByBarcode[code]
@@ -818,15 +797,7 @@ fun ImportProductsDialog(
 private fun validateImportedBarcodes(products: List<Products>): String? {
     val seenBarcodes = mutableMapOf<String, String>() // barcode -> productName
     for (product in products) {
-        val rawCodes = product.codigos
-        if (rawCodes.isBlank() || rawCodes == "[]") continue
-        val codes = rawCodes.replace("[", "")
-            .replace("]", "")
-            .replace("\"", "")
-            .split(",")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-
+        val codes = product.parseBarcodes()
         for (code in codes) {
             if (seenBarcodes.containsKey(code)) {
                 val otherProductName = seenBarcodes[code]

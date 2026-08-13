@@ -14,7 +14,7 @@ class GetProductsUseCase(
         return if (query.isBlank()) {
             if (activeOnly) repository.getActiveProducts() else repository.getAllProducts()
         } else {
-            repository.searchProducts(query.trim())
+            repository.searchProducts(query.trim(), activeOnly = activeOnly)
         }
     }
 }

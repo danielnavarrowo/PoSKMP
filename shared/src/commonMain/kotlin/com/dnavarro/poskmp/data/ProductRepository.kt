@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 interface ProductRepository {
     fun getAllProducts(): Flow<List<Products>>
     fun getActiveProducts(): Flow<List<Products>>
-    fun searchProducts(query: String): Flow<List<Products>>
+    fun searchProducts(query: String, activeOnly: Boolean = false): Flow<List<Products>>
     suspend fun getProductById(id: String): Products?
     suspend fun insertProduct(product: Products)
     suspend fun insertProducts(products: List<Products>)
@@ -39,7 +39,8 @@ class ProductRepositoryImpl(
 
     override fun getActiveProducts(): Flow<List<Products>> = localDataSource.getActiveProducts()
 
-    override fun searchProducts(query: String): Flow<List<Products>> = localDataSource.searchProducts(query)
+    override fun searchProducts(query: String, activeOnly: Boolean): Flow<List<Products>> =
+        localDataSource.searchProducts(query, activeOnly)
 
     override suspend fun getProductById(id: String): Products? = localDataSource.getProductById(id)
 

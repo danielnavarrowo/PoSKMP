@@ -14,9 +14,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.encodeFormBarcodesToJson
+import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.parseBarcodes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
@@ -36,20 +40,7 @@ fun ProductFormDialog(
     // Form inputs state
     var formNombre by remember(product) { mutableStateOf(product?.nombre ?: "") }
     var formCodigo by remember(product) {
-        val initialCodes = product?.codigos?.let { codes ->
-            try {
-                codes.replace("[", "")
-                    .replace("]", "")
-                    .replace("\"", "")
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
-                    .joinToString(", ")
-            } catch (_: Exception) {
-                ""
-            }
-        } ?: ""
-        mutableStateOf(initialCodes)
+        mutableStateOf(product?.formatBarcodesForDisplay(emptyFallback = "") ?: "")
     }
     var formPrecio by remember(product) {
         val price = product?.precio
@@ -80,9 +71,7 @@ fun ProductFormDialog(
     val alreadyExistsErrFmt = stringResource(Res.string.barcode_already_exists_error)
 
     LaunchedEffect(formCodigo, product?.id) {
-        val codesList = formCodigo.split(",")
-            .map { it.trim().replace("\"", "") }
-            .filter { it.isNotEmpty() }
+        val codesList = parseBarcodes(formCodigo)
 
         if (codesList.isEmpty()) {
             barcodeValidationError = null
@@ -113,11 +102,7 @@ fun ProductFormDialog(
 
     fun submitForm() {
         val id = product?.id?.ifEmpty { generateUUID() } ?: generateUUID()
-        val formattedCodes = formCodigo.split(",")
-            .map { it.trim().replace("\"", "") }
-            .filter { it.isNotEmpty() }
-            .joinToString(separator = "\",\"", prefix = "[\"", postfix = "\"]") { it }
-            .let { if (it == "[\"\"]") "[]" else it }
+        val formattedCodes = formCodigo.encodeFormBarcodesToJson()
 
         val p = Products(
             id = id,
@@ -149,7 +134,7 @@ fun ProductFormDialog(
                 } else false
             } else false
         },
-        shape = MaterialTheme.shapes.large,
+        shape = ShapeDefaults.cardShape,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
             Text(

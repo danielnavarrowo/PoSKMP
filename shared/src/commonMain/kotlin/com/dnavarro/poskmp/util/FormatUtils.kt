@@ -96,3 +96,60 @@ fun formatCurrentTime(dateTime: java.time.LocalDateTime = java.time.LocalDateTim
 
     return "$hour12"
 }
+
+/**
+ * Parses a JSON array or comma-separated barcode string into a list of barcode strings.
+ */
+fun parseBarcodes(codigos: String?): List<String> {
+    if (codigos.isNullOrBlank() || codigos == "[]") return emptyList()
+    return try {
+        codigos.replace("[", "")
+            .replace("]", "")
+            .replace("\"", "")
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+/**
+ * Formats a raw barcode string (JSON array or raw) into a human-readable comma-separated string.
+ *
+ * @param emptyFallback String to return when no barcodes exist (e.g. "N/A" for display, "" for form fields).
+ */
+fun String?.formatBarcodesForDisplay(emptyFallback: String = "N/A"): String {
+    val list = parseBarcodes(this)
+    return if (list.isEmpty()) emptyFallback else list.joinToString(", ")
+}
+
+/**
+ * Formats product barcodes into a human-readable comma-separated string.
+ */
+fun com.dnavarro.poskmp.db.Products.formatBarcodesForDisplay(emptyFallback: String = "N/A"): String {
+    return this.codigos.formatBarcodesForDisplay(emptyFallback)
+}
+
+/**
+ * Returns the parsed list of barcodes for this product.
+ */
+fun com.dnavarro.poskmp.db.Products.parseBarcodes(): List<String> {
+    return parseBarcodes(this.codigos)
+}
+
+/**
+ * Encodes a list of barcode strings into a JSON array string suitable for DB storage (e.g., `["123","456"]`).
+ */
+fun List<String>.encodeToJsonBarcodes(): String {
+    val cleaned = this.map { it.trim().replace("\"", "") }.filter { it.isNotEmpty() }
+    return if (cleaned.isEmpty()) "[]" else cleaned.joinToString(separator = "\",\"", prefix = "[\"", postfix = "\"]")
+}
+
+/**
+ * Encodes a comma-separated form input string of barcodes into a JSON array string.
+ */
+fun String.encodeFormBarcodesToJson(): String {
+    return this.split(",").encodeToJsonBarcodes()
+}
+

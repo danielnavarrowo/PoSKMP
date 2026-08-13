@@ -4,6 +4,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.ui.BulkProductOperation
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
+import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 
 enum class FavoriteFilterOption {
     ALL, ONLY_FAVORITES, ONLY_NON_FAVORITES
@@ -64,8 +65,8 @@ data class ProductosUiState(
                     val primaryComp = when (sortField) {
                         ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
                         ProductSortField.CODIGO -> {
-                            val c1 = p1.codigos.replace("[", "").replace("]", "").replace("\"", "").trim()
-                            val c2 = p2.codigos.replace("[", "").replace("]", "").replace("\"", "").trim()
+                            val c1 = p1.formatBarcodesForDisplay(emptyFallback = "")
+                            val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
                             c1.lowercase().compareTo(c2.lowercase())
                         }
                         ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())

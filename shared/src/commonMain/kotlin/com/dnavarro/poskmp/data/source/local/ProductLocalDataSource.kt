@@ -8,10 +8,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
+import com.dnavarro.poskmp.util.parseBarcodes
+
 interface ProductLocalDataSource {
     fun getAllProducts(): Flow<List<Products>>
     fun getActiveProducts(): Flow<List<Products>>
-    fun searchProducts(query: String): Flow<List<Products>>
+    fun searchProducts(query: String, activeOnly: Boolean = false): Flow<List<Products>>
     suspend fun getProductById(id: String): Products?
     suspend fun insertProduct(product: Products)
     suspend fun insertProducts(products: List<Products>)
@@ -39,8 +41,13 @@ class SqlDelightProductDataSource(
         return queries.selectActiveProducts().asFlow().mapToList(Dispatchers.IO)
     }
 
-    override fun searchProducts(query: String): Flow<List<Products>> {
-        return queries.searchProducts(query, query, query).asFlow().mapToList(Dispatchers.IO)
+    override fun searchProducts(query: String, activeOnly: Boolean): Flow<List<Products>> {
+        val q = if (activeOnly) {
+            queries.searchActiveProducts(query, query, query)
+        } else {
+            queries.searchProducts(query, query, query)
+        }
+        return q.asFlow().mapToList(Dispatchers.IO)
     }
 
     override suspend fun getProductById(id: String): Products? = withContext(Dispatchers.IO) {
@@ -170,19 +177,5 @@ class SqlDelightProductDataSource(
             }
         }
         null
-    }
-}
-
-private fun parseBarcodes(codigos: String): List<String> {
-    if (codigos.isBlank() || codigos == "[]") return emptyList()
-    return try {
-        codigos.replace("[", "")
-            .replace("]", "")
-            .replace("\"", "")
-            .split(",")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-    } catch (_: Exception) {
-        emptyList()
     }
 }

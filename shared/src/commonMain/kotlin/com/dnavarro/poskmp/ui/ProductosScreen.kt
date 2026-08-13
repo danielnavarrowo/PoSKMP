@@ -92,8 +92,10 @@ import com.dnavarro.poskmp.ui.productos.FavoriteFilterOption
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
+import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.parseBarcodes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -256,12 +258,7 @@ fun ProductosScreen(
         val code = pendingScanCode
         if (!code.isNullOrBlank()) {
             val matched = sortedProducts.find { p ->
-                val cleanCodes = p.codigos
-                    .replace("[", "")
-                    .replace("]", "")
-                    .replace("\"", "")
-                    .split(",")
-                    .map { it.trim() }
+                val cleanCodes = p.parseBarcodes()
                 cleanCodes.contains(code) || p.codigos.contains(code) || p.id == code
             }
             if (matched != null) {
@@ -707,18 +704,7 @@ fun ProductosScreen(
                                             Spacer(modifier = Modifier.height(4.dp))
 
                                             // Barcodes
-                                            val codesDisplay = try {
-                                                product.codigos
-                                                    .replace("[", "")
-                                                    .replace("]", "")
-                                                    .replace("\"", "")
-                                                    .split(",")
-                                                    .filter { it.isNotEmpty() }
-                                                    .joinToString(", ")
-                                                    .ifEmpty { "N/A" }
-                                            } catch (_: Exception) {
-                                                "N/A"
-                                            }
+                                            val codesDisplay = product.formatBarcodesForDisplay()
                                             Text(
                                                 stringResource(
                                                     Res.string.codes_display_label,
@@ -936,18 +922,7 @@ fun ProductosScreen(
                                                 },
                                                 modifier = Modifier.weight(0.05f)
                                             )
-                                            val codesDisplay = try {
-                                                product.codigos
-                                                    .replace("[", "")
-                                                    .replace("]", "")
-                                                    .replace("\"", "")
-                                                    .split(",")
-                                                    .filter { it.isNotEmpty() }
-                                                    .joinToString(", ")
-                                                    .ifEmpty { "N/A" }
-                                            } catch (_: Exception) {
-                                                "N/A"
-                                            }
+                                            val codesDisplay = product.formatBarcodesForDisplay()
                                             Text(
                                                 text = codesDisplay,
                                                 modifier = Modifier.weight(columnWeights[0]),
