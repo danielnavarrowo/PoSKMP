@@ -153,7 +153,7 @@ class SqlDelightProductDataSource(
     override suspend fun findProductByBarcode(barcode: String): Products? = withContext(Dispatchers.IO) {
         val list = queries.selectActiveProducts().executeAsList()
         list.firstOrNull { product ->
-            product.id == barcode || product.codigos.contains(barcode)
+            product.parseBarcodes().contains(barcode)
         }
     }
 
@@ -168,9 +168,9 @@ class SqlDelightProductDataSource(
         for (product in allProducts) {
             if (excludeProductId != null && product.id == excludeProductId) continue
 
-            val productBarcodes = parseBarcodes(product.codigos)
+            val productBarcodes = product.parseBarcodes()
             val matchingBarcode = cleanBarcodes.firstOrNull { code ->
-                productBarcodes.contains(code) || product.id == code
+                productBarcodes.contains(code)
             }
             if (matchingBarcode != null) {
                 return@withContext Pair(matchingBarcode, product)

@@ -1,5 +1,12 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,16 +27,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -86,9 +97,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.PaymentMethod
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
@@ -110,6 +123,8 @@ import poskmp.shared.generated.resources.card
 import poskmp.shared.generated.resources.cash_received_label
 import poskmp.shared.generated.resources.change_to_deliver_label
 import poskmp.shared.generated.resources.checkout_sale_title
+import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.close_button
 import poskmp.shared.generated.resources.default_quantity_placeholder
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.insufficient_amount_error
@@ -133,7 +148,6 @@ import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
 import poskmp.shared.generated.resources.total_to_pay_label
-import poskmp.shared.generated.resources.understood_enter_button
 import poskmp.shared.generated.resources.unit_price_label
 import poskmp.shared.generated.resources.unregistered_name_placeholder
 import poskmp.shared.generated.resources.weight_kg_label
@@ -241,7 +255,7 @@ fun VentaScreen(
     LaunchedEffect(showBarcodeNotFoundQuery) {
         if (showBarcodeNotFoundQuery != null) {
             SoundManager.playErrorSound()
-            delay(2500.milliseconds)
+            delay(3000.milliseconds)
             showBarcodeNotFoundQuery = null
         }
     }
@@ -252,8 +266,8 @@ fun VentaScreen(
         }
     }
 
-    LaunchedEffect(showWeightDialogForProduct, showCheckoutDialog, showUnregisteredDialog, showProductDialogFor, showBarcodeNotFoundQuery) {
-        if (showWeightDialogForProduct == null && !showCheckoutDialog && !showUnregisteredDialog && showProductDialogFor == null && showBarcodeNotFoundQuery == null) {
+    LaunchedEffect(showWeightDialogForProduct, showCheckoutDialog, showUnregisteredDialog, showProductDialogFor) {
+        if (showWeightDialogForProduct == null && !showCheckoutDialog && !showUnregisteredDialog && showProductDialogFor == null) {
             reclaimSearchBarFocus()
         }
     }
@@ -329,6 +343,7 @@ fun VentaScreen(
             } else {
                 showBarcodeNotFoundQuery = trimmed
                 viewModel.onSearchQueryChanged("")
+                reclaimSearchBarFocus()
             }
         }
     }
@@ -695,58 +710,73 @@ fun VentaScreen(
                     }
                 )
             }
-        }
-    }
 
-    // Barcode Not Found Warning Dialog
-    if (showBarcodeNotFoundQuery != null) {
-        val notFoundButtonFocusRequester = remember { FocusRequester() }
-        LaunchedEffect(Unit) {
-            delay(50.milliseconds)
-            try {
-                notFoundButtonFocusRequester.requestFocus()
-            } catch (_: Exception) {}
-        }
-
-        AlertDialog(
-            onDismissRequest = { showBarcodeNotFoundQuery = null },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(Res.drawable.sad_face),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(Res.string.barcode_not_found_title), fontWeight = FontWeight.Bold)
-                }
-            },
-            text = {
-                Text(
-                    text = stringResource(Res.string.barcode_not_found_message, showBarcodeNotFoundQuery ?: ""),
-                    fontSize = 15.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showBarcodeNotFoundQuery = null },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.focusRequester(notFoundButtonFocusRequester)
+            // Non-blocking Barcode Not Found Toast Notification
+            AnimatedVisibility(
+                visible = showBarcodeNotFoundQuery != null,
+                enter = fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) + slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+                ),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+                    .zIndex(100f)
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    shape = ShapeDefaults.cardShape,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .widthIn(max = 480.dp)
+                        .clickable { showBarcodeNotFoundQuery = null }
                 ) {
-                    Text(stringResource(Res.string.understood_enter_button))
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.sad_face),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(Res.string.barcode_not_found_title),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = stringResource(
+                                    Res.string.barcode_not_found_message,
+                                    showBarcodeNotFoundQuery ?: ""
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
+                            )
+                        }
+                        IconButton(
+                            onClick = { showBarcodeNotFoundQuery = null },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.close),
+                                contentDescription = stringResource(Res.string.close_button),
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
-            },
-            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown &&
-                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter || keyEvent.key == Key.Escape)
-                ) {
-                    showBarcodeNotFoundQuery = null
-                    true
-                } else false
             }
-        )
+        }
     }
 
     // Weight Dialog

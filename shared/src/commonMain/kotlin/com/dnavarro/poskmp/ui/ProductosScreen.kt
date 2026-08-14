@@ -259,7 +259,7 @@ fun ProductosScreen(
         if (!code.isNullOrBlank()) {
             val matched = sortedProducts.find { p ->
                 val cleanCodes = p.parseBarcodes()
-                cleanCodes.contains(code) || p.codigos.contains(code) || p.id == code
+                cleanCodes.contains(code)
             }
             if (matched != null) {
                 viewModel.onShowProductDialog(matched)
