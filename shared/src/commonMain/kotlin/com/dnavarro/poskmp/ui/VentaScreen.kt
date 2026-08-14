@@ -1491,13 +1491,17 @@ fun VentaScreen(
 
     // PRODUCT FORM DIALOG (from context menu)
     if (showProductDialogFor != null) {
+        val categories = remember(uiState.activeProducts) {
+            uiState.activeProducts.mapNotNull { it.categoria }.filter { it.isNotBlank() }.distinct().sorted()
+        }
         ProductFormDialog(
             product = showProductDialogFor,
             onDismiss = { showProductDialogFor = null },
             onSave = { updatedProduct ->
                 viewModel.updateProduct(updatedProduct)
                 showProductDialogFor = null
-            }
+            },
+            existingCategories = categories
         )
     }
 

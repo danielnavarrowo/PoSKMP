@@ -1,7 +1,9 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -10,14 +12,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.currentTimeMillis
-import com.dnavarro.poskmp.util.encodeFormBarcodesToJson
-import com.dnavarro.poskmp.util.formatBarcodesForDisplay
+import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.parseBarcodes
@@ -25,12 +27,14 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ProductFormDialog(
     product: Products?, // Null or product with empty ID means new product
     onDismiss: () -> Unit,
     onSave: (Products) -> Unit,
-    onValidateBarcodes: (suspend (List<String>) -> Pair<String, Products>?)? = null
+    onValidateBarcodes: (suspend (List<String>) -> Pair<String, Products>?)? = null,
+    existingCategories: List<String> = emptyList()
 ) {
     val isNew = product == null || product.id.isEmpty()
 
@@ -39,9 +43,10 @@ fun ProductFormDialog(
 
     // Form inputs state
     var formNombre by remember(product) { mutableStateOf(product?.nombre ?: "") }
-    var formCodigo by remember(product) {
-        mutableStateOf(product?.formatBarcodesForDisplay(emptyFallback = "") ?: "")
+    var formBarcodes by remember(product) {
+        mutableStateOf(product?.parseBarcodes() ?: emptyList())
     }
+    var barcodeInput by remember { mutableStateOf("") }
     var formPrecio by remember(product) {
         val price = product?.precio
         mutableStateOf(if (price == null || price == 0.0) "" else price.toString())
@@ -59,6 +64,29 @@ fun ProductFormDialog(
         mutableStateOf(if (pieces == null || pieces == 0.0) "1" else if (pieces % 1.0 == 0.0) pieces.toLong().toString() else pieces.toString())
     }
     var formCategoria by remember(product) { mutableStateOf(product?.categoria ?: defaultCategory) }
+    var categoryDropdownExpanded by remember { mutableStateOf(false) }
+
+    val allCategories = remember(existingCategories, defaultCategory) {
+        (existingCategories + defaultCategory)
+            .filter { it.isNotBlank() && it != noCategoryStr }
+            .distinct()
+            .sorted()
+    }
+    val filteredCategories = remember(allCategories, formCategoria) {
+        val trimmed = formCategoria.trim()
+        if (trimmed.isEmpty()) {
+            allCategories
+        } else {
+            val matches = allCategories.filter { it.contains(trimmed, ignoreCase = true) }
+            if (matches.size == 1 && matches.first().equals(trimmed, ignoreCase = true)) {
+                allCategories
+            } else if (matches.isNotEmpty()) {
+                matches
+            } else {
+                emptyList()
+            }
+        }
+    }
     var formActivo by remember(product) { mutableStateOf(product?.activo == 1L || product == null) }
     var formPorPeso by remember(product) { mutableStateOf(product?.por_peso == 1L) }
     var formEsFavorito by remember(product) { mutableStateOf(product?.es_favorito == 1L) }
@@ -67,27 +95,38 @@ fun ProductFormDialog(
     var barcodeValidationError by remember { mutableStateOf<String?>(null) }
     var isValidatingBarcode by remember { mutableStateOf(false) }
 
-    val dupInFormErrFmt = stringResource(Res.string.barcode_duplicate_in_form_error)
     val alreadyExistsErrFmt = stringResource(Res.string.barcode_already_exists_error)
 
-    LaunchedEffect(formCodigo, product?.id) {
-        val codesList = parseBarcodes(formCodigo)
-
-        if (codesList.isEmpty()) {
-            barcodeValidationError = null
-            return@LaunchedEffect
+    fun addBarcodeFromInput() {
+        val codesToAdd = parseBarcodes(barcodeInput)
+        if (codesToAdd.isNotEmpty()) {
+            val updated = formBarcodes.toMutableList()
+            for (code in codesToAdd) {
+                if (!updated.contains(code)) {
+                    updated.add(code)
+                }
+            }
+            formBarcodes = updated
+            barcodeInput = ""
         }
+    }
 
-        val duplicates = codesList.groupBy { it }.filter { it.value.size > 1 }.keys
-        if (duplicates.isNotEmpty()) {
-            val dup = duplicates.first()
-            barcodeValidationError = dupInFormErrFmt.replace("%1\$s", dup)
+    fun removeBarcode(code: String) {
+        formBarcodes = formBarcodes.filter { it != code }
+    }
+
+    LaunchedEffect(formBarcodes, barcodeInput, product?.id) {
+        val pendingInputCodes = parseBarcodes(barcodeInput)
+        val totalCodes = (formBarcodes + pendingInputCodes).distinct()
+
+        if (totalCodes.isEmpty()) {
+            barcodeValidationError = null
             return@LaunchedEffect
         }
 
         if (onValidateBarcodes != null) {
             isValidatingBarcode = true
-            val conflict = onValidateBarcodes(codesList)
+            val conflict = onValidateBarcodes(totalCodes)
             isValidatingBarcode = false
             if (conflict != null) {
                 val (matchingCode, conflictingProduct) = conflict
@@ -102,7 +141,8 @@ fun ProductFormDialog(
 
     fun submitForm() {
         val id = product?.id?.ifEmpty { generateUUID() } ?: generateUUID()
-        val formattedCodes = formCodigo.encodeFormBarcodesToJson()
+        val finalBarcodes = (formBarcodes + parseBarcodes(barcodeInput)).distinct()
+        val formattedCodes = finalBarcodes.encodeToJsonBarcodes()
 
         val p = Products(
             id = id,
@@ -124,11 +164,11 @@ fun ProductFormDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+        modifier = Modifier.onKeyEvent { keyEvent ->
             if (keyEvent.type == KeyEventType.KeyDown &&
                 (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
             ) {
-                if (formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null) {
+                if (formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null && barcodeValidationError == null && !isValidatingBarcode) {
                     submitForm()
                     true
                 } else false
@@ -151,37 +191,110 @@ fun ProductFormDialog(
                     value = formNombre,
                     onValueChange = { formNombre = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(Res.string.product_name_label)) },
+                    label = { Text(stringResource(Res.string.product_name_label), fontSize = 12.sp) },
                     singleLine = true
                 )
 
-                OutlinedTextField(
-                    value = formCodigo,
-                    onValueChange = { formCodigo = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(Res.string.barcodes_label)) },
-                    placeholder = { Text(stringResource(Res.string.barcodes_placeholder)) },
-                    isError = barcodeValidationError != null,
-                    trailingIcon = {
-                        if (isAndroid()) {
-                            IconButton(onClick = { showCameraScanner = true }) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.barcode_scanner),
-                                    contentDescription = null
+                // Barcodes input field and chips
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = barcodeInput,
+                        onValueChange = { barcodeInput = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onPreviewKeyEvent { keyEvent ->
+                                if (keyEvent.type == KeyEventType.KeyDown &&
+                                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                                ) {
+                                    if (barcodeInput.trim().isNotEmpty()) {
+                                        addBarcodeFromInput()
+                                        true
+                                    } else false
+                                } else false
+                            },
+                        label = { Text(stringResource(Res.string.barcodes_label), fontSize = 12.sp) },
+                        placeholder = { Text(stringResource(Res.string.barcodes_placeholder), fontSize = 12.sp) },
+                        isError = barcodeValidationError != null,
+                        trailingIcon = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(end = 4.dp)
+                            ) {
+                                if (barcodeInput.trim().isNotEmpty()) {
+                                    IconButton(onClick = { addBarcodeFromInput() }) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.add),
+                                            contentDescription = stringResource(Res.string.add_button),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                if (isAndroid()) {
+                                    IconButton(onClick = { showCameraScanner = true }) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.barcode_scanner),
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { addBarcodeFromInput() }),
+                        singleLine = true
+                    )
+
+                    if (barcodeValidationError != null) {
+                        Text(
+                            text = barcodeValidationError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                        )
+                    }
+
+                    if (formBarcodes.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            formBarcodes.forEach { code ->
+                                InputChip(
+                                    selected = false,
+                                    onClick = { },
+                                    label = {
+                                        Text(
+                                            text = code,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.close),
+                                            contentDescription = stringResource(Res.string.close_button),
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .clickable { removeBarcode(code) }
+                                        )
+                                    },
+                                    shape = MaterialTheme.shapes.small,
+                                    colors = InputChipDefaults.inputChipColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ),
+                                    border = InputChipDefaults.inputChipBorder(
+                                        enabled = true,
+                                        selected = false,
+                                        borderColor = MaterialTheme.colorScheme.outlineVariant
+                                    )
                                 )
                             }
                         }
-                    },
-                    singleLine = true
-                )
-                if (barcodeValidationError != null) {
-                    Text(
-                        text = barcodeValidationError!!,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-                    )
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -194,7 +307,7 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.retail_price_required_label)) },
+                        label = { Text(stringResource(Res.string.retail_price_required_label), fontSize = 12.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -207,46 +320,120 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.cost_label)) },
+                        label = { Text(stringResource(Res.string.cost_label), fontSize = 12.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
                 }
 
-                OutlinedTextField(
-                    value = formPrecioMayoreo,
-                    onValueChange = { input ->
-                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                            formPrecioMayoreo = input
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                    label = { Text(stringResource(Res.string.wholesale)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = formPrecioMayoreo,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                formPrecioMayoreo = input
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                        label = { Text(stringResource(Res.string.wholesale_price), fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = formPiezas,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
+                                formPiezas = input
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(stringResource(Res.string.product_pieces_label), fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
 
-                OutlinedTextField(
-                    value = formPiezas,
-                    onValueChange = { input ->
-                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                            formPiezas = input
+                ExposedDropdownMenuBox(
+                    expanded = categoryDropdownExpanded,
+                    onExpandedChange = { categoryDropdownExpanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = formCategoria,
+                        onValueChange = {
+                            formCategoria = it
+                            categoryDropdownExpanded = true
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                        label = { Text(stringResource(Res.string.category_label), fontSize = 12.sp) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
+                        },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        singleLine = true
+                    )
+                    if (filteredCategories.isNotEmpty() || (formCategoria.trim().isNotEmpty() && !allCategories.any { it.equals(formCategoria.trim(), ignoreCase = true) })) {
+                        ExposedDropdownMenu(
+                            expanded = categoryDropdownExpanded,
+                            onDismissRequest = { categoryDropdownExpanded = false }
+                        ) {
+                            filteredCategories.forEach { category ->
+                                val isSelected = category.equals(formCategoria.trim(), ignoreCase = true)
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = category,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
+                                    trailingIcon = if (isSelected) {
+                                        {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.check),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        formCategoria = category
+                                        categoryDropdownExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                )
+                            }
+                            if (filteredCategories.isEmpty() && formCategoria.trim().isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.add),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "${stringResource(Res.string.new_category)}: \"${formCategoria.trim()}\"",
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        categoryDropdownExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                )
+                            }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(Res.string.product_pieces_label)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = formCategoria,
-                    onValueChange = { formCategoria = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(Res.string.category_label)) },
-                    singleLine = true
-                )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -306,13 +493,8 @@ fun ProductFormDialog(
                 showCameraScanner = false
                 val code = scannedBarcode.trim()
                 if (code.isNotEmpty()) {
-                    val existing = formCodigo.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                    formCodigo = if (existing.contains(code)) {
-                        formCodigo
-                    } else if (formCodigo.isBlank()) {
-                        code
-                    } else {
-                        "$formCodigo, $code"
+                    if (!formBarcodes.contains(code)) {
+                        formBarcodes = formBarcodes + code
                     }
                 }
             },

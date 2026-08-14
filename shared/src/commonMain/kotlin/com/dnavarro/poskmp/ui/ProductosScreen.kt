@@ -1031,7 +1031,8 @@ fun ProductosScreen(
                 },
                 onValidateBarcodes = { codes ->
                     viewModel.validateBarcodes(codes, showProductDialogFor.id.ifEmpty { null })
-                }
+                },
+                existingCategories = uiState.availableCategories
             )
         }
 
