@@ -356,4 +356,21 @@
     <string name="ticket_detail_title">Detalle de Ticket #%1$d</string>
     <string name="ticket_detail_total">Total: $%1$s</string>
     <string name="ticket_detail_profit">Ganancia: +$%1$s</string>
+
+    <!-- Update System -->
+    <string name="updates_section_title">Actualizaciones del Sistema</string>
+    <string name="updates_section_subtitle">Buscar e instalar la versión más reciente de la aplicación</string>
+    <string name="current_version_label">Versión instalada: %1$s</string>
+    <string name="check_updates_button">Buscar Actualizaciones</string>
+    <string name="checking_updates">Buscando actualizaciones...</string>
+    <string name="app_up_to_date">Tu aplicación está al día con la última versión.</string>
+    <string name="update_available_title">Nueva versión disponible: %1$s</string>
+    <string name="update_notes_title">Novedades de esta versión:</string>
+    <string name="download_and_install_button">Descargar e Instalar</string>
+    <string name="downloading_update">Descargando actualización... (%1$d%%)</string>
+    <string name="installing_update">Iniciando instalador...</string>
+    <string name="update_error">Error de actualización: %1$s</string>
+    <string name="no_compatible_asset">No se encontró un paquete de instalación compatible para tu dispositivo.</string>
+    <string name="auto_check_updates_title">Buscar actualizaciones al iniciar</string>
+    <string name="auto_check_updates_subtitle">Notificar automáticamente si hay una nueva versión disponible</string>
 </resources>

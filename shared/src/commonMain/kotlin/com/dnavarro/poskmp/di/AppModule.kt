@@ -31,6 +31,8 @@ import com.dnavarro.poskmp.data.source.local.SqlDelightSaleDataSource
 import com.dnavarro.poskmp.domain.usecase.GetSalesSummaryUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 
+import com.dnavarro.poskmp.data.updater.UpdateRepository
+
 val dataModule = module {
     single { DatabaseDriverFactory() }
     single { createDatabase(get()) }
@@ -40,6 +42,7 @@ val dataModule = module {
     singleOf(::SqlDelightSaleDataSource) bind SaleLocalDataSource::class
     singleOf(::SaleRepositoryImpl) bind SaleRepository::class
     singleOf(::SettingsRepositoryImpl) bind SettingsRepository::class
+    singleOf(::UpdateRepository)
 }
 
 val domainModule = module {

@@ -14,24 +14,30 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -58,6 +64,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import com.dnavarro.poskmp.data.updater.ReleaseAsset
+import com.dnavarro.poskmp.data.updater.UpdateCheckResult
+import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -75,70 +84,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.add
-import poskmp.shared.generated.resources.amoled_mode_subtitle
-import poskmp.shared.generated.resources.amoled_mode_title
-import poskmp.shared.generated.resources.app_scale_subtitle
-import poskmp.shared.generated.resources.app_scale_title
-import poskmp.shared.generated.resources.barcode_scanner
-import poskmp.shared.generated.resources.checador_layout_dialog
-import poskmp.shared.generated.resources.checador_layout_fullscreen
-import poskmp.shared.generated.resources.checador_layout_subtitle
-import poskmp.shared.generated.resources.checador_layout_title
-import poskmp.shared.generated.resources.check
-import poskmp.shared.generated.resources.cloud_sync_section_title
-import poskmp.shared.generated.resources.dark_mode
-import poskmp.shared.generated.resources.dark_mode_off
-import poskmp.shared.generated.resources.dark_mode_on
-import poskmp.shared.generated.resources.dark_mode_subtitle
-import poskmp.shared.generated.resources.dark_mode_system
-import poskmp.shared.generated.resources.dark_mode_title
-import poskmp.shared.generated.resources.database_section_title
-import poskmp.shared.generated.resources.default_margins_section_subtitle
-import poskmp.shared.generated.resources.default_margins_section_title
-import poskmp.shared.generated.resources.default_screen_subtitle
-import poskmp.shared.generated.resources.default_screen_title
-import poskmp.shared.generated.resources.download
-import poskmp.shared.generated.resources.dynamic_color_subtitle
-import poskmp.shared.generated.resources.dynamic_color_title
-import poskmp.shared.generated.resources.export_button
-import poskmp.shared.generated.resources.export_success_message
-import poskmp.shared.generated.resources.fullscreen
-import poskmp.shared.generated.resources.import_button
-import poskmp.shared.generated.resources.light_mode
-import poskmp.shared.generated.resources.local_db_connected_desc
-import poskmp.shared.generated.resources.local_db_status_connected
-import poskmp.shared.generated.resources.local_db_title
-import poskmp.shared.generated.resources.pip
-import poskmp.shared.generated.resources.point_of_sale
-import poskmp.shared.generated.resources.products
-import poskmp.shared.generated.resources.remove
-import poskmp.shared.generated.resources.reset_scale_button
-import poskmp.shared.generated.resources.retail_margin_label
-import poskmp.shared.generated.resources.seed_color_subtitle
-import poskmp.shared.generated.resources.seed_color_title
-import poskmp.shared.generated.resources.settings
-import poskmp.shared.generated.resources.settings_title
-import poskmp.shared.generated.resources.show_extra_prices_checador_subtitle
-import poskmp.shared.generated.resources.show_extra_prices_checador_title
-import poskmp.shared.generated.resources.star
-import poskmp.shared.generated.resources.status_connected
-import poskmp.shared.generated.resources.status_pending
-import poskmp.shared.generated.resources.supabase_offline_desc
-import poskmp.shared.generated.resources.supabase_server_title
-import poskmp.shared.generated.resources.supabase_status_pending_desc
-import poskmp.shared.generated.resources.sync
-import poskmp.shared.generated.resources.sync_now_button
-import poskmp.shared.generated.resources.system_info_title
-import poskmp.shared.generated.resources.system_version
-import poskmp.shared.generated.resources.tab_checador
-import poskmp.shared.generated.resources.tab_productos
-import poskmp.shared.generated.resources.tab_venta
-import poskmp.shared.generated.resources.theme_section_title
-import poskmp.shared.generated.resources.upload
-import poskmp.shared.generated.resources.warning
-import poskmp.shared.generated.resources.wholesale_margin_label
+import poskmp.shared.generated.resources.*
 import kotlin.math.roundToInt
 
 data class PresetColorItem(
@@ -211,7 +157,14 @@ fun AjustesScreen(
         defaultRetailMargin = uiState.defaultRetailMargin,
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
-        onDefaultWholesaleMarginChange = { viewModel.setDefaultWholesaleMargin(it) }
+        onDefaultWholesaleMarginChange = { viewModel.setDefaultWholesaleMargin(it) },
+        currentVersion = uiState.currentVersion,
+        isCheckingUpdates = uiState.isCheckingUpdates,
+        updateCheckResult = uiState.updateCheckResult,
+        downloadState = uiState.downloadState,
+        onCheckForUpdates = { viewModel.checkForUpdates() },
+        onDownloadAndInstallUpdate = { viewModel.downloadAndInstallUpdate(it) },
+        onDismissUpdateResult = { viewModel.dismissUpdateResult() }
     )
 }
 
@@ -239,6 +192,13 @@ fun AjustesScreen(
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
     onDefaultWholesaleMarginChange: (Double) -> Unit = {},
+    currentVersion: String = "0.0.1",
+    isCheckingUpdates: Boolean = false,
+    updateCheckResult: UpdateCheckResult? = null,
+    downloadState: UpdateDownloadState = UpdateDownloadState.Idle,
+    onCheckForUpdates: () -> Unit = {},
+    onDownloadAndInstallUpdate: (ReleaseAsset) -> Unit = {},
+    onDismissUpdateResult: () -> Unit = {},
     repository: ProductRepository = koinInject()
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
@@ -1194,12 +1154,265 @@ fun AjustesScreen(
                     }
                 }
             }
+
+            // Actualizaciones del Sistema Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(Res.string.updates_section_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = stringResource(Res.string.updates_section_subtitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Badge(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ) {
+                                Text(
+                                    text = "v$currentVersion",
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = onCheckForUpdates,
+                                enabled = !isCheckingUpdates && downloadState !is UpdateDownloadState.Downloading,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (isCheckingUpdates) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = stringResource(Res.string.checking_updates),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.sync),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = stringResource(Res.string.check_updates_button),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        if (updateCheckResult is UpdateCheckResult.UpToDate) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.small,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFF10B981).copy(alpha = 0.12f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "✓",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF10B981)
+                                    )
+                                    Text(
+                                        text = stringResource(Res.string.app_up_to_date),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF10B981)
+                                    )
+                                }
+                            }
+                        } else if (updateCheckResult is UpdateCheckResult.Error) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.small,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.update_error, updateCheckResult.message),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if (showImportDialog) {
             ImportProductsDialog(
                 onDismiss = { showImportDialog = false },
                 repository = repository
+            )
+        }
+
+        if (updateCheckResult is UpdateCheckResult.UpdateAvailable) {
+            val isDownloading = downloadState is UpdateDownloadState.Downloading
+            val isInstalling = downloadState is UpdateDownloadState.Installing
+
+            AlertDialog(
+                onDismissRequest = {
+                    if (!isDownloading && !isInstalling) {
+                        onDismissUpdateResult()
+                    }
+                },
+                title = {
+                    Text(
+                        text = stringResource(Res.string.update_available_title,
+                            updateCheckResult.releaseInfo.tagName),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (updateCheckResult.releaseInfo.releaseNotes.isNotBlank()) {
+                            Text(
+                                text = stringResource(Res.string.update_notes_title),
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 160.dp)
+                                    .verticalScroll(rememberScrollState())
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        shape = MaterialTheme.shapes.small
+                                    )
+                                    .padding(8.dp)
+                            ) {
+                                Text(
+                                    text = updateCheckResult.releaseInfo.releaseNotes,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        when (downloadState) {
+                            is UpdateDownloadState.Downloading -> {
+                                val progress = downloadState.progress
+                                val pct = (progress * 100).toInt()
+                                Text(
+                                    text = stringResource(Res.string.downloading_update, pct),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                LinearProgressIndicator(
+                                    progress = { progress },
+                                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            }
+                            is UpdateDownloadState.Installing -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    Text(
+                                        text = stringResource(Res.string.installing_update),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            is UpdateDownloadState.Error -> {
+                                Text(
+                                    text = stringResource(Res.string.update_error, downloadState.message),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            UpdateDownloadState.Idle -> {
+                                if (updateCheckResult.matchingAsset == null) {
+                                    Text(
+                                        text = stringResource(Res.string.no_compatible_asset),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    val matchingAsset = updateCheckResult.matchingAsset
+                    if (matchingAsset != null && downloadState !is UpdateDownloadState.Installing) {
+                        Button(
+                            onClick = { onDownloadAndInstallUpdate(matchingAsset) },
+                            enabled = !isDownloading,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(stringResource(Res.string.download_and_install_button))
+                        }
+                    }
+                },
+                dismissButton = {
+                    if (!isDownloading && !isInstalling) {
+                        TextButton(
+                            onClick = onDismissUpdateResult,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(stringResource(Res.string.cancel))
+                        }
+                    }
+                }
             )
         }
     }
