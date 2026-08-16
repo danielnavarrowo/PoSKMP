@@ -53,6 +53,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 import com.dnavarro.poskmp.util.parseImportFile
 import com.dnavarro.poskmp.util.pickFile
@@ -622,7 +623,14 @@ fun ImportProductsDialog(
                                                     existingProducts.forEach { prod ->
                                                         val codes = prod.parseBarcodes()
                                                         codes.forEach { code ->
-                                                            existingByBarcode[code] = prod
+                                                            val trimmed = code.trim()
+                                                            if (trimmed.isNotEmpty()) {
+                                                                existingByBarcode[trimmed] = prod
+                                                                val norm = normalizeBarcode(trimmed)
+                                                                if (norm.isNotEmpty()) {
+                                                                    existingByBarcode.putIfAbsent(norm, prod)
+                                                                }
+                                                            }
                                                         }
                                                     }
 
@@ -639,8 +647,9 @@ fun ImportProductsDialog(
                                                         } else {
                                                             val pCodes = p.parseBarcodes()
                                                             for (code in pCodes) {
+                                                                val trimmed = code.trim()
                                                                 val matched =
-                                                                    existingByBarcode[code]
+                                                                    existingByBarcode[trimmed] ?: existingByBarcode[normalizeBarcode(trimmed)]
                                                                 if (matched != null) {
                                                                     targetId = matched.id
                                                                     isExisting = true
@@ -795,15 +804,18 @@ fun ImportProductsDialog(
 }
 
 private fun validateImportedBarcodes(products: List<Products>): String? {
-    val seenBarcodes = mutableMapOf<String, String>() // barcode -> productName
+    val seenBarcodes = mutableMapOf<String, String>() // normalized barcode -> productName
     for (product in products) {
         val codes = product.parseBarcodes()
         for (code in codes) {
-            if (seenBarcodes.containsKey(code)) {
-                val otherProductName = seenBarcodes[code]
-                return "El código de barras '$code' se encuentra duplicado en el archivo importado (en los productos '$otherProductName' y '${product.nombre}')."
+            val norm = normalizeBarcode(code)
+            if (norm.isNotEmpty()) {
+                if (seenBarcodes.containsKey(norm)) {
+                    val otherProductName = seenBarcodes[norm]
+                    return "El código de barras '$code' se encuentra duplicado en el archivo importado (en los productos '$otherProductName' y '${product.nombre}')."
+                }
+                seenBarcodes[norm] = product.nombre
             }
-            seenBarcodes[code] = product.nombre
         }
     }
     return null

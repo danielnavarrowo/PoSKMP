@@ -95,6 +95,7 @@ import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -258,8 +259,7 @@ fun ProductosScreen(
         val code = pendingScanCode
         if (!code.isNullOrBlank()) {
             val matched = sortedProducts.find { p ->
-                val cleanCodes = p.parseBarcodes()
-                cleanCodes.contains(code)
+                p.parseBarcodes().matchesBarcode(code)
             }
             if (matched != null) {
                 viewModel.onShowProductDialog(matched)

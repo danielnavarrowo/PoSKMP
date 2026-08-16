@@ -28,7 +28,7 @@ compose.desktop {
             modules("java.instrument", "java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
             packageName = "PoSKMP"
-            packageVersion = "0.0.2"
+            packageVersion = "0.0.3"
         }
     }
 }

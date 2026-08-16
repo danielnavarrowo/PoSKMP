@@ -138,7 +138,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifacts/desktop-windows
-          Get-ChildItem -Path desktopApp/build/compose/binaries/main-release -Recurse -Include *.msi, *.exe | Copy-Item -Destination artifacts/desktop-windows
+          # Copy MSI installer
+          Get-ChildItem -Path desktopApp/build/compose/binaries/main-release -Recurse -Include *.msi | Copy-Item -Destination artifacts/desktop-windows
+          # Create portable ZIP containing the full application directory (exe + app/ + runtime/)
+          $appDir = Get-ChildItem -Path desktopApp/build/compose/binaries/main-release/app -Directory | Select-Object -First 1
+          if ($appDir) {
+            Compress-Archive -Path $appDir.FullName -DestinationPath artifacts/desktop-windows/PoSKMP-windows-portable.zip
+          }
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4

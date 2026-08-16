@@ -153,3 +153,40 @@ fun String.encodeFormBarcodesToJson(): String {
     return this.split(",").encodeToJsonBarcodes()
 }
 
+/**
+ * Normalizes a barcode string by trimming leading zeroes while preserving single "0" barcodes.
+ * Examples:
+ * - "0752" -> "752"
+ * - "00123" -> "123"
+ * - "752" -> "752"
+ * - "0" -> "0"
+ * - "00" -> "0"
+ */
+fun normalizeBarcode(barcode: String?): String {
+    if (barcode.isNullOrBlank()) return ""
+    val trimmed = barcode.trim()
+    val stripped = trimmed.trimStart('0')
+    return stripped.ifEmpty { "0" }
+}
+
+/**
+ * Checks whether two barcodes match, supporting both exact match and leading-zero normalized match.
+ */
+fun isBarcodeMatch(code1: String?, code2: String?): Boolean {
+    if (code1.isNullOrBlank() || code2.isNullOrBlank()) return false
+    val t1 = code1.trim()
+    val t2 = code2.trim()
+    if (t1.equals(t2, ignoreCase = true)) return true
+    val n1 = normalizeBarcode(t1)
+    val n2 = normalizeBarcode(t2)
+    return n1.isNotEmpty() && n1.equals(n2, ignoreCase = true)
+}
+
+/**
+ * Checks if a target barcode matches any barcode in a given list, using hybrid exact & normalized comparison.
+ */
+fun List<String>?.matchesBarcode(targetBarcode: String?): Boolean {
+    if (this.isNullOrEmpty() || targetBarcode.isNullOrBlank()) return false
+    return this.any { code -> isBarcodeMatch(code, targetBarcode) }
+}
+

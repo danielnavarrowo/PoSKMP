@@ -24,6 +24,8 @@ import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.matchesBarcode
+import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 import kotlin.math.roundToLong
 import org.jetbrains.compose.resources.painterResource
@@ -167,6 +169,7 @@ fun ProductFormDialog(
     var isValidatingBarcode by remember { mutableStateOf(false) }
 
     val alreadyExistsErrFmt = stringResource(Res.string.barcode_already_exists_error)
+    val duplicateInFormErrFmt = stringResource(Res.string.barcode_duplicate_in_form_error)
 
     val costVal = formCosto.toDoubleOrNull()
     val retailVal = formPrecio.toDoubleOrNull()
@@ -196,7 +199,7 @@ fun ProductFormDialog(
         if (codesToAdd.isNotEmpty()) {
             val updated = formBarcodes.toMutableList()
             for (code in codesToAdd) {
-                if (!updated.contains(code)) {
+                if (!updated.matchesBarcode(code)) {
                     updated.add(code)
                 }
             }
@@ -211,13 +214,33 @@ fun ProductFormDialog(
 
     LaunchedEffect(formBarcodes, barcodeInput, product?.id) {
         val pendingInputCodes = parseBarcodes(barcodeInput)
-        val totalCodes = (formBarcodes + pendingInputCodes).distinct()
+        val allCodes = formBarcodes + pendingInputCodes
 
-        if (totalCodes.isEmpty()) {
+        if (allCodes.isEmpty()) {
             barcodeValidationError = null
             return@LaunchedEffect
         }
 
+        // Check internal duplicates within the form itself (exact or normalized)
+        val normalizedSeen = mutableSetOf<String>()
+        var internalDuplicate: String? = null
+        for (code in allCodes) {
+            val norm = normalizeBarcode(code)
+            if (norm.isNotEmpty()) {
+                if (normalizedSeen.contains(norm)) {
+                    internalDuplicate = code
+                    break
+                }
+                normalizedSeen.add(norm)
+            }
+        }
+
+        if (internalDuplicate != null) {
+            barcodeValidationError = duplicateInFormErrFmt.replace("%1\$s", internalDuplicate)
+            return@LaunchedEffect
+        }
+
+        val totalCodes = allCodes.distinct()
         if (onValidateBarcodes != null) {
             isValidatingBarcode = true
             val conflict = onValidateBarcodes(totalCodes)

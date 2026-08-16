@@ -63,11 +63,11 @@ WHERE id = ?;
 
 searchProducts:
 SELECT * FROM products 
-WHERE (nombre LIKE '%' || ? || '%' OR codigos LIKE '%' || ? || '%' OR categoria LIKE '%' || ? || '%');
+WHERE (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%' OR categoria LIKE '%' || :query || '%');
 
 searchActiveProducts:
 SELECT * FROM products 
-WHERE activo = 1 AND (nombre LIKE '%' || ? || '%' OR codigos LIKE '%' || ? || '%' OR categoria LIKE '%' || ? || '%');
+WHERE activo = 1 AND (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%' OR categoria LIKE '%' || :query || '%');
 
 -- ============================================
 -- SALES & ANALYTICS TABLES & QUERIES

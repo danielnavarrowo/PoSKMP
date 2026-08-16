@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
+import com.dnavarro.poskmp.util.matchesBarcode
+import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 
 interface ProductLocalDataSource {
@@ -42,10 +44,12 @@ class SqlDelightProductDataSource(
     }
 
     override fun searchProducts(query: String, activeOnly: Boolean): Flow<List<Products>> {
+        val trimmed = query.trim()
+        val normalized = normalizeBarcode(trimmed)
         val q = if (activeOnly) {
-            queries.searchActiveProducts(query, query, query)
+            queries.searchActiveProducts(query = trimmed, normalizedQuery = normalized)
         } else {
-            queries.searchProducts(query, query, query)
+            queries.searchProducts(query = trimmed, normalizedQuery = normalized)
         }
         return q.asFlow().mapToList(Dispatchers.IO)
     }
@@ -151,9 +155,12 @@ class SqlDelightProductDataSource(
     }
 
     override suspend fun findProductByBarcode(barcode: String): Products? = withContext(Dispatchers.IO) {
+        val trimmed = barcode.trim()
+        if (trimmed.isEmpty()) return@withContext null
+
         val list = queries.selectActiveProducts().executeAsList()
         list.firstOrNull { product ->
-            product.parseBarcodes().contains(barcode)
+            product.parseBarcodes().matchesBarcode(trimmed)
         }
     }
 
@@ -170,7 +177,7 @@ class SqlDelightProductDataSource(
 
             val productBarcodes = product.parseBarcodes()
             val matchingBarcode = cleanBarcodes.firstOrNull { code ->
-                productBarcodes.contains(code)
+                productBarcodes.matchesBarcode(code)
             }
             if (matchingBarcode != null) {
                 return@withContext Pair(matchingBarcode, product)

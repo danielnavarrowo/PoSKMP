@@ -267,7 +267,7 @@ fun CameraPreviewScreen(
                                         .addOnSuccessListener { barcodes ->
                                             for (barcode in barcodes) {
                                                 val rawValue =
-                                                    barcode.rawValue?.trimStart('0') ?: ""
+                                                    barcode.rawValue?.trim() ?: ""
                                                 if (rawValue.isNotEmpty()) {
                                                     val trimmed = rawValue.trim()
                                                     if (trimmed != lastScannedBarcode) {
