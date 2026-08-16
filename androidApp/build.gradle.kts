@@ -28,8 +28,8 @@ android {
         applicationId = "com.dnavarro.poskmp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 3
-        versionName = "0.0.3"
+        versionCode = libs.versions.app.versionCode.get().toInt()
+        versionName = libs.versions.app.version.get()
     }
     packaging {
         resources {

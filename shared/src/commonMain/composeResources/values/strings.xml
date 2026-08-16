@@ -31,7 +31,7 @@
     <!-- AjustesScreen -->
     <string name="settings_title">Ajustes del Sistema</string>
     <string name="system_info_title">Antigravity POS</string>
-    <string name="system_version">Versión 0.0.1 (Offline First)</string>
+    <string name="system_version">Versión %1$s (Offline First)</string>
     <string name="database_section_title">Base de Datos</string>
     <string name="local_db_connected_desc">Local DB connected</string>
     <string name="local_db_title">Base de Datos Local</string>

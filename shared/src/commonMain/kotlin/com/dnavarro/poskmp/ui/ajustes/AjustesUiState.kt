@@ -8,6 +8,8 @@ import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 
+import com.dnavarro.poskmp.util.AppConstants
+
 /**
  * UI State for Settings screen.
  */
@@ -22,7 +24,7 @@ data class AjustesUiState(
     val showExtraPricesChecador: Boolean = false,
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
-    val currentVersion: String = "0.0.1",
+    val currentVersion: String = AppConstants.APP_VERSION,
     val isCheckingUpdates: Boolean = false,
     val updateCheckResult: UpdateCheckResult? = null,
     val downloadState: UpdateDownloadState = UpdateDownloadState.Idle

@@ -10,11 +10,12 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
+import com.dnavarro.poskmp.util.AppConstants
 
 actual object PlatformUpdater {
 
     actual fun getAppVersion(): String {
-        val context = DatabaseDriverFactory.appContext ?: return "0.0.1"
+        val context = DatabaseDriverFactory.appContext ?: return AppConstants.APP_VERSION
         return try {
             val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
@@ -22,9 +23,9 @@ actual object PlatformUpdater {
                 @Suppress("DEPRECATION")
                 context.packageManager.getPackageInfo(context.packageName, 0)
             }
-            packageInfo.versionName ?: "0.0.1"
+            packageInfo.versionName ?: AppConstants.APP_VERSION
         } catch (_: Exception) {
-            "0.0.1"
+            AppConstants.APP_VERSION
         }
     }
 

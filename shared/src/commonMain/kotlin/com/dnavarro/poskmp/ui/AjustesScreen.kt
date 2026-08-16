@@ -78,6 +78,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
+import com.dnavarro.poskmp.util.AppConstants
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.saveFile
 import kotlinx.coroutines.launch
@@ -192,7 +193,7 @@ fun AjustesScreen(
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
     onDefaultWholesaleMarginChange: (Double) -> Unit = {},
-    currentVersion: String = "0.0.1",
+    currentVersion: String = AppConstants.APP_VERSION,
     isCheckingUpdates: Boolean = false,
     updateCheckResult: UpdateCheckResult? = null,
     downloadState: UpdateDownloadState = UpdateDownloadState.Idle,
@@ -282,7 +283,7 @@ fun AjustesScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = stringResource(Res.string.system_version),
+                                text = stringResource(Res.string.system_version, currentVersion),
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

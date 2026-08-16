@@ -8,13 +8,14 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import kotlin.system.exitProcess
+import com.dnavarro.poskmp.util.AppConstants
 
 actual object PlatformUpdater {
 
     actual fun getAppVersion(): String {
-        return PlatformUpdater::class.java.`package`?.implementationVersion
-            ?: System.getProperty("app.version")
-            ?: "0.0.1"
+        return System.getProperty("app.version")
+            ?: PlatformUpdater::class.java.`package`?.implementationVersion
+            ?: AppConstants.APP_VERSION
     }
 
     actual fun findMatchingAsset(assets: List<ReleaseAsset>): ReleaseAsset? {

@@ -16,9 +16,12 @@ dependencies {
     implementation(libs.compose.components.resources)
 }
 
+val appVersion = libs.versions.app.version.get()
+
 compose.desktop {
     application {
         mainClass = "com.dnavarro.poskmp.MainKt"
+        jvmArgs += listOf("-Dapp.version=$appVersion")
 
         buildTypes.release.proguard {
             configurationFiles.from(project.file("proguard-rules.pro"))
@@ -28,7 +31,8 @@ compose.desktop {
             modules("java.instrument", "java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
             packageName = "PoSKMP"
-            packageVersion = "0.0.3"
+            packageVersion = appVersion
+            jvmArgs += listOf("-Dapp.version=$appVersion")
         }
     }
 }
