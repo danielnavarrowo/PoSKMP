@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 
 /**
  * Interface defining settings data operations.
@@ -28,6 +29,8 @@ interface SettingsRepository {
     val defaultScreenFlow: Flow<Screen>
     val isChecadorDialogFlow: Flow<Boolean>
     val showExtraPricesChecadorFlow: Flow<Boolean>
+    val defaultRetailMarginFlow: Flow<Double>
+    val defaultWholesaleMarginFlow: Flow<Double>
 
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
@@ -37,6 +40,8 @@ interface SettingsRepository {
     suspend fun setDefaultScreen(screen: Screen)
     suspend fun setIsChecadorDialog(isDialog: Boolean)
     suspend fun setShowExtraPricesChecador(show: Boolean)
+    suspend fun setDefaultRetailMargin(margin: Double)
+    suspend fun setDefaultWholesaleMargin(margin: Double)
 }
 
 /**
@@ -55,6 +60,8 @@ class SettingsRepositoryImpl(
         val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
         val IS_CHECADOR_DIALOG = booleanPreferencesKey("is_checador_dialog")
         val SHOW_EXTRA_PRICES_CHECADOR = booleanPreferencesKey("show_extra_prices_checador")
+        val DEFAULT_RETAIL_MARGIN = doublePreferencesKey("default_retail_margin_percentage")
+        val DEFAULT_WHOLESALE_MARGIN = doublePreferencesKey("default_wholesale_margin_percentage")
     }
 
     override val useDynamicColorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -99,6 +106,14 @@ class SettingsRepositoryImpl(
 
     override val showExtraPricesChecadorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] ?: false
+    }
+
+    override val defaultRetailMarginFlow: Flow<Double> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.DEFAULT_RETAIL_MARGIN] ?: 0.0
+    }
+
+    override val defaultWholesaleMarginFlow: Flow<Double> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] ?: 0.0
     }
 
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
@@ -146,6 +161,18 @@ class SettingsRepositoryImpl(
     override suspend fun setShowExtraPricesChecador(show: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] = show
+        }
+    }
+
+    override suspend fun setDefaultRetailMargin(margin: Double) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DEFAULT_RETAIL_MARGIN] = margin
+        }
+    }
+
+    override suspend fun setDefaultWholesaleMargin(margin: Double) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] = margin
         }
     }
 }

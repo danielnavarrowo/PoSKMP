@@ -1501,7 +1501,9 @@ fun VentaScreen(
                 viewModel.updateProduct(updatedProduct)
                 showProductDialogFor = null
             },
-            existingCategories = categories
+            existingCategories = categories,
+            defaultRetailMarginPercentage = uiState.defaultRetailMargin,
+            defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin
         )
     }
 

@@ -37,12 +37,18 @@ class AjustesViewModel(
         },
         repository.defaultScreenFlow,
         repository.isChecadorDialogFlow,
-        repository.showExtraPricesChecadorFlow
-    ) { state, defaultScreen, isChecadorDialog, showExtraPricesChecador ->
+        repository.showExtraPricesChecadorFlow,
+        combine(
+            repository.defaultRetailMarginFlow,
+            repository.defaultWholesaleMarginFlow
+        ) { retailMargin, wholesaleMargin -> retailMargin to wholesaleMargin }
+    ) { state, defaultScreen, isChecadorDialog, showExtraPricesChecador, (defaultRetailMargin, defaultWholesaleMargin) ->
         state.copy(
             defaultScreen = defaultScreen,
             isChecadorDialog = isChecadorDialog,
-            showExtraPricesChecador = showExtraPricesChecador
+            showExtraPricesChecador = showExtraPricesChecador,
+            defaultRetailMargin = defaultRetailMargin,
+            defaultWholesaleMargin = defaultWholesaleMargin
         )
     }.stateIn(
         scope = viewModelScope,
@@ -95,6 +101,18 @@ class AjustesViewModel(
     fun setShowExtraPricesChecador(show: Boolean) {
         viewModelScope.launch {
             repository.setShowExtraPricesChecador(show)
+        }
+    }
+
+    fun setDefaultRetailMargin(margin: Double) {
+        viewModelScope.launch {
+            repository.setDefaultRetailMargin(margin)
+        }
+    }
+
+    fun setDefaultWholesaleMargin(margin: Double) {
+        viewModelScope.launch {
+            repository.setDefaultWholesaleMargin(margin)
         }
     }
 }

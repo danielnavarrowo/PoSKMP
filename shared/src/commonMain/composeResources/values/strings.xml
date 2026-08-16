@@ -66,6 +66,10 @@
     <string name="checador_layout_fullscreen">Pantalla Completa</string>
     <string name="show_extra_prices_checador_title">Mostrar Costo y Mayoreo en Checador</string>
     <string name="show_extra_prices_checador_subtitle">Muestra el precio de costo y precio de mayoreo al consultar productos en el checador</string>
+    <string name="default_margins_section_title">Márgenes de Ganancia Predeterminados</string>
+    <string name="default_margins_section_subtitle">Define los porcentajes de ganancia automáticos para calcular el precio de venta y mayoreo a partir del costo</string>
+    <string name="retail_margin_label">Margen Venta (%)</string>
+    <string name="wholesale_margin_label">Margen Mayoreo (%)</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>
@@ -130,7 +134,7 @@
     <string name="bulk_mod_subtitle">%1$d producto(s) seleccionado(s)</string>
     <string name="cost_price">Precio de costo</string>
     <string name="retail_price">Precio de venta</string>
-    <string name="wholesale_price">Precio de mayoreo</string>
+    <string name="wholesale_price">Mayoreo</string>
     <string name="bulk_profit_cost_requirement">Solo se actualizarán los productos que tengan precio de costo.</string>
     <string name="retail_profit_pct">Ganancia de venta (%)</string>
     <string name="wholesale_profit_pct">Ganancia de mayoreo (%)</string>
@@ -175,9 +179,9 @@
     <string name="register_new_product_title">Registrar Nuevo Producto</string>
     <string name="modify_product_title">Modificar Producto</string>
     <string name="product_name_label">Nombre del Producto*</string>
-    <string name="barcodes_label">Código(s) de Barra (separados por coma)</string>
+    <string name="barcodes_label">Códigos de barras</string>
     <string name="barcodes_placeholder">e.g. 75010001, 75010002</string>
-    <string name="retail_price_required_label">Precio de Venta *</string>
+    <string name="retail_price_required_label">Venta*</string>
     <string name="cost_label">Costo</string>
     <string name="wholesale">Mayoreo</string>
     <string name="category_label">Categoría</string>

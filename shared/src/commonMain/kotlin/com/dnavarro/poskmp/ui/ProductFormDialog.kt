@@ -23,9 +23,38 @@ import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.parseBarcodes
+import kotlin.math.roundToLong
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
+
+private fun formatNumber(value: Double): String {
+    val rounded = (value * 100.0).roundToLong() / 100.0
+    return if (rounded <= 0.0) ""
+    else if (rounded % 1.0 == 0.0) rounded.toLong().toString()
+    else {
+        val str = rounded.toString()
+        if (str.contains('.')) {
+            val parts = str.split('.')
+            val dec = parts[1].take(2)
+            if (dec.length == 1) "${parts[0]}.${dec}0" else "${parts[0]}.$dec"
+        } else str
+    }
+}
+
+private fun formatMargin(value: Double): String {
+    val rounded = (value * 100.0).roundToLong() / 100.0
+    return if (rounded % 1.0 == 0.0) {
+        rounded.toLong().toString()
+    } else {
+        val str = rounded.toString()
+        if (str.contains('.')) {
+            val parts = str.split('.')
+            val dec = parts[1].take(2).trimEnd('0')
+            if (dec.isEmpty()) parts[0] else "${parts[0]}.$dec"
+        } else str
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +63,9 @@ fun ProductFormDialog(
     onDismiss: () -> Unit,
     onSave: (Products) -> Unit,
     onValidateBarcodes: (suspend (List<String>) -> Pair<String, Products>?)? = null,
-    existingCategories: List<String> = emptyList()
+    existingCategories: List<String> = emptyList(),
+    defaultRetailMarginPercentage: Double = 0.0,
+    defaultWholesaleMarginPercentage: Double = 0.0
 ) {
     val isNew = product == null || product.id.isEmpty()
 
@@ -47,17 +78,57 @@ fun ProductFormDialog(
         mutableStateOf(product?.parseBarcodes() ?: emptyList())
     }
     var barcodeInput by remember { mutableStateOf("") }
-    var formPrecio by remember(product) {
-        val price = product?.precio
-        mutableStateOf(if (price == null || price == 0.0) "" else price.toString())
-    }
     var formCosto by remember(product) {
         val cost = product?.costo
-        mutableStateOf(if (cost == null || cost == 0.0) "" else cost.toString())
+        mutableStateOf(if (cost == null || cost == 0.0) "" else formatNumber(cost))
     }
-    var formPrecioMayoreo by remember(product) {
+    var formMargenVenta by remember(product, defaultRetailMarginPercentage) {
+        val cost = product?.costo
+        val price = product?.precio
+        val initialMargin = if (cost != null && cost > 0.0 && price != null && price > 0.0) {
+            ((price - cost) / cost) * 100.0
+        } else if (defaultRetailMarginPercentage > 0.0) {
+            defaultRetailMarginPercentage
+        } else {
+            null
+        }
+        mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
+    }
+    var formPrecio by remember(product, defaultRetailMarginPercentage) {
+        val price = product?.precio
+        val cost = product?.costo
+        val initialPrice = if (price != null && price > 0.0) {
+            formatNumber(price)
+        } else if (cost != null && cost > 0.0 && defaultRetailMarginPercentage > 0.0) {
+            formatNumber(cost * (1.0 + defaultRetailMarginPercentage / 100.0))
+        } else {
+            ""
+        }
+        mutableStateOf(initialPrice)
+    }
+    var formMargenMayoreo by remember(product, defaultWholesaleMarginPercentage) {
+        val cost = product?.costo
         val wholesale = product?.precio_mayoreo
-        mutableStateOf(if (wholesale == null || wholesale == 0.0) "" else wholesale.toString())
+        val initialMargin = if (cost != null && cost > 0.0 && wholesale != null && wholesale > 0.0) {
+            ((wholesale - cost) / cost) * 100.0
+        } else if (defaultWholesaleMarginPercentage > 0.0) {
+            defaultWholesaleMarginPercentage
+        } else {
+            null
+        }
+        mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
+    }
+    var formPrecioMayoreo by remember(product, defaultWholesaleMarginPercentage) {
+        val wholesale = product?.precio_mayoreo
+        val cost = product?.costo
+        val initialWholesale = if (wholesale != null && wholesale > 0.0) {
+            formatNumber(wholesale)
+        } else if (cost != null && cost > 0.0 && defaultWholesaleMarginPercentage > 0.0) {
+            formatNumber(cost * (1.0 + defaultWholesaleMarginPercentage / 100.0))
+        } else {
+            ""
+        }
+        mutableStateOf(initialWholesale)
     }
     var formPiezas by remember(product) {
         val pieces = product?.piezas
@@ -185,13 +256,13 @@ fun ProductFormDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 OutlinedTextField(
                     value = formNombre,
                     onValueChange = { formNombre = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(Res.string.product_name_label), fontSize = 12.sp) },
+                    label = { Text(stringResource(Res.string.product_name_label))},
                     singleLine = true
                 )
 
@@ -212,8 +283,7 @@ fun ProductFormDialog(
                                     } else false
                                 } else false
                             },
-                        label = { Text(stringResource(Res.string.barcodes_label), fontSize = 12.sp) },
-                        placeholder = { Text(stringResource(Res.string.barcodes_placeholder), fontSize = 12.sp) },
+                        label = { Text(stringResource(Res.string.barcodes_label))},
                         isError = barcodeValidationError != null,
                         trailingIcon = {
                             Row(
@@ -299,44 +369,28 @@ fun ProductFormDialog(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = formPrecio,
-                        onValueChange = { input ->
-                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                formPrecio = input
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.retail_price_required_label), fontSize = 12.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
                         value = formCosto,
                         onValueChange = { input ->
                             if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
                                 formCosto = input
+                                val cost = input.toDoubleOrNull()
+                                if (cost != null && cost > 0) {
+                                    val marginVenta = formMargenVenta.toDoubleOrNull()
+                                    if (marginVenta != null) {
+                                        val newPrice = cost * (1.0 + marginVenta / 100.0)
+                                        formPrecio = formatNumber(newPrice)
+                                    }
+                                    val marginMayoreo = formMargenMayoreo.toDoubleOrNull()
+                                    if (marginMayoreo != null) {
+                                        val newWholesale = cost * (1.0 + marginMayoreo / 100.0)
+                                        formPrecioMayoreo = formatNumber(newWholesale)
+                                    }
+                                }
                             }
                         },
                         modifier = Modifier.weight(1f),
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.cost_label), fontSize = 12.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = formPrecioMayoreo,
-                        onValueChange = { input ->
-                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                formPrecioMayoreo = input
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.wholesale_price), fontSize = 12.sp) },
+                        label = { Text(stringResource(Res.string.cost_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -348,7 +402,89 @@ fun ProductFormDialog(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        label = { Text(stringResource(Res.string.product_pieces_label), fontSize = 12.sp) },
+                        label = { Text(stringResource(Res.string.product_pieces_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = formPrecio,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                formPrecio = input
+                                val price = input.toDoubleOrNull()
+                                val cost = formCosto.toDoubleOrNull()
+                                if (price != null && cost != null && cost > 0) {
+                                    val margin = ((price - cost) / cost) * 100.0
+                                    formMargenVenta = formatMargin(margin)
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                        label = { Text(stringResource(Res.string.retail_price_required_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = formMargenVenta,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                                formMargenVenta = input
+                                val margin = input.toDoubleOrNull()
+                                val cost = formCosto.toDoubleOrNull()
+                                if (margin != null && cost != null && cost > 0) {
+                                    val newPrice = cost * (1.0 + margin / 100.0)
+                                    formPrecio = formatNumber(newPrice)
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                        label = { Text(stringResource(Res.string.retail_margin_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = formPrecioMayoreo,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                formPrecioMayoreo = input
+                                val wholesale = input.toDoubleOrNull()
+                                val cost = formCosto.toDoubleOrNull()
+                                if (wholesale != null && cost != null && cost > 0) {
+                                    val margin = ((wholesale - cost) / cost) * 100.0
+                                    formMargenMayoreo = formatMargin(margin)
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                        label = { Text(stringResource(Res.string.wholesale_price)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = formMargenMayoreo,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                                formMargenMayoreo = input
+                                val margin = input.toDoubleOrNull()
+                                val cost = formCosto.toDoubleOrNull()
+                                if (margin != null && cost != null && cost > 0) {
+                                    val newWholesale = cost * (1.0 + margin / 100.0)
+                                    formPrecioMayoreo = formatNumber(newWholesale)
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                        label = { Text(stringResource(Res.string.wholesale_margin_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -368,7 +504,7 @@ fun ProductFormDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
-                        label = { Text(stringResource(Res.string.category_label), fontSize = 12.sp) },
+                        label = { Text(stringResource(Res.string.category_label)) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
                         },

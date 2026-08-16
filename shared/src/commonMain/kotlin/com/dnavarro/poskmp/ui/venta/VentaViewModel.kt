@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.venta
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,6 +28,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalCoroutinesApi::class)
 class VentaViewModel(
     private val repository: ProductRepository,
+    settingsRepository: SettingsRepository,
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
     private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository),
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
@@ -50,7 +52,9 @@ class VentaViewModel(
         _selectedCategory,
         _cartItems,
         _heldTickets,
-        _canUndo
+        _canUndo,
+        settingsRepository.defaultRetailMarginFlow,
+        settingsRepository.defaultWholesaleMarginFlow
     ) { flows: Array<Any?> ->
         val query = flows[0] as String
         @Suppress("UNCHECKED_CAST")
@@ -61,6 +65,8 @@ class VentaViewModel(
         @Suppress("UNCHECKED_CAST")
         val held = flows[4] as List<HeldTicket>
         val canUndo = flows[5] as Boolean
+        val defaultRetailMargin = flows[6] as Double
+        val defaultWholesaleMargin = flows[7] as Double
 
         VentaUiState(
             searchQuery = query,
@@ -68,7 +74,9 @@ class VentaViewModel(
             selectedCategory = category,
             cartItems = cart,
             heldTickets = held,
-            canUndo = canUndo
+            canUndo = canUndo,
+            defaultRetailMargin = defaultRetailMargin,
+            defaultWholesaleMargin = defaultWholesaleMargin
         )
     }.stateIn(
         scope = viewModelScope,

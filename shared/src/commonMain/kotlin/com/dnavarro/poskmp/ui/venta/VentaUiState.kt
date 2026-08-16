@@ -26,6 +26,8 @@ data class VentaUiState(
     val cartItems: List<CartItem> = emptyList(),
     val heldTickets: List<HeldTicket> = emptyList(),
     val canUndo: Boolean = false,
+    val defaultRetailMargin: Double = 0.0,
+    val defaultWholesaleMargin: Double = 0.0,
     val isLoading: Boolean = false
 ) {
     val total: Double

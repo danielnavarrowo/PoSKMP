@@ -28,6 +28,8 @@ data class ProductosUiState(
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet(),
+    val defaultRetailMargin: Double = 0.0,
+    val defaultWholesaleMargin: Double = 0.0,
     val isLoading: Boolean = false
 ) {
     val availableCategories: List<String>

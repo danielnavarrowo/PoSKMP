@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.productos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.usecase.ApplyBulkModificationUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
@@ -39,6 +40,7 @@ private data class DisplayState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProductosViewModel(
     private val repository: ProductRepository,
+    settingsRepository: SettingsRepository,
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
     private val applyBulkModificationUseCase: ApplyBulkModificationUseCase = ApplyBulkModificationUseCase(repository)
@@ -54,8 +56,10 @@ class ProductosViewModel(
     val uiState: StateFlow<ProductosUiState> = combine(
         _searchQuery,
         _productsFlow,
-        _displayState
-    ) { query, products, display ->
+        _displayState,
+        settingsRepository.defaultRetailMarginFlow,
+        settingsRepository.defaultWholesaleMarginFlow
+    ) { query, products, display, defaultRetailMargin, defaultWholesaleMargin ->
         ProductosUiState(
             searchQuery = query,
             rawProducts = products,
@@ -66,7 +70,9 @@ class ProductosViewModel(
             statusFilter = display.statusFilter,
             showProductDialogFor = display.showProductDialogFor,
             showBulkModificationFor = display.showBulkModificationFor,
-            selectedProductIds = display.selectedProductIds
+            selectedProductIds = display.selectedProductIds,
+            defaultRetailMargin = defaultRetailMargin,
+            defaultWholesaleMargin = defaultWholesaleMargin
         )
     }.stateIn(
         scope = viewModelScope,

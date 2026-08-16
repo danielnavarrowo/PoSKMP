@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -58,6 +60,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -92,6 +95,8 @@ import poskmp.shared.generated.resources.dark_mode_subtitle
 import poskmp.shared.generated.resources.dark_mode_system
 import poskmp.shared.generated.resources.dark_mode_title
 import poskmp.shared.generated.resources.database_section_title
+import poskmp.shared.generated.resources.default_margins_section_subtitle
+import poskmp.shared.generated.resources.default_margins_section_title
 import poskmp.shared.generated.resources.default_screen_subtitle
 import poskmp.shared.generated.resources.default_screen_title
 import poskmp.shared.generated.resources.download
@@ -110,6 +115,7 @@ import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.reset_scale_button
+import poskmp.shared.generated.resources.retail_margin_label
 import poskmp.shared.generated.resources.seed_color_subtitle
 import poskmp.shared.generated.resources.seed_color_title
 import poskmp.shared.generated.resources.settings
@@ -132,6 +138,7 @@ import poskmp.shared.generated.resources.tab_venta
 import poskmp.shared.generated.resources.theme_section_title
 import poskmp.shared.generated.resources.upload
 import poskmp.shared.generated.resources.warning
+import poskmp.shared.generated.resources.wholesale_margin_label
 import kotlin.math.roundToInt
 
 data class PresetColorItem(
@@ -200,7 +207,11 @@ fun AjustesScreen(
         isChecadorDialog = uiState.isChecadorDialog,
         onIsChecadorDialogChange = { viewModel.setIsChecadorDialog(it) },
         showExtraPricesChecador = uiState.showExtraPricesChecador,
-        onShowExtraPricesChecadorChange = { viewModel.setShowExtraPricesChecador(it) }
+        onShowExtraPricesChecadorChange = { viewModel.setShowExtraPricesChecador(it) },
+        defaultRetailMargin = uiState.defaultRetailMargin,
+        onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
+        defaultWholesaleMargin = uiState.defaultWholesaleMargin,
+        onDefaultWholesaleMarginChange = { viewModel.setDefaultWholesaleMargin(it) }
     )
 }
 
@@ -224,6 +235,10 @@ fun AjustesScreen(
     onIsChecadorDialogChange: (Boolean) -> Unit = {},
     showExtraPricesChecador: Boolean = false,
     onShowExtraPricesChecadorChange: (Boolean) -> Unit = {},
+    defaultRetailMargin: Double = 0.0,
+    onDefaultRetailMarginChange: (Double) -> Unit = {},
+    defaultWholesaleMargin: Double = 0.0,
+    onDefaultWholesaleMarginChange: (Double) -> Unit = {},
     repository: ProductRepository = koinInject()
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
@@ -231,6 +246,16 @@ fun AjustesScreen(
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    var retailMarginText by remember(defaultRetailMargin) {
+        mutableStateOf(if (defaultRetailMargin > 0.0) {
+            if (defaultRetailMargin % 1.0 == 0.0) defaultRetailMargin.toLong().toString() else defaultRetailMargin.toString()
+        } else "")
+    }
+    var wholesaleMarginText by remember(defaultWholesaleMargin) {
+        mutableStateOf(if (defaultWholesaleMargin > 0.0) {
+            if (defaultWholesaleMargin % 1.0 == 0.0) defaultWholesaleMargin.toLong().toString() else defaultWholesaleMargin.toString()
+        } else "")
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -982,6 +1007,70 @@ fun AjustesScreen(
                                 text = stringResource(Res.string.sync_now_button),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Card: Márgenes de Ganancia Predeterminados
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = stringResource(Res.string.default_margins_section_title),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(Res.string.default_margins_section_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = retailMarginText,
+                                onValueChange = { input ->
+                                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                        retailMarginText = input
+                                        onDefaultRetailMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                    }
+                                },
+                                label = { Text(stringResource(Res.string.retail_margin_label)) },
+                                suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                placeholder = { Text("0") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            OutlinedTextField(
+                                value = wholesaleMarginText,
+                                onValueChange = { input ->
+                                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                        wholesaleMarginText = input
+                                        onDefaultWholesaleMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                    }
+                                },
+                                label = { Text(stringResource(Res.string.wholesale_margin_label)) },
+                                suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                placeholder = { Text("0") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
