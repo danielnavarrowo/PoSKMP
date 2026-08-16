@@ -98,9 +98,39 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           mkdir -p artifacts/desktop-linux
-          find desktopApp/build/compose/binaries/main-release/ -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" \) -exec cp {} artifacts/desktop-linux/ \; || true
-          if [ -d "desktopApp/build/compose/binaries/main-release/app" ]; then
-            tar -czvf artifacts/desktop-linux/PoSKMP-linux-x64.tar.gz -C desktopApp/build/compose/binaries/main-release/ app/
+          # Copy .deb and .rpm packages
+          find desktopApp/build/compose/binaries/main-release/ -type f \( -name "*.deb" -o -name "*.rpm" \) -exec cp {} artifacts/desktop-linux/ \; || true
+
+          # Build standalone .AppImage using appimagetool
+          APP_DIR_SRC=$(find desktopApp/build/compose/binaries/main-release/app -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          if [ -n "$APP_DIR_SRC" ] && [ -d "$APP_DIR_SRC" ]; then
+            echo "Building AppImage from $APP_DIR_SRC..."
+            mkdir -p AppDir
+            cp -r "$APP_DIR_SRC"/* AppDir/
+
+            # Create AppRun launcher
+            EXE_NAME=$(ls AppDir/bin | head -n 1)
+            printf '#!/bin/sh\nHERE="$(dirname "$(readlink -f "$0")")"\nexec "$HERE/bin/%s" "$@"\n' "$EXE_NAME" > AppDir/AppRun
+            chmod +x AppDir/AppRun
+
+            # Desktop file
+            printf '[Desktop Entry]\nType=Application\nName=PoSKMP\nExec=AppRun\nIcon=poskmp\nCategories=Office;Utility;\n' > AppDir/poskmp.desktop
+
+            # Icon
+            ICON_SRC=$(find AppDir -name "*.png" | head -n 1)
+            if [ -n "$ICON_SRC" ]; then
+              cp "$ICON_SRC" AppDir/poskmp.png
+            else
+              cp androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher.png AppDir/poskmp.png || true
+            fi
+
+            # Download and run appimagetool
+            wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+            chmod +x appimagetool
+            ./appimagetool --appimage-extract
+            export ARCH=x86_64
+            ./squashfs-root/AppRun AppDir artifacts/desktop-linux/PoSKMP-x86_64.AppImage
+            rm -rf AppDir squashfs-root appimagetool
           fi
 
       - name: Package Desktop Artifacts (Windows)
@@ -109,9 +139,6 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifacts/desktop-windows
           Get-ChildItem -Path desktopApp/build/compose/binaries/main-release -Recurse -Include *.msi, *.exe | Copy-Item -Destination artifacts/desktop-windows
-          if (Test-Path "desktopApp/build/compose/binaries/main-release/app") {
-            Compress-Archive -Path "desktopApp/build/compose/binaries/main-release/app\*" -DestinationPath "artifacts/desktop-windows/PoSKMP-windows-x64.zip" -Force
-          }
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
