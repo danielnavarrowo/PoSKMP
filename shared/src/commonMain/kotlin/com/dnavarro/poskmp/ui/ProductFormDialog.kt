@@ -2,6 +2,8 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -151,9 +153,7 @@ fun ProductFormDialog(
             val matches = allCategories.filter { it.contains(trimmed, ignoreCase = true) }
             if (matches.size == 1 && matches.first().equals(trimmed, ignoreCase = true)) {
                 allCategories
-            } else if (matches.isNotEmpty()) {
-                matches
-            } else {
+            } else matches.ifEmpty {
                 emptyList()
             }
         }
@@ -167,6 +167,29 @@ fun ProductFormDialog(
     var isValidatingBarcode by remember { mutableStateOf(false) }
 
     val alreadyExistsErrFmt = stringResource(Res.string.barcode_already_exists_error)
+
+    val costVal = formCosto.toDoubleOrNull()
+    val retailVal = formPrecio.toDoubleOrNull()
+    val wholesaleVal = formPrecioMayoreo.toDoubleOrNull()
+
+    val wholesalePriceError: String? = when {
+        costVal != null && costVal > 0.0 && wholesaleVal != null && wholesaleVal > 0.0 && wholesaleVal < costVal -> {
+            stringResource(Res.string.error_wholesale_less_than_cost)
+        }
+        else -> null
+    }
+
+    val retailPriceError: String? = when {
+        costVal != null && costVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < costVal -> {
+            stringResource(Res.string.error_retail_less_than_cost)
+        }
+        wholesaleVal != null && wholesaleVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < wholesaleVal -> {
+            stringResource(Res.string.error_retail_less_than_wholesale)
+        }
+        else -> null
+    }
+
+    val isPriceValid = retailVal != null && wholesalePriceError == null && retailPriceError == null
 
     fun addBarcodeFromInput() {
         val codesToAdd = parseBarcodes(barcodeInput)
@@ -201,7 +224,8 @@ fun ProductFormDialog(
             isValidatingBarcode = false
             if (conflict != null) {
                 val (matchingCode, conflictingProduct) = conflict
-                barcodeValidationError = alreadyExistsErrFmt.replace("%1\$s", matchingCode).replace("%2\$s", conflictingProduct.nombre)
+                barcodeValidationError = alreadyExistsErrFmt.replace("%1\$s", matchingCode).replace(
+                    "%2\$s", conflictingProduct.nombre)
             } else {
                 barcodeValidationError = null
             }
@@ -239,7 +263,7 @@ fun ProductFormDialog(
             if (keyEvent.type == KeyEventType.KeyDown &&
                 (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
             ) {
-                if (formNombre.trim().isNotEmpty() && formPrecio.toDoubleOrNull() != null && barcodeValidationError == null && !isValidatingBarcode) {
+                if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
                     submitForm()
                     true
                 } else false
@@ -262,7 +286,7 @@ fun ProductFormDialog(
                     value = formNombre,
                     onValueChange = { formNombre = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(Res.string.product_name_label))},
+                    label = { Text(stringResource(Res.string.product_name_label), style = MaterialTheme.typography.labelLarge) },
                     singleLine = true
                 )
 
@@ -283,7 +307,7 @@ fun ProductFormDialog(
                                     } else false
                                 } else false
                             },
-                        label = { Text(stringResource(Res.string.barcodes_label))},
+                        label = { Text(stringResource(Res.string.barcodes_label), style = MaterialTheme.typography.labelLarge) },
                         isError = barcodeValidationError != null,
                         trailingIcon = {
                             Row(
@@ -326,12 +350,11 @@ fun ProductFormDialog(
 
                     if (formBarcodes.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(6.dp))
-                        FlowRow(
+                        LazyRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            formBarcodes.forEach { code ->
+                            items(formBarcodes, key = { it }) { code ->
                                 InputChip(
                                     selected = false,
                                     onClick = { },
@@ -390,7 +413,7 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.cost_label)) },
+                        label = { Text(stringResource(Res.string.cost_label), style = MaterialTheme.typography.labelLarge) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -402,7 +425,7 @@ fun ProductFormDialog(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        label = { Text(stringResource(Res.string.product_pieces_label)) },
+                        label = { Text(stringResource(Res.string.product_pieces_label), style = MaterialTheme.typography.labelLarge) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -424,7 +447,8 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.retail_price_required_label)) },
+                        label = { Text(stringResource(Res.string.retail_price_required_label), style = MaterialTheme.typography.labelLarge) },
+                        isError = retailPriceError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -443,9 +467,20 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.retail_margin_label)) },
+                        label = { Text(stringResource(Res.string.retail_margin_label), style = MaterialTheme.typography.labelLarge) },
+                        isError = retailPriceError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
+                    )
+                }
+
+                if (retailPriceError != null) {
+                    Text(
+                        text = retailPriceError,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                     )
                 }
 
@@ -465,7 +500,8 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.wholesale_price)) },
+                        label = { Text(stringResource(Res.string.wholesale_price), style = MaterialTheme.typography.labelLarge) },
+                        isError = wholesalePriceError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -484,9 +520,20 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                        label = { Text(stringResource(Res.string.wholesale_margin_label)) },
+                        label = { Text(stringResource(Res.string.wholesale_margin_label), style = MaterialTheme.typography.labelLarge) },
+                        isError = wholesalePriceError != null,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
+                    )
+                }
+
+                if (wholesalePriceError != null) {
+                    Text(
+                        text = wholesalePriceError,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                     )
                 }
 
@@ -504,7 +551,7 @@ fun ProductFormDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
-                        label = { Text(stringResource(Res.string.category_label)) },
+                        label = { Text(stringResource(Res.string.category_label), style = MaterialTheme.typography.labelLarge) },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
                         },
@@ -583,14 +630,14 @@ fun ProductFormDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Checkbox(checked = formActivo, onCheckedChange = { formActivo = it })
-                        Text(stringResource(Res.string.active_label), fontSize = 14.sp)
+                        Text(stringResource(Res.string.active_label), style = MaterialTheme.typography.labelLarge)
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
                     ) {
                         Checkbox(checked = formPorPeso, onCheckedChange = { formPorPeso = it })
-                        Text(stringResource(Res.string.sell_by_weight_label), fontSize = 14.sp)
+                        Text(stringResource(Res.string.sell_by_weight_label), style = MaterialTheme.typography.labelLarge)
                     }
                 }
 
@@ -599,13 +646,12 @@ fun ProductFormDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
-                    Text(stringResource(Res.string.mark_as_favorite_label), fontSize = 14.sp)
+                    Text(stringResource(Res.string.mark_as_favorite_label), style = MaterialTheme.typography.labelLarge)
                 }
             }
         },
         confirmButton = {
             val isNameValid = formNombre.trim().isNotEmpty()
-            val isPriceValid = formPrecio.toDoubleOrNull() != null
 
             Button(
                 onClick = { submitForm() },

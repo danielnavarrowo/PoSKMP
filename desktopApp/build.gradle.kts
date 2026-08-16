@@ -26,9 +26,9 @@ compose.desktop {
 
         nativeDistributions {
             modules("java.instrument", "java.sql", "jdk.unsupported")
-            targetFormats(TargetFormat.AppImage)
-            packageName = "com.dnavarro.poskmp"
-            packageVersion = "1.0.0"
+            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
+            packageName = "PoSKMP"
+            packageVersion = "0.0.1"
         }
     }
 }

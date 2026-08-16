@@ -31,7 +31,7 @@
     <!-- AjustesScreen -->
     <string name="settings_title">Ajustes del Sistema</string>
     <string name="system_info_title">Antigravity POS</string>
-    <string name="system_version">Versión 1.0.0 (Offline First)</string>
+    <string name="system_version">Versión 0.0.1 (Offline First)</string>
     <string name="database_section_title">Base de Datos</string>
     <string name="local_db_connected_desc">Local DB connected</string>
     <string name="local_db_title">Base de Datos Local</string>
@@ -68,8 +68,8 @@
     <string name="show_extra_prices_checador_subtitle">Muestra el precio de costo y precio de mayoreo al consultar productos en el checador</string>
     <string name="default_margins_section_title">Márgenes de Ganancia Predeterminados</string>
     <string name="default_margins_section_subtitle">Define los porcentajes de ganancia automáticos para calcular el precio de venta y mayoreo a partir del costo</string>
-    <string name="retail_margin_label">Margen Venta (%)</string>
-    <string name="wholesale_margin_label">Margen Mayoreo (%)</string>
+    <string name="retail_margin_label">% Venta</string>
+    <string name="wholesale_margin_label">% Mayoreo</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>
@@ -189,6 +189,9 @@
     <string name="sell_by_weight_label">Venta p/ Peso</string>
     <string name="mark_as_favorite_label">Marcar como Favorito</string>
     <string name="save_changes_button">Guardar Cambios</string>
+    <string name="error_wholesale_less_than_cost">El precio de mayoreo no puede ser menor que el costo.</string>
+    <string name="error_retail_less_than_wholesale">El precio de venta no puede ser menor que el mayoreo.</string>
+    <string name="error_retail_less_than_cost">El precio de venta no puede ser menor que el costo.</string>
 
     <!-- ProductosScreen -->
     <string name="product_admin_title">Administración de Productos</string>
@@ -254,8 +257,8 @@
     <string name="product_pieces_label">Piezas</string>
     <string name="price_per_piece_fmt">Precio por pieza: $%1$s</string>
     <string name="price_per_piece_short_fmt">P. pieza: $%1$s</string>
-    <string name="barcode_duplicate_in_form_error">El código \'%1$s\' está duplicado en este formulario.</string>
-    <string name="barcode_already_exists_error">El código \'%1$s\' ya pertenece al producto \'%2$s\'.</string>
+    <string name="barcode_duplicate_in_form_error">El código %1$s está duplicado en este formulario.</string>
+    <string name="barcode_already_exists_error">El código %1$s ya pertenece al producto %2$s.</string>
 
     <string name="import_products_title">Importar Productos</string>
     <string name="import_step_format">Paso %1$d de 3</string>
@@ -289,7 +292,7 @@
 
     <!-- VentaScreen -->
     <string name="barcode_not_found_title">Código no encontrado</string>
-    <string name="barcode_not_found_message">El producto con el código de barra \"%1$s\" no está registrado en el catálogo.</string>
+    <string name="barcode_not_found_message">El producto con el código de barra %1$s no está registrado en el catálogo.</string>
     <string name="understood_enter_button">Entendido (Enter)</string>
     <string name="quantity_prompt_title">¿Cuánto de %1$s?</string>
     <string name="price_per_kg_label">Precio: $%1$s / Kg</string>
