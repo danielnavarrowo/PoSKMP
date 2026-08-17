@@ -147,23 +147,16 @@ fun App(
 ) {
     initKoin()
 
-    val koinStart = remember { System.currentTimeMillis() }
     val repository = koinInject<ProductRepository>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
 
-            LaunchedEffect(Unit) {
-                println("[METRICS] Koin + Root dependencies initialized in: ${System.currentTimeMillis() - koinStart}ms")
-            }
+    LaunchedEffect(repository) {
+        withContext(Dispatchers.IO) {
+            repository.insertDummyDataIfEmpty()
+        }
+    }
 
-            LaunchedEffect(repository) {
-                withContext(Dispatchers.IO) {
-                    val dbStart = System.currentTimeMillis()
-                    repository.insertDummyDataIfEmpty()
-                    println("[METRICS] Async DB dummy data check finished in: ${System.currentTimeMillis() - dbStart}ms")
-                }
-            }
-
-            val ajustesUiState by ajustesViewModel.uiState.collectAsStateWithLifecycle()
+    val ajustesUiState by ajustesViewModel.uiState.collectAsStateWithLifecycle()
             val defaultScreen = ajustesUiState.defaultScreen
 
             // 2. Navigation State

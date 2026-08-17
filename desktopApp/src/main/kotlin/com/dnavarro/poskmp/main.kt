@@ -1,6 +1,5 @@
 package com.dnavarro.poskmp
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -24,14 +23,7 @@ fun main() {
         }
     }
 
-    val startTime = System.currentTimeMillis()
-    println("==================================================")
-    println("[METRICS] Process started (T=0ms)")
-    println("==================================================")
-
-    val koinStart = System.currentTimeMillis()
     initKoin()
-    println("[METRICS] Pre-warmed Koin outside Compose in: ${System.currentTimeMillis() - koinStart}ms")
 
     application {
         val windowState = rememberWindowState(
@@ -45,12 +37,6 @@ fun main() {
             state = windowState,
             title = "Antigravity POS"
         ) {
-            LaunchedEffect(Unit) {
-                val firstFrameTime = System.currentTimeMillis() - startTime
-                println("==================================================")
-                println("[METRICS] First frame rendered & interactive: ${firstFrameTime}ms")
-                println("==================================================")
-            }
             App()
         }
     }
