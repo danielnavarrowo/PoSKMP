@@ -23,7 +23,6 @@ compose.desktop {
         mainClass = "com.dnavarro.poskmp.MainKt"
         jvmArgs += listOf(
             "-Dapp.version=$appVersion",
-            "-Dskiko.renderApi=DIRECT3D",
             "-XX:+TieredCompilation"
         )
 
@@ -37,8 +36,7 @@ compose.desktop {
             packageName = "PoSKMP"
             packageVersion = appVersion
             jvmArgs += listOf(
-                "-Dapp.version=$appVersion",
-                "-Dskiko.renderApi=DIRECT3D"
+                "-Dapp.version=$appVersion"
             )
         }
     }
