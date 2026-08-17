@@ -1,7 +1,7 @@
 [versions]
 app-version = "0.0.9"
 app-versionCode = "9"
-agp = "9.3.1"
+agp = "9.4.0-rc01"
 android-compileSdk = "37"
 android-minSdk = "31"
 android-targetSdk = "37"
@@ -42,7 +42,6 @@ compose-material3-adaptive-navigation = { module = "org.jetbrains.compose.materi
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
-compose-icons = { module = "org.jetbrains.compose.material:material-icons-extended", version = "1.7.3" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 sqldelight-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }

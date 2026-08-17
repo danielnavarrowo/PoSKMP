@@ -27,7 +27,7 @@ compose.desktop {
         )
 
         buildTypes.release.proguard {
-            isEnabled.set(false)
+            configurationFiles.from(project.file("proguard-rules.pro"))
         }
 
         nativeDistributions {
