@@ -1,6 +1,6 @@
 [versions]
-app-version = "0.0.8"
-app-versionCode = "8"
+app-version = "0.0.9"
+app-versionCode = "9"
 agp = "9.3.1"
 android-compileSdk = "37"
 android-minSdk = "31"
