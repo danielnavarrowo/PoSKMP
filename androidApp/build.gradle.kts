@@ -36,6 +36,23 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    val releaseKeystoreFile = System.getenv("KEYSTORE_PATH")?.let { file(it) }
+        ?: project.rootProject.file("poskmp-release.jks").takeIf { it.exists() }
+        ?: file("poskmp-release.jks").takeIf { it.exists() }
+
+    signingConfigs {
+        create("release") {
+            if (releaseKeystoreFile != null && releaseKeystoreFile.exists()) {
+                storeFile = releaseKeystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "poskmp_release_2026"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "poskmp-key"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: "poskmp_release_2026"
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -43,7 +60,7 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt")
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     splits {
@@ -51,7 +68,7 @@ android {
             isEnable = true
             reset()
             include("arm64-v8a", "x86_64")
-            isUniversalApk = false
+            isUniversalApk = true
         }
     }
     compileOptions {

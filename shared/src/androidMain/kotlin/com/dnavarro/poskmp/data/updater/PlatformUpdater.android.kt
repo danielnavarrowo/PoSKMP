@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.data.updater
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +12,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import com.dnavarro.poskmp.util.AppConstants
+import androidx.core.net.toUri
 
 actual object PlatformUpdater {
 
@@ -46,6 +48,17 @@ actual object PlatformUpdater {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val context = DatabaseDriverFactory.appContext
             ?: return@withContext Result.failure(IllegalStateException("Android Context not initialized"))
+
+        if (!context.packageManager.canRequestPackageInstalls()) {
+            val settingsIntent = Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                "package:${context.packageName}".toUri()
+            ).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(settingsIntent)
+            return@withContext Result.failure(Exception("Por favor concede el permiso para instalar aplicaciones desconocidas y vuelve a pulsar en Actualizar."))
+        }
 
         try {
             val apkFile = File(context.cacheDir, "update.apk")

@@ -35,7 +35,18 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Decode Android Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > poskmp-release.jks
+
       - name: Build Android Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'poskmp_release_2026' }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'poskmp-key' }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || 'poskmp_release_2026' }}
         run: ./gradlew :androidApp:assembleRelease --stacktrace
 
       - name: Prepare Android Artifacts
