@@ -8,11 +8,22 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.dnavarro.poskmp.di.initKoin
-import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.app_window_title
 
 fun main() {
+    val userHome = System.getProperty("user.home") ?: "."
+    val appDir = java.io.File(userHome, ".poskmp").apply { if (!exists()) mkdirs() }
+    val logFile = java.io.File(appDir, "app.log")
+
+    Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+        val timestamp = java.time.LocalDateTime.now()
+        val errorMsg = "[$timestamp] [CRASH] Uncaught exception on thread ${thread.name}:\n" + throwable.stackTraceToString() + "\n\n"
+        println(errorMsg)
+        try {
+            logFile.appendText(errorMsg)
+        } catch (_: Exception) {
+        }
+    }
+
     val startTime = System.currentTimeMillis()
     println("==================================================")
     println("[METRICS] Process started (T=0ms)")
@@ -32,7 +43,7 @@ fun main() {
         Window(
             onCloseRequest = ::exitApplication,
             state = windowState,
-            title = stringResource(Res.string.app_window_title)
+            title = "Antigravity POS"
         ) {
             LaunchedEffect(Unit) {
                 val firstFrameTime = System.currentTimeMillis() - startTime

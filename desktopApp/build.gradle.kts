@@ -24,8 +24,7 @@ compose.desktop {
         jvmArgs += listOf(
             "-Dapp.version=$appVersion",
             "-Dskiko.renderApi=DIRECT3D",
-            "-XX:+TieredCompilation",
-            "-XX:StartFlightRecording=dumponexit=true,filename=startup.jfr"
+            "-XX:+TieredCompilation"
         )
 
         buildTypes.release.proguard {
