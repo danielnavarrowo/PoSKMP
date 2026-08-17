@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -36,17 +38,36 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    val localProps = Properties().apply {
+        val propsFile = project.rootProject.file("local.properties")
+        if (propsFile.exists()) {
+            FileInputStream(propsFile).use { load(it) }
+        }
+    }
+
     val releaseKeystoreFile = System.getenv("KEYSTORE_PATH")?.let { file(it) }
         ?: project.rootProject.file("poskmp-release.jks").takeIf { it.exists() }
         ?: file("poskmp-release.jks").takeIf { it.exists() }
 
+    val storePassword = System.getenv("KEYSTORE_PASSWORD")
+        ?: localProps.getProperty("KEYSTORE_PASSWORD")
+        ?: project.findProperty("KEYSTORE_PASSWORD") as? String
+
+    val keyAlias = System.getenv("KEY_ALIAS")
+        ?: localProps.getProperty("KEY_ALIAS")
+        ?: project.findProperty("KEY_ALIAS") as? String
+
+    val keyPassword = System.getenv("KEY_PASSWORD")
+        ?: localProps.getProperty("KEY_PASSWORD")
+        ?: project.findProperty("KEY_PASSWORD") as? String
+
     signingConfigs {
         create("release") {
-            if (releaseKeystoreFile != null && releaseKeystoreFile.exists()) {
+            if (releaseKeystoreFile != null && releaseKeystoreFile.exists() && !storePassword.isNullOrBlank()) {
                 storeFile = releaseKeystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "poskmp_release_2026"
-                keyAlias = System.getenv("KEY_ALIAS") ?: "poskmp-key"
-                keyPassword = System.getenv("KEY_PASSWORD") ?: "poskmp_release_2026"
+                this.storePassword = storePassword
+                this.keyAlias = keyAlias ?: "poskmp-key"
+                this.keyPassword = keyPassword ?: storePassword
             } else {
                 initWith(getByName("debug"))
             }
@@ -61,14 +82,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt")
             )
             signingConfig = signingConfigs.getByName("release")
-        }
-    }
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "x86_64")
-            isUniversalApk = true
         }
     }
     compileOptions {
