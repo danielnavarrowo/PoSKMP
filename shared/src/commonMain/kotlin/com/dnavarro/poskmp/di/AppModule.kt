@@ -62,3 +62,11 @@ val viewModelModule = module {
 }
 
 val appModule = listOf(dataModule, domainModule, viewModelModule)
+
+fun initKoin() {
+    if (org.koin.core.context.GlobalContext.getOrNull() == null) {
+        org.koin.core.context.startKoin {
+            modules(appModule)
+        }
+    }
+}

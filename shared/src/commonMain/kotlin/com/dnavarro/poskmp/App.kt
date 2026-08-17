@@ -75,7 +75,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SaleRepository
-import com.dnavarro.poskmp.di.appModule
+import com.dnavarro.poskmp.di.initKoin
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.AjustesScreen
@@ -93,15 +93,15 @@ import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-import org.koin.dsl.koinConfiguration
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.barcode_scanner
@@ -145,17 +145,22 @@ private data class ToolbarItem(
 fun App(
     modifier: Modifier = Modifier
 ) {
-    KoinApplication(
-        configuration = koinConfiguration(declaration = { modules(appModule) }),
-        content = {
-            val repository = koinInject<ProductRepository>()
-            val ventaViewModel = koinViewModel<VentaViewModel>()
-            val productosViewModel = koinViewModel<ProductosViewModel>()
-            val ajustesViewModel = koinViewModel<AjustesViewModel>()
-            val ventasViewModel = koinViewModel<VentasViewModel>()
+    initKoin()
+
+    val koinStart = remember { System.currentTimeMillis() }
+    val repository = koinInject<ProductRepository>()
+    val ajustesViewModel = koinViewModel<AjustesViewModel>()
+
+            LaunchedEffect(Unit) {
+                println("[METRICS] Koin + Root dependencies initialized in: ${System.currentTimeMillis() - koinStart}ms")
+            }
 
             LaunchedEffect(repository) {
-                repository.insertDummyDataIfEmpty()
+                withContext(Dispatchers.IO) {
+                    val dbStart = System.currentTimeMillis()
+                    repository.insertDummyDataIfEmpty()
+                    println("[METRICS] Async DB dummy data check finished in: ${System.currentTimeMillis() - dbStart}ms")
+                }
             }
 
             val ajustesUiState by ajustesViewModel.uiState.collectAsStateWithLifecycle()
@@ -555,17 +560,17 @@ fun App(
                                 ) { targetScreen ->
                                     when (targetScreen) {
                                         Screen.VENTA -> VentaScreen(
-                                            viewModel = ventaViewModel,
+                                            viewModel = koinViewModel<VentaViewModel>(),
                                             isCompact = isCompact
                                         )
 
-                                        Screen.PRODUCTOS -> ProductosScreen(viewModel = productosViewModel)
-                                        Screen.VENTAS -> VentasScreen(viewModel = ventasViewModel)
+                                        Screen.PRODUCTOS -> ProductosScreen(viewModel = koinViewModel<ProductosViewModel>())
+                                        Screen.VENTAS -> VentasScreen(viewModel = koinViewModel<VentasViewModel>())
                                         Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
                                         Screen.CHECADOR -> {
                                             if (isChecadorDialog) {
                                                 VentaScreen(
-                                                    viewModel = ventaViewModel,
+                                                    viewModel = koinViewModel<VentaViewModel>(),
                                                     isCompact = isCompact
                                                 )
                                             } else {
@@ -593,5 +598,3 @@ fun App(
             }
         }
     }
-)
-}

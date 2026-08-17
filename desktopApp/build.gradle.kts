@@ -21,7 +21,12 @@ val appVersion = libs.versions.app.version.get()
 compose.desktop {
     application {
         mainClass = "com.dnavarro.poskmp.MainKt"
-        jvmArgs += listOf("-Dapp.version=$appVersion")
+        jvmArgs += listOf(
+            "-Dapp.version=$appVersion",
+            "-Dskiko.renderApi=DIRECT3D",
+            "-XX:+TieredCompilation",
+            "-XX:StartFlightRecording=dumponexit=true,filename=startup.jfr"
+        )
 
         buildTypes.release.proguard {
             configurationFiles.from(project.file("proguard-rules.pro"))
@@ -32,7 +37,10 @@ compose.desktop {
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
             packageName = "PoSKMP"
             packageVersion = appVersion
-            jvmArgs += listOf("-Dapp.version=$appVersion")
+            jvmArgs += listOf(
+                "-Dapp.version=$appVersion",
+                "-Dskiko.renderApi=DIRECT3D"
+            )
         }
     }
 }

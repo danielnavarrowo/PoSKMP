@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
+import com.dnavarro.poskmp.di.initKoin
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -15,6 +16,8 @@ class MainActivity : ComponentActivity() {
 
         // Initialize local database context for Android
         DatabaseDriverFactory.appContext = applicationContext
+
+        initKoin()
 
         setContent {
             App()

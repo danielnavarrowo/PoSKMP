@@ -1,27 +1,46 @@
 package com.dnavarro.poskmp
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.dnavarro.poskmp.di.initKoin
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.app_window_title
 
-fun main() = application {
-    val windowState = rememberWindowState(
-        width = 1280.dp,
-        height = 800.dp,
-        position = WindowPosition.Aligned(Alignment.Center)
-    )
+fun main() {
+    val startTime = System.currentTimeMillis()
+    println("==================================================")
+    println("[METRICS] Process started (T=0ms)")
+    println("==================================================")
 
-    Window(
-        onCloseRequest = ::exitApplication,
-        state = windowState,
-        title = stringResource(Res.string.app_window_title)
-    ) {
-        App()
+    val koinStart = System.currentTimeMillis()
+    initKoin()
+    println("[METRICS] Pre-warmed Koin outside Compose in: ${System.currentTimeMillis() - koinStart}ms")
+
+    application {
+        val windowState = rememberWindowState(
+            width = 1280.dp,
+            height = 800.dp,
+            position = WindowPosition.Aligned(Alignment.Center)
+        )
+
+        Window(
+            onCloseRequest = ::exitApplication,
+            state = windowState,
+            title = stringResource(Res.string.app_window_title)
+        ) {
+            LaunchedEffect(Unit) {
+                val firstFrameTime = System.currentTimeMillis() - startTime
+                println("==================================================")
+                println("[METRICS] First frame rendered & interactive: ${firstFrameTime}ms")
+                println("==================================================")
+            }
+            App()
+        }
     }
 }
