@@ -23,13 +23,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,10 +38,13 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -65,6 +69,8 @@ import poskmp.shared.generated.resources.accept_button
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.close_button
 import poskmp.shared.generated.resources.custom_range_active_format
+import poskmp.shared.generated.resources.date_range_end_label
+import poskmp.shared.generated.resources.date_range_start_label
 import poskmp.shared.generated.resources.empty_period_sales
 import poskmp.shared.generated.resources.empty_recent_sales_history
 import poskmp.shared.generated.resources.kpi_average_ticket
@@ -402,7 +408,7 @@ fun VentasScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DateRangePickerDialog(
     onDismissRequest: () -> Unit,
@@ -410,38 +416,69 @@ private fun DateRangePickerDialog(
     initialStartDateMillis: Long? = null,
     initialEndDateMillis: Long? = null
 ) {
-    val dateRangePickerState = rememberDateRangePickerState(
-        initialSelectedStartDateMillis = initialStartDateMillis?.let {
-            java.time.Instant.ofEpochMilli(it)
-                .atZone(java.time.ZoneId.systemDefault())
-                .toLocalDate()
-                .atStartOfDay(java.time.ZoneOffset.UTC)
-                .toInstant()
-                .toEpochMilli()
-        },
-        initialSelectedEndDateMillis = initialEndDateMillis?.let {
-            java.time.Instant.ofEpochMilli(it)
-                .atZone(java.time.ZoneId.systemDefault())
-                .toLocalDate()
-                .atStartOfDay(java.time.ZoneOffset.UTC)
-                .toInstant()
-                .toEpochMilli()
+    val todayUtcMillis = remember {
+        java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+    }
+    val currentYear = remember { java.time.LocalDate.now().year }
+
+    val pastOrPresentSelectableDates = remember(todayUtcMillis, currentYear) {
+        object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                return utcTimeMillis <= todayUtcMillis
+            }
+
+            override fun isSelectableYear(year: Int): Boolean {
+                return year <= currentYear
+            }
         }
+    }
+
+    val startDatePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialStartDateMillis?.let {
+            val millis = java.time.Instant.ofEpochMilli(it)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+                .atStartOfDay(java.time.ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+            millis.coerceAtMost(todayUtcMillis)
+        } ?: todayUtcMillis,
+        selectableDates = pastOrPresentSelectableDates,
+        yearRange = 2020..currentYear
     )
+
+    val endDatePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialEndDateMillis?.let {
+            val millis = java.time.Instant.ofEpochMilli(it)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate()
+                .atStartOfDay(java.time.ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+            millis.coerceAtMost(todayUtcMillis)
+        } ?: todayUtcMillis,
+        selectableDates = pastOrPresentSelectableDates,
+        yearRange = 2020..currentYear
+    )
+
+    var activeDateStep by remember { mutableIntStateOf(0) } // 0: Start Date, 1: End Date
 
     DatePickerDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
                 onClick = {
-                    val startUtc = dateRangePickerState.selectedStartDateMillis
-                    val endUtc = dateRangePickerState.selectedEndDateMillis ?: startUtc
+                    val startUtc = startDatePickerState.selectedDateMillis
+                    val endUtc = endDatePickerState.selectedDateMillis ?: startUtc
                     if (startUtc != null && endUtc != null) {
-                        val (startLocal, endLocal) = convertUtcRangeToLocalMillis(startUtc, endUtc)
+                        val (startLocal, endLocal) = convertUtcDatesToLocalMillis(startUtc, endUtc)
                         onDateRangeSelected(startLocal, endLocal)
                     }
                 },
-                enabled = dateRangePickerState.selectedStartDateMillis != null
+                enabled = startDatePickerState.selectedDateMillis != null &&
+                        endDatePickerState.selectedDateMillis != null &&
+                        startDatePickerState.selectedDateMillis!! <= todayUtcMillis &&
+                        endDatePickerState.selectedDateMillis!! <= todayUtcMillis
             ) {
                 Text(stringResource(Res.string.accept_button))
             }
@@ -452,23 +489,104 @@ private fun DateRangePickerDialog(
             }
         }
     ) {
-        DateRangePicker(
-            state = dateRangePickerState,
-            title = {
-                Text(
-                    text = stringResource(Res.string.select_date_range_title),
-                    modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            showModeToggle = false,
-            modifier = Modifier.weight(1f)
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(Res.string.select_date_range_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+            ) {
+                ToggleButton(
+                    checked = activeDateStep == 0,
+                    onCheckedChange = { activeDateStep = 0 },
+                    colors = ToggleButtonDefaults.toggleButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.date_range_start_label),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = startDatePickerState.selectedDateMillis?.let { formatDateDisplayUtc(it) } ?: "--/--/----",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                ToggleButton(
+                    checked = activeDateStep == 1,
+                    onCheckedChange = { activeDateStep = 1 },
+                    colors = ToggleButtonDefaults.toggleButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { role = Role.RadioButton },
+                    shapes = ButtonGroupDefaults.connectedTrailingButtonShapes()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.date_range_end_label),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = endDatePickerState.selectedDateMillis?.let { formatDateDisplayUtc(it) } ?: "--/--/----",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            DatePicker(
+                state = if (activeDateStep == 0) startDatePickerState else endDatePickerState,
+                title = null,
+                headline = null,
+                showModeToggle = true
+            )
+        }
     }
 }
 
-private fun convertUtcRangeToLocalMillis(utcStartMillis: Long, utcEndMillis: Long): Pair<Long, Long> {
+private fun convertUtcDatesToLocalMillis(utcStartMillis: Long, utcEndMillis: Long): Pair<Long, Long> {
     val startLocalDate = java.time.Instant.ofEpochMilli(utcStartMillis)
         .atZone(java.time.ZoneOffset.UTC)
         .toLocalDate()
@@ -476,15 +594,29 @@ private fun convertUtcRangeToLocalMillis(utcStartMillis: Long, utcEndMillis: Lon
         .atZone(java.time.ZoneOffset.UTC)
         .toLocalDate()
 
-    val startMillis = startLocalDate.atStartOfDay(java.time.ZoneId.systemDefault())
+    val (earlierDate, laterDate) = if (startLocalDate.isAfter(endLocalDate)) {
+        Pair(endLocalDate, startLocalDate)
+    } else {
+        Pair(startLocalDate, endLocalDate)
+    }
+
+    val startMillis = earlierDate.atStartOfDay(java.time.ZoneId.systemDefault())
         .toInstant()
         .toEpochMilli()
-    val endMillis = endLocalDate.atTime(23, 59, 59, 999_000_000)
+    val endMillis = laterDate.atTime(23, 59, 59, 999_000_000)
         .atZone(java.time.ZoneId.systemDefault())
         .toInstant()
         .toEpochMilli()
 
     return Pair(startMillis, endMillis)
+}
+
+private fun formatDateDisplayUtc(utcEpochMillis: Long): String {
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    return java.time.Instant.ofEpochMilli(utcEpochMillis)
+        .atZone(java.time.ZoneOffset.UTC)
+        .toLocalDate()
+        .format(formatter)
 }
 
 private fun formatDateDisplay(epochMillis: Long): String {

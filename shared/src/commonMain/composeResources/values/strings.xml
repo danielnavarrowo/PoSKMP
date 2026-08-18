@@ -358,12 +358,14 @@
     <string name="period_this_month">Este Mes</string>
     <string name="period_range">Rango</string>
     <string name="select_date_range_title">Seleccionar Rango de Fechas</string>
+    <string name="date_range_start_label">Fecha de Inicio</string>
+    <string name="date_range_end_label">Fecha de Fin</string>
     <string name="custom_range_active_format">Rango: %1$s - %2$s</string>
     <string name="kpi_total_sales">Ventas Totales</string>
     <string name="kpi_without_discount">Sin desc: $%1$s</string>
     <string name="kpi_gross_total">Total bruto</string>
     <string name="kpi_net_profit">Ganancia Neta</string>
-    <string name="kpi_margin">Margen: %1$s%%</string>
+    <string name="kpi_margin">Margen: %1$s%</string>
     <string name="kpi_issued_tickets">Tickets Emitidos</string>
     <string name="kpi_average_ticket">Prom: $%1$s</string>
     <string name="title_top_sellers">Productos Más Vendidos</string>
