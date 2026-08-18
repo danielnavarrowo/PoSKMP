@@ -16,11 +16,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class SalesPeriodPreset {
-    HOY, AYER, ESTA_SEMANA, ESTE_MES
+    HOY, AYER, ESTA_SEMANA, ESTE_MES, RANGO
 }
 
 data class VentasUiState(
     val selectedPeriod: SalesPeriodPreset = SalesPeriodPreset.HOY,
+    val customStartDate: Long? = null,
+    val customEndDate: Long? = null,
+    val showDateRangePicker: Boolean = false,
     val isLoading: Boolean = false,
     val summary: SalesSummary = SalesSummary(0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0.0),
     val topSellers: List<ProductSalesMetric> = emptyList(),
@@ -42,12 +45,41 @@ class VentasViewModel(
     }
 
     fun selectPeriod(preset: SalesPeriodPreset) {
-        _uiState.update { it.copy(selectedPeriod = preset) }
-        loadDataForPeriod(preset)
+        if (preset == SalesPeriodPreset.RANGO) {
+            _uiState.update { it.copy(showDateRangePicker = true) }
+        } else {
+            _uiState.update { it.copy(selectedPeriod = preset, showDateRangePicker = false) }
+            loadDataForPeriod(preset)
+        }
+    }
+
+    fun setCustomDateRange(startDateMillis: Long, endDateMillis: Long) {
+        _uiState.update {
+            it.copy(
+                selectedPeriod = SalesPeriodPreset.RANGO,
+                customStartDate = startDateMillis,
+                customEndDate = endDateMillis,
+                showDateRangePicker = false
+            )
+        }
+        loadDataForRange(startDateMillis, endDateMillis)
+    }
+
+    fun openDateRangePicker() {
+        _uiState.update { it.copy(showDateRangePicker = true) }
+    }
+
+    fun dismissDateRangePicker() {
+        _uiState.update { it.copy(showDateRangePicker = false) }
     }
 
     fun refresh() {
-        loadDataForPeriod(_uiState.value.selectedPeriod)
+        val currentState = _uiState.value
+        if (currentState.selectedPeriod == SalesPeriodPreset.RANGO && currentState.customStartDate != null && currentState.customEndDate != null) {
+            loadDataForRange(currentState.customStartDate, currentState.customEndDate)
+        } else {
+            loadDataForPeriod(currentState.selectedPeriod)
+        }
     }
 
     fun selectSaleForDetail(sale: Sale?) {
@@ -62,9 +94,13 @@ class VentasViewModel(
     }
 
     private fun loadDataForPeriod(preset: SalesPeriodPreset) {
+        val (startTime, endTime) = getPeriodTimeRange(preset)
+        loadDataForRange(startTime, endTime)
+    }
+
+    private fun loadDataForRange(startTime: Long, endTime: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val (startTime, endTime) = getPeriodTimeRange(preset)
 
             val summary = getSalesSummaryUseCase.getSummary(startTime, endTime)
             val topSellers = getSalesSummaryUseCase.getTopSellers(startTime, endTime, limit = 10)
@@ -93,6 +129,12 @@ class VentasViewModel(
             SalesPeriodPreset.AYER -> Pair(startOfToday - millisInDay, startOfToday - 1)
             SalesPeriodPreset.ESTA_SEMANA -> Pair(startOfToday - (7 * millisInDay), now)
             SalesPeriodPreset.ESTE_MES -> Pair(startOfToday - (30 * millisInDay), now)
+            SalesPeriodPreset.RANGO -> {
+                val start = _uiState.value.customStartDate ?: startOfToday
+                val end = _uiState.value.customEndDate ?: now
+                Pair(start, end)
+            }
         }
     }
 }
+

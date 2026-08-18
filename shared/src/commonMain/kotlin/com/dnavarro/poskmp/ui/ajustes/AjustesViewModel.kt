@@ -10,6 +10,7 @@ import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.data.updater.UpdateRepository
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
+import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,18 +35,28 @@ class AjustesViewModel(
     private val _updateState = MutableStateFlow(UpdateInternalState())
 
     private val _themeFlow = combine(
-        repository.useDynamicColorFlow,
-        repository.seedColorFlow,
-        repository.isAmoledFlow,
-        repository.darkModeConfigFlow,
-        repository.appScaleFlow
-    ) { useDynamicColor, seedColor, isAmoled, darkModeConfig, appScale ->
+        combine(
+            repository.useDynamicColorFlow,
+            repository.seedColorFlow,
+            repository.isAmoledFlow
+        ) { useDynamicColor, seedColor, isAmoled ->
+            Triple(useDynamicColor, seedColor, isAmoled)
+        },
+        combine(
+            repository.darkModeConfigFlow,
+            repository.appScaleFlow,
+            repository.paletteStyleFlow
+        ) { darkModeConfig, appScale, paletteStyle ->
+            Triple(darkModeConfig, appScale, paletteStyle)
+        }
+    ) { (useDynamicColor, seedColor, isAmoled), (darkModeConfig, appScale, paletteStyle) ->
         AjustesUiState(
             useDynamicColor = useDynamicColor,
             seedColor = seedColor,
             isAmoled = isAmoled,
             darkModeConfig = darkModeConfig,
-            appScale = appScale
+            appScale = appScale,
+            paletteStyle = paletteStyle
         )
     }
 
@@ -108,6 +119,12 @@ class AjustesViewModel(
     fun setDarkModeConfig(config: DarkModeConfig) {
         viewModelScope.launch {
             repository.setDarkModeConfig(config)
+        }
+    }
+
+    fun setPaletteStyle(style: PaletteStyle) {
+        viewModelScope.launch {
+            repository.setPaletteStyle(style)
         }
     }
 

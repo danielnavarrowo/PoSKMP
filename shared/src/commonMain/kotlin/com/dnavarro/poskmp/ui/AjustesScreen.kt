@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,8 +33,12 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
@@ -81,6 +87,7 @@ import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.util.AppConstants
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.saveFile
+import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -147,6 +154,8 @@ fun AjustesScreen(
         onIsAmoledChange = { viewModel.setIsAmoled(it) },
         darkModeConfig = uiState.darkModeConfig,
         onDarkModeConfigChange = { viewModel.setDarkModeConfig(it) },
+        paletteStyle = uiState.paletteStyle,
+        onPaletteStyleChange = { viewModel.setPaletteStyle(it) },
         appScale = uiState.appScale,
         onAppScaleChange = { viewModel.setAppScale(it) },
         defaultScreen = uiState.defaultScreen,
@@ -181,6 +190,8 @@ fun AjustesScreen(
     onIsAmoledChange: (Boolean) -> Unit = {},
     darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
     onDarkModeConfigChange: (DarkModeConfig) -> Unit = {},
+    paletteStyle: PaletteStyle = PaletteStyle.Fidelity,
+    onPaletteStyleChange: (PaletteStyle) -> Unit = {},
     appScale: Float = 1.0f,
     onAppScaleChange: (Float) -> Unit = {},
     defaultScreen: Screen = Screen.VENTA,
@@ -206,6 +217,7 @@ fun AjustesScreen(
     var showImportDialog by remember { mutableStateOf(false) }
     var exportSuccessMessage by remember { mutableStateOf<String?>(null) }
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
+    var styleForDescriptionDialog by remember { mutableStateOf<PaletteStyle?>(null) }
     val scope = rememberCoroutineScope()
     var retailMarginText by remember(defaultRetailMargin) {
         mutableStateOf(if (defaultRetailMargin > 0.0) {
@@ -822,6 +834,108 @@ fun AjustesScreen(
                                         }
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    thickness = 1.dp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Palette Style Dropdown
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = stringResource(Res.string.palette_style_title),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(Res.string.palette_style_subtitle),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    var expandedPaletteStyle by remember { mutableStateOf(false) }
+
+                                    ExposedDropdownMenuBox(
+                                        expanded = expandedPaletteStyle,
+                                        onExpandedChange = { expandedPaletteStyle = it },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        OutlinedTextField(
+                                            value = stringResource(paletteStyle.titleRes()),
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            trailingIcon = {
+                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPaletteStyle)
+                                            },
+                                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                            shape = MaterialTheme.shapes.medium,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                        )
+
+                                        ExposedDropdownMenu(
+                                            expanded = expandedPaletteStyle,
+                                            onDismissRequest = { expandedPaletteStyle = false }
+                                        ) {
+                                            PaletteStyle.entries.forEach { style ->
+                                                val isSelected = style == paletteStyle
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = stringResource(style.titleRes()),
+                                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    },
+                                                    leadingIcon = if (isSelected) {
+                                                        {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.check),
+                                                                contentDescription = null,
+                                                                tint = MaterialTheme.colorScheme.primary,
+                                                                modifier = Modifier.size(18.dp)
+                                                            )
+                                                        }
+                                                    } else null,
+                                                    trailingIcon = {
+                                                        IconButton(
+                                                            onClick = { styleForDescriptionDialog = style },
+                                                            modifier = Modifier.size(28.dp)
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.info),
+                                                                contentDescription = stringResource(style.titleRes()),
+                                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                modifier = Modifier.size(18.dp)
+                                                            )
+                                                        }
+                                                    },
+                                                    onClick = {
+                                                        onPaletteStyleChange(style)
+                                                        expandedPaletteStyle = false
+                                                    },
+                                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .pointerInput(style) {
+                                                            detectTapGestures(
+                                                                onTap = {
+                                                                    onPaletteStyleChange(style)
+                                                                    expandedPaletteStyle = false
+                                                                }
+                                                            )
+                                                        }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1416,6 +1530,68 @@ fun AjustesScreen(
                 }
             )
         }
+
+        // Palette Style Description Dialog
+        styleForDescriptionDialog?.let { style ->
+            AlertDialog(
+                onDismissRequest = { styleForDescriptionDialog = null },
+                icon = {
+                    Icon(
+                        painter = painterResource(Res.drawable.info),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(36.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = stringResource(style.titleRes()),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                text = {
+                    Text(
+                        text = stringResource(style.descriptionRes()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = { styleForDescriptionDialog = null },
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(stringResource(Res.string.accept_button))
+                    }
+                }
+            )
+        }
     }
 }
+
+private fun PaletteStyle.titleRes(): org.jetbrains.compose.resources.StringResource = when (this) {
+    PaletteStyle.TonalSpot -> Res.string.palette_style_tonal_spot
+    PaletteStyle.Neutral -> Res.string.palette_style_neutral
+    PaletteStyle.Vibrant -> Res.string.palette_style_vibrant
+    PaletteStyle.Expressive -> Res.string.palette_style_expressive
+    PaletteStyle.Rainbow -> Res.string.palette_style_rainbow
+    PaletteStyle.FruitSalad -> Res.string.palette_style_fruit_salad
+    PaletteStyle.Monochrome -> Res.string.palette_style_monochrome
+    PaletteStyle.Fidelity -> Res.string.palette_style_fidelity
+    PaletteStyle.Content -> Res.string.palette_style_content
+}
+
+private fun PaletteStyle.descriptionRes(): org.jetbrains.compose.resources.StringResource = when (this) {
+    PaletteStyle.TonalSpot -> Res.string.palette_style_tonal_spot_desc
+    PaletteStyle.Neutral -> Res.string.palette_style_neutral_desc
+    PaletteStyle.Vibrant -> Res.string.palette_style_vibrant_desc
+    PaletteStyle.Expressive -> Res.string.palette_style_expressive_desc
+    PaletteStyle.Rainbow -> Res.string.palette_style_rainbow_desc
+    PaletteStyle.FruitSalad -> Res.string.palette_style_fruit_salad_desc
+    PaletteStyle.Monochrome -> Res.string.palette_style_monochrome_desc
+    PaletteStyle.Fidelity -> Res.string.palette_style_fidelity_desc
+    PaletteStyle.Content -> Res.string.palette_style_content_desc
+}
+
 

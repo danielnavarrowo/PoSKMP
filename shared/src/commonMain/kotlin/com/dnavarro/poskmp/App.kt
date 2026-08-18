@@ -244,6 +244,7 @@ fun App(
             val seedColor = ajustesUiState.seedColor
             val isAmoled = ajustesUiState.isAmoled
             val darkModeConfig = ajustesUiState.darkModeConfig
+            val paletteStyle = ajustesUiState.paletteStyle
 
             val appScale = ajustesUiState.appScale
 
@@ -270,6 +271,7 @@ fun App(
                     seedColor = seedColor,
                     useDynamicColor = useDynamicColor,
                     isAmoled = isAmoled,
+                    paletteStyle = paletteStyle,
                     darkTheme = darkTheme
                 ) {
                     BoxWithConstraints(modifier = modifier.fillMaxSize()) {

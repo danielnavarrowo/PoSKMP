@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
+import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -25,6 +26,7 @@ interface SettingsRepository {
     val seedColorFlow: Flow<Color>
     val isAmoledFlow: Flow<Boolean>
     val darkModeConfigFlow: Flow<DarkModeConfig>
+    val paletteStyleFlow: Flow<PaletteStyle>
     val appScaleFlow: Flow<Float>
     val defaultScreenFlow: Flow<Screen>
     val isChecadorDialogFlow: Flow<Boolean>
@@ -36,6 +38,7 @@ interface SettingsRepository {
     suspend fun setSeedColor(color: Color)
     suspend fun setIsAmoled(isAmoled: Boolean)
     suspend fun setDarkModeConfig(config: DarkModeConfig)
+    suspend fun setPaletteStyle(style: PaletteStyle)
     suspend fun setAppScale(scale: Float)
     suspend fun setDefaultScreen(screen: Screen)
     suspend fun setIsChecadorDialog(isDialog: Boolean)
@@ -56,6 +59,7 @@ class SettingsRepositoryImpl(
         val SEED_COLOR = intPreferencesKey("seed_color_argb")
         val IS_AMOLED = booleanPreferencesKey("is_amoled")
         val DARK_MODE_CONFIG = stringPreferencesKey("dark_mode_config")
+        val PALETTE_STYLE = stringPreferencesKey("palette_style")
         val APP_SCALE = floatPreferencesKey("app_scale")
         val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
         val IS_CHECADOR_DIALOG = booleanPreferencesKey("is_checador_dialog")
@@ -83,6 +87,15 @@ class SettingsRepositoryImpl(
             DarkModeConfig.valueOf(configName)
         } catch (_: Exception) {
             DarkModeConfig.SYSTEM
+        }
+    }
+
+    override val paletteStyleFlow: Flow<PaletteStyle> = dataStore.data.map { preferences ->
+        val styleName = preferences[PreferenceKeys.PALETTE_STYLE] ?: PaletteStyle.Fidelity.name
+        try {
+            PaletteStyle.valueOf(styleName)
+        } catch (_: Exception) {
+            PaletteStyle.Fidelity
         }
     }
 
@@ -137,6 +150,12 @@ class SettingsRepositoryImpl(
     override suspend fun setDarkModeConfig(config: DarkModeConfig) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.DARK_MODE_CONFIG] = config.name
+        }
+    }
+
+    override suspend fun setPaletteStyle(style: PaletteStyle) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.PALETTE_STYLE] = style.name
         }
     }
 

@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.DynamicMaterialExpressiveTheme
+import com.materialkolor.PaletteStyle
 
 @Composable
 expect fun SystemDynamicTheme(
@@ -20,6 +21,7 @@ fun AppTheme(
     seedColor: Color = Color(0xFF0061A4),
     useDynamicColor: Boolean = isAndroid(),
     isAmoled: Boolean = false,
+    paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
@@ -36,7 +38,8 @@ fun AppTheme(
             isAmoled = isAmoled,
             isDark = darkTheme,
             animate = true,
-            content = content,
+            style = paletteStyle,
+            content = content
         )
     }
 }

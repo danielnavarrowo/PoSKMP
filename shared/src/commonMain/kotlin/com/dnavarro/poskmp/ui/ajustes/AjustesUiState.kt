@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
+import com.materialkolor.PaletteStyle
 
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
@@ -18,6 +19,7 @@ data class AjustesUiState(
     val seedColor: Color = Color(0xFF0061A4),
     val isAmoled: Boolean = false,
     val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
+    val paletteStyle: PaletteStyle = PaletteStyle.Fidelity,
     val appScale: Float = 1.0f,
     val defaultScreen: Screen = Screen.VENTA,
     val isChecadorDialog: Boolean = true,
