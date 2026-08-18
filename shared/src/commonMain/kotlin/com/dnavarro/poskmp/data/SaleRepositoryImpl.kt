@@ -4,6 +4,7 @@ import com.dnavarro.poskmp.data.source.local.SaleLocalDataSource
 import com.dnavarro.poskmp.db.Sale_items
 import com.dnavarro.poskmp.db.Sales
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
+import com.dnavarro.poskmp.domain.model.DailySalesMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
@@ -122,6 +123,12 @@ class SaleRepositoryImpl(
         endTime: Long
     ): List<CategorySalesMetric> =
         localDataSource.getCategorySalesBetween(startTime, endTime)
+
+    override suspend fun getDailySalesBetween(
+        startTime: Long,
+        endTime: Long
+    ): List<DailySalesMetric> =
+        localDataSource.getDailySalesBetween(startTime, endTime)
 
     override suspend fun getSaleById(id: String): Sale? {
         val row = localDataSource.getSaleById(id) ?: return null

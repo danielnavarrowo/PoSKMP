@@ -385,6 +385,9 @@
     <string name="ticket_folio_simple">Folio #%1$d</string>
     <string name="ticket_items_and_method">%1$s artículos • %2$s</string>
     <string name="ticket_profit_label">Ganancia: +$%1$s</string>
+    <string name="title_daily_sales">Ventas por Día</string>
+    <string name="empty_daily_sales">No hay ventas registradas en los días de este período.</string>
+    <string name="daily_sales_avg_format">Promedio diario: $%1$s</string>
     <string name="ticket_detail_title">Detalle de Ticket #%1$d</string>
     <string name="ticket_detail_total">Total: $%1$s</string>
     <string name="ticket_detail_profit">Ganancia: +$%1$s</string>

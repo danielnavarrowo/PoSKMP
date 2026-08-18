@@ -6,6 +6,7 @@ import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.Sales
 import com.dnavarro.poskmp.db.Sale_items
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
+import com.dnavarro.poskmp.domain.model.DailySalesMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.SalesSummary
@@ -23,6 +24,7 @@ interface SaleLocalDataSource {
     suspend fun getSalesBetween(startTime: Long, endTime: Long, limit: Long, offset: Long): List<Sales>
     suspend fun getPaymentMethodSalesBetween(startTime: Long, endTime: Long): List<PaymentMethodMetric>
     suspend fun getCategorySalesBetween(startTime: Long, endTime: Long): List<CategorySalesMetric>
+    suspend fun getDailySalesBetween(startTime: Long, endTime: Long): List<DailySalesMetric>
     suspend fun getSaleById(id: String): Sales?
     suspend fun getItemsBySaleId(saleId: String): List<Sale_items>
     suspend fun getTotalSalesCount(): Long
@@ -154,6 +156,21 @@ class SqlDelightSaleDataSource(
                 categoria = row.categoria,
                 totalRecaudado = row.total_recaudado,
                 totalUnidades = row.total_unidades
+            )
+        }
+    }
+
+    override suspend fun getDailySalesBetween(
+        startTime: Long,
+        endTime: Long
+    ): List<DailySalesMetric> = withContext(Dispatchers.IO) {
+        queries.selectDailySalesBetween(startTime, endTime).executeAsList().map { row ->
+            DailySalesMetric(
+                fecha = row.dia,
+                diaLabel = row.dia,
+                totalVentas = row.total_recaudado,
+                totalGanancia = row.total_ganancia,
+                transaccionesCount = row.total_transacciones
             )
         }
     }

@@ -1,12 +1,13 @@
 [versions]
-app-version = "0.0.10"
-app-versionCode = "10"
+app-version = "0.0.11"
+app-versionCode = "11"
 agp = "9.4.0-rc01"
 android-compileSdk = "37"
 android-minSdk = "31"
 android-targetSdk = "37"
 androidx-activity = "1.13.0"
 androidx-lifecycle = "2.11.0"
+composeCharts = "1.0.0"
 composeMultiplatform = "1.11.1"
 jlayer = "1.0.1"
 kotlin = "2.4.10"
@@ -24,6 +25,7 @@ koin = "4.2.2"
 
 
 [libraries]
+compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref = "composeCharts" }
 jlayer = { module = "javazoom:jlayer", version.ref = "jlayer" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }

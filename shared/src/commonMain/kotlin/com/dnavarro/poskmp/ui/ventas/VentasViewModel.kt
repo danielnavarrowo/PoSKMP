@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SaleRepository
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
+import com.dnavarro.poskmp.domain.model.DailySalesMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
@@ -32,6 +33,7 @@ data class VentasUiState(
     val leastSellers: List<ProductSalesMetric> = emptyList(),
     val paymentMethodMetrics: List<PaymentMethodMetric> = emptyList(),
     val categorySalesMetrics: List<CategorySalesMetric> = emptyList(),
+    val dailySalesMetrics: List<DailySalesMetric> = emptyList(),
     val recentSales: List<Sale> = emptyList(),
     val selectedSaleDetails: Pair<Sale, List<SaleItem>>? = null
 )
@@ -111,6 +113,7 @@ class VentasViewModel(
             val leastSellers = getSalesSummaryUseCase.getLeastSellers(startTime, endTime, limit = 10)
             val paymentMethodMetrics = getSalesSummaryUseCase.getPaymentMethodMetrics(startTime, endTime, summary.totalVentas)
             val categorySalesMetrics = getSalesSummaryUseCase.getCategorySalesMetrics(startTime, endTime, summary.totalVentas)
+            val dailySalesMetrics = getSalesSummaryUseCase.getDailySalesMetrics(startTime, endTime)
             val recentSales = saleRepository.getSalesBetween(startTime, endTime, limit = 50, offset = 0)
 
             _uiState.update {
@@ -121,6 +124,7 @@ class VentasViewModel(
                     leastSellers = leastSellers,
                     paymentMethodMetrics = paymentMethodMetrics,
                     categorySalesMetrics = categorySalesMetrics,
+                    dailySalesMetrics = dailySalesMetrics,
                     recentSales = recentSales
                 )
             }

@@ -199,6 +199,17 @@ WHERE si.created_at >= :startTime AND si.created_at <= :endTime
 GROUP BY COALESCE(p.categoria, 'Sin categoría')
 ORDER BY total_recaudado DESC;
 
+selectDailySalesBetween:
+SELECT 
+    strftime('%Y-%m-%d', created_at / 1000, 'unixepoch', 'localtime') AS dia,
+    COALESCE(SUM(total), 0.0) AS total_recaudado,
+    COALESCE(SUM(ganancia), 0.0) AS total_ganancia,
+    COUNT(id) AS total_transacciones
+FROM sales
+WHERE created_at >= :startTime AND created_at <= :endTime
+GROUP BY dia
+ORDER BY dia ASC;
+
 selectSaleById:
 SELECT * FROM sales WHERE id = ?;
 
@@ -207,5 +218,6 @@ SELECT * FROM sale_items WHERE sale_id = ?;
 
 selectAllSalesCount:
 SELECT COUNT(id) FROM sales;
+
 
 
