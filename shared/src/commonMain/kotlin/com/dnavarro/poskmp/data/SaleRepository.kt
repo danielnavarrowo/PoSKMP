@@ -1,5 +1,7 @@
 package com.dnavarro.poskmp.data
 
+import com.dnavarro.poskmp.domain.model.CategorySalesMetric
+import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
@@ -13,8 +15,12 @@ interface SaleRepository {
     suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long = 10): List<ProductSalesMetric>
     suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long = 10): List<ProductSalesMetric>
     suspend fun getRecentSales(limit: Long = 20, offset: Long = 0): List<Sale>
+    suspend fun getSalesBetween(startTime: Long, endTime: Long, limit: Long = 50, offset: Long = 0): List<Sale>
+    suspend fun getPaymentMethodSalesBetween(startTime: Long, endTime: Long): List<PaymentMethodMetric>
+    suspend fun getCategorySalesBetween(startTime: Long, endTime: Long): List<CategorySalesMetric>
     suspend fun getSaleById(id: String): Sale?
     suspend fun getItemsBySaleId(saleId: String): List<SaleItem>
     suspend fun getTotalSalesCount(): Long
     fun getLastSale(): Flow<Sale?>
 }
+

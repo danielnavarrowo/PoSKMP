@@ -172,6 +172,33 @@ SELECT * FROM sales
 ORDER BY created_at DESC 
 LIMIT :limit OFFSET :offset;
 
+selectSalesBetween:
+SELECT * FROM sales 
+WHERE created_at >= :startTime AND created_at <= :endTime
+ORDER BY created_at DESC 
+LIMIT :limit OFFSET :offset;
+
+selectPaymentMethodSalesBetween:
+SELECT 
+    metodo_pago,
+    COALESCE(SUM(total), 0.0) AS total_recaudado,
+    COUNT(id) AS total_transacciones
+FROM sales
+WHERE created_at >= :startTime AND created_at <= :endTime
+GROUP BY metodo_pago
+ORDER BY total_recaudado DESC;
+
+selectCategorySalesBetween:
+SELECT 
+    COALESCE(p.categoria, 'Sin categoría') AS categoria,
+    COALESCE(SUM(si.subtotal), 0.0) AS total_recaudado,
+    COALESCE(SUM(si.cantidad), 0.0) AS total_unidades
+FROM sale_items si
+LEFT JOIN products p ON si.product_id = p.id
+WHERE si.created_at >= :startTime AND si.created_at <= :endTime
+GROUP BY COALESCE(p.categoria, 'Sin categoría')
+ORDER BY total_recaudado DESC;
+
 selectSaleById:
 SELECT * FROM sales WHERE id = ?;
 
@@ -180,4 +207,5 @@ SELECT * FROM sale_items WHERE sale_id = ?;
 
 selectAllSalesCount:
 SELECT COUNT(id) FROM sales;
+
 

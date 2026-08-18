@@ -3,6 +3,8 @@ package com.dnavarro.poskmp.data
 import com.dnavarro.poskmp.data.source.local.SaleLocalDataSource
 import com.dnavarro.poskmp.db.Sale_items
 import com.dnavarro.poskmp.db.Sales
+import com.dnavarro.poskmp.domain.model.CategorySalesMetric
+import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
@@ -84,6 +86,42 @@ class SaleRepositoryImpl(
             )
         }
     }
+
+    override suspend fun getSalesBetween(
+        startTime: Long,
+        endTime: Long,
+        limit: Long,
+        offset: Long
+    ): List<Sale> {
+        return localDataSource.getSalesBetween(startTime, endTime, limit, offset).map { row ->
+            Sale(
+                id = row.id,
+                folio = row.folio,
+                total = row.total,
+                totalOriginal = row.total_original,
+                totalCosto = row.total_costo,
+                ganancia = row.ganancia,
+                pagoCon = row.pago_con,
+                cambio = row.cambio,
+                metodoPago = row.metodo_pago,
+                totalItems = row.total_items,
+                createdAt = row.created_at,
+                syncState = row.sync_state
+            )
+        }
+    }
+
+    override suspend fun getPaymentMethodSalesBetween(
+        startTime: Long,
+        endTime: Long
+    ): List<PaymentMethodMetric> =
+        localDataSource.getPaymentMethodSalesBetween(startTime, endTime)
+
+    override suspend fun getCategorySalesBetween(
+        startTime: Long,
+        endTime: Long
+    ): List<CategorySalesMetric> =
+        localDataSource.getCategorySalesBetween(startTime, endTime)
 
     override suspend fun getSaleById(id: String): Sale? {
         val row = localDataSource.getSaleById(id) ?: return null

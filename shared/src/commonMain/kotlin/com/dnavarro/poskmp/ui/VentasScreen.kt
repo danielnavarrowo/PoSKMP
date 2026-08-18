@@ -28,6 +28,8 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
@@ -56,6 +58,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dnavarro.poskmp.domain.model.CategorySalesMetric
+import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
@@ -63,14 +67,21 @@ import com.dnavarro.poskmp.ui.ventas.SalesPeriodPreset
 import com.dnavarro.poskmp.ui.ventas.VentasUiState
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.formatPrice
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.accept_button
 import poskmp.shared.generated.resources.cancel
+import poskmp.shared.generated.resources.card
+import poskmp.shared.generated.resources.category_stat_format
 import poskmp.shared.generated.resources.close_button
 import poskmp.shared.generated.resources.custom_range_active_format
 import poskmp.shared.generated.resources.date_range_end_label
 import poskmp.shared.generated.resources.date_range_start_label
+import poskmp.shared.generated.resources.empty_category_sales
+import poskmp.shared.generated.resources.empty_payment_methods
 import poskmp.shared.generated.resources.empty_period_sales
 import poskmp.shared.generated.resources.empty_recent_sales_history
 import poskmp.shared.generated.resources.kpi_average_ticket
@@ -80,6 +91,16 @@ import poskmp.shared.generated.resources.kpi_margin
 import poskmp.shared.generated.resources.kpi_net_profit
 import poskmp.shared.generated.resources.kpi_total_sales
 import poskmp.shared.generated.resources.kpi_without_discount
+import poskmp.shared.generated.resources.money
+import poskmp.shared.generated.resources.money_transfer
+import poskmp.shared.generated.resources.payment_method_credito
+import poskmp.shared.generated.resources.payment_method_efectivo
+import poskmp.shared.generated.resources.payment_method_label
+import poskmp.shared.generated.resources.payment_method_mixto
+import poskmp.shared.generated.resources.payment_method_stat_format
+import poskmp.shared.generated.resources.payment_method_tarjeta
+import poskmp.shared.generated.resources.payment_method_transferencia
+import poskmp.shared.generated.resources.payments
 import poskmp.shared.generated.resources.period_range
 import poskmp.shared.generated.resources.period_this_month
 import poskmp.shared.generated.resources.period_this_week
@@ -92,9 +113,12 @@ import poskmp.shared.generated.resources.ticket_detail_total
 import poskmp.shared.generated.resources.ticket_folio_format
 import poskmp.shared.generated.resources.ticket_items_and_method
 import poskmp.shared.generated.resources.ticket_profit_label
+import poskmp.shared.generated.resources.title_category_sales
 import poskmp.shared.generated.resources.title_least_sellers
+import poskmp.shared.generated.resources.title_payment_methods
 import poskmp.shared.generated.resources.title_recent_sales_history
 import poskmp.shared.generated.resources.title_top_sellers
+import poskmp.shared.generated.resources.uncategorized_label
 import poskmp.shared.generated.resources.units_sold_count
 import poskmp.shared.generated.resources.ventas_title
 
@@ -305,6 +329,39 @@ fun VentasScreen(
                                 title = stringResource(Res.string.kpi_issued_tickets),
                                 value = "${state.summary.totalTicketCount}",
                                 subtitle = stringResource(Res.string.kpi_average_ticket, state.summary.promedioTicket.toString().formatPrice()),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                // Payment Methods & Category Sales
+                item {
+                    if (isCompact) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            PaymentMethodsCard(
+                                metrics = state.paymentMethodMetrics,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            CategorySalesCard(
+                                metrics = state.categorySalesMetrics,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            PaymentMethodsCard(
+                                metrics = state.paymentMethodMetrics,
+                                modifier = Modifier.weight(1f)
+                            )
+                            CategorySalesCard(
+                                metrics = state.categorySalesMetrics,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -921,5 +978,218 @@ private fun SaleDetailDialog(
         }
     )
 }
+
+@Composable
+private fun PaymentMethodsCard(
+    metrics: List<PaymentMethodMetric>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                stringResource(Res.string.title_payment_methods),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (metrics.isEmpty()) {
+                Text(
+                    stringResource(Res.string.empty_payment_methods),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                metrics.forEachIndexed { index, metric ->
+                    PaymentMethodMetricRow(metric)
+                    if (index < metrics.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun PaymentMethodMetricRow(metric: PaymentMethodMetric) {
+    val methodDisplayName = getPaymentMethodDisplayName(metric.metodoPago)
+    val methodIcon = getPaymentMethodIcon(metric.metodoPago)
+    val progress = (metric.porcentaje / 100.0).toFloat().coerceIn(0f, 1f)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(methodIcon),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Column {
+                    Text(
+                        text = stringResource(methodDisplayName),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = stringResource(
+                            Res.string.payment_method_stat_format,
+                            metric.transaccionesCount,
+                            metric.porcentaje.toString().formatPrice()
+                        ),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Text(
+                text = "$${metric.totalRecaudado.toString().formatPrice()}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        LinearWavyProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        )
+    }
+}
+
+@Composable
+private fun CategorySalesCard(
+    metrics: List<CategorySalesMetric>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                stringResource(Res.string.title_category_sales),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (metrics.isEmpty()) {
+                Text(
+                    stringResource(Res.string.empty_category_sales),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                metrics.forEachIndexed { index, metric ->
+                    CategorySalesMetricRow(metric)
+                    if (index < metrics.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CategorySalesMetricRow(metric: CategorySalesMetric) {
+    val progress = (metric.porcentaje / 100.0).toFloat().coerceIn(0f, 1f)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = metric.categoria.ifBlank { stringResource(Res.string.uncategorized_label) },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(
+                        Res.string.category_stat_format,
+                        metric.totalUnidades.toString().formatPrice(),
+                        metric.porcentaje.toString().formatPrice()
+                    ),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = "$${metric.totalRecaudado.toString().formatPrice()}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        LinearWavyProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp),
+            color = MaterialTheme.colorScheme.secondary,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    }
+}
+
+private fun getPaymentMethodDisplayName(methodName: String): StringResource {
+    return when (methodName.uppercase()) {
+        "EFECTIVO" -> Res.string.payment_method_efectivo
+        "TARJETA" -> Res.string.payment_method_tarjeta
+        "TRANSFERENCIA" -> Res.string.payment_method_transferencia
+        "MIXTO" -> Res.string.payment_method_mixto
+        "CREDITO" -> Res.string.payment_method_credito
+        else -> Res.string.payment_method_label
+    }
+}
+
+private fun getPaymentMethodIcon(methodName: String): DrawableResource {
+    return when (methodName.uppercase()) {
+        "EFECTIVO" -> Res.drawable.money
+        "TARJETA" -> Res.drawable.card
+        "TRANSFERENCIA" -> Res.drawable.money_transfer
+        "MIXTO" -> Res.drawable.payments
+        "CREDITO" -> Res.drawable.card
+        else -> Res.drawable.payments
+    }
+}
+
 
 

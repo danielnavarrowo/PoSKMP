@@ -3,6 +3,8 @@ package com.dnavarro.poskmp.ui.ventas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.domain.model.CategorySalesMetric
+import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
@@ -28,6 +30,8 @@ data class VentasUiState(
     val summary: SalesSummary = SalesSummary(0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0.0),
     val topSellers: List<ProductSalesMetric> = emptyList(),
     val leastSellers: List<ProductSalesMetric> = emptyList(),
+    val paymentMethodMetrics: List<PaymentMethodMetric> = emptyList(),
+    val categorySalesMetrics: List<CategorySalesMetric> = emptyList(),
     val recentSales: List<Sale> = emptyList(),
     val selectedSaleDetails: Pair<Sale, List<SaleItem>>? = null
 )
@@ -105,7 +109,9 @@ class VentasViewModel(
             val summary = getSalesSummaryUseCase.getSummary(startTime, endTime)
             val topSellers = getSalesSummaryUseCase.getTopSellers(startTime, endTime, limit = 10)
             val leastSellers = getSalesSummaryUseCase.getLeastSellers(startTime, endTime, limit = 10)
-            val recentSales = saleRepository.getRecentSales(limit = 30, offset = 0)
+            val paymentMethodMetrics = getSalesSummaryUseCase.getPaymentMethodMetrics(startTime, endTime, summary.totalVentas)
+            val categorySalesMetrics = getSalesSummaryUseCase.getCategorySalesMetrics(startTime, endTime, summary.totalVentas)
+            val recentSales = saleRepository.getSalesBetween(startTime, endTime, limit = 50, offset = 0)
 
             _uiState.update {
                 it.copy(
@@ -113,6 +119,8 @@ class VentasViewModel(
                     summary = summary,
                     topSellers = topSellers,
                     leastSellers = leastSellers,
+                    paymentMethodMetrics = paymentMethodMetrics,
+                    categorySalesMetrics = categorySalesMetrics,
                     recentSales = recentSales
                 )
             }
@@ -120,18 +128,32 @@ class VentasViewModel(
     }
 
     private fun getPeriodTimeRange(preset: SalesPeriodPreset): Pair<Long, Long> {
-        val now = currentTimeMillis()
-        val millisInDay = 86_400_000L
-        val startOfToday = (now / millisInDay) * millisInDay
+        val zoneId = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zoneId)
+        val nowMillis = currentTimeMillis()
+
+        val startOfToday = today.atStartOfDay(zoneId).toInstant().toEpochMilli()
+        val endOfToday = today.atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
 
         return when (preset) {
-            SalesPeriodPreset.HOY -> Pair(startOfToday, now)
-            SalesPeriodPreset.AYER -> Pair(startOfToday - millisInDay, startOfToday - 1)
-            SalesPeriodPreset.ESTA_SEMANA -> Pair(startOfToday - (7 * millisInDay), now)
-            SalesPeriodPreset.ESTE_MES -> Pair(startOfToday - (30 * millisInDay), now)
+            SalesPeriodPreset.HOY -> Pair(startOfToday, nowMillis)
+            SalesPeriodPreset.AYER -> {
+                val yesterday = today.minusDays(1)
+                val startOfYesterday = yesterday.atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val endOfYesterday = yesterday.atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
+                Pair(startOfYesterday, endOfYesterday)
+            }
+            SalesPeriodPreset.ESTA_SEMANA -> {
+                val startOfWeek = today.with(java.time.DayOfWeek.MONDAY).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                Pair(startOfWeek, nowMillis)
+            }
+            SalesPeriodPreset.ESTE_MES -> {
+                val startOfMonth = today.withDayOfMonth(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                Pair(startOfMonth, nowMillis)
+            }
             SalesPeriodPreset.RANGO -> {
                 val start = _uiState.value.customStartDate ?: startOfToday
-                val end = _uiState.value.customEndDate ?: now
+                val end = _uiState.value.customEndDate ?: endOfToday
                 Pair(start, end)
             }
         }

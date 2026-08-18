@@ -23,8 +23,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
@@ -32,7 +32,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -42,7 +42,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -70,9 +70,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
-import com.dnavarro.poskmp.data.updater.ReleaseAsset
-import com.dnavarro.poskmp.data.updater.UpdateCheckResult
-import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -82,6 +79,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.updater.ReleaseAsset
+import com.dnavarro.poskmp.data.updater.UpdateCheckResult
+import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.util.AppConstants
@@ -92,7 +92,105 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.accept_button
+import poskmp.shared.generated.resources.add
+import poskmp.shared.generated.resources.amoled_mode_subtitle
+import poskmp.shared.generated.resources.amoled_mode_title
+import poskmp.shared.generated.resources.app_scale_subtitle
+import poskmp.shared.generated.resources.app_scale_title
+import poskmp.shared.generated.resources.app_up_to_date
+import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.cancel
+import poskmp.shared.generated.resources.checador_layout_dialog
+import poskmp.shared.generated.resources.checador_layout_fullscreen
+import poskmp.shared.generated.resources.checador_layout_subtitle
+import poskmp.shared.generated.resources.checador_layout_title
+import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.check_updates_button
+import poskmp.shared.generated.resources.checking_updates
+import poskmp.shared.generated.resources.cloud_sync_section_title
+import poskmp.shared.generated.resources.dark_mode
+import poskmp.shared.generated.resources.dark_mode_off
+import poskmp.shared.generated.resources.dark_mode_on
+import poskmp.shared.generated.resources.dark_mode_subtitle
+import poskmp.shared.generated.resources.dark_mode_system
+import poskmp.shared.generated.resources.dark_mode_title
+import poskmp.shared.generated.resources.database_section_title
+import poskmp.shared.generated.resources.default_margins_section_subtitle
+import poskmp.shared.generated.resources.default_margins_section_title
+import poskmp.shared.generated.resources.default_screen_subtitle
+import poskmp.shared.generated.resources.default_screen_title
+import poskmp.shared.generated.resources.download
+import poskmp.shared.generated.resources.download_and_install_button
+import poskmp.shared.generated.resources.downloading_update
+import poskmp.shared.generated.resources.dynamic_color_subtitle
+import poskmp.shared.generated.resources.dynamic_color_title
+import poskmp.shared.generated.resources.export_button
+import poskmp.shared.generated.resources.export_success_message
+import poskmp.shared.generated.resources.fullscreen
+import poskmp.shared.generated.resources.import_button
+import poskmp.shared.generated.resources.info
+import poskmp.shared.generated.resources.installing_update
+import poskmp.shared.generated.resources.light_mode
+import poskmp.shared.generated.resources.local_db_connected_desc
+import poskmp.shared.generated.resources.local_db_status_connected
+import poskmp.shared.generated.resources.local_db_title
+import poskmp.shared.generated.resources.no_compatible_asset
+import poskmp.shared.generated.resources.palette_style_content
+import poskmp.shared.generated.resources.palette_style_content_desc
+import poskmp.shared.generated.resources.palette_style_expressive
+import poskmp.shared.generated.resources.palette_style_expressive_desc
+import poskmp.shared.generated.resources.palette_style_fidelity
+import poskmp.shared.generated.resources.palette_style_fidelity_desc
+import poskmp.shared.generated.resources.palette_style_fruit_salad
+import poskmp.shared.generated.resources.palette_style_fruit_salad_desc
+import poskmp.shared.generated.resources.palette_style_monochrome
+import poskmp.shared.generated.resources.palette_style_monochrome_desc
+import poskmp.shared.generated.resources.palette_style_neutral
+import poskmp.shared.generated.resources.palette_style_neutral_desc
+import poskmp.shared.generated.resources.palette_style_rainbow
+import poskmp.shared.generated.resources.palette_style_rainbow_desc
+import poskmp.shared.generated.resources.palette_style_subtitle
+import poskmp.shared.generated.resources.palette_style_title
+import poskmp.shared.generated.resources.palette_style_tonal_spot
+import poskmp.shared.generated.resources.palette_style_tonal_spot_desc
+import poskmp.shared.generated.resources.palette_style_vibrant
+import poskmp.shared.generated.resources.palette_style_vibrant_desc
+import poskmp.shared.generated.resources.pip
+import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.remove
+import poskmp.shared.generated.resources.reset_scale_button
+import poskmp.shared.generated.resources.retail_margin_label
+import poskmp.shared.generated.resources.seed_color_subtitle
+import poskmp.shared.generated.resources.seed_color_title
+import poskmp.shared.generated.resources.settings
+import poskmp.shared.generated.resources.settings_title
+import poskmp.shared.generated.resources.show_extra_prices_checador_subtitle
+import poskmp.shared.generated.resources.show_extra_prices_checador_title
+import poskmp.shared.generated.resources.star
+import poskmp.shared.generated.resources.status_connected
+import poskmp.shared.generated.resources.status_pending
+import poskmp.shared.generated.resources.supabase_offline_desc
+import poskmp.shared.generated.resources.supabase_server_title
+import poskmp.shared.generated.resources.supabase_status_pending_desc
+import poskmp.shared.generated.resources.sync
+import poskmp.shared.generated.resources.sync_now_button
+import poskmp.shared.generated.resources.system_info_title
+import poskmp.shared.generated.resources.system_version
+import poskmp.shared.generated.resources.tab_checador
+import poskmp.shared.generated.resources.tab_productos
+import poskmp.shared.generated.resources.tab_venta
+import poskmp.shared.generated.resources.theme_section_title
+import poskmp.shared.generated.resources.update_available_title
+import poskmp.shared.generated.resources.update_error
+import poskmp.shared.generated.resources.update_notes_title
+import poskmp.shared.generated.resources.updates_section_subtitle
+import poskmp.shared.generated.resources.updates_section_title
+import poskmp.shared.generated.resources.upload
+import poskmp.shared.generated.resources.warning
+import poskmp.shared.generated.resources.wholesale_margin_label
 import kotlin.math.roundToInt
 
 data class PresetColorItem(
@@ -1327,11 +1425,7 @@ fun AjustesScreen(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 if (isCheckingUpdates) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
+                                    ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = stringResource(Res.string.checking_updates),
@@ -1466,7 +1560,7 @@ fun AjustesScreen(
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
-                                LinearProgressIndicator(
+                                LinearWavyProgressIndicator(
                                     progress = { progress },
                                     modifier = Modifier.fillMaxWidth().height(8.dp),
                                     color = MaterialTheme.colorScheme.primary,
@@ -1478,7 +1572,7 @@ fun AjustesScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
                                     Text(
                                         text = stringResource(Res.string.installing_update),
                                         style = MaterialTheme.typography.bodyMedium,
