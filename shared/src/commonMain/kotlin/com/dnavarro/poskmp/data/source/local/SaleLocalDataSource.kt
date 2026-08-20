@@ -49,6 +49,7 @@ class SqlDelightSaleDataSource(
                 cambio = sale.cambio,
                 metodo_pago = sale.metodo_pago,
                 total_items = sale.total_items,
+                customer_id = sale.customer_id,
                 created_at = sale.created_at,
                 sync_state = sale.sync_state
             )

@@ -81,11 +81,13 @@ import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.AjustesScreen
 import com.dnavarro.poskmp.ui.ChecadorDialog
 import com.dnavarro.poskmp.ui.ChecadorScreen
+import com.dnavarro.poskmp.ui.ClientesScreen
 import com.dnavarro.poskmp.ui.ProductosScreen
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.ui.VentaScreen
 import com.dnavarro.poskmp.ui.VentasScreen
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
+import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
@@ -110,6 +112,9 @@ import poskmp.shared.generated.resources.last_sale_items
 import poskmp.shared.generated.resources.last_sale_paid
 import poskmp.shared.generated.resources.last_sale_title
 import poskmp.shared.generated.resources.last_sale_total
+import poskmp.shared.generated.resources.nav_clientes
+import poskmp.shared.generated.resources.nav_clientes_desktop
+import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.settings
@@ -182,6 +187,8 @@ fun App(
                 stringResource(if (isDesktop) Res.string.tab_venta_desktop else Res.string.tab_venta)
             val tabProductosLabel =
                 stringResource(if (isDesktop) Res.string.tab_productos_desktop else Res.string.tab_productos)
+            val tabClientesLabel =
+                stringResource(if (isDesktop) Res.string.nav_clientes_desktop else Res.string.nav_clientes)
             val tabVentasLabel =
                 stringResource(if (isDesktop) Res.string.tab_ventas_historial_desktop else Res.string.tab_ventas_historial)
             val tabChecadorLabel =
@@ -196,6 +203,7 @@ fun App(
                 isChecadorDialog,
                 tabVentaLabel,
                 tabProductosLabel,
+                tabClientesLabel,
                 tabVentasLabel,
                 tabChecadorLabel,
                 tabAjustesLabel
@@ -230,6 +238,12 @@ fun App(
                         icon = Res.drawable.analytics,
                         isSelected = currentScreen == Screen.VENTAS,
                         onCheckedChange = { if (it) selectedScreen = Screen.VENTAS }
+                    ),
+                    ToolbarItem(
+                        label = tabClientesLabel,
+                        icon = Res.drawable.person,
+                        isSelected = currentScreen == Screen.CLIENTES,
+                        onCheckedChange = { if (it) selectedScreen = Screen.CLIENTES }
                     ),
                     ToolbarItem(
                         label = tabAjustesLabel,
@@ -560,6 +574,7 @@ fun App(
                                         )
 
                                         Screen.PRODUCTOS -> ProductosScreen(viewModel = koinViewModel<ProductosViewModel>())
+                                        Screen.CLIENTES -> ClientesScreen(viewModel = koinViewModel<ClientesViewModel>())
                                         Screen.VENTAS -> VentasScreen(viewModel = koinViewModel<VentasViewModel>())
                                         Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
                                         Screen.CHECADOR -> {

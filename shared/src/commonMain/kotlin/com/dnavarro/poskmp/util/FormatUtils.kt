@@ -97,6 +97,14 @@ fun formatCurrentTime(dateTime: java.time.LocalDateTime = java.time.LocalDateTim
     return "$hour12"
 }
 
+fun formatEpochMillisToDateTime(epochMillis: Long): String {
+    val instant = java.time.Instant.ofEpochMilli(epochMillis)
+    val dateTime = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
+    val locale = java.util.Locale.forLanguageTag("es-MX")
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy • h:mm a", locale)
+    return dateTime.format(formatter)
+}
+
 /**
  * Parses a JSON array or comma-separated barcode string into a list of barcode strings.
  */
@@ -186,7 +194,6 @@ fun isBarcodeMatch(code1: String?, code2: String?): Boolean {
  * Checks if a target barcode matches any barcode in a given list, using hybrid exact & normalized comparison.
  */
 fun List<String>?.matchesBarcode(targetBarcode: String?): Boolean {
-    if (this.isNullOrEmpty() || targetBarcode.isNullOrBlank()) return false
-    return this.any { code -> isBarcodeMatch(code, targetBarcode) }
+    return !(this.isNullOrEmpty() || targetBarcode.isNullOrBlank()) && this.any { code -> isBarcodeMatch(code, targetBarcode) }
 }
 

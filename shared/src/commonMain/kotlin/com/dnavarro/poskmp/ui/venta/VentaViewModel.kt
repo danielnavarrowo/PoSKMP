@@ -5,6 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
+import com.dnavarro.poskmp.domain.usecase.GetCustomersUseCase
+import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
+import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
+import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
+import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,16 +21,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
-import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
-import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
-import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
-
-import com.dnavarro.poskmp.ui.CartItem
 import kotlin.math.roundToInt
 
 /**
- * ViewModel for Venta screen managing product flow, barcode search, and cart updates.
+ * ViewModel for Venta screen managing product flow, barcode search, customers, and cart updates.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class VentaViewModel(
@@ -32,6 +33,7 @@ class VentaViewModel(
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
     private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository),
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
+    getCustomersUseCase: GetCustomersUseCase,
     private val recordSaleUseCase: RecordSaleUseCase
 ) : ViewModel() {
 
@@ -42,46 +44,78 @@ class VentaViewModel(
     private val _cartHistory = mutableListOf<List<CartItem>>()
     private val _canUndo = MutableStateFlow(false)
 
+    private val _selectedCustomer = MutableStateFlow<Customer?>(null)
+    private val _customerSearchQuery = MutableStateFlow("")
+    private val _showCustomerDialog = MutableStateFlow(false)
+
     private val _productsFlow = _searchQuery.flatMapLatest { query ->
         getProductsUseCase(query = query, activeOnly = true)
     }
 
     val uiState: StateFlow<VentaUiState> = combine(
-        _searchQuery,
-        _productsFlow,
-        _selectedCategory,
-        _cartItems,
-        _heldTickets,
-        _canUndo,
-        settingsRepository.defaultRetailMarginFlow,
-        settingsRepository.defaultWholesaleMarginFlow
-    ) { flows: Array<Any?> ->
-        val query = flows[0] as String
-        @Suppress("UNCHECKED_CAST")
-        val products = flows[1] as List<Products>
-        val category = flows[2] as String?
-        @Suppress("UNCHECKED_CAST")
-        val cart = flows[3] as List<CartItem>
-        @Suppress("UNCHECKED_CAST")
-        val held = flows[4] as List<HeldTicket>
-        val canUndo = flows[5] as Boolean
-        val defaultRetailMargin = flows[6] as Double
-        val defaultWholesaleMargin = flows[7] as Double
+        combine(
+            _searchQuery,
+            _productsFlow,
+            _selectedCategory,
+            _cartItems,
+            _heldTickets
+        ) { q, products, cat, cart, held ->
+            Tuple5(q, products, cat, cart, held)
+        },
+        combine(
+            _canUndo,
+            settingsRepository.defaultRetailMarginFlow,
+            settingsRepository.defaultWholesaleMarginFlow,
+            getCustomersUseCase(),
+            _selectedCustomer
+        ) { canUndo, retailMargin, wholesaleMargin, customers, selectedCustomer ->
+            Tuple5(canUndo, retailMargin, wholesaleMargin, customers, selectedCustomer)
+        },
+        combine(
+            _customerSearchQuery,
+            _showCustomerDialog
+        ) { cQuery, showDialog ->
+            Pair(cQuery, showDialog)
+        }
+    ) { (q, products, cat, cart, held), (canUndo, retailMargin, wholesaleMargin, customers, selectedCust), (cQuery, showDialog) ->
+        val filteredCust = if (cQuery.isBlank()) {
+            customers
+        } else {
+            val query = cQuery.trim().lowercase()
+            customers.filter {
+                it.nombre.lowercase().contains(query) ||
+                it.telefono.lowercase().contains(query) ||
+                it.direccion.lowercase().contains(query)
+            }
+        }
 
         VentaUiState(
-            searchQuery = query,
+            searchQuery = q,
             activeProducts = products,
-            selectedCategory = category,
+            selectedCategory = cat,
             cartItems = cart,
             heldTickets = held,
             canUndo = canUndo,
-            defaultRetailMargin = defaultRetailMargin,
-            defaultWholesaleMargin = defaultWholesaleMargin
+            defaultRetailMargin = retailMargin,
+            defaultWholesaleMargin = wholesaleMargin,
+            customers = customers,
+            filteredCustomers = filteredCust,
+            selectedCustomer = selectedCust,
+            customerSearchQuery = cQuery,
+            showCustomerDialog = showDialog
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VentaUiState()
+    )
+
+    private data class Tuple5<A, B, C, D, E>(
+        val a: A,
+        val b: B,
+        val c: C,
+        val d: D,
+        val e: E
     )
 
     private fun pushCartHistory() {
@@ -98,8 +132,8 @@ class VentaViewModel(
 
     fun undoLastCartChange() {
         if (_cartHistory.isNotEmpty()) {
-            val previousState = _cartHistory.removeAt(_cartHistory.lastIndex)
-            _cartItems.value = previousState
+            val previous = _cartHistory.removeAt(_cartHistory.lastIndex)
+            _cartItems.value = previous
             _canUndo.value = _cartHistory.isNotEmpty()
         }
     }
@@ -112,20 +146,47 @@ class VentaViewModel(
         _selectedCategory.value = category
     }
 
-    fun addProductToCart(product: Products, qty: Double) {
-        pushCartHistory()
+    fun selectCustomer(customer: Customer?) {
+        _selectedCustomer.value = customer
+        _showCustomerDialog.value = false
+    }
+
+    fun clearSelectedCustomer() {
+        _selectedCustomer.value = null
+    }
+
+    fun onCustomerSearchQueryChange(query: String) {
+        _customerSearchQuery.value = query
+    }
+
+    fun setShowCustomerDialog(show: Boolean) {
+        _showCustomerDialog.value = show
+        if (show) {
+            _customerSearchQuery.value = ""
+        }
+    }
+
+    fun addProductToCart(product: Products, quantity: Double = 1.0) {
         val currentList = _cartItems.value.toMutableList()
         val existingIndex = currentList.indexOfFirst { it.product.id == product.id }
         if (existingIndex != -1) {
-            val item = currentList[existingIndex]
-            val newQty = ((item.quantity + qty) * 100.0).roundToInt() / 100.0
-            if (newQty <= 0.0) {
-                currentList.removeAt(existingIndex)
-            } else {
-                currentList[existingIndex] = item.copy(quantity = newQty)
-            }
-        } else if (qty > 0.0) {
-            currentList.add(CartItem(product, qty))
+            val currentItem = currentList[existingIndex]
+            val newQty = (currentItem.quantity + quantity)
+            val roundedQty = (newQty * 100.0).roundToInt() / 100.0
+            pushCartHistory()
+            currentList[existingIndex] = currentItem.copy(
+                quantity = roundedQty
+            )
+        } else if (quantity > 0.0) {
+            pushCartHistory()
+            val roundedQty = (quantity * 100.0).roundToInt() / 100.0
+            currentList.add(
+                CartItem(
+                    product = product,
+                    quantity = roundedQty,
+                    originalPrice = product.precio
+                )
+            )
         }
         _cartItems.value = currentList
     }
@@ -159,6 +220,7 @@ class VentaViewModel(
         if (_cartItems.value.isNotEmpty()) {
             pushCartHistory()
             _cartItems.value = emptyList()
+            _selectedCustomer.value = null
         }
     }
 
@@ -179,6 +241,7 @@ class VentaViewModel(
             }
         }
     }
+
     fun toggleWholesalePriceForItem(item: CartItem) {
         if (item.product.precio_mayoreo <= 0.0) return
         val currentList = _cartItems.value
@@ -227,7 +290,7 @@ class VentaViewModel(
         val currentCart = _cartItems.value
         if (currentCart.isEmpty()) return
         val held = HeldTicket(items = currentCart)
-        _heldTickets.value = _heldTickets.value + held
+        _heldTickets.value += held
         _cartItems.value = emptyList()
         _cartHistory.clear()
         _canUndo.value = false
@@ -245,18 +308,27 @@ class VentaViewModel(
         _canUndo.value = false
     }
 
+    fun resumeTicketFromHold(heldTicket: HeldTicket) = resumeHeldTicket(heldTicket)
+
     fun discardHeldTicket(heldTicket: HeldTicket) {
         _heldTickets.value = _heldTickets.value.filterNot { it.id == heldTicket.id }
     }
 
-    suspend fun processCheckout(pagoCon: Double, cambio: Double, metodoPago: String = "EFECTIVO"): Long {
+    suspend fun processCheckout(
+        pagoCon: Double,
+        cambio: Double,
+        metodoPago: String = "EFECTIVO",
+        customerId: String? = null
+    ): Long {
         val currentItems = _cartItems.value
         if (currentItems.isEmpty()) return 0L
+        val effectiveCustomerId = customerId ?: _selectedCustomer.value?.id
         val folio = recordSaleUseCase(
             cartItems = currentItems,
             pagoCon = pagoCon,
             cambio = cambio,
-            metodoPago = metodoPago
+            metodoPago = metodoPago,
+            customerId = effectiveCustomerId
         )
         clearCart()
         return folio

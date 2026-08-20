@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -39,6 +40,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +48,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
@@ -93,6 +96,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -102,6 +106,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.PaymentMethod
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.venta.CustomerSelectionDialog
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
@@ -111,39 +116,58 @@ import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add_button
 import poskmp.shared.generated.resources.add_to_ticket_button
+import poskmp.shared.generated.resources.assign_customer_button
 import poskmp.shared.generated.resources.barcode_not_found_message
 import poskmp.shared.generated.resources.barcode_not_found_title
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.card
 import poskmp.shared.generated.resources.cash_received_label
+import poskmp.shared.generated.resources.change_customer_button
 import poskmp.shared.generated.resources.change_to_deliver_label
+import poskmp.shared.generated.resources.checkout_change_label
+import poskmp.shared.generated.resources.checkout_field_credito
+import poskmp.shared.generated.resources.checkout_field_efectivo
+import poskmp.shared.generated.resources.checkout_field_tarjeta
+import poskmp.shared.generated.resources.checkout_field_transferencia
+import poskmp.shared.generated.resources.checkout_missing_to_cover_label
 import poskmp.shared.generated.resources.checkout_sale_title
+import poskmp.shared.generated.resources.checkout_total_received_label
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_button
+import poskmp.shared.generated.resources.credit_charge_summary
+import poskmp.shared.generated.resources.credit_limit_exceeded_warning
+import poskmp.shared.generated.resources.credit_sale_requires_customer_error
+import poskmp.shared.generated.resources.customer_balance_format
+import poskmp.shared.generated.resources.customer_no_debt_pending
 import poskmp.shared.generated.resources.default_quantity_placeholder
+import poskmp.shared.generated.resources.general_public_label
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.insufficient_amount_error
 import poskmp.shared.generated.resources.kg_suffix
-import poskmp.shared.generated.resources.mixed_payment_cash_label
-import poskmp.shared.generated.resources.mixed_payment_remaining_label
+import poskmp.shared.generated.resources.mixed_credit_requires_customer_error
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.money_transfer
+import poskmp.shared.generated.resources.no_customer_assigned
 import poskmp.shared.generated.resources.not_registered
+import poskmp.shared.generated.resources.payment_method_credito
 import poskmp.shared.generated.resources.payment_method_efectivo
 import poskmp.shared.generated.resources.payment_method_mixto
 import poskmp.shared.generated.resources.payment_method_tarjeta
 import poskmp.shared.generated.resources.payment_method_transferencia
 import poskmp.shared.generated.resources.payments
+import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.pesos_currency_label
 import poskmp.shared.generated.resources.price_per_kg_label
 import poskmp.shared.generated.resources.quantity_prompt_title
 import poskmp.shared.generated.resources.quantity_weight_label
 import poskmp.shared.generated.resources.register_sale_button
+import poskmp.shared.generated.resources.remove_customer_button
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
@@ -182,6 +206,10 @@ fun VentaScreen(
     var showCheckoutDialog by remember { mutableStateOf(false) }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.EFECTIVO) }
     var paymentAmountInput by remember { mutableStateOf(TextFieldValue("")) }
+    var mixedCashInput by remember { mutableStateOf("") }
+    var mixedCardInput by remember { mutableStateOf("") }
+    var mixedTransferInput by remember { mutableStateOf("") }
+    var mixedCreditInput by remember { mutableStateOf("") }
     var lastSaleTotal by remember { mutableDoubleStateOf(0.0) }
     var lastSaleChange by remember { mutableDoubleStateOf(0.0) }
     var lastSaleFolio by remember { mutableLongStateOf(0L) }
@@ -836,7 +864,7 @@ fun VentaScreen(
         BasicAlertDialog(
             onDismissRequest = { showWeightDialogForProduct = null },
             modifier = Modifier.background(
-                MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
+                MaterialTheme.colorScheme.surfaceContainerLowest, ShapeDefaults.cardShape
             )
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown && 
@@ -1053,6 +1081,10 @@ fun VentaScreen(
                 text = formattedTotal,
                 selection = TextRange(0, formattedTotal.length)
             )
+            mixedCashInput = ""
+            mixedCardInput = ""
+            mixedTransferInput = ""
+            mixedCreditInput = ""
             delay(50.milliseconds)
             checkoutFocusRequester.requestFocus()
         }
@@ -1060,12 +1092,25 @@ fun VentaScreen(
         val paymentText = paymentAmountInput.text
         val paymentAmount = paymentText.toDoubleOrNull() ?: 0.0
         val change = if (paymentAmount >= total) paymentAmount - total else 0.0
+        val selectedCustomer = uiState.selectedCustomer
+
+        val mCash = mixedCashInput.toDoubleOrNull() ?: 0.0
+        val mCard = mixedCardInput.toDoubleOrNull() ?: 0.0
+        val mTransfer = mixedTransferInput.toDoubleOrNull() ?: 0.0
+        val mCredit = mixedCreditInput.toDoubleOrNull() ?: 0.0
+
+        val totalReceivedMixto = mCash + mCard + mTransfer + mCredit
+        val nonCashImmediate = mCard + mTransfer
+        val remainingNeededForCash = (total - nonCashImmediate - mCredit).coerceAtLeast(0.0)
+        val cambioMixto = if (mCash > remainingNeededForCash && totalReceivedMixto >= total) {
+            mCash - remainingNeededForCash
+        } else 0.0
 
         val isCheckoutValid = when (selectedPaymentMethod) {
             PaymentMethod.EFECTIVO -> paymentAmount >= total || paymentText.isEmpty()
             PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> true
-            PaymentMethod.MIXTO -> paymentAmount <= total
-            PaymentMethod.CREDITO -> true
+            PaymentMethod.MIXTO -> totalReceivedMixto >= total && (mCredit == 0.0 || selectedCustomer != null)
+            PaymentMethod.CREDITO -> selectedCustomer != null
         }
 
         val performCheckout = {
@@ -1075,8 +1120,11 @@ fun VentaScreen(
                     if (paymentText.isEmpty()) 0.0 else change
                 )
                 PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> Pair(total, 0.0)
-                PaymentMethod.MIXTO -> Pair(total, 0.0)
-                PaymentMethod.CREDITO -> Pair(total, 0.0)
+                PaymentMethod.MIXTO -> Pair(
+                    (total - mCredit).coerceAtLeast(0.0),
+                    cambioMixto
+                )
+                PaymentMethod.CREDITO -> Pair(0.0, 0.0)
             }
             lastSaleTotal = total
             lastSaleChange = finalChange
@@ -1085,7 +1133,8 @@ fun VentaScreen(
                 val folio = viewModel.processCheckout(
                     pagoCon = finalPayment,
                     cambio = finalChange,
-                    metodoPago = selectedPaymentMethod.name
+                    metodoPago = selectedPaymentMethod.name,
+                    customerId = selectedCustomer?.id
                 )
                 lastSaleFolio = folio
             }
@@ -1106,68 +1155,147 @@ fun VentaScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-                    // Payment Method Choice Buttons (2x2 Grid with ToggleButton)
+                    // Payment Method Choice Buttons (Row 1: Efectivo, Tarjeta, Transferencia | Row 2: Mixto, Crédito)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        val activeMethods = listOf(
+                        val row1Methods = listOf(
                             PaymentMethod.EFECTIVO to (stringResource(Res.string.payment_method_efectivo) to Res.drawable.money),
                             PaymentMethod.TARJETA to (stringResource(Res.string.payment_method_tarjeta) to Res.drawable.card),
-                            PaymentMethod.TRANSFERENCIA to (stringResource(Res.string.payment_method_transferencia) to Res.drawable.money_transfer),
-                            PaymentMethod.MIXTO to (stringResource(Res.string.payment_method_mixto) to Res.drawable.payments)
+                            PaymentMethod.TRANSFERENCIA to (stringResource(Res.string.payment_method_transferencia) to Res.drawable.money_transfer)
+                        )
+                        val row2Methods = listOf(
+                            PaymentMethod.MIXTO to (stringResource(Res.string.payment_method_mixto) to Res.drawable.payments),
+                            PaymentMethod.CREDITO to (stringResource(Res.string.payment_method_credito) to Res.drawable.person)
                         )
 
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            activeMethods.chunked(2).forEach { rowMethods ->
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    rowMethods.forEachIndexed { index, (method, info) ->
-                                        val (label, icon) = info
-                                        val isSelected = selectedPaymentMethod == method
-                                        ToggleButton(
-                                            checked = isSelected,
-                                            onCheckedChange = {
-                                                selectedPaymentMethod = method
-                                                if (method != PaymentMethod.EFECTIVO && method != PaymentMethod.MIXTO) {
-                                                    paymentAmountInput = TextFieldValue("")
-                                                }
-                                            },
-                                            colors = ToggleButtonDefaults.toggleButtonColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                            ),
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .semantics { role = Role.RadioButton },
-                                            shapes = when (index) {
-                                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                                rowMethods.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                        listOf(row1Methods, row2Methods).forEach { rowMethods ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                rowMethods.forEachIndexed { index, (method, info) ->
+                                    val (label, icon) = info
+                                    val isSelected = selectedPaymentMethod == method
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = {
+                                            selectedPaymentMethod = method
+                                            if (method != PaymentMethod.EFECTIVO) {
+                                                paymentAmountInput = TextFieldValue("")
                                             }
+                                        },
+                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            rowMethods.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                        }
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                            modifier = Modifier.padding(vertical = 4.dp)
                                         ) {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.Center
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(icon),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                                Text(
-                                                    text = label,
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
+                                            Icon(
+                                                painter = painterResource(icon),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = label,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // Customer Assignment Row
+                    Surface(
+                        shape = ShapeDefaults.cardShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.person),
+                                contentDescription = null,
+                                tint = if (selectedCustomer != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = selectedCustomer?.nombre ?: stringResource(Res.string.general_public_label),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (selectedCustomer != null) {
+                                    if (selectedCustomer.saldoDeudor > 0.0) {
+                                        Text(
+                                            text = stringResource(Res.string.customer_balance_format, selectedCustomer.saldoDeudor.toString().formatPrice()),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    } else {
+                                        Text(
+                                            text = stringResource(Res.string.customer_no_debt_pending),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = stringResource(Res.string.no_customer_assigned),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            if (selectedCustomer != null) {
+                                IconButton(
+                                    onClick = { viewModel.clearSelectedCustomer() },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.close),
+                                        contentDescription = stringResource(Res.string.remove_customer_button),
+                                        tint = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            OutlinedButton(
+                                onClick = { viewModel.setShowCustomerDialog(true) },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = if (selectedCustomer != null) stringResource(Res.string.change_customer_button) else stringResource(Res.string.assign_customer_button),
+                                    fontSize = 11.sp
+                                )
                             }
                         }
                     }
@@ -1190,8 +1318,6 @@ fun VentaScreen(
                             fontSize = 18.sp
                         )
                     }
-
-
 
                     // Conditional payment fields based on PaymentMethod
                     when (selectedPaymentMethod) {
@@ -1245,48 +1371,169 @@ fun VentaScreen(
                         }
 
                         PaymentMethod.MIXTO -> {
-                            OutlinedTextField(
-                                value = paymentAmountInput,
-                                onValueChange = { newValue ->
-                                    val text = newValue.text
-                                    if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                        paymentAmountInput = newValue
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth().focusRequester(checkoutFocusRequester),
-                                prefix = { Text("$ ", fontWeight = FontWeight.Bold) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                label = { Text(stringResource(Res.string.mixed_payment_cash_label)) },
-                                placeholder = { Text("0.00") },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                MixedPaymentRow(
+                                    iconRes = Res.drawable.money,
+                                    label = stringResource(Res.string.checkout_field_efectivo),
+                                    value = mixedCashInput,
+                                    onValueChange = { mixedCashInput = it },
+                                    placeholder = "0.00"
                                 )
-                            )
+                                MixedPaymentRow(
+                                    iconRes = Res.drawable.card,
+                                    label = stringResource(Res.string.checkout_field_tarjeta),
+                                    value = mixedCardInput,
+                                    onValueChange = { mixedCardInput = it },
+                                    placeholder = "0.00"
+                                )
+                                MixedPaymentRow(
+                                    iconRes = Res.drawable.money_transfer,
+                                    label = stringResource(Res.string.checkout_field_transferencia),
+                                    value = mixedTransferInput,
+                                    onValueChange = { mixedTransferInput = it },
+                                    placeholder = "0.00"
+                                )
+                                MixedPaymentRow(
+                                    iconRes = Res.drawable.person,
+                                    label = stringResource(Res.string.checkout_field_credito),
+                                    value = mixedCreditInput,
+                                    onValueChange = { mixedCreditInput = it },
+                                    placeholder = "0.00"
+                                )
 
-                            val remaining = if (total > paymentAmount) total - paymentAmount else 0.0
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    stringResource(Res.string.mixed_payment_remaining_label),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    "$${remaining.toString().formatPrice()}",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 18.sp
-                                )
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.checkout_total_received_label),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "$${totalReceivedMixto.toString().formatPrice()}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+
+                                val missingToCover = (total - totalReceivedMixto).coerceAtLeast(0.0)
+                                if (missingToCover > 0.0) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = stringResource(Res.string.checkout_missing_to_cover_label),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        Text(
+                                            text = "$${missingToCover.toString().formatPrice()}",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                } else if (cambioMixto > 0.0) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = stringResource(Res.string.checkout_change_label),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "$${cambioMixto.toString().formatPrice()}",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+
+                                if (mCredit > 0.0) {
+                                    if (selectedCustomer == null) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(Res.string.mixed_credit_requires_customer_error),
+                                                color = MaterialTheme.colorScheme.error,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(8.dp)
+                                            )
+                                        }
+                                    } else {
+                                        val limit = selectedCustomer.limiteCredito
+                                        val exceeds = limit > 0.0 && (selectedCustomer.saldoDeudor + mCredit) > limit
+                                        if (exceeds) {
+                                            Text(
+                                                text = stringResource(Res.string.credit_limit_exceeded_warning, limit.toString().formatPrice()),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.error,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
 
-                        PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA, PaymentMethod.CREDITO -> {
-                            // Exact payment for digital or credit transactions
+                        PaymentMethod.CREDITO -> {
+                            if (selectedCustomer == null) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                    shape = MaterialTheme.shapes.small,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.credit_sale_requires_customer_error),
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(8.dp)
+                                    )
+                                }
+                            } else {
+                                val limit = selectedCustomer.limiteCredito
+                                val exceeds = limit > 0.0 && (selectedCustomer.saldoDeudor + total) > limit
+                                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                                    Text(
+                                        text = stringResource(Res.string.credit_charge_summary, total.toString().formatPrice()),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (exceeds) {
+                                        Text(
+                                            text = stringResource(Res.string.credit_limit_exceeded_warning, limit.toString().formatPrice()),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> {
+                            // Exact payment for digital transactions
                         }
                     }
                 }
@@ -1306,6 +1553,17 @@ fun VentaScreen(
                     Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        )
+    }
+
+    if (uiState.showCustomerDialog) {
+        CustomerSelectionDialog(
+            customers = uiState.filteredCustomers,
+            searchQuery = uiState.customerSearchQuery,
+            selectedCustomer = uiState.selectedCustomer,
+            onSearchQueryChange = { viewModel.onCustomerSearchQueryChange(it) },
+            onSelectCustomer = { viewModel.selectCustomer(it) },
+            onDismissRequest = { viewModel.setShowCustomerDialog(false) }
         )
     }
 
@@ -1524,3 +1782,61 @@ fun VentaScreen(
         )
     }
 }
+
+@Composable
+private fun MixedPaymentRow(
+    iconRes: DrawableResource,
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String = "0.00"
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = { text ->
+                if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                    onValueChange(text)
+                }
+            },
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+            },
+            prefix = { Text("$ ") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.End),
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.width(130.dp)
+        )
+    }
+}
+

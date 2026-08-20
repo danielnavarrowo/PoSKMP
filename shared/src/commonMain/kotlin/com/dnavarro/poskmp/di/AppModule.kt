@@ -13,6 +13,7 @@ import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
+import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
@@ -21,15 +22,21 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
-
 import com.dnavarro.poskmp.data.getDataStore
-
+import com.dnavarro.poskmp.data.CustomerRepository
+import com.dnavarro.poskmp.data.CustomerRepositoryImpl
 import com.dnavarro.poskmp.data.SaleRepository
 import com.dnavarro.poskmp.data.SaleRepositoryImpl
+import com.dnavarro.poskmp.data.source.local.CustomerLocalDataSource
 import com.dnavarro.poskmp.data.source.local.SaleLocalDataSource
+import com.dnavarro.poskmp.data.source.local.SqlDelightCustomerDataSource
 import com.dnavarro.poskmp.data.source.local.SqlDelightSaleDataSource
+import com.dnavarro.poskmp.domain.usecase.GetCustomerAccountStatementUseCase
+import com.dnavarro.poskmp.domain.usecase.GetCustomersUseCase
 import com.dnavarro.poskmp.domain.usecase.GetSalesSummaryUseCase
+import com.dnavarro.poskmp.domain.usecase.RecordCustomerPaymentUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
+import com.dnavarro.poskmp.domain.usecase.SaveCustomerUseCase
 
 import com.dnavarro.poskmp.data.updater.UpdateRepository
 
@@ -41,6 +48,8 @@ val dataModule = module {
     singleOf(::ProductRepositoryImpl) bind ProductRepository::class
     singleOf(::SqlDelightSaleDataSource) bind SaleLocalDataSource::class
     singleOf(::SaleRepositoryImpl) bind SaleRepository::class
+    singleOf(::SqlDelightCustomerDataSource) bind CustomerLocalDataSource::class
+    singleOf(::CustomerRepositoryImpl) bind CustomerRepository::class
     singleOf(::SettingsRepositoryImpl) bind SettingsRepository::class
     singleOf(::UpdateRepository)
 }
@@ -52,11 +61,16 @@ val domainModule = module {
     factoryOf(::ApplyBulkModificationUseCase)
     factoryOf(::RecordSaleUseCase)
     factoryOf(::GetSalesSummaryUseCase)
+    factoryOf(::GetCustomersUseCase)
+    factoryOf(::SaveCustomerUseCase)
+    factoryOf(::RecordCustomerPaymentUseCase)
+    factoryOf(::GetCustomerAccountStatementUseCase)
 }
 
 val viewModelModule = module {
     viewModelOf(::ProductosViewModel)
     viewModelOf(::VentaViewModel)
+    viewModelOf(::ClientesViewModel)
     viewModelOf(::AjustesViewModel)
     viewModelOf(::VentasViewModel)
 }

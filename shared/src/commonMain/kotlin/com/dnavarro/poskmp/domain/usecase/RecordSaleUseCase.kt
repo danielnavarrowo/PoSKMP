@@ -14,7 +14,8 @@ class RecordSaleUseCase(
         cartItems: List<CartItem>,
         pagoCon: Double,
         cambio: Double,
-        metodoPago: String = "EFECTIVO"
+        metodoPago: String = "EFECTIVO",
+        customerId: String? = null
     ): Long {
         if (cartItems.isEmpty()) return 0L
 
@@ -59,6 +60,13 @@ class RecordSaleUseCase(
             )
         }
 
+        if (metodoPago == "CREDITO" && customerId.isNullOrBlank()) {
+            throw IllegalArgumentException("Las ventas a crédito requieren un cliente registrado.")
+        }
+        if (metodoPago == "MIXTO" && pagoCon < total && customerId.isNullOrBlank()) {
+            throw IllegalArgumentException("Las ventas mixtas con saldo a crédito requieren un cliente registrado.")
+        }
+
         val netProfit = total - totalCosto
 
         val sale = Sale(
@@ -72,6 +80,7 @@ class RecordSaleUseCase(
             cambio = cambio,
             metodoPago = metodoPago,
             totalItems = totalItemsCount,
+            customerId = customerId,
             createdAt = now,
             syncState = "PENDING_INSERT"
         )

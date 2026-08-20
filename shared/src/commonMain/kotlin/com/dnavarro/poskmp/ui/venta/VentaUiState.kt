@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.venta
 
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
@@ -28,7 +29,12 @@ data class VentaUiState(
     val canUndo: Boolean = false,
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val customers: List<Customer> = emptyList(),
+    val filteredCustomers: List<Customer> = emptyList(),
+    val selectedCustomer: Customer? = null,
+    val customerSearchQuery: String = "",
+    val showCustomerDialog: Boolean = false
 ) {
     val total: Double
         get() = cartItems.sumOf { it.product.precio * it.quantity }

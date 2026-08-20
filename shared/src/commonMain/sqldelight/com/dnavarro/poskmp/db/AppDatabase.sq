@@ -70,6 +70,155 @@ SELECT * FROM products
 WHERE activo = 1 AND (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%' OR categoria LIKE '%' || :query || '%');
 
 -- ============================================
+-- CUSTOMERS TABLES & QUERIES
+-- ============================================
+
+CREATE TABLE customers (
+    id             TEXT    PRIMARY KEY NOT NULL,
+    nombre         TEXT    NOT NULL,
+    telefono       TEXT    NOT NULL DEFAULT '',
+    direccion      TEXT    NOT NULL DEFAULT '',
+    notas          TEXT    NOT NULL DEFAULT '',
+    limite_credito REAL    NOT NULL DEFAULT 0.0,
+    activo         INTEGER NOT NULL DEFAULT 1,
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL,
+    sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+);
+
+CREATE INDEX idx_customers_nombre ON customers(nombre);
+CREATE INDEX idx_customers_telefono ON customers(telefono);
+CREATE INDEX idx_customers_activo ON customers(activo);
+CREATE INDEX idx_customers_created_at ON customers(created_at);
+
+CREATE TABLE customer_payments (
+    id          TEXT    PRIMARY KEY NOT NULL,
+    customer_id TEXT    NOT NULL,
+    monto       REAL    NOT NULL,
+    metodo_pago TEXT    NOT NULL DEFAULT 'EFECTIVO',
+    notas       TEXT    NOT NULL DEFAULT '',
+    created_at  INTEGER NOT NULL,
+    sync_state  TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_customer_payments_customer_id ON customer_payments(customer_id);
+CREATE INDEX idx_customer_payments_created_at ON customer_payments(created_at);
+
+-- Customer Queries
+
+selectAllActiveCustomers:
+SELECT c.*,
+    COALESCE((SELECT SUM(
+        CASE 
+            WHEN s.metodo_pago = 'CREDITO' THEN s.total
+            WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
+            ELSE 0.0 
+        END
+    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+FROM customers c
+WHERE c.activo = 1
+ORDER BY c.nombre ASC;
+
+selectAllCustomers:
+SELECT c.*,
+    COALESCE((SELECT SUM(
+        CASE 
+            WHEN s.metodo_pago = 'CREDITO' THEN s.total
+            WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
+            ELSE 0.0 
+        END
+    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+FROM customers c
+ORDER BY c.nombre ASC;
+
+selectCustomerById:
+SELECT c.*,
+    COALESCE((SELECT SUM(
+        CASE 
+            WHEN s.metodo_pago = 'CREDITO' THEN s.total
+            WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
+            ELSE 0.0 
+        END
+    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+FROM customers c
+WHERE c.id = ?;
+
+searchActiveCustomers:
+SELECT c.*,
+    COALESCE((SELECT SUM(
+        CASE 
+            WHEN s.metodo_pago = 'CREDITO' THEN s.total
+            WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
+            ELSE 0.0 
+        END
+    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+FROM customers c
+WHERE c.activo = 1 AND (c.nombre LIKE '%' || :query || '%' OR c.telefono LIKE '%' || :query || '%' OR c.direccion LIKE '%' || :query || '%')
+ORDER BY c.nombre ASC;
+
+insertCustomer:
+INSERT INTO customers (
+    id, nombre, telefono, direccion, notas, limite_credito, activo, created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateCustomer:
+UPDATE customers
+SET nombre = ?, telefono = ?, direccion = ?, notas = ?, limite_credito = ?, updated_at = ?, sync_state = ?
+WHERE id = ?;
+
+setCustomerActiveStatus:
+UPDATE customers
+SET activo = ?, updated_at = ?, sync_state = ?
+WHERE id = ?;
+
+deleteCustomerHard:
+DELETE FROM customers WHERE id = ?;
+
+-- Customer Payments Queries
+
+insertCustomerPayment:
+INSERT INTO customer_payments (
+    id, customer_id, monto, metodo_pago, notas, created_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+selectPaymentsByCustomerId:
+SELECT * FROM customer_payments
+WHERE customer_id = ?
+ORDER BY created_at DESC;
+
+deleteCustomerPayment:
+DELETE FROM customer_payments WHERE id = ?;
+
+selectCustomerDebtSummary:
+SELECT 
+    COUNT(c.id) AS total_clientes,
+    COALESCE(SUM(CASE WHEN deuda.saldo > 0 THEN deuda.saldo ELSE 0.0 END), 0.0) AS total_deuda_acumulada,
+    COUNT(CASE WHEN deuda.saldo > 0 THEN 1 END) AS clientes_con_deuda
+FROM customers c
+LEFT JOIN (
+    SELECT c2.id,
+        COALESCE((SELECT SUM(
+            CASE 
+                WHEN s.metodo_pago = 'CREDITO' THEN s.total
+                WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
+                ELSE 0.0 
+            END
+        ) FROM sales s WHERE s.customer_id = c2.id), 0.0) -
+        COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c2.id), 0.0) AS saldo
+    FROM customers c2
+) deuda ON c.id = deuda.id
+WHERE c.activo = 1;
+
+-- ============================================
 -- SALES & ANALYTICS TABLES & QUERIES
 -- ============================================
 
@@ -84,11 +233,14 @@ CREATE TABLE sales (
     cambio         REAL    NOT NULL,
     metodo_pago    TEXT    NOT NULL DEFAULT 'EFECTIVO',
     total_items    REAL    NOT NULL DEFAULT 0,
+    customer_id    TEXT    DEFAULT NULL,
     created_at     INTEGER NOT NULL,
-    sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+    sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_sales_created_at ON sales(created_at);
+CREATE INDEX idx_sales_customer_id ON sales(customer_id);
 
 CREATE TABLE sale_items (
     id              TEXT    PRIMARY KEY NOT NULL,
@@ -114,8 +266,18 @@ CREATE INDEX idx_sale_items_created_at ON sale_items(created_at);
 insertSale:
 INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
-    pago_con, cambio, metodo_pago, total_items, created_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectSalesByCustomerId:
+SELECT * FROM sales
+WHERE customer_id = ?
+ORDER BY created_at DESC;
+
+selectCreditSalesByCustomerId:
+SELECT * FROM sales
+WHERE customer_id = ? AND (metodo_pago = 'CREDITO' OR (metodo_pago = 'MIXTO' AND total > pago_con))
+ORDER BY created_at DESC;
 
 insertSaleItem:
 INSERT INTO sale_items (

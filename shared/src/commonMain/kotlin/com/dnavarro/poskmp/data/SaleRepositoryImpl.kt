@@ -29,6 +29,7 @@ class SaleRepositoryImpl(
             cambio = sale.cambio,
             metodo_pago = sale.metodoPago,
             total_items = sale.totalItems,
+            customer_id = sale.customerId,
             created_at = sale.createdAt,
             sync_state = sale.syncState
         )
@@ -82,6 +83,7 @@ class SaleRepositoryImpl(
                 cambio = row.cambio,
                 metodoPago = row.metodo_pago,
                 totalItems = row.total_items,
+                customerId = row.customer_id,
                 createdAt = row.created_at,
                 syncState = row.sync_state
             )
@@ -106,6 +108,7 @@ class SaleRepositoryImpl(
                 cambio = row.cambio,
                 metodoPago = row.metodo_pago,
                 totalItems = row.total_items,
+                customerId = row.customer_id,
                 createdAt = row.created_at,
                 syncState = row.sync_state
             )
@@ -143,6 +146,7 @@ class SaleRepositoryImpl(
             cambio = row.cambio,
             metodoPago = row.metodo_pago,
             totalItems = row.total_items,
+            customerId = row.customer_id,
             createdAt = row.created_at,
             syncState = row.sync_state
         )
@@ -182,6 +186,7 @@ class SaleRepositoryImpl(
                     cambio = it.cambio,
                     metodoPago = it.metodo_pago,
                     totalItems = it.total_items,
+                    customerId = it.customer_id,
                     createdAt = it.created_at,
                     syncState = it.sync_state
                 )

@@ -11,6 +11,7 @@ data class Sale(
     val cambio: Double,
     val metodoPago: String = "EFECTIVO",
     val totalItems: Double,
+    val customerId: String? = null,
     val createdAt: Long,
     val syncState: String = "PENDING_INSERT"
 )
