@@ -501,4 +501,16 @@
     <string name="credit_charge_summary">Se cargará $%1$s a la cuenta de crédito del cliente.</string>
     <string name="mixed_charge_summary">Se pagará $%1$s al contado y $%2$s a la cuenta de crédito del cliente.</string>
     <string name="credit_limit_exceeded_warning">Advertencia: Esta venta excede el límite de crédito del cliente ($%1$s).</string>
+
+    <!-- Rounding Settings Strings -->
+    <string name="rounding_section_title">Redondeo de Precios</string>
+    <string name="rounding_section_subtitle">Ajusta cómo se redondean los precios y totales de venta</string>
+    <string name="enable_rounding_title">Activar redondeo</string>
+    <string name="enable_rounding_subtitle">Redondea centavos de 0 a 49 a 50¢, y de 51 a 99 a $1.00</string>
+    <string name="round_retail_price_title">Redondear precio de venta al guardar producto</string>
+    <string name="round_retail_price_subtitle">Aplica el redondeo al precio regular de venta al guardar</string>
+    <string name="round_wholesale_price_title">Redondear precio de mayoreo al guardar producto</string>
+    <string name="round_wholesale_price_subtitle">Aplica el redondeo al precio de mayoreo al guardar</string>
+    <string name="round_ticket_total_title">Redondear total del ticket antes del cobro</string>
+    <string name="round_ticket_total_subtitle">Redondea el total acumulado en el ticket de venta al finalizar</string>
 </resources>

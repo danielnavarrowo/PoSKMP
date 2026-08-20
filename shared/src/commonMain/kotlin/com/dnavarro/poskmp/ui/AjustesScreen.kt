@@ -92,105 +92,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.accept_button
-import poskmp.shared.generated.resources.add
-import poskmp.shared.generated.resources.amoled_mode_subtitle
-import poskmp.shared.generated.resources.amoled_mode_title
-import poskmp.shared.generated.resources.app_scale_subtitle
-import poskmp.shared.generated.resources.app_scale_title
-import poskmp.shared.generated.resources.app_up_to_date
-import poskmp.shared.generated.resources.barcode_scanner
-import poskmp.shared.generated.resources.cancel
-import poskmp.shared.generated.resources.checador_layout_dialog
-import poskmp.shared.generated.resources.checador_layout_fullscreen
-import poskmp.shared.generated.resources.checador_layout_subtitle
-import poskmp.shared.generated.resources.checador_layout_title
-import poskmp.shared.generated.resources.check
-import poskmp.shared.generated.resources.check_updates_button
-import poskmp.shared.generated.resources.checking_updates
-import poskmp.shared.generated.resources.cloud_sync_section_title
-import poskmp.shared.generated.resources.dark_mode
-import poskmp.shared.generated.resources.dark_mode_off
-import poskmp.shared.generated.resources.dark_mode_on
-import poskmp.shared.generated.resources.dark_mode_subtitle
-import poskmp.shared.generated.resources.dark_mode_system
-import poskmp.shared.generated.resources.dark_mode_title
-import poskmp.shared.generated.resources.database_section_title
-import poskmp.shared.generated.resources.default_margins_section_subtitle
-import poskmp.shared.generated.resources.default_margins_section_title
-import poskmp.shared.generated.resources.default_screen_subtitle
-import poskmp.shared.generated.resources.default_screen_title
-import poskmp.shared.generated.resources.download
-import poskmp.shared.generated.resources.download_and_install_button
-import poskmp.shared.generated.resources.downloading_update
-import poskmp.shared.generated.resources.dynamic_color_subtitle
-import poskmp.shared.generated.resources.dynamic_color_title
-import poskmp.shared.generated.resources.export_button
-import poskmp.shared.generated.resources.export_success_message
-import poskmp.shared.generated.resources.fullscreen
-import poskmp.shared.generated.resources.import_button
-import poskmp.shared.generated.resources.info
-import poskmp.shared.generated.resources.installing_update
-import poskmp.shared.generated.resources.light_mode
-import poskmp.shared.generated.resources.local_db_connected_desc
-import poskmp.shared.generated.resources.local_db_status_connected
-import poskmp.shared.generated.resources.local_db_title
-import poskmp.shared.generated.resources.no_compatible_asset
-import poskmp.shared.generated.resources.palette_style_content
-import poskmp.shared.generated.resources.palette_style_content_desc
-import poskmp.shared.generated.resources.palette_style_expressive
-import poskmp.shared.generated.resources.palette_style_expressive_desc
-import poskmp.shared.generated.resources.palette_style_fidelity
-import poskmp.shared.generated.resources.palette_style_fidelity_desc
-import poskmp.shared.generated.resources.palette_style_fruit_salad
-import poskmp.shared.generated.resources.palette_style_fruit_salad_desc
-import poskmp.shared.generated.resources.palette_style_monochrome
-import poskmp.shared.generated.resources.palette_style_monochrome_desc
-import poskmp.shared.generated.resources.palette_style_neutral
-import poskmp.shared.generated.resources.palette_style_neutral_desc
-import poskmp.shared.generated.resources.palette_style_rainbow
-import poskmp.shared.generated.resources.palette_style_rainbow_desc
-import poskmp.shared.generated.resources.palette_style_subtitle
-import poskmp.shared.generated.resources.palette_style_title
-import poskmp.shared.generated.resources.palette_style_tonal_spot
-import poskmp.shared.generated.resources.palette_style_tonal_spot_desc
-import poskmp.shared.generated.resources.palette_style_vibrant
-import poskmp.shared.generated.resources.palette_style_vibrant_desc
-import poskmp.shared.generated.resources.pip
-import poskmp.shared.generated.resources.point_of_sale
-import poskmp.shared.generated.resources.products
-import poskmp.shared.generated.resources.remove
-import poskmp.shared.generated.resources.reset_scale_button
-import poskmp.shared.generated.resources.retail_margin_label
-import poskmp.shared.generated.resources.seed_color_subtitle
-import poskmp.shared.generated.resources.seed_color_title
-import poskmp.shared.generated.resources.settings
-import poskmp.shared.generated.resources.settings_title
-import poskmp.shared.generated.resources.show_extra_prices_checador_subtitle
-import poskmp.shared.generated.resources.show_extra_prices_checador_title
-import poskmp.shared.generated.resources.star
-import poskmp.shared.generated.resources.status_connected
-import poskmp.shared.generated.resources.status_pending
-import poskmp.shared.generated.resources.supabase_offline_desc
-import poskmp.shared.generated.resources.supabase_server_title
-import poskmp.shared.generated.resources.supabase_status_pending_desc
-import poskmp.shared.generated.resources.sync
-import poskmp.shared.generated.resources.sync_now_button
-import poskmp.shared.generated.resources.system_info_title
-import poskmp.shared.generated.resources.system_version
-import poskmp.shared.generated.resources.tab_checador
-import poskmp.shared.generated.resources.tab_productos
-import poskmp.shared.generated.resources.tab_venta
-import poskmp.shared.generated.resources.theme_section_title
-import poskmp.shared.generated.resources.update_available_title
-import poskmp.shared.generated.resources.update_error
-import poskmp.shared.generated.resources.update_notes_title
-import poskmp.shared.generated.resources.updates_section_subtitle
-import poskmp.shared.generated.resources.updates_section_title
-import poskmp.shared.generated.resources.upload
-import poskmp.shared.generated.resources.warning
-import poskmp.shared.generated.resources.wholesale_margin_label
+import poskmp.shared.generated.resources.*
 import kotlin.math.roundToInt
 
 data class PresetColorItem(
@@ -266,6 +168,14 @@ fun AjustesScreen(
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
         onDefaultWholesaleMarginChange = { viewModel.setDefaultWholesaleMargin(it) },
+        isRoundingEnabled = uiState.isRoundingEnabled,
+        onIsRoundingEnabledChange = { viewModel.setIsRoundingEnabled(it) },
+        roundRetailPrice = uiState.roundRetailPrice,
+        onRoundRetailPriceChange = { viewModel.setRoundRetailPrice(it) },
+        roundWholesalePrice = uiState.roundWholesalePrice,
+        onRoundWholesalePriceChange = { viewModel.setRoundWholesalePrice(it) },
+        roundTicketTotal = uiState.roundTicketTotal,
+        onRoundTicketTotalChange = { viewModel.setRoundTicketTotal(it) },
         currentVersion = uiState.currentVersion,
         isCheckingUpdates = uiState.isCheckingUpdates,
         updateCheckResult = uiState.updateCheckResult,
@@ -302,6 +212,14 @@ fun AjustesScreen(
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
     onDefaultWholesaleMarginChange: (Double) -> Unit = {},
+    isRoundingEnabled: Boolean = false,
+    onIsRoundingEnabledChange: (Boolean) -> Unit = {},
+    roundRetailPrice: Boolean = false,
+    onRoundRetailPriceChange: (Boolean) -> Unit = {},
+    roundWholesalePrice: Boolean = false,
+    onRoundWholesalePriceChange: (Boolean) -> Unit = {},
+    roundTicketTotal: Boolean = false,
+    onRoundTicketTotalChange: (Boolean) -> Unit = {},
     currentVersion: String = AppConstants.APP_VERSION,
     isCheckingUpdates: Boolean = false,
     updateCheckResult: UpdateCheckResult? = null,
@@ -1245,6 +1163,170 @@ fun AjustesScreen(
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f)
                             )
+                        }
+                    }
+                }
+            }
+
+            // Card: Redondeo de Precios
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = stringResource(Res.string.rounding_section_title),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(Res.string.rounding_section_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Master Toggle: Activar redondeo
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                Text(
+                                    text = stringResource(Res.string.enable_rounding_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.enable_rounding_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Switch(
+                                checked = isRoundingEnabled,
+                                onCheckedChange = onIsRoundingEnabledChange
+                            )
+                        }
+
+                        // Secondary Toggles visible when master is enabled
+                        AnimatedVisibility(
+                            visible = isRoundingEnabled,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            Column(modifier = Modifier.padding(top = 16.dp)) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    thickness = 1.dp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Secondary Toggle 1: Redondear precio de venta al guardar producto
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                        Text(
+                                            text = stringResource(Res.string.round_retail_price_title),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = stringResource(Res.string.round_retail_price_subtitle),
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Switch(
+                                        checked = roundRetailPrice,
+                                        onCheckedChange = onRoundRetailPriceChange
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    thickness = 1.dp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Secondary Toggle 2: Redondear precio de mayoreo al guardar producto
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                        Text(
+                                            text = stringResource(Res.string.round_wholesale_price_title),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = stringResource(Res.string.round_wholesale_price_subtitle),
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Switch(
+                                        checked = roundWholesalePrice,
+                                        onCheckedChange = onRoundWholesalePriceChange
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    thickness = 1.dp
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Secondary Toggle 3: Redondear total del ticket antes del cobro
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                        Text(
+                                            text = stringResource(Res.string.round_ticket_total_title),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = stringResource(Res.string.round_ticket_total_subtitle),
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Switch(
+                                        checked = roundTicketTotal,
+                                        onCheckedChange = onRoundTicketTotalChange
+                                    )
+                                }
+                            }
                         }
                     }
                 }

@@ -114,6 +114,7 @@ import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.roundPrice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -1710,11 +1711,12 @@ fun VentaScreen(
                 Button(
                     onClick = {
                         if (isNameValid && isPriceValid && isQtyValid) {
+                            val effectivePrice = if (uiState.roundRetailPrice && saveUnregisteredToDatabase) roundPrice(priceVal) else priceVal
                             val dummyProduct = Products(
                                 id = "UNREG-${generateUUID()}",
                                 codigos = "[]",
                                 nombre = unregisteredName.trim(),
-                                precio = priceVal,
+                                precio = effectivePrice,
                                 costo = 0.0,
                                 categoria = notRegisteredCategory,
                                 activo = 1L,
@@ -1761,7 +1763,9 @@ fun VentaScreen(
             },
             existingCategories = categories,
             defaultRetailMarginPercentage = uiState.defaultRetailMargin,
-            defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin
+            defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
+            roundRetailPrice = uiState.roundRetailPrice,
+            roundWholesalePrice = uiState.roundWholesalePrice
         )
     }
 

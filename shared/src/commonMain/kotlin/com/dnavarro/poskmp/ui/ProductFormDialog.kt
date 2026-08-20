@@ -27,6 +27,7 @@ import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
+import com.dnavarro.poskmp.util.roundPrice
 import kotlin.math.roundToLong
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -60,7 +61,7 @@ private fun formatMargin(value: Double): String {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductFormDialog(
     product: Products?, // Null or product with empty ID means new product
@@ -69,7 +70,9 @@ fun ProductFormDialog(
     onValidateBarcodes: (suspend (List<String>) -> Pair<String, Products>?)? = null,
     existingCategories: List<String> = emptyList(),
     defaultRetailMarginPercentage: Double = 0.0,
-    defaultWholesaleMarginPercentage: Double = 0.0
+    defaultWholesaleMarginPercentage: Double = 0.0,
+    roundRetailPrice: Boolean = false,
+    roundWholesalePrice: Boolean = false
 ) {
     val isNew = product == null || product.id.isEmpty()
 
@@ -236,7 +239,7 @@ fun ProductFormDialog(
         }
 
         if (internalDuplicate != null) {
-            barcodeValidationError = duplicateInFormErrFmt.replace("%1\$s", internalDuplicate)
+            barcodeValidationError = duplicateInFormErrFmt.replace($$"%1$s", internalDuplicate)
             return@LaunchedEffect
         }
 
@@ -247,8 +250,8 @@ fun ProductFormDialog(
             isValidatingBarcode = false
             if (conflict != null) {
                 val (matchingCode, conflictingProduct) = conflict
-                barcodeValidationError = alreadyExistsErrFmt.replace("%1\$s", matchingCode).replace(
-                    "%2\$s", conflictingProduct.nombre)
+                barcodeValidationError = alreadyExistsErrFmt.replace($$"%1$s", matchingCode).replace(
+                    $$"%2$s", conflictingProduct.nombre)
             } else {
                 barcodeValidationError = null
             }
@@ -262,16 +265,21 @@ fun ProductFormDialog(
         val finalBarcodes = (formBarcodes + parseBarcodes(barcodeInput)).distinct()
         val formattedCodes = finalBarcodes.encodeToJsonBarcodes()
 
+        val rawPrice = formPrecio.toDoubleOrNull() ?: 0.0
+        val finalPrice = if (roundRetailPrice) roundPrice(rawPrice) else rawPrice
+        val rawWholesale = formPrecioMayoreo.toDoubleOrNull() ?: 0.0
+        val finalWholesale = if (roundWholesalePrice) roundPrice(rawWholesale) else rawWholesale
+
         val p = Products(
             id = id,
             codigos = formattedCodes,
             nombre = formNombre.trim(),
-            precio = formPrecio.toDoubleOrNull() ?: 0.0,
+            precio = finalPrice,
             costo = formCosto.toDoubleOrNull() ?: 0.0,
             categoria = formCategoria.trim().ifEmpty { noCategoryStr },
             activo = if (formActivo) 1L else 0L,
             por_peso = if (formPorPeso) 1L else 0L,
-            precio_mayoreo = formPrecioMayoreo.toDoubleOrNull() ?: 0.0,
+            precio_mayoreo = finalWholesale,
             es_favorito = if (formEsFavorito) 1L else 0L,
             piezas = formPiezas.toDoubleOrNull() ?: 1.0,
             updated_at = currentTimeMillis(),
@@ -283,13 +291,10 @@ fun ProductFormDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.onKeyEvent { keyEvent ->
-            if (keyEvent.type == KeyEventType.KeyDown &&
-                (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-            ) {
-                if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
-                    submitForm()
-                    true
-                } else false
+            keyEvent.type == KeyEventType.KeyDown &&
+                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
+                submitForm()
+                true
             } else false
         },
         shape = ShapeDefaults.cardShape,
@@ -321,13 +326,10 @@ fun ProductFormDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown &&
-                                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                                ) {
-                                    if (barcodeInput.trim().isNotEmpty()) {
-                                        addBarcodeFromInput()
-                                        true
-                                    } else false
+                                keyEvent.type == KeyEventType.KeyDown &&
+                                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (barcodeInput.trim().isNotEmpty()) {
+                                    addBarcodeFromInput()
+                                    true
                                 } else false
                             },
                         label = { Text(stringResource(Res.string.barcodes_label), style = MaterialTheme.typography.labelLarge) },

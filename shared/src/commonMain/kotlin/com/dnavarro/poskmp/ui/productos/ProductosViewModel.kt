@@ -34,6 +34,8 @@ private data class DisplayState(
     val selectedProductIds: Set<String> = emptySet()
 )
 
+private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
+
 /**
  * ViewModel for Productos screen, hosting state and handling UI events according to Google UI & Domain Layer architecture.
  */
@@ -54,12 +56,24 @@ class ProductosViewModel(
     }
 
     val uiState: StateFlow<ProductosUiState> = combine(
-        _searchQuery,
-        _productsFlow,
-        _displayState,
-        settingsRepository.defaultRetailMarginFlow,
-        settingsRepository.defaultWholesaleMarginFlow
-    ) { query, products, display, defaultRetailMargin, defaultWholesaleMargin ->
+        combine(
+            _searchQuery,
+            _productsFlow,
+            _displayState,
+            settingsRepository.defaultRetailMarginFlow,
+            settingsRepository.defaultWholesaleMarginFlow
+        ) { query, products, display, defaultRetailMargin, defaultWholesaleMargin ->
+            Tuple5(query, products, display, defaultRetailMargin, defaultWholesaleMargin)
+        },
+        combine(
+            settingsRepository.isRoundingEnabledFlow,
+            settingsRepository.roundRetailPriceFlow,
+            settingsRepository.roundWholesalePriceFlow
+        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice ->
+            Triple(isRoundingEnabled, roundRetailPrice, roundWholesalePrice)
+        }
+    ) { (query, products, display, defaultRetailMargin, defaultWholesaleMargin),
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice) ->
         ProductosUiState(
             searchQuery = query,
             rawProducts = products,
@@ -72,7 +86,9 @@ class ProductosViewModel(
             showBulkModificationFor = display.showBulkModificationFor,
             selectedProductIds = display.selectedProductIds,
             defaultRetailMargin = defaultRetailMargin,
-            defaultWholesaleMargin = defaultWholesaleMargin
+            defaultWholesaleMargin = defaultWholesaleMargin,
+            roundRetailPrice = isRoundingEnabled && roundRetailPrice,
+            roundWholesalePrice = isRoundingEnabled && roundWholesalePrice
         )
     }.stateIn(
         scope = viewModelScope,

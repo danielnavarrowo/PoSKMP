@@ -76,8 +76,19 @@ class VentaViewModel(
             _showCustomerDialog
         ) { cQuery, showDialog ->
             Pair(cQuery, showDialog)
+        },
+        combine(
+            settingsRepository.isRoundingEnabledFlow,
+            settingsRepository.roundRetailPriceFlow,
+            settingsRepository.roundWholesalePriceFlow,
+            settingsRepository.roundTicketTotalFlow
+        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
+            Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
         }
-    ) { (q, products, cat, cart, held), (canUndo, retailMargin, wholesaleMargin, customers, selectedCust), (cQuery, showDialog) ->
+    ) { (q, products, cat, cart, held),
+        (canUndo, retailMargin, wholesaleMargin, customers, selectedCust),
+        (cQuery, showDialog),
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal) ->
         val filteredCust = if (cQuery.isBlank()) {
             customers
         } else {
@@ -98,6 +109,10 @@ class VentaViewModel(
             canUndo = canUndo,
             defaultRetailMargin = retailMargin,
             defaultWholesaleMargin = wholesaleMargin,
+            isRoundingEnabled = isRoundingEnabled,
+            roundRetailPrice = isRoundingEnabled && roundRetailPrice,
+            roundWholesalePrice = isRoundingEnabled && roundWholesalePrice,
+            roundTicketTotal = isRoundingEnabled && roundTicketTotal,
             customers = customers,
             filteredCustomers = filteredCust,
             selectedCustomer = selectedCust,
@@ -108,6 +123,13 @@ class VentaViewModel(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VentaUiState()
+    )
+
+    private data class Tuple4<A, B, C, D>(
+        val a: A,
+        val b: B,
+        val c: C,
+        val d: D
     )
 
     private data class Tuple5<A, B, C, D, E>(
@@ -328,7 +350,8 @@ class VentaViewModel(
             pagoCon = pagoCon,
             cambio = cambio,
             metodoPago = metodoPago,
-            customerId = effectiveCustomerId
+            customerId = effectiveCustomerId,
+            roundTicketTotal = uiState.value.roundTicketTotal
         )
         clearCart()
         return folio

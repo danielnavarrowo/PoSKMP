@@ -30,6 +30,8 @@ data class ProductosUiState(
     val selectedProductIds: Set<String> = emptySet(),
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
+    val roundRetailPrice: Boolean = false,
+    val roundWholesalePrice: Boolean = false,
     val isLoading: Boolean = false
 ) {
     val availableCategories: List<String>

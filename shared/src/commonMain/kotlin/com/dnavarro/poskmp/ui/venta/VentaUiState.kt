@@ -5,6 +5,7 @@ import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
+import com.dnavarro.poskmp.util.roundPrice
 
 data class HeldTicket(
     val id: String = generateUUID(),
@@ -29,6 +30,10 @@ data class VentaUiState(
     val canUndo: Boolean = false,
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
+    val isRoundingEnabled: Boolean = false,
+    val roundRetailPrice: Boolean = false,
+    val roundWholesalePrice: Boolean = false,
+    val roundTicketTotal: Boolean = false,
     val isLoading: Boolean = false,
     val customers: List<Customer> = emptyList(),
     val filteredCustomers: List<Customer> = emptyList(),
@@ -36,6 +41,9 @@ data class VentaUiState(
     val customerSearchQuery: String = "",
     val showCustomerDialog: Boolean = false
 ) {
-    val total: Double
+    val rawTotal: Double
         get() = cartItems.sumOf { it.product.precio * it.quantity }
+
+    val total: Double
+        get() = if (roundTicketTotal) roundPrice(rawTotal) else rawTotal
 }

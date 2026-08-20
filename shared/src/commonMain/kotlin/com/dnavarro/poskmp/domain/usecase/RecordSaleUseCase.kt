@@ -6,6 +6,7 @@ import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
+import com.dnavarro.poskmp.util.roundPrice
 
 class RecordSaleUseCase(
     private val saleRepository: SaleRepository
@@ -15,7 +16,8 @@ class RecordSaleUseCase(
         pagoCon: Double,
         cambio: Double,
         metodoPago: String = "EFECTIVO",
-        customerId: String? = null
+        customerId: String? = null,
+        roundTicketTotal: Boolean = false
     ): Long {
         if (cartItems.isEmpty()) return 0L
 
@@ -60,19 +62,21 @@ class RecordSaleUseCase(
             )
         }
 
+        val finalTotal = if (roundTicketTotal) roundPrice(total) else total
+
         if (metodoPago == "CREDITO" && customerId.isNullOrBlank()) {
             throw IllegalArgumentException("Las ventas a crédito requieren un cliente registrado.")
         }
-        if (metodoPago == "MIXTO" && pagoCon < total && customerId.isNullOrBlank()) {
+        if (metodoPago == "MIXTO" && pagoCon < finalTotal && customerId.isNullOrBlank()) {
             throw IllegalArgumentException("Las ventas mixtas con saldo a crédito requieren un cliente registrado.")
         }
 
-        val netProfit = total - totalCosto
+        val netProfit = finalTotal - totalCosto
 
         val sale = Sale(
             id = saleId,
             folio = nextFolio,
-            total = total,
+            total = finalTotal,
             totalOriginal = totalOriginal,
             totalCosto = totalCosto,
             ganancia = netProfit,

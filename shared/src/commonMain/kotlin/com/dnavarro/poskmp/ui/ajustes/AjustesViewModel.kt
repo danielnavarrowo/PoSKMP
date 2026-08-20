@@ -24,6 +24,9 @@ private data class UpdateInternalState(
     val downloadState: UpdateDownloadState = UpdateDownloadState.Idle
 )
 
+private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
+
 /**
  * ViewModel for Settings screen according to Google UI Layer architecture.
  */
@@ -61,18 +64,35 @@ class AjustesViewModel(
     }
 
     private val _behaviorFlow = combine(
-        repository.defaultScreenFlow,
-        repository.isChecadorDialogFlow,
-        repository.showExtraPricesChecadorFlow,
-        repository.defaultRetailMarginFlow,
-        repository.defaultWholesaleMarginFlow
-    ) { defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin ->
+        combine(
+            repository.defaultScreenFlow,
+            repository.isChecadorDialogFlow,
+            repository.showExtraPricesChecadorFlow,
+            repository.defaultRetailMarginFlow,
+            repository.defaultWholesaleMarginFlow
+        ) { defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin ->
+            Tuple5(defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin)
+        },
+        combine(
+            repository.isRoundingEnabledFlow,
+            repository.roundRetailPriceFlow,
+            repository.roundWholesalePriceFlow,
+            repository.roundTicketTotalFlow
+        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
+            Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
+        }
+    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin),
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal) ->
         AjustesUiState(
             defaultScreen = defaultScreen,
             isChecadorDialog = isChecadorDialog,
             showExtraPricesChecador = showExtraPricesChecador,
             defaultRetailMargin = defaultRetailMargin,
-            defaultWholesaleMargin = defaultWholesaleMargin
+            defaultWholesaleMargin = defaultWholesaleMargin,
+            isRoundingEnabled = isRoundingEnabled,
+            roundRetailPrice = roundRetailPrice,
+            roundWholesalePrice = roundWholesalePrice,
+            roundTicketTotal = roundTicketTotal
         )
     }
 
@@ -87,6 +107,10 @@ class AjustesViewModel(
             showExtraPricesChecador = behaviorState.showExtraPricesChecador,
             defaultRetailMargin = behaviorState.defaultRetailMargin,
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
+            isRoundingEnabled = behaviorState.isRoundingEnabled,
+            roundRetailPrice = behaviorState.roundRetailPrice,
+            roundWholesalePrice = behaviorState.roundWholesalePrice,
+            roundTicketTotal = behaviorState.roundTicketTotal,
             currentVersion = updateRepository.getCurrentVersion(),
             isCheckingUpdates = updateState.isCheckingUpdates,
             updateCheckResult = updateState.updateCheckResult,
@@ -161,6 +185,30 @@ class AjustesViewModel(
     fun setDefaultWholesaleMargin(margin: Double) {
         viewModelScope.launch {
             repository.setDefaultWholesaleMargin(margin)
+        }
+    }
+
+    fun setIsRoundingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setIsRoundingEnabled(enabled)
+        }
+    }
+
+    fun setRoundRetailPrice(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setRoundRetailPrice(enabled)
+        }
+    }
+
+    fun setRoundWholesalePrice(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setRoundWholesalePrice(enabled)
+        }
+    }
+
+    fun setRoundTicketTotal(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setRoundTicketTotal(enabled)
         }
     }
 

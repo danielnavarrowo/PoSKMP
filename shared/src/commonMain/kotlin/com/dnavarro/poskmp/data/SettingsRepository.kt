@@ -33,6 +33,10 @@ interface SettingsRepository {
     val showExtraPricesChecadorFlow: Flow<Boolean>
     val defaultRetailMarginFlow: Flow<Double>
     val defaultWholesaleMarginFlow: Flow<Double>
+    val isRoundingEnabledFlow: Flow<Boolean>
+    val roundRetailPriceFlow: Flow<Boolean>
+    val roundWholesalePriceFlow: Flow<Boolean>
+    val roundTicketTotalFlow: Flow<Boolean>
 
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
@@ -45,6 +49,10 @@ interface SettingsRepository {
     suspend fun setShowExtraPricesChecador(show: Boolean)
     suspend fun setDefaultRetailMargin(margin: Double)
     suspend fun setDefaultWholesaleMargin(margin: Double)
+    suspend fun setIsRoundingEnabled(enabled: Boolean)
+    suspend fun setRoundRetailPrice(enabled: Boolean)
+    suspend fun setRoundWholesalePrice(enabled: Boolean)
+    suspend fun setRoundTicketTotal(enabled: Boolean)
 }
 
 /**
@@ -66,6 +74,10 @@ class SettingsRepositoryImpl(
         val SHOW_EXTRA_PRICES_CHECADOR = booleanPreferencesKey("show_extra_prices_checador")
         val DEFAULT_RETAIL_MARGIN = doublePreferencesKey("default_retail_margin_percentage")
         val DEFAULT_WHOLESALE_MARGIN = doublePreferencesKey("default_wholesale_margin_percentage")
+        val IS_ROUNDING_ENABLED = booleanPreferencesKey("is_rounding_enabled")
+        val ROUND_RETAIL_PRICE = booleanPreferencesKey("round_retail_price")
+        val ROUND_WHOLESALE_PRICE = booleanPreferencesKey("round_wholesale_price")
+        val ROUND_TICKET_TOTAL = booleanPreferencesKey("round_ticket_total")
     }
 
     override val useDynamicColorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -127,6 +139,22 @@ class SettingsRepositoryImpl(
 
     override val defaultWholesaleMarginFlow: Flow<Double> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] ?: 0.0
+    }
+
+    override val isRoundingEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.IS_ROUNDING_ENABLED] ?: false
+    }
+
+    override val roundRetailPriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.ROUND_RETAIL_PRICE] ?: false
+    }
+
+    override val roundWholesalePriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] ?: false
+    }
+
+    override val roundTicketTotalFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.ROUND_TICKET_TOTAL] ?: false
     }
 
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
@@ -192,6 +220,30 @@ class SettingsRepositoryImpl(
     override suspend fun setDefaultWholesaleMargin(margin: Double) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] = margin
+        }
+    }
+
+    override suspend fun setIsRoundingEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.IS_ROUNDING_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun setRoundRetailPrice(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = enabled
+        }
+    }
+
+    override suspend fun setRoundWholesalePrice(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = enabled
+        }
+    }
+
+    override suspend fun setRoundTicketTotal(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = enabled
         }
     }
 }
