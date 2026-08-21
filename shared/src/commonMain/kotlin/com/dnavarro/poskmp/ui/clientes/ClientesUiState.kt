@@ -18,5 +18,6 @@ data class ClientesUiState(
     val showPaymentDialogFor: Customer? = null,
     val showDeleteConfirmFor: Customer? = null,
     val errorMessage: String? = null,
-    val userMessage: String? = null
+    val userMessage: String? = null,
+    val isSyncing: Boolean = false
 )

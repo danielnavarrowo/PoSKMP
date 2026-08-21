@@ -75,6 +75,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.di.initKoin
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
@@ -153,11 +154,13 @@ fun App(
     initKoin()
 
     val repository = koinInject<ProductRepository>()
+    val syncRepository = koinInject<SyncRepository>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
 
     LaunchedEffect(repository) {
         withContext(Dispatchers.IO) {
             repository.insertDummyDataIfEmpty()
+            syncRepository.syncAll()
         }
     }
 

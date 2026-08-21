@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.sync.SyncStateEnum
+import kotlinx.coroutines.Dispatchers
+
 private data class DisplayState(
     val sortField: ProductSortField = ProductSortField.NOMBRE,
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
@@ -45,7 +49,8 @@ class ProductosViewModel(
     settingsRepository: SettingsRepository,
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
-    private val applyBulkModificationUseCase: ApplyBulkModificationUseCase = ApplyBulkModificationUseCase(repository)
+    private val applyBulkModificationUseCase: ApplyBulkModificationUseCase = ApplyBulkModificationUseCase(repository),
+    private val syncRepository: SyncRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -71,9 +76,11 @@ class ProductosViewModel(
             settingsRepository.roundWholesalePriceFlow
         ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice ->
             Triple(isRoundingEnabled, roundRetailPrice, roundWholesalePrice)
-        }
+        },
+        syncRepository.syncState
     ) { (query, products, display, defaultRetailMargin, defaultWholesaleMargin),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice) ->
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice),
+        syncState ->
         ProductosUiState(
             searchQuery = query,
             rawProducts = products,
@@ -88,7 +95,8 @@ class ProductosViewModel(
             defaultRetailMargin = defaultRetailMargin,
             defaultWholesaleMargin = defaultWholesaleMargin,
             roundRetailPrice = isRoundingEnabled && roundRetailPrice,
-            roundWholesalePrice = isRoundingEnabled && roundWholesalePrice
+            roundWholesalePrice = isRoundingEnabled && roundWholesalePrice,
+            isSyncing = syncState == SyncStateEnum.SYNCING
         )
     }.stateIn(
         scope = viewModelScope,
@@ -173,18 +181,27 @@ class ProductosViewModel(
         viewModelScope.launch {
             saveProductUseCase(product)
             _displayState.update { it.copy(showProductDialogFor = null) }
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
     fun deleteProductSoft(productId: String) {
         viewModelScope.launch {
             repository.deleteProductSoft(productId, currentTimeMillis())
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
     fun deleteProductHard(productId: String) {
         viewModelScope.launch {
             repository.deleteProductHard(productId)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
@@ -197,6 +214,15 @@ class ProductosViewModel(
                     showBulkModificationFor = null
                 )
             }
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
+        }
+    }
+
+    fun refreshSync() {
+        viewModelScope.launch(Dispatchers.IO) {
+            syncRepository.syncAll(isManual = true)
         }
     }
 

@@ -61,6 +61,18 @@ UPDATE products
 SET sync_state = ?, updated_at = ?
 WHERE id = ?;
 
+updateProductSyncState:
+UPDATE products
+SET sync_state = ?
+WHERE id = ?;
+
+upsertSyncedProduct:
+INSERT OR REPLACE INTO products (
+    id, codigos, nombre, precio, costo, 
+    categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, 
+    updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+
 searchProducts:
 SELECT * FROM products 
 WHERE (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%' OR categoria LIKE '%' || :query || '%');
@@ -183,6 +195,17 @@ WHERE id = ?;
 deleteCustomerHard:
 DELETE FROM customers WHERE id = ?;
 
+selectUnsyncedCustomers:
+SELECT * FROM customers WHERE sync_state != 'SYNCED';
+
+updateCustomerSyncState:
+UPDATE customers SET sync_state = ? WHERE id = ?;
+
+upsertSyncedCustomer:
+INSERT OR REPLACE INTO customers (
+    id, nombre, telefono, direccion, notas, limite_credito, activo, created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+
 -- Customer Payments Queries
 
 insertCustomerPayment:
@@ -197,6 +220,17 @@ ORDER BY created_at DESC;
 
 deleteCustomerPayment:
 DELETE FROM customer_payments WHERE id = ?;
+
+selectUnsyncedCustomerPayments:
+SELECT * FROM customer_payments WHERE sync_state != 'SYNCED';
+
+updateCustomerPaymentSyncState:
+UPDATE customer_payments SET sync_state = ? WHERE id = ?;
+
+upsertSyncedCustomerPayment:
+INSERT OR REPLACE INTO customer_payments (
+    id, customer_id, monto, metodo_pago, notas, created_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED');
 
 selectCustomerDebtSummary:
 SELECT 
@@ -269,6 +303,18 @@ INSERT INTO sales (
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+selectUnsyncedSales:
+SELECT * FROM sales WHERE sync_state != 'SYNCED';
+
+updateSaleSyncState:
+UPDATE sales SET sync_state = ? WHERE id = ?;
+
+upsertSyncedSale:
+INSERT OR REPLACE INTO sales (
+    id, folio, total, total_original, total_costo, ganancia,
+    pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+
 selectSalesByCustomerId:
 SELECT * FROM sales
 WHERE customer_id = ?
@@ -281,6 +327,12 @@ ORDER BY created_at DESC;
 
 insertSaleItem:
 INSERT INTO sale_items (
+    id, sale_id, product_id, product_nombre, cantidad,
+    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+upsertSyncedSaleItem:
+INSERT OR REPLACE INTO sale_items (
     id, sale_id, product_id, product_nombre, cantidad,
     precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, created_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

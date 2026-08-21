@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.sync.SyncStateEnum
+import kotlinx.coroutines.Dispatchers
+
 /**
  * ViewModel for Venta screen managing product flow, barcode search, customers, and cart updates.
  */
@@ -34,7 +38,8 @@ class VentaViewModel(
     private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository),
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
     getCustomersUseCase: GetCustomersUseCase,
-    private val recordSaleUseCase: RecordSaleUseCase
+    private val recordSaleUseCase: RecordSaleUseCase,
+    private val syncRepository: SyncRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -84,11 +89,13 @@ class VentaViewModel(
             settingsRepository.roundTicketTotalFlow
         ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
             Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
-        }
+        },
+        syncRepository.syncState
     ) { (q, products, cat, cart, held),
         (canUndo, retailMargin, wholesaleMargin, customers, selectedCust),
         (cQuery, showDialog),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal) ->
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal),
+        syncState ->
         val filteredCust = if (cQuery.isBlank()) {
             customers
         } else {
@@ -117,7 +124,8 @@ class VentaViewModel(
             filteredCustomers = filteredCust,
             selectedCustomer = selectedCust,
             customerSearchQuery = cQuery,
-            showCustomerDialog = showDialog
+            showCustomerDialog = showDialog,
+            isSyncing = syncState == SyncStateEnum.SYNCING
         )
     }.stateIn(
         scope = viewModelScope,
@@ -301,6 +309,15 @@ class VentaViewModel(
     fun saveProduct(product: Products) {
         viewModelScope.launch {
             saveProductUseCase(product)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
+        }
+    }
+
+    fun refreshSync() {
+        viewModelScope.launch(Dispatchers.IO) {
+            syncRepository.syncAll(isManual = true)
         }
     }
 
@@ -354,6 +371,9 @@ class VentaViewModel(
             roundTicketTotal = uiState.value.roundTicketTotal
         )
         clearCart()
+        viewModelScope.launch(Dispatchers.IO) {
+            syncRepository.syncAll()
+        }
         return folio
     }
 }

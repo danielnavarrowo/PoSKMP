@@ -14,12 +14,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.sync.SyncStateEnum
+import kotlinx.coroutines.Dispatchers
 
 class ClientesViewModel(
     private val getCustomersUseCase: GetCustomersUseCase,
     private val saveCustomerUseCase: SaveCustomerUseCase,
     private val recordCustomerPaymentUseCase: RecordCustomerPaymentUseCase,
-    private val getCustomerAccountStatementUseCase: GetCustomerAccountStatementUseCase
+    private val getCustomerAccountStatementUseCase: GetCustomerAccountStatementUseCase,
+    private val syncRepository: SyncRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -28,8 +32,9 @@ class ClientesViewModel(
     val uiState: StateFlow<ClientesUiState> = combine(
         getCustomersUseCase(),
         _searchQuery,
-        _internalState
-    ) { customerList, query, internal ->
+        _internalState,
+        syncRepository.syncState
+    ) { customerList, query, internal, syncState ->
         val filtered = if (query.isBlank()) {
             customerList
         } else {
@@ -53,7 +58,8 @@ class ClientesViewModel(
             clientes = customerList,
             filteredClientes = filtered,
             searchQuery = query,
-            debtSummary = debtSummary
+            debtSummary = debtSummary,
+            isSyncing = syncState == SyncStateEnum.SYNCING
         )
     }.stateIn(
         scope = viewModelScope,
@@ -102,6 +108,9 @@ class ClientesViewModel(
             )
             result.onSuccess {
                 dismissCustomerFormDialog()
+                launch(Dispatchers.IO) {
+                    syncRepository.syncAll()
+                }
             }.onFailure { error ->
                 _internalState.update {
                     it.copy(errorMessage = error.message ?: "Error al guardar cliente")
@@ -175,6 +184,9 @@ class ClientesViewModel(
                 if (_internalState.value.selectedCustomerForStatement?.id == customerId) {
                     loadAccountStatement(customerId)
                 }
+                launch(Dispatchers.IO) {
+                    syncRepository.syncAll()
+                }
             }.onFailure { error ->
                 _internalState.update {
                     it.copy(errorMessage = error.message ?: "Error al registrar abono")
@@ -188,6 +200,9 @@ class ClientesViewModel(
             recordCustomerPaymentUseCase.deletePayment(paymentId)
             if (_internalState.value.selectedCustomerForStatement?.id == customerId) {
                 loadAccountStatement(customerId)
+            }
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
             }
         }
     }
@@ -211,6 +226,15 @@ class ClientesViewModel(
             if (_internalState.value.selectedCustomerForStatement?.id == id) {
                 dismissAccountStatement()
             }
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
+        }
+    }
+
+    fun refreshSync() {
+        viewModelScope.launch(Dispatchers.IO) {
+            syncRepository.syncAll(isManual = true)
         }
     }
 

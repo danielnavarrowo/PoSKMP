@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SettingsRepository
+import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
@@ -11,6 +12,7 @@ import com.dnavarro.poskmp.data.updater.UpdateRepository
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.materialkolor.PaletteStyle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +23,10 @@ import kotlinx.coroutines.launch
 private data class UpdateInternalState(
     val isCheckingUpdates: Boolean = false,
     val updateCheckResult: UpdateCheckResult? = null,
-    val downloadState: UpdateDownloadState = UpdateDownloadState.Idle
+    val downloadState: UpdateDownloadState = UpdateDownloadState.Idle,
+    val isTestingConnection: Boolean = false,
+    val connectionTestResult: String? = null,
+    val syncMessage: String? = null
 )
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
@@ -32,7 +37,8 @@ private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D,
  */
 class AjustesViewModel(
     private val repository: SettingsRepository,
-    private val updateRepository: UpdateRepository
+    private val updateRepository: UpdateRepository,
+    private val syncRepository: SyncRepository
 ) : ViewModel() {
 
     private val _updateState = MutableStateFlow(UpdateInternalState())
@@ -80,9 +86,18 @@ class AjustesViewModel(
             repository.roundTicketTotalFlow
         ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
             Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
+        },
+        combine(
+            repository.supabaseUrlFlow,
+            repository.supabaseKeyFlow,
+            repository.lastSyncTimestampFlow,
+            repository.autoSyncEnabledFlow
+        ) { supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled ->
+            Tuple4(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled)
         }
     ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal) ->
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal),
+        (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled) ->
         AjustesUiState(
             defaultScreen = defaultScreen,
             isChecadorDialog = isChecadorDialog,
@@ -92,15 +107,20 @@ class AjustesViewModel(
             isRoundingEnabled = isRoundingEnabled,
             roundRetailPrice = roundRetailPrice,
             roundWholesalePrice = roundWholesalePrice,
-            roundTicketTotal = roundTicketTotal
+            roundTicketTotal = roundTicketTotal,
+            supabaseUrl = supabaseUrl,
+            supabaseKey = supabaseKey,
+            lastSyncTimestamp = lastSyncTimestamp,
+            autoSyncEnabled = autoSyncEnabled
         )
     }
 
     val uiState: StateFlow<AjustesUiState> = combine(
         _themeFlow,
         _behaviorFlow,
-        _updateState
-    ) { themeState, behaviorState, updateState ->
+        _updateState,
+        syncRepository.syncState
+    ) { themeState, behaviorState, updateState, syncState ->
         themeState.copy(
             defaultScreen = behaviorState.defaultScreen,
             isChecadorDialog = behaviorState.isChecadorDialog,
@@ -111,10 +131,18 @@ class AjustesViewModel(
             roundRetailPrice = behaviorState.roundRetailPrice,
             roundWholesalePrice = behaviorState.roundWholesalePrice,
             roundTicketTotal = behaviorState.roundTicketTotal,
+            supabaseUrl = behaviorState.supabaseUrl,
+            supabaseKey = behaviorState.supabaseKey,
+            lastSyncTimestamp = behaviorState.lastSyncTimestamp,
+            autoSyncEnabled = behaviorState.autoSyncEnabled,
+            syncState = syncState,
             currentVersion = updateRepository.getCurrentVersion(),
             isCheckingUpdates = updateState.isCheckingUpdates,
             updateCheckResult = updateState.updateCheckResult,
-            downloadState = updateState.downloadState
+            downloadState = updateState.downloadState,
+            isTestingConnection = updateState.isTestingConnection,
+            connectionTestResult = updateState.connectionTestResult,
+            syncMessage = updateState.syncMessage
         )
     }.stateIn(
         scope = viewModelScope,
@@ -179,36 +207,54 @@ class AjustesViewModel(
     fun setDefaultRetailMargin(margin: Double) {
         viewModelScope.launch {
             repository.setDefaultRetailMargin(margin)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
     fun setDefaultWholesaleMargin(margin: Double) {
         viewModelScope.launch {
             repository.setDefaultWholesaleMargin(margin)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
     fun setIsRoundingEnabled(enabled: Boolean) {
         viewModelScope.launch {
             repository.setIsRoundingEnabled(enabled)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
     fun setRoundRetailPrice(enabled: Boolean) {
         viewModelScope.launch {
             repository.setRoundRetailPrice(enabled)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
     fun setRoundWholesalePrice(enabled: Boolean) {
         viewModelScope.launch {
             repository.setRoundWholesalePrice(enabled)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
     fun setRoundTicketTotal(enabled: Boolean) {
         viewModelScope.launch {
             repository.setRoundTicketTotal(enabled)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
@@ -270,5 +316,60 @@ class AjustesViewModel(
             updateCheckResult = null,
             downloadState = UpdateDownloadState.Idle
         )
+    }
+
+    fun setAutoSyncEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setAutoSyncEnabled(enabled)
+        }
+    }
+
+    fun testAndSaveConnection(url: String, key: String) {
+        viewModelScope.launch {
+            val cleanUrl = url.trim()
+            val cleanKey = key.trim()
+            repository.setSupabaseUrl(cleanUrl)
+            repository.setSupabaseKey(cleanKey)
+
+            if (cleanUrl.isBlank() || cleanKey.isBlank()) {
+                _updateState.value = _updateState.value.copy(
+                    connectionTestResult = "Ingresa la URL y la API Key",
+                    isTestingConnection = false
+                )
+                return@launch
+            }
+
+            _updateState.value = _updateState.value.copy(
+                isTestingConnection = true,
+                connectionTestResult = null
+            )
+
+            val result = syncRepository.testConnection(cleanUrl, cleanKey)
+            _updateState.value = _updateState.value.copy(
+                isTestingConnection = false,
+                connectionTestResult = if (result.isSuccess) {
+                    "SUCCESS"
+                } else {
+                    result.exceptionOrNull()?.message ?: "Error al conectar"
+                }
+            )
+        }
+    }
+
+    fun syncNow(forceFullSync: Boolean = false) {
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(syncMessage = null)
+            val result = syncRepository.syncAll(forceFullSync = forceFullSync, isManual = true)
+            if (result.isSuccess) {
+                val report = result.getOrNull()
+                _updateState.value = _updateState.value.copy(
+                    syncMessage = "SYNC_SUCCESS:${report?.itemsPushed ?: 0}:${report?.itemsPulled ?: 0}"
+                )
+            } else {
+                _updateState.value = _updateState.value.copy(
+                    syncMessage = "SYNC_ERROR:${result.exceptionOrNull()?.message ?: "Error"}"
+                )
+            }
+        }
     }
 }

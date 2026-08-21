@@ -89,6 +89,8 @@ import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_customer_placeholder
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+
 @Composable
 fun ClientesScreen(
     viewModel: ClientesViewModel,
@@ -98,6 +100,7 @@ fun ClientesScreen(
 
     ClientesContent(
         state = state,
+        onRefresh = viewModel::refreshSync,
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onOpenCreateCustomer = viewModel::openCreateCustomerDialog,
         onOpenEditCustomer = viewModel::openEditCustomerDialog,
@@ -123,6 +126,7 @@ fun ClientesScreen(
 @Composable
 fun ClientesContent(
     state: ClientesUiState,
+    onRefresh: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
     onOpenCreateCustomer: () -> Unit,
     onOpenEditCustomer: (Customer) -> Unit,
@@ -167,11 +171,16 @@ fun ClientesContent(
         },
         containerColor = MaterialTheme.colorScheme.surface
     ) { innerPadding ->
-        BoxWithConstraints(
+        PullToRefreshBox(
+            isRefreshing = state.isSyncing,
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize()
+            ) {
             val isCompact = maxWidth < 700.dp
 
             Column(
@@ -341,6 +350,7 @@ fun ClientesContent(
                 }
             }
         }
+    }
     }
 
     // Dialogs

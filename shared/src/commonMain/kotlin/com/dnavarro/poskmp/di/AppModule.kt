@@ -38,6 +38,10 @@ import com.dnavarro.poskmp.domain.usecase.RecordCustomerPaymentUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCustomerUseCase
 
+import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSource
+import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSourceImpl
+import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.sync.SyncRepositoryImpl
 import com.dnavarro.poskmp.data.updater.UpdateRepository
 
 val dataModule = module {
@@ -52,6 +56,8 @@ val dataModule = module {
     singleOf(::CustomerRepositoryImpl) bind CustomerRepository::class
     singleOf(::SettingsRepositoryImpl) bind SettingsRepository::class
     singleOf(::UpdateRepository)
+    single<SupabaseRemoteDataSource> { SupabaseRemoteDataSourceImpl() }
+    single<SyncRepository> { SyncRepositoryImpl(get(), get(), get()) }
 }
 
 val domainModule = module {

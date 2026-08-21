@@ -39,7 +39,8 @@ data class VentaUiState(
     val filteredCustomers: List<Customer> = emptyList(),
     val selectedCustomer: Customer? = null,
     val customerSearchQuery: String = "",
-    val showCustomerDialog: Boolean = false
+    val showCustomerDialog: Boolean = false,
+    val isSyncing: Boolean = false
 ) {
     val rawTotal: Double
         get() = cartItems.sumOf { it.product.precio * it.quantity }

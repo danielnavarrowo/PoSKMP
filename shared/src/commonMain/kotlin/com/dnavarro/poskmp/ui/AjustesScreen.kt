@@ -73,12 +73,16 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
@@ -94,6 +98,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.*
 import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalLocale
 
 data class PresetColorItem(
     val color: Color,
@@ -101,7 +106,6 @@ data class PresetColorItem(
     val shape: Shape
 )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun rememberPresetSeedColorItems(): List<PresetColorItem> {
     val sunny = MaterialShapes.Sunny.toShape()
@@ -176,6 +180,17 @@ fun AjustesScreen(
         onRoundWholesalePriceChange = { viewModel.setRoundWholesalePrice(it) },
         roundTicketTotal = uiState.roundTicketTotal,
         onRoundTicketTotalChange = { viewModel.setRoundTicketTotal(it) },
+        supabaseUrl = uiState.supabaseUrl,
+        supabaseKey = uiState.supabaseKey,
+        lastSyncTimestamp = uiState.lastSyncTimestamp,
+        autoSyncEnabled = uiState.autoSyncEnabled,
+        onAutoSyncEnabledChange = { viewModel.setAutoSyncEnabled(it) },
+        syncState = uiState.syncState,
+        isTestingConnection = uiState.isTestingConnection,
+        connectionTestResult = uiState.connectionTestResult,
+        syncMessage = uiState.syncMessage,
+        onTestAndSaveSupabaseConnection = { url, key -> viewModel.testAndSaveConnection(url, key) },
+        onSyncNow = { viewModel.syncNow() },
         currentVersion = uiState.currentVersion,
         isCheckingUpdates = uiState.isCheckingUpdates,
         updateCheckResult = uiState.updateCheckResult,
@@ -220,6 +235,17 @@ fun AjustesScreen(
     onRoundWholesalePriceChange: (Boolean) -> Unit = {},
     roundTicketTotal: Boolean = false,
     onRoundTicketTotalChange: (Boolean) -> Unit = {},
+    supabaseUrl: String = "",
+    supabaseKey: String = "",
+    lastSyncTimestamp: Long = 0L,
+    autoSyncEnabled: Boolean = true,
+    onAutoSyncEnabledChange: (Boolean) -> Unit = {},
+    syncState: SyncStateEnum = SyncStateEnum.IDLE,
+    isTestingConnection: Boolean = false,
+    connectionTestResult: String? = null,
+    syncMessage: String? = null,
+    onTestAndSaveSupabaseConnection: (url: String, key: String) -> Unit = { _, _ -> },
+    onSyncNow: () -> Unit = {},
     currentVersion: String = AppConstants.APP_VERSION,
     isCheckingUpdates: Boolean = false,
     updateCheckResult: UpdateCheckResult? = null,
@@ -245,6 +271,9 @@ fun AjustesScreen(
             if (defaultWholesaleMargin % 1.0 == 0.0) defaultWholesaleMargin.toLong().toString() else defaultWholesaleMargin.toString()
         } else "")
     }
+    var localSupabaseUrl by remember(supabaseUrl) { mutableStateOf(supabaseUrl) }
+    var localSupabaseKey by remember(supabaseKey) { mutableStateOf(supabaseKey) }
+    var isKeyVisible by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -266,13 +295,18 @@ fun AjustesScreen(
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        LazyColumn(
+        PullToRefreshBox(
+            isRefreshing = syncState == SyncStateEnum.SYNCING,
+            onRefresh = onSyncNow,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(horizontal = 16.dp)
         ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
 
             item {
                 Card(
@@ -1031,22 +1065,65 @@ fun AjustesScreen(
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
-                            text = stringResource(Res.string.cloud_sync_section_title),
+                            text = stringResource(Res.string.supabase_section_title),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(Res.string.supabase_section_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
+
+                        // Connection Status Banner
+                        val isConfigured = localSupabaseUrl.isNotBlank() && localSupabaseKey.isNotBlank()
+                        val statusIcon = when {
+                            syncState == SyncStateEnum.SYNCING -> Res.drawable.sync
+                            syncState == SyncStateEnum.ERROR -> Res.drawable.warning
+                            !isConfigured -> Res.drawable.warning
+                            else -> Res.drawable.check
+                        }
+                        val statusColor = when {
+                            syncState == SyncStateEnum.SYNCING -> MaterialTheme.colorScheme.primary
+                            syncState == SyncStateEnum.ERROR -> Color(0xFFEF4444)
+                            !isConfigured -> Color(0xFF9CA3AF)
+                            else -> Color(0xFF10B981)
+                        }
+                        val statusBadgeBg = when {
+                            syncState == SyncStateEnum.SYNCING -> MaterialTheme.colorScheme.primaryContainer
+                            syncState == SyncStateEnum.ERROR -> Color(0xFFFEE2E2)
+                            !isConfigured -> Color(0xFFF3F4F6)
+                            else -> Color(0xFFD1FAE5)
+                        }
+                        val statusBadgeText = when {
+                            syncState == SyncStateEnum.SYNCING -> MaterialTheme.colorScheme.onPrimaryContainer
+                            syncState == SyncStateEnum.ERROR -> Color(0xFF991B1B)
+                            !isConfigured -> Color(0xFF4B5563)
+                            else -> Color(0xFF065F46)
+                        }
+                        val statusDesc = when {
+                            syncState == SyncStateEnum.SYNCING -> stringResource(Res.string.supabase_status_syncing_desc)
+                            syncState == SyncStateEnum.ERROR -> stringResource(Res.string.supabase_status_error_desc)
+                            !isConfigured -> stringResource(Res.string.supabase_status_unconfigured_desc)
+                            else -> stringResource(Res.string.supabase_status_connected_desc)
+                        }
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Icon(
-                                    painter = painterResource(Res.drawable.warning),
-                                    contentDescription = stringResource(Res.string.supabase_offline_desc),
-                                    tint = Color(0xFFF59E0B),
+                                    painter = painterResource(statusIcon),
+                                    contentDescription = null,
+                                    tint = statusColor,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -1058,18 +1135,23 @@ fun AjustesScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = stringResource(Res.string.supabase_status_pending_desc),
+                                        text = statusDesc,
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                             Badge(
-                                containerColor = Color(0xFFFEF3C7),
-                                contentColor = Color(0xFF92400E)
+                                containerColor = statusBadgeBg,
+                                contentColor = statusBadgeText
                             ) {
                                 Text(
-                                    stringResource(Res.string.status_pending),
+                                    text = when {
+                                        syncState == SyncStateEnum.SYNCING -> "Sincronizando"
+                                        syncState == SyncStateEnum.ERROR -> "Error"
+                                        !isConfigured -> "No configurado"
+                                        else -> "Conectado"
+                                    },
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     fontSize = 11.sp
@@ -1077,10 +1159,48 @@ fun AjustesScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
+                        // URL TextField
+                        OutlinedTextField(
+                            value = localSupabaseUrl,
+                            onValueChange = { localSupabaseUrl = it },
+                            label = { Text(stringResource(Res.string.supabase_url_label)) },
+                            placeholder = { Text(stringResource(Res.string.supabase_url_placeholder)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // API Key TextField with show/hide toggle
+                        OutlinedTextField(
+                            value = localSupabaseKey,
+                            onValueChange = { localSupabaseKey = it },
+                            label = { Text(stringResource(Res.string.supabase_key_label)) },
+                            placeholder = { Text(stringResource(Res.string.supabase_key_placeholder)) },
+                            singleLine = true,
+                            visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                TextButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                                    Text(
+                                        text = stringResource(if (isKeyVisible) Res.string.supabase_hide_key else Res.string.supabase_show_key),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Test and Save Button
                         Button(
-                            onClick = { /* Force sync triggers here later */ },
+                            onClick = {
+                                onTestAndSaveSupabaseConnection(localSupabaseUrl, localSupabaseKey)
+                            },
+                            enabled = !isTestingConnection,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -1088,17 +1208,142 @@ fun AjustesScreen(
                             shape = MaterialTheme.shapes.small,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.sync),
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                            if (isTestingConnection) {
+                                ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+                            Text(
+                                text = stringResource(Res.string.supabase_save_and_test_button),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+
+                        // Connection Result Feedback
+                        if (connectionTestResult != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (connectionTestResult == "SUCCESS") {
+                                Text(
+                                    text = stringResource(Res.string.supabase_connection_success),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF10B981)
+                                )
+                            } else {
+                                Text(
+                                    text = stringResource(Res.string.supabase_connection_failed, connectionTestResult),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Auto Sync Switch
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(Res.string.supabase_auto_sync_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.supabase_auto_sync_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Switch(
+                                checked = autoSyncEnabled,
+                                onCheckedChange = onAutoSyncEnabledChange
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Sync Now Button
+                        Button(
+                            onClick = onSyncNow,
+                            enabled = isConfigured && syncState != SyncStateEnum.SYNCING,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (syncState == SyncStateEnum.SYNCING) {
+                                ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else {
+                                Icon(
+                                    painter = painterResource(Res.drawable.sync),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
                             Text(
                                 text = stringResource(Res.string.sync_now_button),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Last Sync Timestamp
+                        val lastSyncText = if (lastSyncTimestamp > 0L) {
+                            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", LocalLocale.current.platformLocale)
+                                .format(java.util.Date(lastSyncTimestamp))
+                        } else null
+
+                        Text(
+                            text = if (lastSyncText != null) {
+                                stringResource(Res.string.supabase_last_sync_format, lastSyncText)
+                            } else {
+                                stringResource(Res.string.supabase_last_sync_never)
+                            },
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+
+                        // Sync Message Feedback
+                        if (syncMessage != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            if (syncMessage.startsWith("SYNC_SUCCESS")) {
+                                val parts = syncMessage.split(":")
+                                val pushed = parts.getOrNull(1) ?: "0"
+                                val pulled = parts.getOrNull(2) ?: "0"
+                                Text(
+                                    text = stringResource(Res.string.supabase_sync_success, pushed, pulled),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF10B981),
+                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                )
+                            } else if (syncMessage.startsWith("SYNC_ERROR")) {
+                                val err = syncMessage.removePrefix("SYNC_ERROR:")
+                                Text(
+                                    text = stringResource(Res.string.supabase_sync_failed, err),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                )
+                            }
                         }
                     }
                 }
@@ -1390,17 +1635,17 @@ fun AjustesScreen(
                                         val products = repository.getAllProductsList()
                                         val csvBuilder =
                                             StringBuilder("id,codigos,nombre,precio,costo,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
-                                        for (p in products) {
-                                            csvBuilder.append("${p.id},")
-                                            csvBuilder.append("\"${p.codigos.replace("\"", "\"\"")}\",")
-                                            csvBuilder.append("\"${p.nombre.replace("\"", "\"\"")}\",")
-                                            csvBuilder.append("${p.precio},")
-                                            csvBuilder.append("${p.costo},")
-                                            csvBuilder.append("\"${(p.categoria ?: "").replace("\"", "\"\"")}\",")
-                                            csvBuilder.append("${p.activo},")
-                                            csvBuilder.append("${p.por_peso},")
-                                            csvBuilder.append("${p.precio_mayoreo},")
-                                            csvBuilder.append("${p.es_favorito}\n")
+                                        for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito) in products) {
+                                            csvBuilder.append("$id,")
+                                            csvBuilder.append("\"${codigos.replace("\"", "\"\"")}\",")
+                                            csvBuilder.append("\"${nombre.replace("\"", "\"\"")}\",")
+                                            csvBuilder.append("$precio,")
+                                            csvBuilder.append("$costo,")
+                                            csvBuilder.append("\"${(categoria ?: "").replace("\"", "\"\"")}\",")
+                                            csvBuilder.append("$activo,")
+                                            csvBuilder.append("$por_peso,")
+                                            csvBuilder.append("$precio_mayoreo,")
+                                            csvBuilder.append("$es_favorito\n")
                                         }
                                         val csvText = csvBuilder.toString()
                                         saveFile(
@@ -1577,6 +1822,7 @@ fun AjustesScreen(
                 }
             }
         }
+    }
 
         if (showImportDialog) {
             ImportProductsDialog(

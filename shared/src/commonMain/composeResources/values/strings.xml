@@ -513,4 +513,28 @@
     <string name="round_wholesale_price_subtitle">Aplica el redondeo al precio de mayoreo al guardar</string>
     <string name="round_ticket_total_title">Redondear total del ticket antes del cobro</string>
     <string name="round_ticket_total_subtitle">Redondea el total acumulado en el ticket de venta al finalizar</string>
+
+    <!-- Supabase Cloud Sync Settings Strings -->
+    <string name="supabase_section_title">Sincronización en la Nube (Supabase)</string>
+    <string name="supabase_section_subtitle">Conecta tu punto de venta a Supabase para sincronizar catálogos, clientes y ventas entre dispositivos</string>
+    <string name="supabase_url_label">URL del Proyecto Supabase</string>
+    <string name="supabase_url_placeholder">https://tu-proyecto.supabase.co</string>
+    <string name="supabase_key_label">API Key / Token Anónimo o Service</string>
+    <string name="supabase_key_placeholder">eyJhbGciOi...</string>
+    <string name="supabase_save_and_test_button">Guardar y Probar Conexión</string>
+    <string name="supabase_status_connected_desc">Conectado y listo para sincronizar</string>
+    <string name="supabase_status_unconfigured_desc">Ingresa las credenciales para sincronizar</string>
+    <string name="supabase_status_syncing_desc">Sincronizando datos con la nube...</string>
+    <string name="supabase_status_error_desc">Error de conexión con el servidor</string>
+    <string name="supabase_last_sync_never">Última sincronización: Nunca</string>
+    <string name="supabase_last_sync_format">Última sincronización: %1$s</string>
+    <string name="supabase_auto_sync_title">Sincronización automática</string>
+    <string name="supabase_auto_sync_subtitle">Sincronizar cambios periódicamente en segundo plano y al iniciar la app</string>
+    <string name="supabase_credentials_empty_warning">Ingresa la URL y el Token de tu proyecto Supabase para activar la sincronización.</string>
+    <string name="supabase_connection_success">¡Conexión establecida con éxito con Supabase!</string>
+    <string name="supabase_connection_failed">No se pudo conectar a Supabase: %1$s</string>
+    <string name="supabase_sync_success">Sincronización completada (%1$s subidos, %2$s descargados).</string>
+    <string name="supabase_sync_failed">Fallo en la sincronización: %1$s</string>
+    <string name="supabase_show_key">Mostrar token</string>
+    <string name="supabase_hide_key">Ocultar token</string>
 </resources>

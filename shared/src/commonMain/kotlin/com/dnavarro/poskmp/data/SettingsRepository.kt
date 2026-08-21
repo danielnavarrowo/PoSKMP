@@ -12,11 +12,13 @@ import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
+import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 
 /**
  * Interface defining settings data operations.
@@ -37,6 +39,11 @@ interface SettingsRepository {
     val roundRetailPriceFlow: Flow<Boolean>
     val roundWholesalePriceFlow: Flow<Boolean>
     val roundTicketTotalFlow: Flow<Boolean>
+    val supabaseUrlFlow: Flow<String>
+    val supabaseKeyFlow: Flow<String>
+    val lastSyncTimestampFlow: Flow<Long>
+    val autoSyncEnabledFlow: Flow<Boolean>
+    val businessSettingsUpdatedAtFlow: Flow<Long>
 
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
@@ -53,6 +60,19 @@ interface SettingsRepository {
     suspend fun setRoundRetailPrice(enabled: Boolean)
     suspend fun setRoundWholesalePrice(enabled: Boolean)
     suspend fun setRoundTicketTotal(enabled: Boolean)
+    suspend fun setBusinessSettings(
+        defaultRetailMargin: Double,
+        defaultWholesaleMargin: Double,
+        isRoundingEnabled: Boolean,
+        roundRetailPrice: Boolean,
+        roundWholesalePrice: Boolean,
+        roundTicketTotal: Boolean,
+        updatedAt: Long
+    )
+    suspend fun setSupabaseUrl(url: String)
+    suspend fun setSupabaseKey(key: String)
+    suspend fun setLastSyncTimestamp(timestamp: Long)
+    suspend fun setAutoSyncEnabled(enabled: Boolean)
 }
 
 /**
@@ -78,6 +98,15 @@ class SettingsRepositoryImpl(
         val ROUND_RETAIL_PRICE = booleanPreferencesKey("round_retail_price")
         val ROUND_WHOLESALE_PRICE = booleanPreferencesKey("round_wholesale_price")
         val ROUND_TICKET_TOTAL = booleanPreferencesKey("round_ticket_total")
+        val SUPABASE_URL = stringPreferencesKey("supabase_url")
+        val SUPABASE_KEY = stringPreferencesKey("supabase_key")
+        val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
+        val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
+        val BUSINESS_SETTINGS_UPDATED_AT = longPreferencesKey("business_settings_updated_at")
+    }
+
+    override val businessSettingsUpdatedAtFlow: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] ?: 0L
     }
 
     override val useDynamicColorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -157,6 +186,22 @@ class SettingsRepositoryImpl(
         preferences[PreferenceKeys.ROUND_TICKET_TOTAL] ?: false
     }
 
+    override val supabaseUrlFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.SUPABASE_URL] ?: ""
+    }
+
+    override val supabaseKeyFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.SUPABASE_KEY] ?: ""
+    }
+
+    override val lastSyncTimestampFlow: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.LAST_SYNC_TIMESTAMP] ?: 0L
+    }
+
+    override val autoSyncEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.AUTO_SYNC_ENABLED] ?: true
+    }
+
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.USE_DYNAMIC_COLOR] = useDynamic
@@ -214,36 +259,86 @@ class SettingsRepositoryImpl(
     override suspend fun setDefaultRetailMargin(margin: Double) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.DEFAULT_RETAIL_MARGIN] = margin
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
 
     override suspend fun setDefaultWholesaleMargin(margin: Double) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] = margin
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
 
     override suspend fun setIsRoundingEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.IS_ROUNDING_ENABLED] = enabled
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
 
     override suspend fun setRoundRetailPrice(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = enabled
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
 
     override suspend fun setRoundWholesalePrice(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = enabled
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
 
     override suspend fun setRoundTicketTotal(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = enabled
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
+        }
+    }
+
+    override suspend fun setBusinessSettings(
+        defaultRetailMargin: Double,
+        defaultWholesaleMargin: Double,
+        isRoundingEnabled: Boolean,
+        roundRetailPrice: Boolean,
+        roundWholesalePrice: Boolean,
+        roundTicketTotal: Boolean,
+        updatedAt: Long
+    ) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DEFAULT_RETAIL_MARGIN] = defaultRetailMargin
+            preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] = defaultWholesaleMargin
+            preferences[PreferenceKeys.IS_ROUNDING_ENABLED] = isRoundingEnabled
+            preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = roundRetailPrice
+            preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = roundWholesalePrice
+            preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = roundTicketTotal
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = updatedAt
+        }
+    }
+
+    override suspend fun setSupabaseUrl(url: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.SUPABASE_URL] = url.trim()
+        }
+    }
+
+    override suspend fun setSupabaseKey(key: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.SUPABASE_KEY] = key.trim()
+        }
+    }
+
+    override suspend fun setLastSyncTimestamp(timestamp: Long) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.LAST_SYNC_TIMESTAMP] = timestamp
+        }
+    }
+
+    override suspend fun setAutoSyncEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.AUTO_SYNC_ENABLED] = enabled
         }
     }
 }

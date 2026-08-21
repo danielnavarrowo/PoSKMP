@@ -58,6 +58,7 @@ import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TriStateCheckbox
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -440,12 +441,18 @@ fun ProductosScreen(
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)
     ) { innerPadding ->
-        BoxWithConstraints(
+        PullToRefreshBox(
+            isRefreshing = uiState.isSyncing,
+            onRefresh = { viewModel.refreshSync() },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
-                .background(MaterialTheme.colorScheme.background)
         ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
             val isCompact = maxWidth < 720.dp
             val availableWidth = maxWidth
             val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
@@ -1018,6 +1025,7 @@ fun ProductosScreen(
                 }
             }
         }
+    }
 
         // PRODUCT FORM DIALOG
         if (showProductDialogFor != null) {

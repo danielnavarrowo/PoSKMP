@@ -33,5 +33,13 @@ data class AjustesUiState(
     val currentVersion: String = AppConstants.APP_VERSION,
     val isCheckingUpdates: Boolean = false,
     val updateCheckResult: UpdateCheckResult? = null,
-    val downloadState: UpdateDownloadState = UpdateDownloadState.Idle
+    val downloadState: UpdateDownloadState = UpdateDownloadState.Idle,
+    val supabaseUrl: String = "",
+    val supabaseKey: String = "",
+    val lastSyncTimestamp: Long = 0L,
+    val autoSyncEnabled: Boolean = true,
+    val syncState: com.dnavarro.poskmp.data.sync.SyncStateEnum = com.dnavarro.poskmp.data.sync.SyncStateEnum.IDLE,
+    val isTestingConnection: Boolean = false,
+    val connectionTestResult: String? = null,
+    val syncMessage: String? = null
 )
