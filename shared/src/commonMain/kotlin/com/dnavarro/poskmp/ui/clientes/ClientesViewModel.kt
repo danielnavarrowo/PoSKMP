@@ -237,12 +237,4 @@ class ClientesViewModel(
             syncRepository.syncAll(isManual = true)
         }
     }
-
-    fun clearErrorMessage() {
-        _internalState.update { it.copy(errorMessage = null) }
-    }
-
-    fun clearUserMessage() {
-        _internalState.update { it.copy(userMessage = null) }
-    }
 }

@@ -2,17 +2,16 @@ package com.dnavarro.poskmp.data.source.remote
 
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
+import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
-import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
-import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -24,6 +23,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import io.ktor.client.request.get
 
 interface SupabaseRemoteDataSource {
     suspend fun testConnection(url: String, key: String): Result<Boolean>

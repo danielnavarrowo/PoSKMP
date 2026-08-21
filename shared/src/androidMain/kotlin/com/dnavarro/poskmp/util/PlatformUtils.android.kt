@@ -3,16 +3,12 @@ package com.dnavarro.poskmp.util
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.Products
-import kotlinx.coroutines.runBlocking
-import org.jetbrains.compose.resources.getString
-import poskmp.shared.generated.resources.*
 import java.util.UUID
-
-import androidx.activity.compose.BackHandler
-import androidx.compose.runtime.Composable
 
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
@@ -49,9 +45,9 @@ actual fun pickFile(
     onFilePicked: (fileName: String, content: ByteArray) -> Unit,
     onError: (String) -> Unit
 ) {
-    val err = runBlocking { getString(Res.string.import_not_supported_android) }
-    onError(err)
+    onError("Importación de archivos no disponible en Android.")
 }
+
 object AndroidSaveFileHandler {
     var content: String? = null
     var defaultFileName: String? = null
@@ -72,12 +68,10 @@ class SaveFileHelperActivity : ComponentActivity() {
                 }
                 AndroidSaveFileHandler.onSuccess?.invoke()
             } catch (e: Exception) {
-                val err = runBlocking { getString(Res.string.save_file_error, e.message ?: "") }
-                AndroidSaveFileHandler.onError?.invoke(err)
+                AndroidSaveFileHandler.onError?.invoke("Error al guardar archivo: ${e.message.orEmpty()}")
             }
         } else {
-            val cancelledErr = runBlocking { getString(Res.string.operation_cancelled_by_user) }
-            AndroidSaveFileHandler.onError?.invoke(cancelledErr)
+            AndroidSaveFileHandler.onError?.invoke("Operación cancelada por el usuario.")
         }
         finish()
     }
@@ -106,8 +100,7 @@ actual fun saveFile(
 ) {
     val context = DatabaseDriverFactory.appContext
     if (context == null) {
-        val err = runBlocking { getString(Res.string.android_context_not_initialized) }
-        onError(err)
+        onError("Contexto de Android no inicializado.")
         return
     }
 
@@ -126,6 +119,6 @@ actual fun parseImportFile(
     fileName: String,
     content: ByteArray
 ): List<Products> {
-    val err = runBlocking { getString(Res.string.import_not_supported_android) }
-    throw UnsupportedOperationException(err)
+    throw UnsupportedOperationException("Importación de archivos no disponible en Android.")
 }
+

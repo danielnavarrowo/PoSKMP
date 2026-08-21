@@ -172,10 +172,6 @@ class VentaViewModel(
         _searchQuery.value = query
     }
 
-    fun onCategorySelected(category: String?) {
-        _selectedCategory.value = category
-    }
-
     fun selectCustomer(customer: Customer?) {
         _selectedCustomer.value = customer
         _showCustomerDialog.value = false
@@ -346,8 +342,6 @@ class VentaViewModel(
         _cartHistory.clear()
         _canUndo.value = false
     }
-
-    fun resumeTicketFromHold(heldTicket: HeldTicket) = resumeHeldTicket(heldTicket)
 
     fun discardHeldTicket(heldTicket: HeldTicket) {
         _heldTickets.value = _heldTickets.value.filterNot { it.id == heldTicket.id }

@@ -173,10 +173,6 @@ class ProductosViewModel(
         }
     }
 
-    fun onClearSelectedProducts() {
-        _displayState.update { it.copy(selectedProductIds = emptySet()) }
-    }
-
     fun saveProduct(product: Products) {
         viewModelScope.launch {
             saveProductUseCase(product)

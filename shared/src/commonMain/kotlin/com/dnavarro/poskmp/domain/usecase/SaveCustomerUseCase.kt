@@ -50,8 +50,4 @@ class SaveCustomerUseCase(
     suspend fun setCustomerActiveStatus(id: String, activo: Boolean) {
         customerRepository.setCustomerActiveStatus(id, activo)
     }
-
-    suspend fun deleteCustomer(id: String) {
-        customerRepository.deleteCustomer(id)
-    }
 }

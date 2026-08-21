@@ -74,12 +74,6 @@ fun parseCsvLine(line: String): List<String> {
     return result
 }
 
-fun formatCurrentDateTime(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
-    val date = formatCurrentDate(dateTime)
-    val time = formatCurrentTime(dateTime)
-    return "$date\n$time"
-}
-
 fun formatCurrentDate(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
     val locale = java.util.Locale.forLanguageTag("es-MX")
     val dayOfWeek = dateTime.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)
@@ -152,13 +146,6 @@ fun com.dnavarro.poskmp.db.Products.parseBarcodes(): List<String> {
 fun List<String>.encodeToJsonBarcodes(): String {
     val cleaned = this.map { it.trim().replace("\"", "") }.filter { it.isNotEmpty() }
     return if (cleaned.isEmpty()) "[]" else cleaned.joinToString(separator = "\",\"", prefix = "[\"", postfix = "\"]")
-}
-
-/**
- * Encodes a comma-separated form input string of barcodes into a JSON array string.
- */
-fun String.encodeFormBarcodesToJson(): String {
-    return this.split(",").encodeToJsonBarcodes()
 }
 
 /**

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -43,6 +44,14 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -53,10 +62,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -70,12 +82,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SaleRepository
 import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.di.initKoin
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
@@ -94,40 +108,20 @@ import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
+import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.analytics
-import poskmp.shared.generated.resources.barcode_scanner
-import poskmp.shared.generated.resources.last_sale_change
-import poskmp.shared.generated.resources.last_sale_items
-import poskmp.shared.generated.resources.last_sale_paid
-import poskmp.shared.generated.resources.last_sale_title
-import poskmp.shared.generated.resources.last_sale_total
-import poskmp.shared.generated.resources.nav_clientes
-import poskmp.shared.generated.resources.nav_clientes_desktop
-import poskmp.shared.generated.resources.person
-import poskmp.shared.generated.resources.point_of_sale
-import poskmp.shared.generated.resources.products
-import poskmp.shared.generated.resources.settings
-import poskmp.shared.generated.resources.tab_ajustes
-import poskmp.shared.generated.resources.tab_checador
-import poskmp.shared.generated.resources.tab_checador_desktop
-import poskmp.shared.generated.resources.tab_productos
-import poskmp.shared.generated.resources.tab_productos_desktop
-import poskmp.shared.generated.resources.tab_venta
-import poskmp.shared.generated.resources.tab_venta_desktop
-import poskmp.shared.generated.resources.tab_ventas_historial
-import poskmp.shared.generated.resources.tab_ventas_historial_desktop
+import poskmp.shared.generated.resources.*
 import java.time.LocalDateTime
 import kotlin.time.Duration.Companion.seconds
 
@@ -156,6 +150,20 @@ fun App(
     val repository = koinInject<ProductRepository>()
     val syncRepository = koinInject<SyncRepository>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
+
+    val syncState by syncRepository.syncState.collectAsStateWithLifecycle()
+    val isSyncing = syncState == SyncStateEnum.SYNCING
+    val coroutineScope = rememberCoroutineScope()
+
+    val infiniteTransition = rememberInfiniteTransition()
+    val syncRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+    )
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -367,6 +375,96 @@ fun App(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
+                                            // Sincronización Manual (Above Last Sale)
+                                            val lastSyncTimestamp = ajustesUiState.lastSyncTimestamp
+                                            if (isExpanded) {
+                                                FilledTonalButton(
+                                                    onClick = {
+                                                        if (!isSyncing) {
+                                                            coroutineScope.launch(Dispatchers.IO) {
+                                                                syncRepository.syncAll(isManual = true)
+                                                            }
+                                                        }
+                                                    },
+                                                    enabled = !isSyncing,
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                    shape = MaterialTheme.shapes.medium
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.sync),
+                                                        contentDescription = stringResource(Res.string.sync_now_button),
+                                                        modifier = Modifier
+                                                            .size(18.dp)
+                                                            .rotate(if (isSyncing) syncRotation else 0f)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = if (isSyncing) stringResource(Res.string.supabase_status_syncing_desc) else stringResource(Res.string.sync_now_button),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(3.dp))
+                                                val lastSyncFormatted = if (lastSyncTimestamp > 0L) {
+                                                    formatEpochMillisToDateTime(lastSyncTimestamp)
+                                                } else {
+                                                    null
+                                                }
+                                                Text(
+                                                    text = if (lastSyncFormatted != null) {
+                                                        stringResource(Res.string.supabase_last_sync_format, lastSyncFormatted)
+                                                    } else {
+                                                        stringResource(Res.string.supabase_last_sync_never)
+                                                    },
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 2
+                                                )
+                                            } else {
+                                                FilledTonalIconButton(
+                                                    onClick = {
+                                                        if (!isSyncing) {
+                                                            coroutineScope.launch(Dispatchers.IO) {
+                                                                syncRepository.syncAll(isManual = true)
+                                                            }
+                                                        }
+                                                    },
+                                                    enabled = !isSyncing,
+                                                    shape = MaterialTheme.shapes.medium
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.sync),
+                                                        contentDescription = stringResource(Res.string.sync_now_button),
+                                                        modifier = Modifier
+                                                            .size(20.dp)
+                                                            .rotate(if (isSyncing) syncRotation else 0f)
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                val shortSyncText = if (lastSyncTimestamp > 0L) {
+                                                    val instant = java.time.Instant.ofEpochMilli(lastSyncTimestamp)
+                                                    val time = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
+                                                        .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+                                                    time
+                                                } else {
+                                                    "--:--"
+                                                }
+                                                Text(
+                                                    text = shortSyncText,
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
                                             lastSale?.let { sale ->
                                                 Surface(
                                                     modifier = Modifier.fillMaxWidth(),
