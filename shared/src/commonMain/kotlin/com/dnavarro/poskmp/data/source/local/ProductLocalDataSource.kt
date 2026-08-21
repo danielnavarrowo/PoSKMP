@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
+import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
@@ -130,13 +131,31 @@ class SqlDelightProductDataSource(
 
     override suspend fun deleteProductHard(id: String) {
         withContext(Dispatchers.IO) {
-            queries.deleteProductHard(id)
+            queries.transaction {
+                queries.deleteProductHard(id)
+                queries.insertDeletedSyncRecord(
+                    id = id,
+                    entity_type = "PRODUCT",
+                    deleted_at = currentTimeMillis()
+                )
+            }
         }
     }
 
     override suspend fun deleteAllProducts() {
         withContext(Dispatchers.IO) {
-            queries.deleteAllProducts()
+            queries.transaction {
+                val allIds = queries.selectAllProducts().executeAsList().map { it.id }
+                val now = currentTimeMillis()
+                queries.deleteAllProducts()
+                for (id in allIds) {
+                    queries.insertDeletedSyncRecord(
+                        id = id,
+                        entity_type = "PRODUCT",
+                        deleted_at = now
+                    )
+                }
+            }
         }
     }
 

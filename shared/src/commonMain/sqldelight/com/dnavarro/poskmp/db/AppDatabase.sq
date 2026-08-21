@@ -433,5 +433,22 @@ SELECT * FROM sale_items WHERE sale_id = ?;
 selectAllSalesCount:
 SELECT COUNT(id) FROM sales;
 
+-- ============================================
+-- TOMBSTONES / DELETED SYNC RECORDS
+-- ============================================
 
+CREATE TABLE deleted_sync_records (
+    id          TEXT    PRIMARY KEY NOT NULL,
+    entity_type TEXT    NOT NULL,
+    deleted_at  INTEGER NOT NULL
+);
 
+insertDeletedSyncRecord:
+INSERT OR REPLACE INTO deleted_sync_records (id, entity_type, deleted_at)
+VALUES (?, ?, ?);
+
+selectDeletedSyncRecords:
+SELECT * FROM deleted_sync_records;
+
+deleteDeletedSyncRecord:
+DELETE FROM deleted_sync_records WHERE id = ?;

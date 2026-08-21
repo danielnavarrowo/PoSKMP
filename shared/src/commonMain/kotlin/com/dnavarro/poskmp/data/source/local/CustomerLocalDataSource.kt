@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import com.dnavarro.poskmp.util.currentTimeMillis
 
 interface CustomerLocalDataSource {
     fun getActiveCustomers(): Flow<List<Customer>>
@@ -169,7 +170,14 @@ class SqlDelightCustomerDataSource(
 
     override suspend fun deleteCustomer(id: String) {
         withContext(Dispatchers.IO) {
-            queries.deleteCustomerHard(id)
+            queries.transaction {
+                queries.deleteCustomerHard(id)
+                queries.insertDeletedSyncRecord(
+                    id = id,
+                    entity_type = "CUSTOMER",
+                    deleted_at = currentTimeMillis()
+                )
+            }
         }
     }
 
@@ -203,7 +211,14 @@ class SqlDelightCustomerDataSource(
 
     override suspend fun deleteCustomerPayment(paymentId: String) {
         withContext(Dispatchers.IO) {
-            queries.deleteCustomerPayment(paymentId)
+            queries.transaction {
+                queries.deleteCustomerPayment(paymentId)
+                queries.insertDeletedSyncRecord(
+                    id = paymentId,
+                    entity_type = "PAYMENT",
+                    deleted_at = currentTimeMillis()
+                )
+            }
         }
     }
 

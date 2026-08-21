@@ -116,3 +116,12 @@ data class StoreSettingsDto(
     val updatedAt: Long
 )
 
+@Serializable
+data class DeletedRecordDto(
+    val id: String,
+    @SerialName("entity_type")
+    val entityType: String,
+    @SerialName("deleted_at")
+    val deletedAt: Long
+)
+

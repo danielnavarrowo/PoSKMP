@@ -6,10 +6,12 @@ import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
+import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -37,6 +39,11 @@ interface SupabaseRemoteDataSource {
     suspend fun pullSaleItems(url: String, key: String, sinceTimestamp: Long): Result<List<SaleItemDto>>
     suspend fun pushStoreSettings(url: String, key: String, settings: StoreSettingsDto): Result<Unit>
     suspend fun pullStoreSettings(url: String, key: String): Result<StoreSettingsDto?>
+    suspend fun deleteRemoteProduct(url: String, key: String, id: String): Result<Unit>
+    suspend fun deleteRemoteCustomer(url: String, key: String, id: String): Result<Unit>
+    suspend fun deleteRemoteCustomerPayment(url: String, key: String, id: String): Result<Unit>
+    suspend fun pushDeletedRecords(url: String, key: String, records: List<DeletedRecordDto>): Result<Unit>
+    suspend fun pullDeletedRecords(url: String, key: String, sinceTimestamp: Long): Result<List<DeletedRecordDto>>
 }
 
 class SupabaseRemoteDataSourceImpl(
@@ -388,6 +395,122 @@ class SupabaseRemoteDataSourceImpl(
                 Result.success(list.firstOrNull())
             } else {
                 Result.failure(Exception("Fallo al descargar ajustes de negocio: HTTP ${response.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteRemoteProduct(
+        url: String,
+        key: String,
+        id: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val response = httpClient.delete("$cleanUrl/rest/v1/products?id=eq.$id") {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+            }
+            if (response.status.value in 200..299) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al borrar producto remoto: HTTP ${response.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteRemoteCustomer(
+        url: String,
+        key: String,
+        id: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val response = httpClient.delete("$cleanUrl/rest/v1/customers?id=eq.$id") {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+            }
+            if (response.status.value in 200..299) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al borrar cliente remoto: HTTP ${response.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteRemoteCustomerPayment(
+        url: String,
+        key: String,
+        id: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val response = httpClient.delete("$cleanUrl/rest/v1/customer_payments?id=eq.$id") {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+            }
+            if (response.status.value in 200..299) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al borrar abono remoto: HTTP ${response.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pushDeletedRecords(
+        url: String,
+        key: String,
+        records: List<DeletedRecordDto>
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (records.isEmpty()) return@withContext Result.success(Unit)
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val response = httpClient.post("$cleanUrl/rest/v1/deleted_records") {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+                header("Prefer", "resolution=merge-duplicates")
+                contentType(ContentType.Application.Json)
+                setBody(records)
+            }
+            if (response.status.value in 200..299) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al registrar eliminaciones remotas: HTTP ${response.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pullDeletedRecords(
+        url: String,
+        key: String,
+        sinceTimestamp: Long
+    ): Result<List<DeletedRecordDto>> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val endpoint = if (sinceTimestamp > 0) {
+                "$cleanUrl/rest/v1/deleted_records?deleted_at=gt.$sinceTimestamp&order=deleted_at.asc"
+            } else {
+                "$cleanUrl/rest/v1/deleted_records?order=deleted_at.asc"
+            }
+            val response = httpClient.get(endpoint) {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+                header("Accept", "application/json")
+            }
+            if (response.status.value in 200..299) {
+                val list: List<DeletedRecordDto> = response.body()
+                Result.success(list)
+            } else {
+                Result.failure(Exception("Error al descargar eliminaciones remotas: HTTP ${response.status.value}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

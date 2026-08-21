@@ -8,6 +8,7 @@ import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
+import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.Dispatchers
@@ -252,6 +253,29 @@ class SyncRepositoryImpl(
                 }
             }
 
+            // G) Eliminaciones Locales (Tombstones)
+            val pendingDeletes = queries.selectDeletedSyncRecords().executeAsList()
+            if (pendingDeletes.isNotEmpty()) {
+                val deleteDtos = pendingDeletes.map { DeletedRecordDto(it.id, it.entity_type, it.deleted_at) }
+                for ((id, entity_type) in pendingDeletes) {
+                    when (entity_type) {
+                        "PRODUCT" -> remoteDataSource.deleteRemoteProduct(url, key, id)
+                        "CUSTOMER" -> remoteDataSource.deleteRemoteCustomer(url, key, id)
+                        "PAYMENT" -> remoteDataSource.deleteRemoteCustomerPayment(url, key, id)
+                    }
+                }
+                val pushDeletesResult = remoteDataSource.pushDeletedRecords(url, key, deleteDtos)
+                if (pushDeletesResult.isFailure) {
+                    throw pushDeletesResult.exceptionOrNull() ?: Exception("Error al registrar eliminaciones remotas")
+                }
+                queries.transaction {
+                    for ((id) in pendingDeletes) {
+                        queries.deleteDeletedSyncRecord(id)
+                    }
+                }
+                totalPushed += pendingDeletes.size
+            }
+
             // ----------------------------------------------------
             // 2. FASE PULL (Descargar novedades remotas)
             // ----------------------------------------------------
@@ -399,6 +423,24 @@ class SyncRepositoryImpl(
                         )
                         totalPulled++
                     }
+                }
+            }
+
+            // G) Eliminaciones Remotas (Tombstones)
+            val pulledDeletesResult = remoteDataSource.pullDeletedRecords(url, key, lastSync)
+            if (pulledDeletesResult.isSuccess) {
+                val remoteDeletes = pulledDeletesResult.getOrDefault(emptyList())
+                if (remoteDeletes.isNotEmpty()) {
+                    queries.transaction {
+                        for ((id, entityType) in remoteDeletes) {
+                            when (entityType) {
+                                "PRODUCT" -> queries.deleteProductHard(id)
+                                "CUSTOMER" -> queries.deleteCustomerHard(id)
+                                "PAYMENT" -> queries.deleteCustomerPayment(id)
+                            }
+                        }
+                    }
+                    totalPulled += remoteDeletes.size
                 }
             }
 

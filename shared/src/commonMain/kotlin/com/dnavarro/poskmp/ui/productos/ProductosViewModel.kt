@@ -196,16 +196,7 @@ class ProductosViewModel(
         }
     }
 
-    fun deleteProductHard(productId: String) {
-        viewModelScope.launch {
-            repository.deleteProductHard(productId)
-            launch(Dispatchers.IO) {
-                syncRepository.syncAll()
-            }
-        }
-    }
-
-    fun applyBulkModification(modification: BulkProductModification) {
+     fun applyBulkModification(modification: BulkProductModification) {
         viewModelScope.launch {
             applyBulkModificationUseCase(_displayState.value.selectedProductIds, modification)
             _displayState.update {

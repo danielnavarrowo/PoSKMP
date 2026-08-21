@@ -15,8 +15,30 @@ fun createDatabase(driverFactory: DatabaseDriverFactory): AppDatabase {
 private fun ensureTablesExist(driver: SqlDriver) {
     try {
         driver.execute(null, "ALTER TABLE products ADD COLUMN piezas REAL NOT NULL DEFAULT 1.0;", 0)
-    } catch (_: Exception) {
-        // Column already exists
+    } catch (_: Exception) {}
+
+    try {
+        driver.execute(null, "ALTER TABLE products ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;", 0)
+    } catch (_: Exception) {}
+
+    try {
+        driver.execute(null, "ALTER TABLE products ADD COLUMN sync_state TEXT NOT NULL DEFAULT 'SYNCED';", 0)
+    } catch (_: Exception) {}
+
+    try {
+        driver.execute(
+            null,
+            """
+            CREATE TABLE IF NOT EXISTS deleted_sync_records (
+                id          TEXT    PRIMARY KEY NOT NULL,
+                entity_type TEXT    NOT NULL,
+                deleted_at  INTEGER NOT NULL
+            );
+            """.trimIndent(),
+            0
+        )
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 
     try {

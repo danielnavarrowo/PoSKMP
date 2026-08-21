@@ -157,9 +157,8 @@ fun App(
     val syncRepository = koinInject<SyncRepository>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
 
-    LaunchedEffect(repository) {
+    LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            repository.insertDummyDataIfEmpty()
             syncRepository.syncAll()
         }
     }

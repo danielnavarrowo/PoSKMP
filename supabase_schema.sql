@@ -99,3 +99,11 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     updated_at              BIGINT NOT NULL
 );
 
+-- 7. TABLA: deleted_records (Registro de Eliminaciones / Tombstones para Sincronización)
+CREATE TABLE IF NOT EXISTS public.deleted_records (
+    id          TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL, -- 'PRODUCT', 'CUSTOMER', 'PAYMENT'
+    deleted_at  BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_deleted_records_deleted_at ON public.deleted_records(deleted_at);
