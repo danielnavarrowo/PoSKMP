@@ -6,9 +6,13 @@ import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.ReceiptDocument
+import com.dnavarro.poskmp.domain.model.ReceiptItem
+import com.dnavarro.poskmp.domain.receipt.ReceiptFormatter
 import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
 import com.dnavarro.poskmp.domain.usecase.GetCustomersUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
+import com.dnavarro.poskmp.domain.usecase.PrintReceiptUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.CartItem
@@ -39,7 +43,8 @@ class VentaViewModel(
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
     getCustomersUseCase: GetCustomersUseCase,
     private val recordSaleUseCase: RecordSaleUseCase,
-    private val syncRepository: SyncRepository
+    private val syncRepository: SyncRepository,
+    private val printReceiptUseCase: PrintReceiptUseCase
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -52,6 +57,21 @@ class VentaViewModel(
     private val _selectedCustomer = MutableStateFlow<Customer?>(null)
     private val _customerSearchQuery = MutableStateFlow("")
     private val _showCustomerDialog = MutableStateFlow(false)
+    private val _lastReceipt = MutableStateFlow<ReceiptDocument?>(null)
+    private val _printState = MutableStateFlow(ReceiptPrintInternalState())
+
+    private data class ReceiptDialogState(
+        val customerSearchQuery: String,
+        val showCustomerDialog: Boolean,
+        val lastReceipt: ReceiptDocument?,
+        val printState: ReceiptPrintInternalState
+    )
+
+    private data class ReceiptPrintInternalState(
+        val isPrinting: Boolean = false,
+        val hasError: Boolean = false,
+        val successful: Boolean = false
+    )
 
     private val _productsFlow = _searchQuery.flatMapLatest { query ->
         getProductsUseCase(query = query, activeOnly = true)
@@ -78,24 +98,34 @@ class VentaViewModel(
         },
         combine(
             _customerSearchQuery,
-            _showCustomerDialog
-        ) { cQuery, showDialog ->
-            Pair(cQuery, showDialog)
+            _showCustomerDialog,
+            _lastReceipt,
+            _printState
+        ) { cQuery, showDialog, lastReceipt, printState ->
+            ReceiptDialogState(cQuery, showDialog, lastReceipt, printState)
         },
         combine(
-            settingsRepository.isRoundingEnabledFlow,
-            settingsRepository.roundRetailPriceFlow,
-            settingsRepository.roundWholesalePriceFlow,
-            settingsRepository.roundTicketTotalFlow
-        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
-            Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
+            combine(
+                settingsRepository.isRoundingEnabledFlow,
+                settingsRepository.roundRetailPriceFlow,
+                settingsRepository.roundWholesalePriceFlow,
+                settingsRepository.roundTicketTotalFlow
+            ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
+                Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
+            },
+            settingsRepository.receiptSettingsFlow
+        ) { roundingSettings, receiptSettings ->
+            Pair(roundingSettings, receiptSettings)
         },
         syncRepository.syncState
     ) { (q, products, cat, cart, held),
         (canUndo, retailMargin, wholesaleMargin, customers, selectedCust),
-        (cQuery, showDialog),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal),
+        receiptDialogState,
+        roundingAndReceiptSettings,
         syncState ->
+        val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
+        val (roundingSettings, receiptSettings) = roundingAndReceiptSettings
+        val (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal) = roundingSettings
         val filteredCust = if (cQuery.isBlank()) {
             customers
         } else {
@@ -125,7 +155,12 @@ class VentaViewModel(
             selectedCustomer = selectedCust,
             customerSearchQuery = cQuery,
             showCustomerDialog = showDialog,
-            isSyncing = syncState == SyncStateEnum.SYNCING
+            isSyncing = syncState == SyncStateEnum.SYNCING,
+            receiptSettings = receiptSettings,
+            lastReceipt = lastReceipt,
+            isPrintingReceipt = printState.isPrinting,
+            receiptPrintError = printState.hasError,
+            receiptPrintSuccessful = printState.successful
         )
     }.stateIn(
         scope = viewModelScope,
@@ -364,10 +399,51 @@ class VentaViewModel(
             customerId = effectiveCustomerId,
             roundTicketTotal = uiState.value.roundTicketTotal
         )
+        val receiptSettings = uiState.value.receiptSettings
+        val receipt = ReceiptFormatter.create(
+            folio = folio,
+            createdAt = currentTimeMillis(),
+            items = currentItems.map { item ->
+                ReceiptItem(
+                    name = item.product.nombre,
+                    quantity = item.quantity,
+                    unitPrice = item.product.precio,
+                    subtotal = item.product.precio * item.quantity,
+                    isWeightBased = item.product.por_peso == 1L
+                )
+            },
+            total = currentItems.sumOf { it.product.precio * it.quantity }
+                .let { if (uiState.value.roundTicketTotal) com.dnavarro.poskmp.util.roundPrice(it) else it },
+            paid = pagoCon,
+            change = cambio,
+            paymentMethod = metodoPago,
+            customerName = _selectedCustomer.value?.nombre,
+            settings = receiptSettings
+        )
+        _printState.value = ReceiptPrintInternalState()
+        _lastReceipt.value = receipt
         clearCart()
         viewModelScope.launch(Dispatchers.IO) {
             syncRepository.syncAll()
         }
         return folio
+    }
+
+    fun printLastReceipt() {
+        val receipt = _lastReceipt.value ?: return
+        if (_printState.value.isPrinting) return
+        viewModelScope.launch {
+            _printState.value = ReceiptPrintInternalState(isPrinting = true)
+            val result = printReceiptUseCase(receipt)
+            _printState.value = ReceiptPrintInternalState(
+                hasError = result.isFailure,
+                successful = result.isSuccess
+            )
+        }
+    }
+
+    fun dismissLastReceipt() {
+        _lastReceipt.value = null
+        _printState.value = ReceiptPrintInternalState()
     }
 }

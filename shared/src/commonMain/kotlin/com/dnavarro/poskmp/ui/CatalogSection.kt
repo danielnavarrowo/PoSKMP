@@ -70,6 +70,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -102,6 +103,9 @@ import poskmp.shared.generated.resources.wholesale_item
 import poskmp.shared.generated.resources.wholesale_item_hotkey
 import poskmp.shared.generated.resources.wholesale_ticket
 import poskmp.shared.generated.resources.wholesale_ticket_hotkey
+import kotlin.time.Duration.Companion.milliseconds
+
+private const val SEARCH_DEBOUNCE_MILLIS = 300L
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -128,6 +132,18 @@ fun CatalogSection(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val latestSearchQuery = remember { mutableStateOf(searchQuery) }
+
+    LaunchedEffect(searchQuery) {
+        if (latestSearchQuery.value != searchQuery) {
+            latestSearchQuery.value = searchQuery
+        }
+    }
+
+    LaunchedEffect(latestSearchQuery.value) {
+        delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
+        onSearchQueryChange(latestSearchQuery.value)
+    }
 
     LaunchedEffect(Unit) {
         if (isAndroid()) {
@@ -155,10 +171,10 @@ fun CatalogSection(
                 .fillMaxWidth()
                 .height(54.dp)
                 .background(
-                    color = if (searchQuery.isNotEmpty())
-                        MaterialTheme.colorScheme.surfaceContainerLowest
-                    else
-                        MaterialTheme.colorScheme.surfaceContainer,
+                color = if (latestSearchQuery.value.isNotEmpty())
+                    MaterialTheme.colorScheme.surfaceContainerLowest
+                else
+                    MaterialTheme.colorScheme.surfaceContainer,
                     shape = ShapeDefaults.cardShape
                 ),
             contentAlignment = Alignment.Center
@@ -180,7 +196,7 @@ fun CatalogSection(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    if (searchQuery.isEmpty()) {
+                    if (latestSearchQuery.value.isEmpty()) {
                         Text(
                             text = stringResource(Res.string.search_placeholder),
                             style = MaterialTheme.typography.titleSmall.copy(
@@ -193,8 +209,10 @@ fun CatalogSection(
                     }
 
                     BasicTextField(
-                        value = searchQuery,
-                        onValueChange = onSearchQueryChange,
+                        value = latestSearchQuery.value,
+                        onValueChange = { query ->
+                            latestSearchQuery.value = query
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .let { mod ->
@@ -203,8 +221,8 @@ fun CatalogSection(
                             .onPreviewKeyEvent { keyEvent ->
                                 onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || !isAndroid() &&
                                         keyEvent.type == KeyEventType.KeyDown &&
-                                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (onBarcodeScan != null && searchQuery.isNotBlank()) {
-                                    onBarcodeScan(searchQuery)
+                                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (onBarcodeScan != null && latestSearchQuery.value.isNotBlank()) {
+                                    onBarcodeScan(latestSearchQuery.value)
                                     true
                                 } else false
                             },
@@ -217,10 +235,13 @@ fun CatalogSection(
                     )
                 }
 
-                if (searchQuery.isNotEmpty()) {
+                if (latestSearchQuery.value.isNotEmpty()) {
                     IconButton(
                         modifier = Modifier.size(32.dp),
-                        onClick = { onSearchQueryChange("") }
+                        onClick = {
+                            latestSearchQuery.value = ""
+                            onSearchQueryChange("")
+                        }
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.close),

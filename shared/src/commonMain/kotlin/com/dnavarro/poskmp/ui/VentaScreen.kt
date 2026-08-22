@@ -108,6 +108,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.PaymentMethod
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.venta.CustomerSelectionDialog
+import com.dnavarro.poskmp.ui.venta.ReceiptPreviewDialog
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
@@ -195,6 +196,11 @@ fun VentaScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(uiState.lastReceipt?.folio) {
+        if (uiState.lastReceipt != null) {
+            viewModel.printLastReceipt()
+        }
+    }
     val searchQuery = uiState.searchQuery
     val productsList = uiState.activeProducts
     val cartItems = uiState.cartItems
@@ -1561,6 +1567,17 @@ fun VentaScreen(
                     Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        )
+    }
+
+    uiState.lastReceipt?.let { receipt ->
+        ReceiptPreviewDialog(
+            receipt = receipt,
+            isPrinting = uiState.isPrintingReceipt,
+            printSuccessful = uiState.receiptPrintSuccessful,
+            printError = uiState.receiptPrintError,
+            onPrint = { viewModel.printLastReceipt() },
+            onDismiss = { viewModel.dismissLastReceipt() }
         )
     }
 

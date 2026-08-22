@@ -2,6 +2,8 @@ package com.dnavarro.poskmp.ui.venta
 
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.ReceiptDocument
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
@@ -40,7 +42,12 @@ data class VentaUiState(
     val selectedCustomer: Customer? = null,
     val customerSearchQuery: String = "",
     val showCustomerDialog: Boolean = false,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    val receiptSettings: ReceiptSettings = ReceiptSettings(),
+    val lastReceipt: ReceiptDocument? = null,
+    val isPrintingReceipt: Boolean = false,
+    val receiptPrintError: Boolean = false,
+    val receiptPrintSuccessful: Boolean = false
 ) {
     val rawTotal: Double
         get() = cartItems.sumOf { it.product.precio * it.quantity }

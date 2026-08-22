@@ -537,4 +537,35 @@
     <string name="supabase_sync_failed">Fallo en la sincronización: %1$s</string>
     <string name="supabase_show_key">Mostrar token</string>
     <string name="supabase_hide_key">Ocultar token</string>
+
+    <!-- Receipt and Printer Settings -->
+    <string name="store_info_section_title">Información de la tienda</string>
+    <string name="store_info_section_subtitle">Estos datos aparecerán en la parte superior de cada ticket.</string>
+    <string name="store_name_label">Nombre de la tienda</string>
+    <string name="store_address_label">Dirección</string>
+    <string name="store_phone_label">Número de teléfono</string>
+    <string name="printer_section_title">Impresora y diseño del ticket</string>
+    <string name="printer_section_subtitle">Configura el formato del papel y la apariencia de los tickets impresos.</string>
+    <string name="printer_selection_label">Impresora</string>
+    <string name="printer_no_printers_available">No hay impresoras disponibles</string>
+    <string name="printer_type_label">Tipo de impresora o papel</string>
+    <string name="printer_type_thermal_80mm">Térmica 80 mm</string>
+    <string name="printer_type_a4">A4</string>
+    <string name="printer_type_letter">Carta</string>
+    <string name="receipt_font_label">Fuente</string>
+    <string name="receipt_font_monospace">Monoespaciada</string>
+    <string name="receipt_font_sans_serif">Sans serif</string>
+    <string name="receipt_font_serif">Serif</string>
+    <string name="receipt_font_size_label">Tamaño de fuente</string>
+    <string name="receipt_font_size_value">%1$d puntos</string>
+    <string name="receipt_feed_lines_label">Líneas de avance</string>
+    <string name="receipt_feed_lines_value">%1$d líneas al final del ticket</string>
+    <string name="receipt_footer_label">Mensaje del pie de página</string>
+    <string name="receipt_footer_placeholder">Gracias por tu compra</string>
+    <string name="receipt_preview_settings_title">Vista previa del ticket</string>
+    <string name="receipt_preview_settings_subtitle">Esta vista usa exactamente las líneas, el tamaño, el estilo y la fuente seleccionados para imprimir.</string>
+    <string name="receipt_preview_title">Ticket de compra</string>
+    <string name="print_receipt_button">Imprimir ticket</string>
+    <string name="receipt_printed">Ticket enviado a la impresora.</string>
+    <string name="receipt_print_error">No se pudo imprimir el ticket. Revisa la impresora e inténtalo de nuevo.</string>
 </resources>

@@ -9,6 +9,7 @@ import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.data.updater.UpdateRepository
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.materialkolor.PaletteStyle
@@ -115,12 +116,13 @@ class AjustesViewModel(
         )
     }
 
-    val uiState: StateFlow<AjustesUiState> = combine(
+    private val _receiptFlow = repository.receiptSettingsFlow
+
+    private val _baseUiState = combine(
         _themeFlow,
         _behaviorFlow,
-        _updateState,
-        syncRepository.syncState
-    ) { themeState, behaviorState, updateState, syncState ->
+        _receiptFlow
+    ) { themeState, behaviorState, receiptSettings ->
         themeState.copy(
             defaultScreen = behaviorState.defaultScreen,
             isChecadorDialog = behaviorState.isChecadorDialog,
@@ -135,6 +137,16 @@ class AjustesViewModel(
             supabaseKey = behaviorState.supabaseKey,
             lastSyncTimestamp = behaviorState.lastSyncTimestamp,
             autoSyncEnabled = behaviorState.autoSyncEnabled,
+            receiptSettings = receiptSettings
+        )
+    }
+
+    val uiState: StateFlow<AjustesUiState> = combine(
+        _baseUiState,
+        _updateState,
+        syncRepository.syncState
+    ) { baseState, updateState, syncState ->
+        baseState.copy(
             syncState = syncState,
             currentVersion = updateRepository.getCurrentVersion(),
             isCheckingUpdates = updateState.isCheckingUpdates,
@@ -321,6 +333,12 @@ class AjustesViewModel(
     fun setAutoSyncEnabled(enabled: Boolean) {
         viewModelScope.launch {
             repository.setAutoSyncEnabled(enabled)
+        }
+    }
+
+    fun setReceiptSettings(settings: ReceiptSettings) {
+        viewModelScope.launch {
+            repository.setReceiptSettings(settings)
         }
     }
 

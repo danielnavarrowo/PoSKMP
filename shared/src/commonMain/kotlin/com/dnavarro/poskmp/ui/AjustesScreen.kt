@@ -86,6 +86,9 @@ import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.ui.ajustes.PrinterSettingsSection
+import com.dnavarro.poskmp.ui.ajustes.StoreInfoSettingsSection
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.util.AppConstants
@@ -180,6 +183,8 @@ fun AjustesScreen(
         onRoundWholesalePriceChange = { viewModel.setRoundWholesalePrice(it) },
         roundTicketTotal = uiState.roundTicketTotal,
         onRoundTicketTotalChange = { viewModel.setRoundTicketTotal(it) },
+        receiptSettings = uiState.receiptSettings,
+        onReceiptSettingsChange = { viewModel.setReceiptSettings(it) },
         supabaseUrl = uiState.supabaseUrl,
         supabaseKey = uiState.supabaseKey,
         lastSyncTimestamp = uiState.lastSyncTimestamp,
@@ -235,6 +240,8 @@ fun AjustesScreen(
     onRoundWholesalePriceChange: (Boolean) -> Unit = {},
     roundTicketTotal: Boolean = false,
     onRoundTicketTotalChange: (Boolean) -> Unit = {},
+    receiptSettings: ReceiptSettings = ReceiptSettings(),
+    onReceiptSettingsChange: (ReceiptSettings) -> Unit = {},
     supabaseUrl: String = "",
     supabaseKey: String = "",
     lastSyncTimestamp: Long = 0L,
@@ -352,6 +359,20 @@ fun AjustesScreen(
                         }
                     }
                 }
+            }
+
+            item {
+                StoreInfoSettingsSection(
+                    settings = receiptSettings,
+                    onSettingsChange = onReceiptSettingsChange
+                )
+            }
+
+            item {
+                PrinterSettingsSection(
+                    settings = receiptSettings,
+                    onSettingsChange = onReceiptSettingsChange
+                )
             }
 
             item {

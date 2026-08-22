@@ -31,7 +31,7 @@ compose.desktop {
         }
 
         nativeDistributions {
-            modules("java.instrument", "java.sql", "jdk.unsupported")
+            modules("java.desktop", "java.instrument", "java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
             packageName = "PoSKMP"
             packageVersion = appVersion

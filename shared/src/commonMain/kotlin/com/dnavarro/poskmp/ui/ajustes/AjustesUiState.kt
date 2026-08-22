@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.ui.graphics.Color
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
@@ -41,5 +42,6 @@ data class AjustesUiState(
     val syncState: com.dnavarro.poskmp.data.sync.SyncStateEnum = com.dnavarro.poskmp.data.sync.SyncStateEnum.IDLE,
     val isTestingConnection: Boolean = false,
     val connectionTestResult: String? = null,
-    val syncMessage: String? = null
+    val syncMessage: String? = null,
+    val receiptSettings: ReceiptSettings = ReceiptSettings()
 )

@@ -34,9 +34,12 @@ import com.dnavarro.poskmp.data.source.local.SqlDelightSaleDataSource
 import com.dnavarro.poskmp.domain.usecase.GetCustomerAccountStatementUseCase
 import com.dnavarro.poskmp.domain.usecase.GetCustomersUseCase
 import com.dnavarro.poskmp.domain.usecase.GetSalesSummaryUseCase
+import com.dnavarro.poskmp.domain.usecase.PrintReceiptUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordCustomerPaymentUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCustomerUseCase
+import com.dnavarro.poskmp.printer.ReceiptPrinter
+import com.dnavarro.poskmp.printer.createReceiptPrinter
 
 import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSource
 import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSourceImpl
@@ -55,6 +58,7 @@ val dataModule = module {
     singleOf(::SqlDelightCustomerDataSource) bind CustomerLocalDataSource::class
     singleOf(::CustomerRepositoryImpl) bind CustomerRepository::class
     singleOf(::SettingsRepositoryImpl) bind SettingsRepository::class
+    single<ReceiptPrinter> { createReceiptPrinter() }
     singleOf(::UpdateRepository)
     single<SupabaseRemoteDataSource> { SupabaseRemoteDataSourceImpl() }
     single<SyncRepository> { SyncRepositoryImpl(get(), get(), get()) }
@@ -71,6 +75,7 @@ val domainModule = module {
     factoryOf(::SaveCustomerUseCase)
     factoryOf(::RecordCustomerPaymentUseCase)
     factoryOf(::GetCustomerAccountStatementUseCase)
+    factoryOf(::PrintReceiptUseCase)
 }
 
 val viewModelModule = module {

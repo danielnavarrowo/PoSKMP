@@ -9,11 +9,15 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.domain.model.PrinterType
+import com.dnavarro.poskmp.domain.model.ReceiptFont
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -44,6 +48,7 @@ interface SettingsRepository {
     val lastSyncTimestampFlow: Flow<Long>
     val autoSyncEnabledFlow: Flow<Boolean>
     val businessSettingsUpdatedAtFlow: Flow<Long>
+    val receiptSettingsFlow: Flow<ReceiptSettings>
 
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
@@ -69,10 +74,12 @@ interface SettingsRepository {
         roundTicketTotal: Boolean,
         updatedAt: Long
     )
+
     suspend fun setSupabaseUrl(url: String)
     suspend fun setSupabaseKey(key: String)
     suspend fun setLastSyncTimestamp(timestamp: Long)
     suspend fun setAutoSyncEnabled(enabled: Boolean)
+    suspend fun setReceiptSettings(settings: ReceiptSettings)
 }
 
 /**
@@ -103,6 +110,16 @@ class SettingsRepositoryImpl(
         val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
         val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
         val BUSINESS_SETTINGS_UPDATED_AT = longPreferencesKey("business_settings_updated_at")
+        val STORE_NAME = stringPreferencesKey("store_name")
+        val STORE_ADDRESS = stringPreferencesKey("store_address")
+        val STORE_PHONE = stringPreferencesKey("store_phone")
+        val PRINTER_TYPE = stringPreferencesKey("printer_type")
+        val PRINTER_ID = stringPreferencesKey("printer_id")
+        val RECEIPT_FONT = stringPreferencesKey("receipt_font")
+        val RECEIPT_FONT_FAMILY = stringPreferencesKey("receipt_font_family")
+        val RECEIPT_FONT_SIZE = intPreferencesKey("receipt_font_size")
+        val RECEIPT_FEED_LINES = intPreferencesKey("receipt_feed_lines")
+        val RECEIPT_FOOTER = stringPreferencesKey("receipt_footer")
     }
 
     override val businessSettingsUpdatedAtFlow: Flow<Long> = dataStore.data.map { preferences ->
@@ -200,6 +217,49 @@ class SettingsRepositoryImpl(
 
     override val autoSyncEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.AUTO_SYNC_ENABLED] ?: true
+    }
+
+    override val receiptSettingsFlow: Flow<ReceiptSettings> = combine(
+        combine(
+            dataStore.data.map { it[PreferenceKeys.STORE_NAME] ?: "" },
+            dataStore.data.map { it[PreferenceKeys.STORE_ADDRESS] ?: "" },
+            dataStore.data.map { it[PreferenceKeys.STORE_PHONE] ?: "" }
+        ) { storeName, storeAddress, storePhone ->
+            Triple(storeName, storeAddress, storePhone)
+        },
+        combine(
+            dataStore.data.map { it[PreferenceKeys.PRINTER_TYPE] ?: PrinterType.THERMAL_80MM.name },
+            dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT] ?: ReceiptFont.MONOSPACE.name },
+            dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT_SIZE] ?: 12 },
+            dataStore.data.map { it[PreferenceKeys.RECEIPT_FEED_LINES] ?: 3 },
+            dataStore.data.map { it[PreferenceKeys.RECEIPT_FOOTER] ?: "" }
+        ) { printerTypeName, fontName, fontSize, feedLines, footerMessage ->
+            val printerType = runCatching { PrinterType.valueOf(printerTypeName) }
+                .getOrDefault(PrinterType.THERMAL_80MM)
+            val font = runCatching { ReceiptFont.valueOf(fontName) }
+                .getOrDefault(ReceiptFont.MONOSPACE)
+            ReceiptSettings(
+                printerType = printerType,
+                font = font,
+                fontSize = fontSize,
+                feedLines = feedLines,
+                footerMessage = footerMessage
+            )
+        },
+        combine(
+            dataStore.data.map { it[PreferenceKeys.PRINTER_ID] },
+            dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT_FAMILY] ?: "" }
+        ) { printerId, fontFamily ->
+            printerId to fontFamily
+        }
+    ) { (storeName, storeAddress, storePhone), printerSettings, targetSettings ->
+        printerSettings.copy(
+            storeName = storeName,
+            storeAddress = storeAddress,
+            storePhone = storePhone,
+            printerId = targetSettings.first,
+            fontFamily = targetSettings.second.ifBlank { printerSettings.font.defaultFamilyName }
+        )
     }
 
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
@@ -339,6 +399,23 @@ class SettingsRepositoryImpl(
     override suspend fun setAutoSyncEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.AUTO_SYNC_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun setReceiptSettings(settings: ReceiptSettings) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.STORE_NAME] = settings.storeName
+            preferences[PreferenceKeys.STORE_ADDRESS] = settings.storeAddress
+            preferences[PreferenceKeys.STORE_PHONE] = settings.storePhone
+            preferences[PreferenceKeys.PRINTER_TYPE] = settings.printerType.name
+            settings.printerId?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                preferences[PreferenceKeys.PRINTER_ID] = it
+            } ?: preferences.remove(PreferenceKeys.PRINTER_ID)
+            preferences[PreferenceKeys.RECEIPT_FONT] = settings.font.name
+            preferences[PreferenceKeys.RECEIPT_FONT_FAMILY] = settings.fontFamily.trim()
+            preferences[PreferenceKeys.RECEIPT_FONT_SIZE] = settings.fontSize.coerceIn(8, 32)
+            preferences[PreferenceKeys.RECEIPT_FEED_LINES] = settings.feedLines.coerceIn(0, 10)
+            preferences[PreferenceKeys.RECEIPT_FOOTER] = settings.footerMessage
         }
     }
 }
