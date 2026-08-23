@@ -54,7 +54,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.AnimatedPane
@@ -63,6 +62,7 @@ import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
 import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation.rememberSupportingPaneScaffoldNavigator
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -172,7 +172,6 @@ import poskmp.shared.generated.resources.pesos_currency_label
 import poskmp.shared.generated.resources.price_per_kg_label
 import poskmp.shared.generated.resources.quantity_prompt_title
 import poskmp.shared.generated.resources.quantity_weight_label
-import poskmp.shared.generated.resources.register_sale_button
 import poskmp.shared.generated.resources.remove_customer_button
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.save_unregistered_to_db

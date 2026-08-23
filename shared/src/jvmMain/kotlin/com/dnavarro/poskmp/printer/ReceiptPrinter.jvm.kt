@@ -124,7 +124,7 @@ private class JvmReceiptPrinter : ReceiptPrinter {
         printerJob.setPrintable({ graphics, format, pageIndex ->
             if (pageIndex > 0) return@setPrintable Printable.NO_SUCH_PAGE
             val graphics2d = graphics as Graphics2D
-            graphics2d.font = document.fontFamily.toAwtFont(document.fontSize, emphasized = false)
+            graphics2d.font = Font(Font.MONOSPACED, Font.PLAIN, document.fontSize)
             graphics2d.paint = java.awt.Color.BLACK
             val metrics = graphics2d.fontMetrics
             val left = format.imageableX
@@ -133,7 +133,7 @@ private class JvmReceiptPrinter : ReceiptPrinter {
             val lineHeight = (metrics.height * 1.25).toInt().coerceAtLeast(1)
 
             document.lines.forEach { line ->
-                graphics2d.font = document.fontFamily.toAwtFont(document.fontSize, line.emphasized)
+                graphics2d.font = Font(Font.MONOSPACED, if (line.emphasized) Font.BOLD else Font.PLAIN, document.fontSize)
                 val lineMetrics = graphics2d.fontMetrics
                 if (line.text.isNotEmpty()) {
                     val textWidth = lineMetrics.stringWidth(line.text).toDouble()
@@ -166,9 +166,6 @@ private class JvmReceiptPrinter : ReceiptPrinter {
         paper.setImageableArea(12.0, 12.0, width - 24.0, height - 24.0)
         return paper
     }
-
-    private fun String.toAwtFont(size: Int, emphasized: Boolean): Font =
-        Font(this, if (emphasized) Font.BOLD else Font.PLAIN, size)
 
     private fun isIpPort(value: String?): Boolean {
         if (value == null) return false

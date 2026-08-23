@@ -10,7 +10,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.domain.model.PrinterType
-import com.dnavarro.poskmp.domain.model.ReceiptFont
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.model.DEFAULT_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
@@ -119,8 +118,6 @@ class SettingsRepositoryImpl(
         val PAPER_WIDTH_MM = intPreferencesKey("paper_width_mm")
         val PRINTER_TYPE = stringPreferencesKey("printer_type")
         val PRINTER_ID = stringPreferencesKey("printer_id")
-        val RECEIPT_FONT = stringPreferencesKey("receipt_font")
-        val RECEIPT_FONT_FAMILY = stringPreferencesKey("receipt_font_family")
         val RECEIPT_FONT_SIZE = intPreferencesKey("receipt_font_size")
         val RECEIPT_FEED_LINES = intPreferencesKey("receipt_feed_lines")
         val RECEIPT_FOOTER = stringPreferencesKey("receipt_footer")
@@ -239,34 +236,24 @@ class SettingsRepositoryImpl(
                     else -> DEFAULT_PAPER_WIDTH_MM
                 }
             },
-            dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT] ?: ReceiptFont.MONOSPACE.name },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT_SIZE] ?: 12 },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FEED_LINES] ?: 3 },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FOOTER] ?: "" }
-        ) { paperWidthMm, fontName, fontSize, feedLines, footerMessage ->
-            val font = runCatching { ReceiptFont.valueOf(fontName) }
-                .getOrDefault(ReceiptFont.MONOSPACE)
+        ) { paperWidthMm, fontSize, feedLines, footerMessage ->
             ReceiptSettings(
                 paperWidthMm = paperWidthMm.coerceIn(MIN_PAPER_WIDTH_MM, MAX_PAPER_WIDTH_MM),
-                font = font,
                 fontSize = fontSize,
                 feedLines = feedLines,
                 footerMessage = footerMessage
             )
         },
-        combine(
-            dataStore.data.map { it[PreferenceKeys.PRINTER_ID] },
-            dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT_FAMILY] ?: "" }
-        ) { printerId, fontFamily ->
-            printerId to fontFamily
-        }
-    ) { (storeName, storeAddress, storePhone), printerSettings, targetSettings ->
+        dataStore.data.map { it[PreferenceKeys.PRINTER_ID] }
+    ) { (storeName, storeAddress, storePhone), printerSettings, printerId ->
         printerSettings.copy(
             storeName = storeName,
             storeAddress = storeAddress,
             storePhone = storePhone,
-            printerId = targetSettings.first,
-            fontFamily = targetSettings.second.ifBlank { printerSettings.font.defaultFamilyName }
+            printerId = printerId
         )
     }
 
@@ -420,8 +407,6 @@ class SettingsRepositoryImpl(
             settings.printerId?.trim()?.takeIf { it.isNotEmpty() }?.let {
                 preferences[PreferenceKeys.PRINTER_ID] = it
             } ?: preferences.remove(PreferenceKeys.PRINTER_ID)
-            preferences[PreferenceKeys.RECEIPT_FONT] = settings.font.name
-            preferences[PreferenceKeys.RECEIPT_FONT_FAMILY] = settings.fontFamily.trim()
             preferences[PreferenceKeys.RECEIPT_FONT_SIZE] = settings.fontSize.coerceIn(8, 32)
             preferences[PreferenceKeys.RECEIPT_FEED_LINES] = settings.feedLines.coerceIn(0, 10)
             preferences[PreferenceKeys.RECEIPT_FOOTER] = settings.footerMessage

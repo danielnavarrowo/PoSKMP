@@ -108,7 +108,7 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
                     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.BLACK
                         textSize = document.fontSize.toFloat()
-                        typeface = document.fontFamily.toTypeface(emphasized = false)
+                        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
                     }
                     val contentWidth = page.info.pageWidth.toFloat()
                     val left = 24f
@@ -117,7 +117,7 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
                     val lineHeight = document.fontSize * 1.35f
 
                     document.lines.forEach { line ->
-                        paint.typeface = document.fontFamily.toTypeface(line.emphasized)
+                        paint.typeface = Typeface.create(Typeface.MONOSPACE, if (line.emphasized) Typeface.BOLD else Typeface.NORMAL)
                         if (line.text.isNotEmpty()) {
                             val textWidth = paint.measureText(line.text)
                             val x = when (line.alignment) {
@@ -167,9 +167,6 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
             .setColorMode(PrintAttributes.COLOR_MODE_MONOCHROME)
             .build()
     }
-
-    private fun String.toTypeface(emphasized: Boolean): Typeface =
-        Typeface.create(this, if (emphasized) Typeface.BOLD else Typeface.NORMAL)
 
     private fun isIpPort(value: String?): Boolean {
         if (value == null) return false

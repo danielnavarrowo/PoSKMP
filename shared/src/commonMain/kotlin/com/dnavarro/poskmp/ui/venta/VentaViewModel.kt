@@ -406,12 +406,15 @@ class VentaViewModel(
                 folio = folio,
                 createdAt = currentTimeMillis(),
                 items = currentItems.map { item ->
+                    val isWholesale = item.product.precio == item.product.precio_mayoreo && item.product.precio_mayoreo > 0.0
                     ReceiptItem(
                         name = item.product.nombre,
                         quantity = item.quantity,
                         unitPrice = item.product.precio,
                         subtotal = item.product.precio * item.quantity,
-                        isWeightBased = item.product.por_peso == 1L
+                        isWeightBased = item.product.por_peso == 1L,
+                        originalUnitPrice = item.originalPrice,
+                        isWholesale = isWholesale
                     )
                 },
                 total = currentItems.sumOf { it.product.precio * it.quantity }

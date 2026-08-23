@@ -95,7 +95,7 @@ fun formatEpochMillisToDateTime(epochMillis: Long): String {
     val instant = java.time.Instant.ofEpochMilli(epochMillis)
     val dateTime = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
     val locale = java.util.Locale.forLanguageTag("es-MX")
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy • h:mm a", locale)
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy - h:mm a", locale)
     return dateTime.format(formatter)
 }
 

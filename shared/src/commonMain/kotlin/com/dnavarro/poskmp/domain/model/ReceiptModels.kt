@@ -9,20 +9,6 @@ enum class PrinterType(
     LETTER(widthMillimeters = 216, charactersPerLine = 82)
 }
 
-enum class ReceiptFont {
-    MONOSPACE,
-    SANS_SERIF,
-    SERIF;
-
-    val defaultFamilyName: String
-        get() = when (this) {
-            MONOSPACE -> "Monospaced"
-            SANS_SERIF -> "SansSerif"
-            SERIF -> "Serif"
-        }
-}
-
-const val DEFAULT_RECEIPT_FONT_FAMILY = "Monospaced"
 const val PRINTER_SYSTEM_DIALOG_ID = "system_dialog"
 const val DEFAULT_PAPER_WIDTH_MM = 80
 const val MIN_PAPER_WIDTH_MM = 55
@@ -41,8 +27,6 @@ data class ReceiptSettings(
     val paperWidthMm: Int = DEFAULT_PAPER_WIDTH_MM,
     val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
-    val font: ReceiptFont = ReceiptFont.MONOSPACE,
-    val fontFamily: String = DEFAULT_RECEIPT_FONT_FAMILY,
     val fontSize: Int = 12,
     val feedLines: Int = 3,
     val footerMessage: String = ""
@@ -53,7 +37,9 @@ data class ReceiptItem(
     val quantity: Double,
     val unitPrice: Double,
     val subtotal: Double,
-    val isWeightBased: Boolean = false
+    val isWeightBased: Boolean = false,
+    val originalUnitPrice: Double = unitPrice,
+    val isWholesale: Boolean = false
 )
 
 enum class ReceiptAlignment {
@@ -75,8 +61,6 @@ data class ReceiptDocument(
     val paperWidthMm: Int = DEFAULT_PAPER_WIDTH_MM,
     val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
-    val font: ReceiptFont,
-    val fontFamily: String = DEFAULT_RECEIPT_FONT_FAMILY,
     val fontSize: Int,
     val feedLines: Int
 )

@@ -28,26 +28,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID
-import com.dnavarro.poskmp.domain.model.PrinterType
 import com.dnavarro.poskmp.domain.model.ReceiptPrinterOption
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.receipt.ReceiptFormatter
 import com.dnavarro.poskmp.domain.model.ReceiptItem
 import com.dnavarro.poskmp.printer.getReceiptPrinterOptions
-import com.dnavarro.poskmp.printer.getSystemReceiptFontFamilies
-import com.dnavarro.poskmp.printer.receiptFontFamily
 import com.dnavarro.poskmp.ui.venta.ReceiptDocumentPreview
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.receipt_feed_lines_label
 import poskmp.shared.generated.resources.receipt_feed_lines_value
-import poskmp.shared.generated.resources.receipt_font_label
 import poskmp.shared.generated.resources.receipt_font_size_label
 import poskmp.shared.generated.resources.receipt_font_size_value
 import poskmp.shared.generated.resources.receipt_footer_label
@@ -199,7 +194,6 @@ fun PrinterSettingsSection(
             it.id != PRINTER_SYSTEM_DIALOG_ID && it.id != "android-system"
         }
     }
-    val systemFontFamilies = remember { getSystemReceiptFontFamilies() }
     val selectedPrinterId = when {
         settings.printerId.isNullOrBlank() -> PRINTER_SYSTEM_DIALOG_ID
         settings.printerId == "android-system" -> PRINTER_SYSTEM_DIALOG_ID
@@ -211,10 +205,6 @@ fun PrinterSettingsSection(
         else -> printerOptions.firstOrNull { it.id == selectedPrinterId }?.name
             ?: selectedPrinterId
     }
-    val fontFamilies = (systemFontFamilies + settings.fontFamily)
-        .filter { it.isNotBlank() }
-        .distinct()
-        .sortedBy { it.lowercase() }
     val previewReceipt = ReceiptFormatter.create(
         folio = 1001L,
         createdAt = 0L,
@@ -276,16 +266,6 @@ fun PrinterSettingsSection(
                 text = stringResource(Res.string.paper_width_value, settings.paperWidthMm),
                 fontSize = 12.sp,
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            ReceiptDropdown(
-                label = stringResource(Res.string.receipt_font_label),
-                selectedLabel = settings.fontFamily,
-                options = fontFamilies.map { ReceiptDropdownOption(it, it) },
-                selectedValue = settings.fontFamily,
-                onSelected = { fontFamily ->
-                    onSettingsChange(settings.copy(fontFamily = fontFamily))
-                },
-                optionFontFamily = { receiptFontFamily(it) }
             )
             Text(stringResource(Res.string.receipt_font_size_label), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Slider(
@@ -364,8 +344,7 @@ private fun ReceiptDropdown(
     selectedLabel: String,
     options: List<ReceiptDropdownOption>,
     selectedValue: String,
-    onSelected: (String) -> Unit,
-    optionFontFamily: ((String) -> FontFamily)? = null
+    onSelected: (String) -> Unit
 ) {
     val expanded = remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -395,7 +374,6 @@ private fun ReceiptDropdown(
                     text = {
                         Text(
                             text = option.label,
-                            fontFamily = optionFontFamily?.invoke(option.value),
                             fontWeight = if (option.value == selectedValue) FontWeight.Bold else FontWeight.Normal
                         )
                     },

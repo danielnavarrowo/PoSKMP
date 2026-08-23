@@ -2,7 +2,6 @@ package com.dnavarro.poskmp.printer
 
 import com.dnavarro.poskmp.domain.model.ReceiptAlignment
 import com.dnavarro.poskmp.domain.model.ReceiptDocument
-import com.dnavarro.poskmp.domain.model.ReceiptFont
 
 /**
  * Encodes a [ReceiptDocument] into native ESC/POS command bytes for direct thermal printing.
@@ -13,7 +12,7 @@ object EscPosReceiptEncoder {
     private val CMD_INIT = byteArrayOf(0x1B, 0x40) // ESC @
     private val CMD_CODEPAGE_CP1252 = byteArrayOf(0x1B, 0x74, 0x10) // ESC t 16 (WPC1252 / Latin-1)
     private val CMD_FONT_A = byteArrayOf(0x1B, 0x4D, 0x00) // ESC M 0 (Standard 12x24 font)
-    private val CMD_FONT_B = byteArrayOf(0x1B, 0x4D, 0x01) // ESC M 1 (Condensed / Sans 9x17 font)
+    private val CMD_FONT_B = byteArrayOf(0x1B, 0x4D, 0x01) // ESC M 1 (Condensed 9x17 font)
     private val CMD_ALIGN_LEFT = byteArrayOf(0x1B, 0x61, 0x00) // ESC a 0
     private val CMD_ALIGN_CENTER = byteArrayOf(0x1B, 0x61, 0x01) // ESC a 1
     private val CMD_ALIGN_RIGHT = byteArrayOf(0x1B, 0x61, 0x02) // ESC a 2
@@ -45,27 +44,23 @@ object EscPosReceiptEncoder {
         append(CMD_INIT)
         append(CMD_CODEPAGE_CP1252)
 
-        // 2. Select Font (Font A = Standard/Monospace/Serif, Font B = Condensed/Sans-Serif)
-        val isSansSerif = document.fontFamily.contains("sans", ignoreCase = true) ||
-                document.fontFamily.contains("arial", ignoreCase = true) ||
-                document.fontFamily.contains("helvetica", ignoreCase = true) ||
-                document.fontFamily.contains("roboto", ignoreCase = true) ||
-                document.font == ReceiptFont.SANS_SERIF ||
-                document.fontSize <= 9
-
-        append(if (isSansSerif) CMD_FONT_B else CMD_FONT_A)
-
-        // 3. Select Character Size / Scaling (GS ! n)
-        // Bits 0-3: Width multiplier (0 = 1x, 1 = 2x, etc.)
-        // Bits 4-7: Height multiplier (0 = 1x, 1 = 2x, etc.)
-        val scaleByte: Byte = when {
-            document.fontSize <= 13 -> 0x00.toByte() // 1x1 normal
-            document.fontSize in 14..17 -> 0x01.toByte() // 1x width, 2x height (taller text)
-            document.fontSize in 18..23 -> 0x11.toByte() // 2x width, 2x height
-            document.fontSize in 24..29 -> 0x22.toByte() // 3x width, 3x height
-            else -> 0x33.toByte() // 4x width, 4x height
+        // 2. Select Font, Scaling (GS ! n), and Character Spacing (ESC SP n)
+        // Font A base: 12x24 dots (48 cols on 80mm)
+        // Font B base: 9x17 dots (64 cols on 80mm)
+        // Font B @ 2x2: 18x34 dots (32 cols on 80mm) -> Perfect intermediate step between 1x1 and 2x2!
+        // Font A @ 2x2: 24x48 dots (24 cols on 80mm)
+        val (fontCmd, scaleByte, charSpacing) = when {
+            document.fontSize <= 9 -> Triple(CMD_FONT_B, 0x00.toByte(), 0.toByte())
+            document.fontSize in 10..13 -> Triple(CMD_FONT_A, 0x00.toByte(), 0.toByte())
+            document.fontSize in 14..18 -> Triple(CMD_FONT_B, 0x11.toByte(), 0.toByte()) // 1.5x intermediate size (32 chars)
+            document.fontSize in 19..24 -> Triple(CMD_FONT_A, 0x11.toByte(), 0.toByte()) // 2x large size (24 chars)
+            document.fontSize in 25..29 -> Triple(CMD_FONT_A, 0x22.toByte(), 0.toByte()) // 3x extra large (16 chars)
+            else -> Triple(CMD_FONT_A, 0x33.toByte(), 0.toByte())
         }
+
+        append(fontCmd)
         append(byteArrayOf(0x1D, 0x21, scaleByte))
+        append(byteArrayOf(0x1B, 0x20, charSpacing))
 
         // 4. Optional cash drawer kick
         if (openDrawer) {
@@ -76,11 +71,11 @@ object EscPosReceiptEncoder {
         var currentAlignment: ReceiptAlignment? = null
         var currentEmphasized: Boolean? = null
 
-        for (line in document.lines) {
+        for ((text, alignment, emphasized) in document.lines) {
             // Apply alignment if changed
-            if (line.alignment != currentAlignment) {
-                currentAlignment = line.alignment
-                when (line.alignment) {
+            if (alignment != currentAlignment) {
+                currentAlignment = alignment
+                when (alignment) {
                     ReceiptAlignment.LEFT -> append(CMD_ALIGN_LEFT)
                     ReceiptAlignment.CENTER -> append(CMD_ALIGN_CENTER)
                     ReceiptAlignment.RIGHT -> append(CMD_ALIGN_RIGHT)
@@ -88,9 +83,9 @@ object EscPosReceiptEncoder {
             }
 
             // Apply emphasis if changed
-            if (line.emphasized != currentEmphasized) {
-                currentEmphasized = line.emphasized
-                if (line.emphasized) {
+            if (emphasized != currentEmphasized) {
+                currentEmphasized = emphasized
+                if (emphasized) {
                     append(CMD_EMPHASIS_ON)
                 } else {
                     append(CMD_EMPHASIS_OFF)
@@ -98,8 +93,8 @@ object EscPosReceiptEncoder {
             }
 
             // Write line text & newline
-            if (line.text.isNotEmpty()) {
-                append(encodeTextToCp1252(line.text))
+            if (text.isNotEmpty()) {
+                append(encodeTextToCp1252(text))
             }
             output.add(0x0A.toByte()) // LF
         }
@@ -109,6 +104,7 @@ object EscPosReceiptEncoder {
         append(CMD_EMPHASIS_OFF)
         append(CMD_RESET_SCALE)
         append(CMD_FONT_A)
+        append(byteArrayOf(0x1B, 0x20, 0x00)) // ESC SP 0
 
         // 6. Feed lines
         val feedCount = document.feedLines.coerceIn(0, 15)

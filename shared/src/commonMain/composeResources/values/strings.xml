@@ -553,10 +553,6 @@
     <string name="printer_no_printers_available">No hay impresoras disponibles</string>
     <string name="paper_width_label">Ancho del papel</string>
     <string name="paper_width_value">%1$d mm</string>
-    <string name="receipt_font_label">Fuente</string>
-    <string name="receipt_font_monospace">Monoespaciada</string>
-    <string name="receipt_font_sans_serif">Sans serif</string>
-    <string name="receipt_font_serif">Serif</string>
     <string name="receipt_font_size_label">Tamaño de fuente</string>
     <string name="receipt_font_size_value">%1$d puntos</string>
     <string name="receipt_feed_lines_label">Líneas de avance</string>

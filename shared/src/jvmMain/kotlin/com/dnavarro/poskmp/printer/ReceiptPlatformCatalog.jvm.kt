@@ -1,15 +1,8 @@
 package com.dnavarro.poskmp.printer
 
-import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.text.font.FontFamily
 import com.dnavarro.poskmp.domain.model.ReceiptPrinterOption
-import java.awt.Font
-import java.awt.GraphicsEnvironment
 import java.awt.print.PrinterJob
 import java.io.File
-
-@OptIn(ExperimentalTextApi::class)
-private fun systemFontFamily(name: String): FontFamily = FontFamily(name)
 
 actual fun getReceiptPrinterOptions(): List<ReceiptPrinterOption> {
     val options = mutableListOf<ReceiptPrinterOption>()
@@ -53,11 +46,3 @@ actual fun getReceiptPrinterOptions(): List<ReceiptPrinterOption> {
     options += systemOptions
     return options
 }
-
-actual fun getSystemReceiptFontFamilies(): List<String> =
-    (GraphicsEnvironment.getLocalGraphicsEnvironment().availableFontFamilyNames.toList() +
-            listOf(Font.MONOSPACED, Font.SANS_SERIF, Font.SERIF))
-        .distinct()
-        .sortedBy { it.lowercase() }
-
-actual fun receiptFontFamily(name: String): FontFamily = systemFontFamily(name)

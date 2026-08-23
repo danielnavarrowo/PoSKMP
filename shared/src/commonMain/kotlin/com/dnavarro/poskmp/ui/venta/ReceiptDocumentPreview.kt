@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -22,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.ReceiptAlignment
 import com.dnavarro.poskmp.domain.model.ReceiptDocument
-import com.dnavarro.poskmp.printer.receiptFontFamily
 
 @Composable
 fun ReceiptDocumentPreview(
@@ -30,7 +30,6 @@ fun ReceiptDocumentPreview(
     modifier: Modifier = Modifier,
     maxHeight: Dp = 420.dp
 ) {
-    val fontFamily = receiptFontFamily(receipt.fontFamily)
     val paperWidth = (receipt.paperWidthMm / 25.4f * 96f).dp
     Box(
         modifier = modifier.fillMaxWidth(),
@@ -48,7 +47,7 @@ fun ReceiptDocumentPreview(
                         text = line.text.ifEmpty { " " },
                         modifier = Modifier.fillMaxWidth(),
                         color = Color.Black,
-                        fontFamily = fontFamily,
+                        fontFamily = FontFamily.Monospace,
                         fontWeight = if (line.emphasized) FontWeight.Bold else FontWeight.Normal,
                         fontSize = receipt.fontSize.sp,
                         lineHeight = (receipt.fontSize * 1.35f).sp,
