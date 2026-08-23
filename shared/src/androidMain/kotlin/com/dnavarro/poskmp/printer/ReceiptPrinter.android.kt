@@ -14,7 +14,6 @@ import android.print.pdf.PrintedPdfDocument
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.domain.model.ReceiptAlignment
 import com.dnavarro.poskmp.domain.model.ReceiptDocument
-import com.dnavarro.poskmp.domain.model.PrinterType
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 

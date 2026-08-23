@@ -106,7 +106,7 @@ import poskmp.shared.generated.resources.upload
 import poskmp.shared.generated.resources.warning
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ImportProductsDialog(
     onDismiss: () -> Unit,

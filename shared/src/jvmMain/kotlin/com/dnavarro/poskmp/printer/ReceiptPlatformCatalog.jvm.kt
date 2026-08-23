@@ -1,10 +1,12 @@
 package com.dnavarro.poskmp.printer
 
 import com.dnavarro.poskmp.domain.model.ReceiptPrinterOption
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.awt.print.PrinterJob
 import java.io.File
 
-actual fun getReceiptPrinterOptions(): List<ReceiptPrinterOption> {
+actual suspend fun getReceiptPrinterOptions(): List<ReceiptPrinterOption> = withContext(Dispatchers.IO) {
     val options = mutableListOf<ReceiptPrinterOption>()
 
     // 1. Direct Linux/Unix Character Devices (/dev/usb/lp*, /dev/ttyUSB*, /dev/ttyACM*)
@@ -31,7 +33,7 @@ actual fun getReceiptPrinterOptions(): List<ReceiptPrinterOption> {
     }
 
     // 2. System Print Services (CUPS / Windows Spooler)
-    val services = PrinterJob.lookupPrintServices()
+    val services = runCatching { PrinterJob.lookupPrintServices() }.getOrDefault(emptyArray())
     val defaultName = runCatching { PrinterJob.getPrinterJob().printService?.name }.getOrNull()
     val systemOptions = services
         .map { service ->
@@ -44,5 +46,5 @@ actual fun getReceiptPrinterOptions(): List<ReceiptPrinterOption> {
         .sortedBy { it.name.lowercase() }
 
     options += systemOptions
-    return options
+    options
 }

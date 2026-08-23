@@ -127,7 +127,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Suppress("SameReturnValue")
 actual fun isCameraScannerAvailable(): Boolean = true
 
-@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 actual fun PlatformBarcodeScanner(
     onScanResult: (String) -> Unit,

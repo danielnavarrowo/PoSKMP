@@ -545,7 +545,6 @@ fun ChecadorDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChecadorScreen(
     repository: ProductRepository,

@@ -2,14 +2,11 @@ package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -183,7 +180,10 @@ fun PrinterSettingsSection(
         if (!footerFocused && settings.footerMessage != footerMessage) footerMessage = settings.footerMessage
     }
     val systemDialogLabel = stringResource(Res.string.printer_system_dialog)
-    val availablePrinters = remember { getReceiptPrinterOptions() }
+    var availablePrinters by remember { mutableStateOf<List<ReceiptPrinterOption>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        availablePrinters = getReceiptPrinterOptions()
+    }
     val printerOptions = remember(availablePrinters, systemDialogLabel) {
         val systemOption = ReceiptPrinterOption(
             id = PRINTER_SYSTEM_DIALOG_ID,
@@ -205,20 +205,22 @@ fun PrinterSettingsSection(
         else -> printerOptions.firstOrNull { it.id == selectedPrinterId }?.name
             ?: selectedPrinterId
     }
-    val previewReceipt = ReceiptFormatter.create(
-        folio = 1001L,
-        createdAt = 0L,
-        items = listOf(
-            ReceiptItem("Producto de prueba", 2.0, 12.0, 24.0),
-            ReceiptItem("Artículo de muestra", 1.0, 24.0, 24.0)
-        ),
-        total = 48.0,
-        paid = 50.0,
-        change = 2.0,
-        paymentMethod = "EFECTIVO",
-        customerName = null,
-        settings = settings
-    )
+    val previewReceipt = remember(settings) {
+        ReceiptFormatter.create(
+            folio = 1001L,
+            createdAt = 0L,
+            items = listOf(
+                ReceiptItem("Producto de prueba", 2.0, 12.0, 24.0),
+                ReceiptItem("Artículo de muestra", 1.0, 24.0, 24.0)
+            ),
+            total = 48.0,
+            paid = 50.0,
+            change = 2.0,
+            paymentMethod = "EFECTIVO",
+            customerName = null,
+            settings = settings
+        )
+    }
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer),
@@ -246,7 +248,7 @@ fun PrinterSettingsSection(
                     stringResource(Res.string.printer_no_printers_available)
                 },
                 options = printerOptions.map { ReceiptDropdownOption(it.id, it.name) },
-                selectedValue = selectedPrinterId.orEmpty(),
+                selectedValue = selectedPrinterId,
                 onSelected = { printerId ->
                     if (printerId.isNotBlank()) onSettingsChange(settings.copy(printerId = printerId))
                 }
@@ -325,8 +327,7 @@ fun PrinterSettingsSection(
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
             )
             ReceiptDocumentPreview(
-                receipt = previewReceipt,
-                maxHeight = 360.dp
+                receipt = previewReceipt
             )
         }
     }

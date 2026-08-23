@@ -18,8 +18,6 @@
 -keep class com.google.protobuf.** { *; }
 -dontwarn com.google.protobuf.**
 
-# Ktor loads this JSON serialization provider through META-INF/services.
--keep class io.ktor.serialization.kotlinx.json.KotlinxSerializationJsonExtensionProvider { *; }
 
 # Skiko & JetBrains
 -dontwarn com.jetbrains.**

@@ -82,21 +82,21 @@ class SqlDelightProductDataSource(
     override suspend fun insertProducts(products: List<Products>) {
         withContext(Dispatchers.IO) {
             queries.transaction {
-                for (product in products) {
+                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, updated_at, sync_state) in products) {
                     queries.insertProduct(
-                        id = product.id,
-                        codigos = product.codigos,
-                        nombre = product.nombre,
-                        precio = product.precio,
-                        costo = product.costo,
-                        categoria = product.categoria,
-                        activo = product.activo,
-                        por_peso = product.por_peso,
-                        precio_mayoreo = product.precio_mayoreo,
-                        es_favorito = product.es_favorito,
-                        piezas = product.piezas,
-                        updated_at = product.updated_at,
-                        sync_state = product.sync_state
+                        id = id,
+                        codigos = codigos,
+                        nombre = nombre,
+                        precio = precio,
+                        costo = costo,
+                        categoria = categoria,
+                        activo = activo,
+                        por_peso = por_peso,
+                        precio_mayoreo = precio_mayoreo,
+                        es_favorito = es_favorito,
+                        piezas = piezas,
+                        updated_at = updated_at,
+                        sync_state = sync_state
                     )
                 }
             }

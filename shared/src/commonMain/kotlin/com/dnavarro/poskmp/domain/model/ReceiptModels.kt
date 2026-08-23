@@ -1,12 +1,9 @@
 package com.dnavarro.poskmp.domain.model
 
 enum class PrinterType(
-    val widthMillimeters: Int,
     val charactersPerLine: Int
 ) {
-    THERMAL_80MM(widthMillimeters = 80, charactersPerLine = 48),
-    A4(widthMillimeters = 210, charactersPerLine = 80),
-    LETTER(widthMillimeters = 216, charactersPerLine = 82)
+    THERMAL_80MM(charactersPerLine = 48)
 }
 
 const val PRINTER_SYSTEM_DIALOG_ID = "system_dialog"

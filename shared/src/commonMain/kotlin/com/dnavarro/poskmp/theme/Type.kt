@@ -2,48 +2,43 @@ package com.dnavarro.poskmp.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
 import org.jetbrains.compose.resources.Font
-import poskmp.shared.generated.resources.GoogleSansFlex
+import poskmp.shared.generated.resources.Manrope
 import poskmp.shared.generated.resources.Res
 
 val TYPOGRAPHY = Typography()
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
-private fun createGoogleFlexFontFamily(
-    width: Float = 100f,
-    slant: Float = 0f,
-    grade: Int = 0
-): FontFamily = FontFamily(
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W100, variationSettings = FontVariation.Settings(FontVariation.weight(100), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W200, variationSettings = FontVariation.Settings(FontVariation.weight(200), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W300, variationSettings = FontVariation.Settings(FontVariation.weight(300), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W400, variationSettings = FontVariation.Settings(FontVariation.weight(400), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W500, variationSettings = FontVariation.Settings(FontVariation.weight(500), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W600, variationSettings = FontVariation.Settings(FontVariation.weight(600), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W700, variationSettings = FontVariation.Settings(FontVariation.weight(700), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W800, variationSettings = FontVariation.Settings(FontVariation.weight(800), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
-    Font(Res.font.GoogleSansFlex, weight = FontWeight.W900, variationSettings = FontVariation.Settings(FontVariation.weight(900), FontVariation.width(width), FontVariation.slant(slant), FontVariation.grade(grade))),
+private fun createGoogleFlexFontFamily(): FontFamily = FontFamily(
+    Font(Res.font.Manrope, weight = FontWeight.W100, variationSettings = FontVariation.Settings(FontVariation.weight(100))),
+    Font(Res.font.Manrope, weight = FontWeight.W300, variationSettings = FontVariation.Settings(FontVariation.weight(300))),
+    Font(Res.font.Manrope, weight = FontWeight.W400, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(Res.font.Manrope, weight = FontWeight.W200, variationSettings = FontVariation.Settings(FontVariation.weight(200))),
+    Font(Res.font.Manrope, weight = FontWeight.W500, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(Res.font.Manrope, weight = FontWeight.W600, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(Res.font.Manrope, weight = FontWeight.W700, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+    Font(Res.font.Manrope, weight = FontWeight.W800, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
+    Font(Res.font.Manrope, weight = FontWeight.W900, variationSettings = FontVariation.Settings(FontVariation.weight(900))),
 )
 
 val googleFlexDisplay: FontFamily
-    @Composable get() = createGoogleFlexFontFamily(width = 150f, slant = -10f, grade = 100)
+    @Composable get() = createGoogleFlexFontFamily()
 
 val googleFlexHeadline: FontFamily
-    @Composable get() = createGoogleFlexFontFamily(width = 130f, slant = 0f, grade = 50)
+    @Composable get() = createGoogleFlexFontFamily()
 
 val googleFlexTitle: FontFamily
-    @Composable get() = createGoogleFlexFontFamily(width = 95f, slant = 0f, grade = 50)
+    @Composable get() = createGoogleFlexFontFamily()
 
 val googleFlexBody: FontFamily
-    @Composable get() = createGoogleFlexFontFamily(width = 100f, slant = 0f, grade = 0)
+    @Composable get() = createGoogleFlexFontFamily()
 
 val googleFlexLabel: FontFamily
-    @Composable get() = createGoogleFlexFontFamily(width = 95f, slant = 0f, grade = 10)
+    @Composable get() = createGoogleFlexFontFamily()
+
 
 val AppTypography: Typography
     @Composable get() = Typography(

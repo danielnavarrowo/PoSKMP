@@ -9,7 +9,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dnavarro.poskmp.theme.DarkModeConfig
-import com.dnavarro.poskmp.domain.model.PrinterType
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.model.DEFAULT_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
