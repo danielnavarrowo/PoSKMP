@@ -10,75 +10,151 @@ import java.awt.Graphics2D
 import java.awt.print.Paper
 import java.awt.print.Printable
 import java.awt.print.PrinterJob
+import java.io.File
+import java.io.FileOutputStream
+import java.net.InetSocketAddress
+import java.net.Socket
+import javax.print.DocFlavor
+import javax.print.SimpleDoc
 
 actual fun createReceiptPrinter(): ReceiptPrinter = JvmReceiptPrinter()
 
 private class JvmReceiptPrinter : ReceiptPrinter {
+
     override suspend fun print(document: ReceiptDocument): Result<Unit> {
-        return try {
-            withContext(Dispatchers.IO) {
-                val printerJob = PrinterJob.getPrinterJob()
-                val isSystemDialog = document.printerId.isNullOrBlank() ||
-                        document.printerId == PRINTER_SYSTEM_DIALOG_ID ||
-                        document.printerId == "android-system"
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val target = document.printerId?.trim()
 
-                if (!isSystemDialog) {
-                    val selectedService = PrinterJob.lookupPrintServices()
-                        .firstOrNull { it.name == document.printerId }
-                        ?: return@withContext Result.failure(
-                            IllegalStateException("La impresora seleccionada no está disponible")
-                        )
-                    printerJob.printService = selectedService
-                } else if (printerJob.printService == null) {
-                    return@withContext Result.failure(
-                        IllegalStateException("No hay una impresora predeterminada configurada")
-                    )
-                }
+                when {
+                    // 1. Direct Character Device (e.g. direct:/dev/usb/lp0 or /dev/usb/lp0)
+                    target?.startsWith("direct:") == true || target?.startsWith("/dev/") == true -> {
+                        val devicePath = if (target.startsWith("direct:")) target.removePrefix("direct:") else target
+                        printDirectToDevice(devicePath, document)
+                    }
 
-                printerJob.jobName = "Ticket ${document.folio}"
-                val pageFormat = printerJob.defaultPage()
-                pageFormat.paper = createPaper(document)
-                printerJob.setPrintable({ graphics, format, pageIndex ->
-                    if (pageIndex > 0) return@setPrintable Printable.NO_SUCH_PAGE
-                    val graphics2d = graphics as Graphics2D
-                    graphics2d.font = document.fontFamily.toAwtFont(document.fontSize, emphasized = false)
-                    graphics2d.paint = java.awt.Color.BLACK
-                    val metrics = graphics2d.fontMetrics
-                    val left = format.imageableX
-                    val right = format.imageableX + format.imageableWidth
-                    var y = format.imageableY + metrics.ascent
-                    val lineHeight = (metrics.height * 1.25).toInt().coerceAtLeast(1)
+                    // 2. Direct Network Printer (e.g. tcp://192.168.1.100:9100 or 192.168.1.100:9100)
+                    target?.startsWith("tcp://") == true || isIpPort(target) -> {
+                        val hostPort = if (target?.startsWith("tcp://") == true) target.removePrefix("tcp://") else target ?: ""
+                        printDirectToNetwork(hostPort, document)
+                    }
 
-                    document.lines.forEach { line ->
-                        graphics2d.font = document.fontFamily.toAwtFont(document.fontSize, line.emphasized)
-                        val lineMetrics = graphics2d.fontMetrics
-                        if (line.text.isNotEmpty()) {
-                            val textWidth = lineMetrics.stringWidth(line.text).toDouble()
-                            val x = when (line.alignment) {
-                                ReceiptAlignment.CENTER -> format.imageableX + (format.imageableWidth - textWidth) / 2.0
-                                ReceiptAlignment.RIGHT -> right - textWidth
-                                ReceiptAlignment.LEFT -> left
+                    // 3. Named System Print Service or System Dialog
+                    else -> {
+                        val isSystemDialog = target.isNullOrBlank() ||
+                                target == PRINTER_SYSTEM_DIALOG_ID ||
+                                target == "android-system"
+
+                        if (!isSystemDialog) {
+                            // Attempt raw ESC/POS via PrintService AUTOSENSE first
+                            val rawResult = printRawToPrintService(target, document)
+                            if (rawResult.isSuccess) {
+                                return@runCatching
                             }
-                            graphics2d.drawString(line.text, x.toFloat(), y.toFloat())
                         }
-                        y += lineHeight
-                    }
-                    Printable.PAGE_EXISTS
-                }, pageFormat)
 
-                if (isSystemDialog) {
-                    val shouldPrint = printerJob.printDialog()
-                    if (!shouldPrint) {
-                        return@withContext Result.success(Unit)
+                        // Fall back to standard AWT Graphics2D rendering
+                        printAwtGraphics(document, isSystemDialog)
                     }
                 }
-
-                printerJob.print()
-                Result.success(Unit)
             }
-        } catch (error: Throwable) {
-            Result.failure(error)
         }
+    }
+
+    private fun printDirectToDevice(devicePath: String, document: ReceiptDocument) {
+        val file = File(devicePath)
+        if (!file.exists()) {
+            throw IllegalStateException("El dispositivo $devicePath no está disponible.")
+        }
+        val escPosBytes = EscPosReceiptEncoder.encode(document)
+        FileOutputStream(file).use { stream ->
+            stream.write(escPosBytes)
+            stream.flush()
+        }
+    }
+
+    private fun printDirectToNetwork(hostPort: String, document: ReceiptDocument) {
+        val parts = hostPort.split(":")
+        val host = parts[0].trim()
+        val port = parts.getOrNull(1)?.toIntOrNull() ?: 9100
+
+        val escPosBytes = EscPosReceiptEncoder.encode(document)
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(host, port), 4000)
+            socket.getOutputStream().use { out ->
+                out.write(escPosBytes)
+                out.flush()
+            }
+        }
+    }
+
+    private fun printRawToPrintService(printerName: String, document: ReceiptDocument): Result<Unit> {
+        return runCatching {
+            val service = PrinterJob.lookupPrintServices()
+                .firstOrNull { it.name.equals(printerName, ignoreCase = true) }
+                ?: return Result.failure(IllegalStateException("Impresora no encontrada"))
+
+            val flavor = DocFlavor.BYTE_ARRAY.AUTOSENSE
+            if (service.isDocFlavorSupported(flavor)) {
+                val escPosBytes = EscPosReceiptEncoder.encode(document)
+                val doc = SimpleDoc(escPosBytes, flavor, null)
+                val job = service.createPrintJob()
+                job.print(doc, null)
+            } else {
+                throw UnsupportedOperationException("AUTOSENSE no soportado")
+            }
+        }
+    }
+
+    private fun printAwtGraphics(document: ReceiptDocument, isSystemDialog: Boolean) {
+        val printerJob = PrinterJob.getPrinterJob()
+
+        if (!isSystemDialog) {
+            val selectedService = PrinterJob.lookupPrintServices()
+                .firstOrNull { it.name == document.printerId }
+                ?: throw IllegalStateException("La impresora seleccionada no está disponible")
+            printerJob.printService = selectedService
+        } else if (printerJob.printService == null) {
+            throw IllegalStateException("No hay una impresora predeterminada configurada")
+        }
+
+        printerJob.jobName = "Ticket ${document.folio}"
+        val pageFormat = printerJob.defaultPage()
+        pageFormat.paper = createPaper(document)
+        printerJob.setPrintable({ graphics, format, pageIndex ->
+            if (pageIndex > 0) return@setPrintable Printable.NO_SUCH_PAGE
+            val graphics2d = graphics as Graphics2D
+            graphics2d.font = document.fontFamily.toAwtFont(document.fontSize, emphasized = false)
+            graphics2d.paint = java.awt.Color.BLACK
+            val metrics = graphics2d.fontMetrics
+            val left = format.imageableX
+            val right = format.imageableX + format.imageableWidth
+            var y = format.imageableY + metrics.ascent
+            val lineHeight = (metrics.height * 1.25).toInt().coerceAtLeast(1)
+
+            document.lines.forEach { line ->
+                graphics2d.font = document.fontFamily.toAwtFont(document.fontSize, line.emphasized)
+                val lineMetrics = graphics2d.fontMetrics
+                if (line.text.isNotEmpty()) {
+                    val textWidth = lineMetrics.stringWidth(line.text).toDouble()
+                    val x = when (line.alignment) {
+                        ReceiptAlignment.CENTER -> format.imageableX + (format.imageableWidth - textWidth) / 2.0
+                        ReceiptAlignment.RIGHT -> right - textWidth
+                        ReceiptAlignment.LEFT -> left
+                    }
+                    graphics2d.drawString(line.text, x.toFloat(), y.toFloat())
+                }
+                y += lineHeight
+            }
+            Printable.PAGE_EXISTS
+        }, pageFormat)
+
+        if (isSystemDialog) {
+            val shouldPrint = printerJob.printDialog()
+            if (!shouldPrint) return
+        }
+
+        printerJob.print()
     }
 
     private fun createPaper(document: ReceiptDocument): Paper {
@@ -93,4 +169,10 @@ private class JvmReceiptPrinter : ReceiptPrinter {
 
     private fun String.toAwtFont(size: Int, emphasized: Boolean): Font =
         Font(this, if (emphasized) Font.BOLD else Font.PLAIN, size)
+
+    private fun isIpPort(value: String?): Boolean {
+        if (value == null) return false
+        val regex = Regex("^(\\d{1,3}\\.){3}\\d{1,3}(:\\d+)?$")
+        return regex.matches(value.trim())
+    }
 }

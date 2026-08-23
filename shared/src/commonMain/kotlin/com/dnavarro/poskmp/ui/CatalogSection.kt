@@ -20,12 +20,13 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -62,6 +63,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,7 +109,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private const val SEARCH_DEBOUNCE_MILLIS = 300L
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CatalogSection(
     modifier: Modifier = Modifier,
@@ -219,13 +220,41 @@ fun CatalogSection(
                                 if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(searchFocusRequester) else mod
                             }
                             .onPreviewKeyEvent { keyEvent ->
-                                onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || !isAndroid() &&
-                                        keyEvent.type == KeyEventType.KeyDown &&
-                                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (onBarcodeScan != null && latestSearchQuery.value.isNotBlank()) {
-                                    onBarcodeScan(latestSearchQuery.value)
+                                onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || if (keyEvent.type == KeyEventType.KeyDown &&
+                                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                                ) {
+                                    val scannedText = latestSearchQuery.value
+                                    latestSearchQuery.value = ""
+                                    onSearchQueryChange("")
+                                    if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                        onBarcodeScan(scannedText)
+                                    }
                                     true
-                                } else false
+                                } else {
+                                    false
+                                }
                             },
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                val scannedText = latestSearchQuery.value
+                                latestSearchQuery.value = ""
+                                onSearchQueryChange("")
+                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                    onBarcodeScan(scannedText)
+                                }
+                            },
+                            onDone = {
+                                val scannedText = latestSearchQuery.value
+                                latestSearchQuery.value = ""
+                                onSearchQueryChange("")
+                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                    onBarcodeScan(scannedText)
+                                }
+                            }
+                        ),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Start

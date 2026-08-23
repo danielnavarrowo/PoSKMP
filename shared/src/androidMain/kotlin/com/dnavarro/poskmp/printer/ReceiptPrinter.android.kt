@@ -21,7 +21,32 @@ import kotlin.coroutines.resume
 actual fun createReceiptPrinter(): ReceiptPrinter = AndroidReceiptPrinter()
 
 private class AndroidReceiptPrinter : ReceiptPrinter {
-    override suspend fun print(document: ReceiptDocument): Result<Unit> = suspendCancellableCoroutine { continuation ->
+    override suspend fun print(document: ReceiptDocument): Result<Unit> {
+        val target = document.printerId?.trim()
+        if (target?.startsWith("tcp://") == true || isIpPort(target)) {
+            return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val hostPort = if (target?.startsWith("tcp://") == true) target.removePrefix("tcp://") else target ?: ""
+                    val parts = hostPort.split(":")
+                    val host = parts[0].trim()
+                    val port = parts.getOrNull(1)?.toIntOrNull() ?: 9100
+
+                    val escPosBytes = EscPosReceiptEncoder.encode(document)
+                    java.net.Socket().use { socket ->
+                        socket.connect(java.net.InetSocketAddress(host, port), 4000)
+                        socket.getOutputStream().use { out ->
+                            out.write(escPosBytes)
+                            out.flush()
+                        }
+                    }
+                }
+            }
+        }
+
+        return printViaAndroidManager(document)
+    }
+
+    private suspend fun printViaAndroidManager(document: ReceiptDocument): Result<Unit> = suspendCancellableCoroutine { continuation ->
         val context = DatabaseDriverFactory.appContext
         if (context == null) {
             continuation.resume(Result.failure(IllegalStateException("La aplicación no está lista para imprimir")))
@@ -145,4 +170,10 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
 
     private fun String.toTypeface(emphasized: Boolean): Typeface =
         Typeface.create(this, if (emphasized) Typeface.BOLD else Typeface.NORMAL)
+
+    private fun isIpPort(value: String?): Boolean {
+        if (value == null) return false
+        val regex = Regex("^(\\d{1,3}\\.){3}\\d{1,3}(:\\d+)?$")
+        return regex.matches(value.trim())
+    }
 }
