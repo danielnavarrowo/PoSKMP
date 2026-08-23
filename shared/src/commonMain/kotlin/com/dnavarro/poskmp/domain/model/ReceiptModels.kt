@@ -24,6 +24,9 @@ enum class ReceiptFont {
 
 const val DEFAULT_RECEIPT_FONT_FAMILY = "Monospaced"
 const val PRINTER_SYSTEM_DIALOG_ID = "system_dialog"
+const val DEFAULT_PAPER_WIDTH_MM = 80
+const val MIN_PAPER_WIDTH_MM = 55
+const val MAX_PAPER_WIDTH_MM = 105
 
 data class ReceiptPrinterOption(
     val id: String,
@@ -35,6 +38,7 @@ data class ReceiptSettings(
     val storeName: String = "",
     val storeAddress: String = "",
     val storePhone: String = "",
+    val paperWidthMm: Int = DEFAULT_PAPER_WIDTH_MM,
     val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
     val font: ReceiptFont = ReceiptFont.MONOSPACE,
@@ -68,7 +72,8 @@ data class ReceiptDocument(
     val folio: Long,
     val createdAt: Long,
     val lines: List<ReceiptLine>,
-    val printerType: PrinterType,
+    val paperWidthMm: Int = DEFAULT_PAPER_WIDTH_MM,
+    val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
     val font: ReceiptFont,
     val fontFamily: String = DEFAULT_RECEIPT_FONT_FAMILY,

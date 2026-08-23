@@ -102,4 +102,35 @@ class ReceiptFormatterTest {
 
         assertEquals(com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID, receipt.printerId)
     }
+
+    @Test
+    fun customPaperWidthAdjustsCharacterWidthAndDocumentWidth() {
+        val receipt58 = ReceiptFormatter.create(
+            folio = 11L,
+            createdAt = 0L,
+            items = listOf(ReceiptItem(name = "Producto largo que requiere ajuste", quantity = 1.0, unitPrice = 10.0, subtotal = 10.0)),
+            total = 10.0,
+            paid = 10.0,
+            change = 0.0,
+            paymentMethod = "EFECTIVO",
+            customerName = null,
+            settings = ReceiptSettings(paperWidthMm = 58)
+        )
+        assertEquals(58, receipt58.paperWidthMm)
+        val maxLen58 = (58 * 48) / 80
+        assertTrue(receipt58.lines.all { it.text.length <= maxLen58 })
+
+        val receipt105 = ReceiptFormatter.create(
+            folio = 12L,
+            createdAt = 0L,
+            items = listOf(ReceiptItem(name = "Producto", quantity = 1.0, unitPrice = 10.0, subtotal = 10.0)),
+            total = 10.0,
+            paid = 10.0,
+            change = 0.0,
+            paymentMethod = "EFECTIVO",
+            customerName = null,
+            settings = ReceiptSettings(paperWidthMm = 105)
+        )
+        assertEquals(105, receipt105.paperWidthMm)
+    }
 }

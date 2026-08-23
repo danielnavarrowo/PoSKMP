@@ -12,6 +12,9 @@ import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.domain.model.PrinterType
 import com.dnavarro.poskmp.domain.model.ReceiptFont
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.domain.model.DEFAULT_PAPER_WIDTH_MM
+import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
+import com.dnavarro.poskmp.domain.model.MAX_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
@@ -113,6 +116,7 @@ class SettingsRepositoryImpl(
         val STORE_NAME = stringPreferencesKey("store_name")
         val STORE_ADDRESS = stringPreferencesKey("store_address")
         val STORE_PHONE = stringPreferencesKey("store_phone")
+        val PAPER_WIDTH_MM = intPreferencesKey("paper_width_mm")
         val PRINTER_TYPE = stringPreferencesKey("printer_type")
         val PRINTER_ID = stringPreferencesKey("printer_id")
         val RECEIPT_FONT = stringPreferencesKey("receipt_font")
@@ -228,18 +232,22 @@ class SettingsRepositoryImpl(
             Triple(storeName, storeAddress, storePhone)
         },
         combine(
-            dataStore.data.map { it[PreferenceKeys.PRINTER_TYPE] ?: PrinterType.THERMAL_80MM.name },
+            dataStore.data.map {
+                it[PreferenceKeys.PAPER_WIDTH_MM] ?: when (it[PreferenceKeys.PRINTER_TYPE]) {
+                    "A4" -> 105
+                    "LETTER" -> 105
+                    else -> DEFAULT_PAPER_WIDTH_MM
+                }
+            },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT] ?: ReceiptFont.MONOSPACE.name },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT_SIZE] ?: 12 },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FEED_LINES] ?: 3 },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FOOTER] ?: "" }
-        ) { printerTypeName, fontName, fontSize, feedLines, footerMessage ->
-            val printerType = runCatching { PrinterType.valueOf(printerTypeName) }
-                .getOrDefault(PrinterType.THERMAL_80MM)
+        ) { paperWidthMm, fontName, fontSize, feedLines, footerMessage ->
             val font = runCatching { ReceiptFont.valueOf(fontName) }
                 .getOrDefault(ReceiptFont.MONOSPACE)
             ReceiptSettings(
-                printerType = printerType,
+                paperWidthMm = paperWidthMm.coerceIn(MIN_PAPER_WIDTH_MM, MAX_PAPER_WIDTH_MM),
                 font = font,
                 fontSize = fontSize,
                 feedLines = feedLines,
@@ -407,6 +415,7 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.STORE_NAME] = settings.storeName
             preferences[PreferenceKeys.STORE_ADDRESS] = settings.storeAddress
             preferences[PreferenceKeys.STORE_PHONE] = settings.storePhone
+            preferences[PreferenceKeys.PAPER_WIDTH_MM] = settings.paperWidthMm.coerceIn(MIN_PAPER_WIDTH_MM, MAX_PAPER_WIDTH_MM)
             preferences[PreferenceKeys.PRINTER_TYPE] = settings.printerType.name
             settings.printerId?.trim()?.takeIf { it.isNotEmpty() }?.let {
                 preferences[PreferenceKeys.PRINTER_ID] = it

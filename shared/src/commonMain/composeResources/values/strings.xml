@@ -335,7 +335,9 @@
     <string name="zero_price_placeholder">0.00</string>
     <string name="insufficient_amount_error">Monto insuficiente. Falta $%1$s</string>
     <string name="change_to_deliver_label">Cambio a entregar:</string>
-    <string name="register_sale_button">Registrar Venta</string>
+    <string name="register_sale_button">Cobrar e Imprimir</string>
+    <string name="checkout_pay_and_print_button">Cobrar e Imprimir</string>
+    <string name="checkout_pay_without_print_button">Cobrar sin Imprimir</string>
     <string name="sale_success_title">¡Venta Exitosa!</string>
     <string name="sale_success_message">La venta se ha registrado correctamente.</string>
     <string name="total_charged_label">Total cobrado: $%1$s</string>
@@ -549,10 +551,8 @@
     <string name="printer_selection_label">Impresora</string>
     <string name="printer_system_dialog">Diálogo del sistema (predeterminado)</string>
     <string name="printer_no_printers_available">No hay impresoras disponibles</string>
-    <string name="printer_type_label">Tipo de impresora o papel</string>
-    <string name="printer_type_thermal_80mm">Térmica 80 mm</string>
-    <string name="printer_type_a4">A4</string>
-    <string name="printer_type_letter">Carta</string>
+    <string name="paper_width_label">Ancho del papel</string>
+    <string name="paper_width_value">%1$d mm</string>
     <string name="receipt_font_label">Fuente</string>
     <string name="receipt_font_monospace">Monoespaciada</string>
     <string name="receipt_font_sans_serif">Sans serif</string>

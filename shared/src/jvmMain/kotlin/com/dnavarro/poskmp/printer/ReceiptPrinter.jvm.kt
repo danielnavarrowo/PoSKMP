@@ -83,7 +83,7 @@ private class JvmReceiptPrinter : ReceiptPrinter {
 
     private fun createPaper(document: ReceiptDocument): Paper {
         val paper = Paper()
-        val width = document.printerType.widthMillimeters / 25.4 * 72.0
+        val width = document.paperWidthMm / 25.4 * 72.0
         val lineHeight = document.fontSize * 1.25
         val height = (document.lines.size * lineHeight + 48.0).coerceAtLeast(200.0)
         paper.setSize(width, height)

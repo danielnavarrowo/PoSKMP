@@ -386,7 +386,8 @@ class VentaViewModel(
         pagoCon: Double,
         cambio: Double,
         metodoPago: String = "EFECTIVO",
-        customerId: String? = null
+        customerId: String? = null,
+        printReceipt: Boolean = true
     ): Long {
         val currentItems = _cartItems.value
         if (currentItems.isEmpty()) return 0L
@@ -399,29 +400,31 @@ class VentaViewModel(
             customerId = effectiveCustomerId,
             roundTicketTotal = uiState.value.roundTicketTotal
         )
-        val receiptSettings = uiState.value.receiptSettings
-        val receipt = ReceiptFormatter.create(
-            folio = folio,
-            createdAt = currentTimeMillis(),
-            items = currentItems.map { item ->
-                ReceiptItem(
-                    name = item.product.nombre,
-                    quantity = item.quantity,
-                    unitPrice = item.product.precio,
-                    subtotal = item.product.precio * item.quantity,
-                    isWeightBased = item.product.por_peso == 1L
-                )
-            },
-            total = currentItems.sumOf { it.product.precio * it.quantity }
-                .let { if (uiState.value.roundTicketTotal) com.dnavarro.poskmp.util.roundPrice(it) else it },
-            paid = pagoCon,
-            change = cambio,
-            paymentMethod = metodoPago,
-            customerName = _selectedCustomer.value?.nombre,
-            settings = receiptSettings
-        )
-        _printState.value = ReceiptPrintInternalState()
-        _lastReceipt.value = receipt
+        if (printReceipt) {
+            val receiptSettings = uiState.value.receiptSettings
+            val receipt = ReceiptFormatter.create(
+                folio = folio,
+                createdAt = currentTimeMillis(),
+                items = currentItems.map { item ->
+                    ReceiptItem(
+                        name = item.product.nombre,
+                        quantity = item.quantity,
+                        unitPrice = item.product.precio,
+                        subtotal = item.product.precio * item.quantity,
+                        isWeightBased = item.product.por_peso == 1L
+                    )
+                },
+                total = currentItems.sumOf { it.product.precio * it.quantity }
+                    .let { if (uiState.value.roundTicketTotal) com.dnavarro.poskmp.util.roundPrice(it) else it },
+                paid = pagoCon,
+                change = cambio,
+                paymentMethod = metodoPago,
+                customerName = _selectedCustomer.value?.nombre,
+                settings = receiptSettings
+            )
+            _printState.value = ReceiptPrintInternalState()
+            _lastReceipt.value = receipt
+        }
         clearCart()
         viewModelScope.launch(Dispatchers.IO) {
             syncRepository.syncAll()

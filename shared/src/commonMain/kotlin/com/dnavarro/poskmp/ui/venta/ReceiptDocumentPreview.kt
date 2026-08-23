@@ -31,7 +31,7 @@ fun ReceiptDocumentPreview(
     maxHeight: Dp = 420.dp
 ) {
     val fontFamily = receiptFontFamily(receipt.fontFamily)
-    val paperWidth = (receipt.printerType.widthMillimeters / 25.4f * 96f).dp
+    val paperWidth = (receipt.paperWidthMm / 25.4f * 96f).dp
     Box(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.TopCenter

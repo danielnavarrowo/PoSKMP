@@ -20,7 +20,7 @@ object ReceiptFormatter {
         customerName: String?,
         settings: ReceiptSettings
     ): ReceiptDocument {
-        val width = settings.printerType.charactersPerLine
+        val width = ((settings.paperWidthMm * 48) / 80).coerceIn(24, 80)
         val lines = mutableListOf<ReceiptLine>()
 
         fun centered(text: String, emphasized: Boolean = false) {
@@ -83,6 +83,7 @@ object ReceiptFormatter {
             folio = folio,
             createdAt = createdAt,
             lines = lines,
+            paperWidthMm = settings.paperWidthMm.coerceIn(55, 105),
             printerType = settings.printerType,
             printerId = settings.printerId,
             font = settings.font,

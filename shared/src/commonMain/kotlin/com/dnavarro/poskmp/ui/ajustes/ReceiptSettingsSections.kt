@@ -59,10 +59,9 @@ import poskmp.shared.generated.resources.printer_selection_label
 import poskmp.shared.generated.resources.printer_system_dialog
 import poskmp.shared.generated.resources.printer_section_subtitle
 import poskmp.shared.generated.resources.printer_section_title
-import poskmp.shared.generated.resources.printer_type_a4
-import poskmp.shared.generated.resources.printer_type_label
-import poskmp.shared.generated.resources.printer_type_letter
-import poskmp.shared.generated.resources.printer_type_thermal_80mm
+import kotlin.math.roundToInt
+import poskmp.shared.generated.resources.paper_width_label
+import poskmp.shared.generated.resources.paper_width_value
 import poskmp.shared.generated.resources.store_address_label
 import poskmp.shared.generated.resources.store_info_section_subtitle
 import poskmp.shared.generated.resources.store_info_section_title
@@ -262,35 +261,22 @@ fun PrinterSettingsSection(
                     if (printerId.isNotBlank()) onSettingsChange(settings.copy(printerId = printerId))
                 }
             )
-            val paperOptions = listOf(
-                PrinterType.THERMAL_80MM to stringResource(Res.string.printer_type_thermal_80mm),
-                PrinterType.A4 to stringResource(Res.string.printer_type_a4),
-                PrinterType.LETTER to stringResource(Res.string.printer_type_letter)
-            )
             Text(
-                text = stringResource(Res.string.printer_type_label),
+                text = stringResource(Res.string.paper_width_label),
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp
             )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                paperOptions.forEach { (type, label) ->
-                    val selected = settings.printerType == type
-                    Button(
-                        onClick = { onSettingsChange(settings.copy(printerType = type)) },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selected) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = if (selected) androidx.compose.material3.MaterialTheme.colorScheme.onPrimary else androidx.compose.material3.MaterialTheme.colorScheme.onSurface
-                        ),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 6.dp,
-                            vertical = 8.dp
-                        )
-                    ) {
-                        Text(label, fontSize = 11.sp)
-                    }
-                }
-            }
+            Slider(
+                value = settings.paperWidthMm.toFloat(),
+                onValueChange = { onSettingsChange(settings.copy(paperWidthMm = it.roundToInt().coerceIn(55, 105))) },
+                valueRange = 55f..105f,
+                steps = 49
+            )
+            Text(
+                text = stringResource(Res.string.paper_width_value, settings.paperWidthMm),
+                fontSize = 12.sp,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+            )
             ReceiptDropdown(
                 label = stringResource(Res.string.receipt_font_label),
                 selectedLabel = settings.fontFamily,

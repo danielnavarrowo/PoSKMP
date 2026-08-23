@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -139,6 +140,8 @@ import poskmp.shared.generated.resources.checkout_field_efectivo
 import poskmp.shared.generated.resources.checkout_field_tarjeta
 import poskmp.shared.generated.resources.checkout_field_transferencia
 import poskmp.shared.generated.resources.checkout_missing_to_cover_label
+import poskmp.shared.generated.resources.checkout_pay_and_print_button
+import poskmp.shared.generated.resources.checkout_pay_without_print_button
 import poskmp.shared.generated.resources.checkout_sale_title
 import poskmp.shared.generated.resources.checkout_total_received_label
 import poskmp.shared.generated.resources.close
@@ -1127,7 +1130,7 @@ fun VentaScreen(
             PaymentMethod.CREDITO -> selectedCustomer != null
         }
 
-        val performCheckout = {
+        val performCheckout: (Boolean) -> Unit = { printReceipt ->
             val (finalPayment, finalChange) = when (selectedPaymentMethod) {
                 PaymentMethod.EFECTIVO -> Pair(
                     if (paymentText.isEmpty()) total else paymentAmount,
@@ -1148,7 +1151,8 @@ fun VentaScreen(
                     pagoCon = finalPayment,
                     cambio = finalChange,
                     metodoPago = selectedPaymentMethod.name,
-                    customerId = selectedCustomer?.id
+                    customerId = selectedCustomer?.id,
+                    printReceipt = printReceipt
                 )
                 lastSaleFolio = folio
             }
@@ -1159,7 +1163,7 @@ fun VentaScreen(
             modifier = Modifier.onPreviewKeyEvent { keyEvent ->
                 keyEvent.type == KeyEventType.KeyDown &&
                         (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (isCheckoutValid) {
-                    performCheckout()
+                    performCheckout(true)
                     true
                 } else false
             },
@@ -1553,13 +1557,26 @@ fun VentaScreen(
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = { performCheckout() },
-                    enabled = isCheckoutValid,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = MaterialTheme.shapes.small
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(stringResource(Res.string.register_sale_button))
+                    OutlinedButton(
+                        onClick = { performCheckout(false) },
+                        enabled = isCheckoutValid,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(stringResource(Res.string.checkout_pay_without_print_button))
+                    }
+                    Button(
+                        onClick = { performCheckout(true) },
+                        enabled = isCheckoutValid,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(stringResource(Res.string.checkout_pay_and_print_button))
+                    }
                 }
             },
             dismissButton = {

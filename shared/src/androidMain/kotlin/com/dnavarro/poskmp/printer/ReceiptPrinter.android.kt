@@ -127,17 +127,14 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
     }
 
     private fun createPrintAttributes(document: ReceiptDocument): PrintAttributes {
-        val mediaSize = when (document.printerType) {
-            PrinterType.THERMAL_80MM -> PrintAttributes.MediaSize(
-                "POS_80MM",
-                "80 mm",
-                3150,
-                (document.lines.size * 180 + 600).coerceAtLeast(4000)
-            )
-
-            PrinterType.A4 -> PrintAttributes.MediaSize.ISO_A4
-            PrinterType.LETTER -> PrintAttributes.MediaSize.NA_LETTER
-        }
+        val widthMils = (document.paperWidthMm * 1000.0 / 25.4).toInt().coerceAtLeast(2000)
+        val heightMils = (document.lines.size * 180 + 600).coerceAtLeast(4000)
+        val mediaSize = PrintAttributes.MediaSize(
+            "POS_CUSTOM_WIDTH",
+            "${document.paperWidthMm} mm",
+            widthMils,
+            heightMils
+        )
         return PrintAttributes.Builder()
             .setMediaSize(mediaSize)
             .setResolution(PrintAttributes.Resolution("POSKMP", "POSKMP", 203, 203))
