@@ -33,7 +33,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID
 import com.dnavarro.poskmp.domain.model.PrinterType
+import com.dnavarro.poskmp.domain.model.ReceiptPrinterOption
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.receipt.ReceiptFormatter
 import com.dnavarro.poskmp.domain.model.ReceiptItem
@@ -54,6 +56,7 @@ import poskmp.shared.generated.resources.receipt_preview_settings_subtitle
 import poskmp.shared.generated.resources.receipt_preview_settings_title
 import poskmp.shared.generated.resources.printer_no_printers_available
 import poskmp.shared.generated.resources.printer_selection_label
+import poskmp.shared.generated.resources.printer_system_dialog
 import poskmp.shared.generated.resources.printer_section_subtitle
 import poskmp.shared.generated.resources.printer_section_title
 import poskmp.shared.generated.resources.printer_type_a4
@@ -185,14 +188,30 @@ fun PrinterSettingsSection(
     LaunchedEffect(settings.footerMessage) {
         if (!footerFocused && settings.footerMessage != footerMessage) footerMessage = settings.footerMessage
     }
+    val systemDialogLabel = stringResource(Res.string.printer_system_dialog)
     val availablePrinters = remember { getReceiptPrinterOptions() }
+    val printerOptions = remember(availablePrinters, systemDialogLabel) {
+        val systemOption = ReceiptPrinterOption(
+            id = PRINTER_SYSTEM_DIALOG_ID,
+            name = systemDialogLabel,
+            isDefault = false
+        )
+        listOf(systemOption) + availablePrinters.filter {
+            it.id != PRINTER_SYSTEM_DIALOG_ID && it.id != "android-system"
+        }
+    }
     val systemFontFamilies = remember { getSystemReceiptFontFamilies() }
-    val selectedPrinterId = settings.printerId
-        ?: availablePrinters.firstOrNull { it.isDefault }?.id
-        ?: availablePrinters.firstOrNull()?.id
-    val selectedPrinterName = availablePrinters.firstOrNull { it.id == selectedPrinterId }?.name
-        ?: settings.printerId
-        ?: ""
+    val selectedPrinterId = when {
+        settings.printerId.isNullOrBlank() -> PRINTER_SYSTEM_DIALOG_ID
+        settings.printerId == "android-system" -> PRINTER_SYSTEM_DIALOG_ID
+        printerOptions.any { it.id == settings.printerId } -> settings.printerId
+        else -> settings.printerId
+    }
+    val selectedPrinterName = when (selectedPrinterId) {
+        PRINTER_SYSTEM_DIALOG_ID -> systemDialogLabel
+        else -> printerOptions.firstOrNull { it.id == selectedPrinterId }?.name
+            ?: selectedPrinterId
+    }
     val fontFamilies = (systemFontFamilies + settings.fontFamily)
         .filter { it.isNotBlank() }
         .distinct()
@@ -237,7 +256,7 @@ fun PrinterSettingsSection(
                 selectedLabel = selectedPrinterName.ifBlank {
                     stringResource(Res.string.printer_no_printers_available)
                 },
-                options = availablePrinters.map { ReceiptDropdownOption(it.id, it.name) },
+                options = printerOptions.map { ReceiptDropdownOption(it.id, it.name) },
                 selectedValue = selectedPrinterId.orEmpty(),
                 onSelected = { printerId ->
                     if (printerId.isNotBlank()) onSettingsChange(settings.copy(printerId = printerId))

@@ -81,4 +81,25 @@ class ReceiptFormatterTest {
         assertTrue(receipt.lines.all { it.text.length <= PrinterType.THERMAL_80MM.charactersPerLine })
         assertEquals(4, receipt.lines.takeLast(4).count { it.text.isEmpty() })
     }
+
+    @Test
+    fun receiptSupportsSystemDialogPrinterOption() {
+        val receipt = ReceiptFormatter.create(
+            folio = 10L,
+            createdAt = 0L,
+            items = listOf(
+                ReceiptItem(name = "Item 1", quantity = 1.0, unitPrice = 100.0, subtotal = 100.0)
+            ),
+            total = 100.0,
+            paid = 100.0,
+            change = 0.0,
+            paymentMethod = "EFECTIVO",
+            customerName = null,
+            settings = ReceiptSettings(
+                printerId = com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID
+            )
+        )
+
+        assertEquals(com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID, receipt.printerId)
+    }
 }

@@ -22,15 +22,7 @@ actual fun getReceiptPrinterOptions(): List<ReceiptPrinterOption> {
             id = ComponentName(serviceInfo.packageName, serviceInfo.name).flattenToString(),
             name = resolveInfo.loadLabel(context.packageManager).toString()
         )
-    }.distinctBy { it.id }.sortedBy { it.name.lowercase() }.ifEmpty {
-        listOf(
-            ReceiptPrinterOption(
-                id = "android-system",
-                name = "Sistema de impresión",
-                isDefault = true
-            )
-        )
-    }
+    }.distinctBy { it.id }.sortedBy { it.name.lowercase() }
 }
 
 actual fun getSystemReceiptFontFamilies(): List<String> =

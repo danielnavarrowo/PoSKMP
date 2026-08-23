@@ -547,6 +547,7 @@
     <string name="printer_section_title">Impresora y diseño del ticket</string>
     <string name="printer_section_subtitle">Configura el formato del papel y la apariencia de los tickets impresos.</string>
     <string name="printer_selection_label">Impresora</string>
+    <string name="printer_system_dialog">Diálogo del sistema (predeterminado)</string>
     <string name="printer_no_printers_available">No hay impresoras disponibles</string>
     <string name="printer_type_label">Tipo de impresora o papel</string>
     <string name="printer_type_thermal_80mm">Térmica 80 mm</string>

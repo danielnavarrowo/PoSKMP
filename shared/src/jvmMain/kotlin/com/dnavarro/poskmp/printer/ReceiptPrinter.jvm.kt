@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.printer
 
+import com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID
 import com.dnavarro.poskmp.domain.model.ReceiptAlignment
 import com.dnavarro.poskmp.domain.model.ReceiptDocument
 import kotlinx.coroutines.Dispatchers
@@ -17,16 +18,16 @@ private class JvmReceiptPrinter : ReceiptPrinter {
         return try {
             withContext(Dispatchers.IO) {
                 val printerJob = PrinterJob.getPrinterJob()
-                val selectedService = document.printerId
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let { printerId ->
-                        PrinterJob.lookupPrintServices()
-                            .firstOrNull { it.name == printerId }
-                            ?: return@withContext Result.failure(
-                                IllegalStateException("La impresora seleccionada no está disponible")
-                            )
-                    }
-                if (selectedService != null) {
+                val isSystemDialog = document.printerId.isNullOrBlank() ||
+                        document.printerId == PRINTER_SYSTEM_DIALOG_ID ||
+                        document.printerId == "android-system"
+
+                if (!isSystemDialog) {
+                    val selectedService = PrinterJob.lookupPrintServices()
+                        .firstOrNull { it.name == document.printerId }
+                        ?: return@withContext Result.failure(
+                            IllegalStateException("La impresora seleccionada no está disponible")
+                        )
                     printerJob.printService = selectedService
                 } else if (printerJob.printService == null) {
                     return@withContext Result.failure(
@@ -64,6 +65,13 @@ private class JvmReceiptPrinter : ReceiptPrinter {
                     }
                     Printable.PAGE_EXISTS
                 }, pageFormat)
+
+                if (isSystemDialog) {
+                    val shouldPrint = printerJob.printDialog()
+                    if (!shouldPrint) {
+                        return@withContext Result.success(Unit)
+                    }
+                }
 
                 printerJob.print()
                 Result.success(Unit)

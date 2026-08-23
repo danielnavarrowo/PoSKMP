@@ -23,6 +23,7 @@ enum class ReceiptFont {
 }
 
 const val DEFAULT_RECEIPT_FONT_FAMILY = "Monospaced"
+const val PRINTER_SYSTEM_DIALOG_ID = "system_dialog"
 
 data class ReceiptPrinterOption(
     val id: String,

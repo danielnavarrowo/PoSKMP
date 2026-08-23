@@ -448,7 +448,7 @@ fun App(
                                                 Spacer(modifier = Modifier.height(2.dp))
                                                 val shortSyncText = if (lastSyncTimestamp > 0L) {
                                                     val instant = java.time.Instant.ofEpochMilli(lastSyncTimestamp)
-                                                    val time = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
+                                                    val time = LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
                                                         .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
                                                     time
                                                 } else {
