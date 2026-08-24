@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.backup.BackupRepository
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
@@ -27,11 +28,14 @@ private data class UpdateInternalState(
     val downloadState: UpdateDownloadState = UpdateDownloadState.Idle,
     val isTestingConnection: Boolean = false,
     val connectionTestResult: String? = null,
-    val syncMessage: String? = null
+    val syncMessage: String? = null,
+    val isBackingUp: Boolean = false,
+    val backupMessage: String? = null
 )
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
+private data class Tuple6<A, B, C, D, E, F>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F)
 
 /**
  * ViewModel for Settings screen according to Google UI Layer architecture.
@@ -39,7 +43,8 @@ private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D,
 class AjustesViewModel(
     private val repository: SettingsRepository,
     private val updateRepository: UpdateRepository,
-    private val syncRepository: SyncRepository
+    private val syncRepository: SyncRepository,
+    private val backupRepository: BackupRepository
 ) : ViewModel() {
 
     private val _updateState = MutableStateFlow(UpdateInternalState())
@@ -89,16 +94,26 @@ class AjustesViewModel(
             Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
         },
         combine(
-            repository.supabaseUrlFlow,
-            repository.supabaseKeyFlow,
-            repository.lastSyncTimestampFlow,
-            repository.autoSyncEnabledFlow
-        ) { supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled ->
-            Tuple4(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled)
+            combine(
+                repository.supabaseUrlFlow,
+                repository.supabaseKeyFlow,
+                repository.lastSyncTimestampFlow,
+                repository.autoSyncEnabledFlow
+            ) { supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled ->
+                Tuple4(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled)
+            },
+            combine(
+                repository.autoBackupEnabledFlow,
+                repository.lastBackupTimestampFlow
+            ) { autoBackupEnabled, lastBackupTimestamp ->
+                Pair(autoBackupEnabled, lastBackupTimestamp)
+            }
+        ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp) ->
+            Tuple6(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp)
         }
     ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin),
         (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal),
-        (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled) ->
+        (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp) ->
         AjustesUiState(
             defaultScreen = defaultScreen,
             isChecadorDialog = isChecadorDialog,
@@ -112,7 +127,10 @@ class AjustesViewModel(
             supabaseUrl = supabaseUrl,
             supabaseKey = supabaseKey,
             lastSyncTimestamp = lastSyncTimestamp,
-            autoSyncEnabled = autoSyncEnabled
+            autoSyncEnabled = autoSyncEnabled,
+            autoBackupEnabled = autoBackupEnabled,
+            lastBackupTimestamp = lastBackupTimestamp,
+            backupDirectoryPath = backupRepository.getBackupDirectoryPath()
         )
     }
 
@@ -137,6 +155,9 @@ class AjustesViewModel(
             supabaseKey = behaviorState.supabaseKey,
             lastSyncTimestamp = behaviorState.lastSyncTimestamp,
             autoSyncEnabled = behaviorState.autoSyncEnabled,
+            autoBackupEnabled = behaviorState.autoBackupEnabled,
+            lastBackupTimestamp = behaviorState.lastBackupTimestamp,
+            backupDirectoryPath = behaviorState.backupDirectoryPath,
             receiptSettings = receiptSettings
         )
     }
@@ -154,12 +175,17 @@ class AjustesViewModel(
             downloadState = updateState.downloadState,
             isTestingConnection = updateState.isTestingConnection,
             connectionTestResult = updateState.connectionTestResult,
-            syncMessage = updateState.syncMessage
+            syncMessage = updateState.syncMessage,
+            isBackingUp = updateState.isBackingUp,
+            backupMessage = updateState.backupMessage
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = AjustesUiState(currentVersion = updateRepository.getCurrentVersion())
+        initialValue = AjustesUiState(
+            currentVersion = updateRepository.getCurrentVersion(),
+            backupDirectoryPath = backupRepository.getBackupDirectoryPath()
+        )
     )
 
     fun setUseDynamicColor(useDynamic: Boolean) {
@@ -389,5 +415,39 @@ class AjustesViewModel(
                 )
             }
         }
+    }
+
+    fun setAutoBackupEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setAutoBackupEnabled(enabled)
+        }
+    }
+
+    fun performManualBackup() {
+        if (_updateState.value.isBackingUp) return
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(
+                isBackingUp = true,
+                backupMessage = null
+            )
+            val result = backupRepository.performBackup()
+            if (result.isSuccess) {
+                val path = result.getOrNull() ?: ""
+                _updateState.value = _updateState.value.copy(
+                    isBackingUp = false,
+                    backupMessage = "BACKUP_SUCCESS:$path"
+                )
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Error desconocido"
+                _updateState.value = _updateState.value.copy(
+                    isBackingUp = false,
+                    backupMessage = "BACKUP_ERROR:$error"
+                )
+            }
+        }
+    }
+
+    fun dismissBackupMessage() {
+        _updateState.value = _updateState.value.copy(backupMessage = null)
     }
 }

@@ -1,5 +1,9 @@
 package com.dnavarro.poskmp
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -31,13 +35,19 @@ fun main() {
             height = 800.dp,
             position = WindowPosition.Aligned(Alignment.Center)
         )
+        var isClosing by remember { mutableStateOf(false) }
 
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = {
+                isClosing = true
+            },
             state = windowState,
             title = "Antigravity POS"
         ) {
-            App()
+            App(
+                isExiting = isClosing,
+                onExitCompleted = ::exitApplication
+            )
         }
     }
 }

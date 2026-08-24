@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
@@ -68,6 +70,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -88,9 +91,12 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.data.SettingsRepository
+import com.dnavarro.poskmp.data.backup.BackupRepository
 import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.di.initKoin
+import kotlinx.coroutines.flow.first
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.AjustesScreen
@@ -138,18 +144,34 @@ private data class ToolbarItem(
     val onCheckedChange: (Boolean) -> Unit
 )
 
+private enum class ExitProgressStep {
+    IDLE,
+    BACKING_UP,
+    SYNCING_CLOUD,
+    SUCCESS,
+    FAILURE
+}
+
 @OptIn(
     ExperimentalMaterial3ExpressiveApi::class
 )
 @Composable
 fun App(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isExiting: Boolean = false,
+    onExitCompleted: () -> Unit = {}
 ) {
     initKoin()
 
     val repository = koinInject<ProductRepository>()
     val syncRepository = koinInject<SyncRepository>()
+    val backupRepository = koinInject<BackupRepository>()
+    val settingsRepository = koinInject<SettingsRepository>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
+
+    val autoBackupEnabled by settingsRepository.autoBackupEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
+    var exitStep by remember { mutableStateOf(ExitProgressStep.IDLE) }
+    var exitErrorMessage by remember { mutableStateOf<String?>(null) }
 
     val syncState by syncRepository.syncState.collectAsStateWithLifecycle()
     val isSyncing = syncState == SyncStateEnum.SYNCING
@@ -168,6 +190,58 @@ fun App(
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             syncRepository.syncAll()
+        }
+    }
+
+    LaunchedEffect(isExiting) {
+        if (isExiting) {
+            if (!autoBackupEnabled || isAndroid()) {
+                onExitCompleted()
+                return@LaunchedEffect
+            }
+
+            var hadError = false
+            var errorDetails: String? = null
+
+            // Paso 1: Copia de seguridad local
+            exitStep = ExitProgressStep.BACKING_UP
+            val backupResult = withContext(Dispatchers.IO) {
+                try {
+                    backupRepository.performBackup()
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+            if (backupResult.isFailure) {
+                hadError = true
+                errorDetails = backupResult.exceptionOrNull()?.message ?: "Error al crear respaldo"
+            }
+
+            // Paso 2: Sincronización con la nube
+            exitStep = ExitProgressStep.SYNCING_CLOUD
+            val syncResult = withContext(Dispatchers.IO) {
+                try {
+                    syncRepository.syncAll(isManual = true)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+            if (syncResult.isFailure && !hadError) {
+                hadError = true
+                errorDetails = syncResult.exceptionOrNull()?.message ?: "Error al sincronizar con la nube"
+            }
+
+            // Paso 3: Resultado final
+            if (hadError) {
+                exitStep = ExitProgressStep.FAILURE
+                exitErrorMessage = errorDetails
+            } else {
+                exitStep = ExitProgressStep.SUCCESS
+            }
+
+            // Mostrar el resultado durante 2 segundos antes de cerrar
+            delay(2.seconds)
+            onExitCompleted()
         }
     }
 
@@ -704,6 +778,93 @@ fun App(
                         repository = repository,
                         showExtraPrices = ajustesUiState.showExtraPricesChecador
                     )
+
+                    if (isExiting && autoBackupEnabled && !isAndroid() && exitStep != ExitProgressStep.IDLE) {
+                        val titleText = when (exitStep) {
+                            ExitProgressStep.BACKING_UP -> stringResource(Res.string.exit_backup_sync_title_backing_up)
+                            ExitProgressStep.SYNCING_CLOUD -> stringResource(Res.string.exit_backup_sync_title_syncing)
+                            ExitProgressStep.SUCCESS -> stringResource(Res.string.exit_backup_sync_title_success)
+                            ExitProgressStep.FAILURE -> stringResource(Res.string.exit_backup_sync_title_failure)
+                            ExitProgressStep.IDLE -> stringResource(Res.string.exit_backup_sync_dialog_title)
+                        }
+
+                        AlertDialog(
+                            onDismissRequest = {},
+                            title = {
+                                Text(
+                                    text = titleText,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            },
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(vertical = 12.dp)
+                                ) {
+                                    when (exitStep) {
+                                        ExitProgressStep.BACKING_UP -> {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(28.dp),
+                                                strokeWidth = 3.dp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Text(
+                                                text = stringResource(Res.string.exit_backup_sync_step_backup),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        ExitProgressStep.SYNCING_CLOUD -> {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(28.dp),
+                                                strokeWidth = 3.dp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Text(
+                                                text = stringResource(Res.string.exit_backup_sync_step_sync),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        ExitProgressStep.SUCCESS -> {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.check),
+                                                contentDescription = null,
+                                                tint = Color(0xFF10B981),
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Text(
+                                                text = stringResource(Res.string.exit_backup_sync_success),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color(0xFF065F46)
+                                            )
+                                        }
+                                        ExitProgressStep.FAILURE -> {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.warning),
+                                                contentDescription = null,
+                                                tint = Color(0xFFEF4444),
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Text(
+                                                text = exitErrorMessage?.let { stringResource(Res.string.exit_backup_sync_error, it) }
+                                                    ?: stringResource(Res.string.exit_backup_sync_error, ""),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color(0xFF991B1B)
+                                            )
+                                        }
+                                        ExitProgressStep.IDLE -> {}
+                                    }
+                                }
+                            },
+                            confirmButton = {}
+                        )
+                    }
                 }
             }
         }

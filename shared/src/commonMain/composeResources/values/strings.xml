@@ -565,4 +565,28 @@
     <string name="print_receipt_button">Imprimir ticket</string>
     <string name="receipt_printed">Ticket enviado a la impresora.</string>
     <string name="receipt_print_error">No se pudo imprimir el ticket. Revisa la impresora e inténtalo de nuevo.</string>
+
+    <!-- Local Database Backup Settings -->
+    <string name="backup_section_title">Copias de Seguridad Locales</string>
+    <string name="backup_section_subtitle">Crea y administra respaldos automáticos y manuales de la base de datos en este equipo.</string>
+    <string name="auto_backup_title">Copia de seguridad automática al salir</string>
+    <string name="auto_backup_subtitle">Generar un respaldo local y sincronizar con la nube automáticamente al cerrar la aplicación (conserva los últimos 7 respaldos)</string>
+    <string name="backup_path_label">Ubicación de los respaldos (máx. 7 archivos)</string>
+    <string name="last_backup_label">Último respaldo exitoso</string>
+    <string name="last_backup_never">Ninguno registrado</string>
+    <string name="last_backup_format">Último respaldo: %1$s</string>
+    <string name="perform_backup_button">Hacer Copia de Seguridad Ahora</string>
+    <string name="backing_up_progress">Generando copia de seguridad...</string>
+    <string name="backup_success_message">Copia de seguridad generada con éxito en:\n%1$s</string>
+    <string name="backup_error_message">Error al generar la copia de seguridad: %1$s</string>
+    <string name="exit_backup_sync_dialog_title">Guardando y sincronizando datos</string>
+    <string name="exit_backup_sync_dialog_message">Generando copia de seguridad y sincronizando con la nube antes de salir...</string>
+    <string name="exit_backup_sync_title_backing_up">Creando copia de seguridad</string>
+    <string name="exit_backup_sync_title_syncing">Sincronizando con la nube</string>
+    <string name="exit_backup_sync_title_success">Proceso completado</string>
+    <string name="exit_backup_sync_title_failure">Aviso al salir</string>
+    <string name="exit_backup_sync_step_backup">Paso 1 de 2: Creando copia de seguridad local...</string>
+    <string name="exit_backup_sync_step_sync">Paso 2 de 2: Sincronizando datos con la nube...</string>
+    <string name="exit_backup_sync_success">¡Copia de seguridad y sincronización completadas con éxito!</string>
+    <string name="exit_backup_sync_error">Hubo un problema al respaldar o sincronizar: %1$s</string>
 </resources>

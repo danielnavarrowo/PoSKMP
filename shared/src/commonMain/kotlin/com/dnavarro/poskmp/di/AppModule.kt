@@ -41,6 +41,9 @@ import com.dnavarro.poskmp.domain.usecase.SaveCustomerUseCase
 import com.dnavarro.poskmp.printer.ReceiptPrinter
 import com.dnavarro.poskmp.printer.createReceiptPrinter
 
+import com.dnavarro.poskmp.data.backup.BackupRepository
+import com.dnavarro.poskmp.data.backup.BackupRepositoryImpl
+import com.dnavarro.poskmp.data.backup.DatabaseBackupDriver
 import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSource
 import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSourceImpl
 import com.dnavarro.poskmp.data.sync.SyncRepository
@@ -62,6 +65,8 @@ val dataModule = module {
     singleOf(::UpdateRepository)
     single<SupabaseRemoteDataSource> { SupabaseRemoteDataSourceImpl() }
     single<SyncRepository> { SyncRepositoryImpl(get(), get(), get()) }
+    singleOf(::DatabaseBackupDriver)
+    singleOf(::BackupRepositoryImpl) bind BackupRepository::class
 }
 
 val domainModule = module {

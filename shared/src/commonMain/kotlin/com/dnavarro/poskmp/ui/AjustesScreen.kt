@@ -87,6 +87,7 @@ import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.ui.ajustes.BackupSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.PrinterSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.StoreInfoSettingsSection
 import com.dnavarro.poskmp.theme.DarkModeConfig
@@ -190,6 +191,14 @@ fun AjustesScreen(
         lastSyncTimestamp = uiState.lastSyncTimestamp,
         autoSyncEnabled = uiState.autoSyncEnabled,
         onAutoSyncEnabledChange = { viewModel.setAutoSyncEnabled(it) },
+        autoBackupEnabled = uiState.autoBackupEnabled,
+        onAutoBackupEnabledChange = { viewModel.setAutoBackupEnabled(it) },
+        backupDirectoryPath = uiState.backupDirectoryPath,
+        lastBackupTimestamp = uiState.lastBackupTimestamp,
+        isBackingUp = uiState.isBackingUp,
+        backupMessage = uiState.backupMessage,
+        onPerformManualBackup = { viewModel.performManualBackup() },
+        onDismissBackupMessage = { viewModel.dismissBackupMessage() },
         syncState = uiState.syncState,
         isTestingConnection = uiState.isTestingConnection,
         connectionTestResult = uiState.connectionTestResult,
@@ -247,6 +256,14 @@ fun AjustesScreen(
     lastSyncTimestamp: Long = 0L,
     autoSyncEnabled: Boolean = true,
     onAutoSyncEnabledChange: (Boolean) -> Unit = {},
+    autoBackupEnabled: Boolean = true,
+    onAutoBackupEnabledChange: (Boolean) -> Unit = {},
+    backupDirectoryPath: String = "",
+    lastBackupTimestamp: Long = 0L,
+    isBackingUp: Boolean = false,
+    backupMessage: String? = null,
+    onPerformManualBackup: () -> Unit = {},
+    onDismissBackupMessage: () -> Unit = {},
     syncState: SyncStateEnum = SyncStateEnum.IDLE,
     isTestingConnection: Boolean = false,
     connectionTestResult: String? = null,
@@ -1074,6 +1091,20 @@ fun AjustesScreen(
                 }
             }
             // Card 3: Database Status
+            if (!isAndroid()) {
+                item {
+                    BackupSettingsSection(
+                        autoBackupEnabled = autoBackupEnabled,
+                        onAutoBackupEnabledChange = onAutoBackupEnabledChange,
+                        backupDirectoryPath = backupDirectoryPath,
+                        lastBackupTimestamp = lastBackupTimestamp,
+                        isBackingUp = isBackingUp,
+                        backupMessage = backupMessage,
+                        onPerformManualBackup = onPerformManualBackup,
+                        onDismissBackupMessage = onDismissBackupMessage
+                    )
+                }
+            }
 
 
             item {

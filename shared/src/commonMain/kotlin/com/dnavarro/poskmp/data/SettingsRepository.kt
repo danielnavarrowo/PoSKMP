@@ -48,6 +48,8 @@ interface SettingsRepository {
     val supabaseKeyFlow: Flow<String>
     val lastSyncTimestampFlow: Flow<Long>
     val autoSyncEnabledFlow: Flow<Boolean>
+    val autoBackupEnabledFlow: Flow<Boolean>
+    val lastBackupTimestampFlow: Flow<Long>
     val businessSettingsUpdatedAtFlow: Flow<Long>
     val receiptSettingsFlow: Flow<ReceiptSettings>
 
@@ -80,6 +82,8 @@ interface SettingsRepository {
     suspend fun setSupabaseKey(key: String)
     suspend fun setLastSyncTimestamp(timestamp: Long)
     suspend fun setAutoSyncEnabled(enabled: Boolean)
+    suspend fun setAutoBackupEnabled(enabled: Boolean)
+    suspend fun setLastBackupTimestamp(timestamp: Long)
     suspend fun setReceiptSettings(settings: ReceiptSettings)
 }
 
@@ -110,6 +114,8 @@ class SettingsRepositoryImpl(
         val SUPABASE_KEY = stringPreferencesKey("supabase_key")
         val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
         val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
+        val AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")
+        val LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
         val BUSINESS_SETTINGS_UPDATED_AT = longPreferencesKey("business_settings_updated_at")
         val STORE_NAME = stringPreferencesKey("store_name")
         val STORE_ADDRESS = stringPreferencesKey("store_address")
@@ -217,6 +223,14 @@ class SettingsRepositoryImpl(
 
     override val autoSyncEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.AUTO_SYNC_ENABLED] ?: true
+    }
+
+    override val autoBackupEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.AUTO_BACKUP_ENABLED] ?: true
+    }
+
+    override val lastBackupTimestampFlow: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.LAST_BACKUP_TIMESTAMP] ?: 0L
     }
 
     override val receiptSettingsFlow: Flow<ReceiptSettings> = combine(
@@ -393,6 +407,18 @@ class SettingsRepositoryImpl(
     override suspend fun setAutoSyncEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.AUTO_SYNC_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun setAutoBackupEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.AUTO_BACKUP_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun setLastBackupTimestamp(timestamp: Long) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.LAST_BACKUP_TIMESTAMP] = timestamp
         }
     }
 
