@@ -376,7 +376,10 @@ class SyncRepositoryImpl(
                         metodo_pago = metodoPago,
                         total_items = totalItems,
                         customer_id = customerId,
-                        created_at = createdAt
+                        created_at = createdAt,
+                        shift_id = null,
+                        cashier_id = null,
+                        cashier_name = null
                     )
                 }
             }

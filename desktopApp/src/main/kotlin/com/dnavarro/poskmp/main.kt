@@ -46,6 +46,7 @@ fun main() {
         ) {
             App(
                 isExiting = isClosing,
+                onCancelExit = { isClosing = false },
                 onExitCompleted = ::exitApplication
             )
         }

@@ -44,7 +44,10 @@ class VentaViewModel(
     getCustomersUseCase: GetCustomersUseCase,
     private val recordSaleUseCase: RecordSaleUseCase,
     private val syncRepository: SyncRepository,
-    private val printReceiptUseCase: PrintReceiptUseCase
+    private val printReceiptUseCase: PrintReceiptUseCase,
+    getActiveShiftUseCase: com.dnavarro.poskmp.domain.usecase.GetActiveShiftUseCase,
+    getCashiersUseCase: com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase,
+    private val openShiftUseCase: com.dnavarro.poskmp.domain.usecase.OpenShiftUseCase
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -60,11 +63,21 @@ class VentaViewModel(
     private val _lastReceipt = MutableStateFlow<ReceiptDocument?>(null)
     private val _printState = MutableStateFlow(ReceiptPrintInternalState())
 
+    private val _isOpeningShift = MutableStateFlow(false)
+    private val _openShiftError = MutableStateFlow<String?>(null)
+
     private data class ReceiptDialogState(
         val customerSearchQuery: String,
         val showCustomerDialog: Boolean,
         val lastReceipt: ReceiptDocument?,
         val printState: ReceiptPrintInternalState
+    )
+
+    private data class ShiftState(
+        val activeShift: com.dnavarro.poskmp.domain.model.CashierShift?,
+        val cashiers: List<com.dnavarro.poskmp.domain.model.Cashier>,
+        val isOpeningShift: Boolean,
+        val openShiftError: String?
     )
 
     private data class ReceiptPrintInternalState(
@@ -75,6 +88,15 @@ class VentaViewModel(
 
     private val _productsFlow = _searchQuery.flatMapLatest { query ->
         getProductsUseCase(query = query, activeOnly = true)
+    }
+
+    private val _shiftFlow = combine(
+        getActiveShiftUseCase(),
+        getCashiersUseCase(),
+        _isOpeningShift,
+        _openShiftError
+    ) { activeShift, cashiers, isOpening, error ->
+        ShiftState(activeShift, cashiers, isOpening, error)
     }
 
     val uiState: StateFlow<VentaUiState> = combine(
@@ -113,18 +135,18 @@ class VentaViewModel(
             ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
                 Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
             },
-            settingsRepository.receiptSettingsFlow
-        ) { roundingSettings, receiptSettings ->
-            Pair(roundingSettings, receiptSettings)
+            settingsRepository.receiptSettingsFlow,
+            _shiftFlow
+        ) { roundingSettings, receiptSettings, shiftState ->
+            Triple(roundingSettings, receiptSettings, shiftState)
         },
         syncRepository.syncState
     ) { (q, products, cat, cart, held),
         (canUndo, retailMargin, wholesaleMargin, customers, selectedCust),
         receiptDialogState,
-        roundingAndReceiptSettings,
+        (roundingSettings, receiptSettings, shiftState),
         syncState ->
         val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
-        val (roundingSettings, receiptSettings) = roundingAndReceiptSettings
         val (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal) = roundingSettings
         val filteredCust = if (cQuery.isBlank()) {
             customers
@@ -160,13 +182,35 @@ class VentaViewModel(
             lastReceipt = lastReceipt,
             isPrintingReceipt = printState.isPrinting,
             receiptPrintError = printState.hasError,
-            receiptPrintSuccessful = printState.successful
+            receiptPrintSuccessful = printState.successful,
+            activeShift = shiftState.activeShift,
+            cashiers = shiftState.cashiers,
+            isOpeningShift = shiftState.isOpeningShift,
+            openShiftError = shiftState.openShiftError
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VentaUiState()
     )
+
+    fun openShift(cashierId: String, pin: String, initialCash: Double, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _isOpeningShift.value = true
+            _openShiftError.value = null
+            val result = openShiftUseCase(cashierId, pin, initialCash)
+            _isOpeningShift.value = false
+            if (result.isSuccess) {
+                onSuccess()
+            } else {
+                _openShiftError.value = result.exceptionOrNull()?.message ?: "Error al abrir turno"
+            }
+        }
+    }
+
+    fun clearOpenShiftError() {
+        _openShiftError.value = null
+    }
 
     private data class Tuple4<A, B, C, D>(
         val a: A,

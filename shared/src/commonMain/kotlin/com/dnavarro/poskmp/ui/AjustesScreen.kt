@@ -211,7 +211,15 @@ fun AjustesScreen(
         downloadState = uiState.downloadState,
         onCheckForUpdates = { viewModel.checkForUpdates() },
         onDownloadAndInstallUpdate = { viewModel.downloadAndInstallUpdate(it) },
-        onDismissUpdateResult = { viewModel.dismissUpdateResult() }
+        onDismissUpdateResult = { viewModel.dismissUpdateResult() },
+        cashiers = uiState.cashiers,
+        isSavingCashier = uiState.isSavingCashier,
+        isDeletingCashier = uiState.isDeletingCashier,
+        cashierActionError = uiState.cashierActionError,
+        cashierActionSuccess = uiState.cashierActionSuccess,
+        onSaveCashier = { id, name, pin -> viewModel.saveCashier(id, name, pin) },
+        onDeleteCashier = { id -> viewModel.deleteCashier(id) },
+        onClearCashierActionMessage = { viewModel.clearCashierActionMessage() }
     )
 }
 
@@ -277,6 +285,14 @@ fun AjustesScreen(
     onCheckForUpdates: () -> Unit = {},
     onDownloadAndInstallUpdate: (ReleaseAsset) -> Unit = {},
     onDismissUpdateResult: () -> Unit = {},
+    cashiers: List<com.dnavarro.poskmp.domain.model.Cashier> = emptyList(),
+    isSavingCashier: Boolean = false,
+    isDeletingCashier: Boolean = false,
+    cashierActionError: String? = null,
+    cashierActionSuccess: String? = null,
+    onSaveCashier: (id: String?, nombre: String, pin: String) -> Unit = { _, _, _ -> },
+    onDeleteCashier: (id: String) -> Unit = {},
+    onClearCashierActionMessage: () -> Unit = {},
     repository: ProductRepository = koinInject()
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
@@ -1106,6 +1122,19 @@ fun AjustesScreen(
                 }
             }
 
+            // Sección de Administración de Cajeros
+            item {
+                com.dnavarro.poskmp.ui.turnos.CashierManagementSection(
+                    cashiers = cashiers,
+                    isSaving = isSavingCashier,
+                    isDeleting = isDeletingCashier,
+                    actionError = cashierActionError,
+                    actionSuccess = cashierActionSuccess,
+                    onSaveCashier = onSaveCashier,
+                    onDeleteCashier = onDeleteCashier,
+                    onClearMessage = onClearCashierActionMessage
+                )
+            }
 
             item {
                 Card(

@@ -31,7 +31,10 @@ class SaleRepositoryImpl(
             total_items = sale.totalItems,
             customer_id = sale.customerId,
             created_at = sale.createdAt,
-            sync_state = sale.syncState
+            sync_state = sale.syncState,
+            shift_id = sale.shiftId,
+            cashier_id = sale.cashierId,
+            cashier_name = sale.cashierName
         )
         val dbItems = items.map { item ->
             Sale_items(
@@ -85,7 +88,10 @@ class SaleRepositoryImpl(
                 totalItems = row.total_items,
                 customerId = row.customer_id,
                 createdAt = row.created_at,
-                syncState = row.sync_state
+                syncState = row.sync_state,
+                shiftId = row.shift_id,
+                cashierId = row.cashier_id,
+                cashierName = row.cashier_name
             )
         }
     }
@@ -110,7 +116,10 @@ class SaleRepositoryImpl(
                 totalItems = row.total_items,
                 customerId = row.customer_id,
                 createdAt = row.created_at,
-                syncState = row.sync_state
+                syncState = row.sync_state,
+                shiftId = row.shift_id,
+                cashierId = row.cashier_id,
+                cashierName = row.cashier_name
             )
         }
     }
@@ -148,7 +157,10 @@ class SaleRepositoryImpl(
             totalItems = row.total_items,
             customerId = row.customer_id,
             createdAt = row.created_at,
-            syncState = row.sync_state
+            syncState = row.sync_state,
+            shiftId = row.shift_id,
+            cashierId = row.cashier_id,
+            cashierName = row.cashier_name
         )
     }
 
@@ -188,7 +200,10 @@ class SaleRepositoryImpl(
                     totalItems = it.total_items,
                     customerId = it.customer_id,
                     createdAt = it.created_at,
-                    syncState = it.sync_state
+                    syncState = it.sync_state,
+                    shiftId = it.shift_id,
+                    cashierId = it.cashier_id,
+                    cashierName = it.cashier_name
                 )
             }
         }

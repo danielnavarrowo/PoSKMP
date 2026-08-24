@@ -1,6 +1,11 @@
 package com.dnavarro.poskmp
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -31,6 +37,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,14 +54,6 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -70,10 +70,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -82,6 +81,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -96,7 +96,6 @@ import com.dnavarro.poskmp.data.backup.BackupRepository
 import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.di.initKoin
-import kotlinx.coroutines.flow.first
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.AjustesScreen
@@ -127,7 +126,45 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.analytics
+import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.exit_backup_sync_dialog_title
+import poskmp.shared.generated.resources.exit_backup_sync_error
+import poskmp.shared.generated.resources.exit_backup_sync_step_backup
+import poskmp.shared.generated.resources.exit_backup_sync_step_sync
+import poskmp.shared.generated.resources.exit_backup_sync_success
+import poskmp.shared.generated.resources.exit_backup_sync_title_backing_up
+import poskmp.shared.generated.resources.exit_backup_sync_title_failure
+import poskmp.shared.generated.resources.exit_backup_sync_title_success
+import poskmp.shared.generated.resources.exit_backup_sync_title_syncing
+import poskmp.shared.generated.resources.last_sale_change
+import poskmp.shared.generated.resources.last_sale_items
+import poskmp.shared.generated.resources.last_sale_paid
+import poskmp.shared.generated.resources.last_sale_title
+import poskmp.shared.generated.resources.last_sale_total
+import poskmp.shared.generated.resources.nav_clientes
+import poskmp.shared.generated.resources.nav_clientes_desktop
+import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.settings
+import poskmp.shared.generated.resources.supabase_last_sync_format
+import poskmp.shared.generated.resources.supabase_last_sync_never
+import poskmp.shared.generated.resources.supabase_status_syncing_desc
+import poskmp.shared.generated.resources.sync
+import poskmp.shared.generated.resources.sync_now_button
+import poskmp.shared.generated.resources.tab_ajustes
+import poskmp.shared.generated.resources.tab_checador
+import poskmp.shared.generated.resources.tab_checador_desktop
+import poskmp.shared.generated.resources.tab_productos
+import poskmp.shared.generated.resources.tab_productos_desktop
+import poskmp.shared.generated.resources.tab_venta
+import poskmp.shared.generated.resources.tab_venta_desktop
+import poskmp.shared.generated.resources.tab_ventas_historial
+import poskmp.shared.generated.resources.tab_ventas_historial_desktop
+import poskmp.shared.generated.resources.warning
 import java.time.LocalDateTime
 import kotlin.time.Duration.Companion.seconds
 
@@ -144,7 +181,7 @@ private data class ToolbarItem(
     val onCheckedChange: (Boolean) -> Unit
 )
 
-private enum class ExitProgressStep {
+enum class ExitProgressStep {
     IDLE,
     BACKING_UP,
     SYNCING_CLOUD,
@@ -159,6 +196,7 @@ private enum class ExitProgressStep {
 fun App(
     modifier: Modifier = Modifier,
     isExiting: Boolean = false,
+    onCancelExit: () -> Unit = {},
     onExitCompleted: () -> Unit = {}
 ) {
     initKoin()
@@ -167,7 +205,17 @@ fun App(
     val syncRepository = koinInject<SyncRepository>()
     val backupRepository = koinInject<BackupRepository>()
     val settingsRepository = koinInject<SettingsRepository>()
+    val shiftRepository = koinInject<com.dnavarro.poskmp.data.ShiftRepository>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
+
+    val activeShift by shiftRepository.activeShiftFlow.collectAsStateWithLifecycle(initialValue = null)
+    var showExitOpenShiftDialog by remember { mutableStateOf(false) }
+    var showExitCloseShiftDialog by remember { mutableStateOf(false) }
+    var exitShiftSummary by remember { mutableStateOf<com.dnavarro.poskmp.domain.model.ShiftSummary?>(null) }
+    var isClosingExitShift by remember { mutableStateOf(false) }
+    var exitShiftError by remember { mutableStateOf<String?>(null) }
+    var isWaitingToExitLeavingOpen by remember { mutableStateOf(false) }
+    var isBackupSyncDone by remember { mutableStateOf(false) }
 
     val autoBackupEnabled by settingsRepository.autoBackupEnabledFlow.collectAsStateWithLifecycle(initialValue = true)
     var exitStep by remember { mutableStateOf(ExitProgressStep.IDLE) }
@@ -196,10 +244,19 @@ fun App(
     LaunchedEffect(isExiting) {
         if (isExiting) {
             if (!autoBackupEnabled || isAndroid()) {
-                onExitCompleted()
+                if (activeShift == null) {
+                    onExitCompleted()
+                } else {
+                    showExitOpenShiftDialog = true
+                }
                 return@LaunchedEffect
             }
 
+            if (activeShift != null) {
+                showExitOpenShiftDialog = true
+            }
+
+            isBackupSyncDone = false
             var hadError = false
             var errorDetails: String? = null
 
@@ -238,10 +295,28 @@ fun App(
             } else {
                 exitStep = ExitProgressStep.SUCCESS
             }
+            isBackupSyncDone = true
 
-            // Mostrar el resultado durante 2 segundos antes de cerrar
-            delay(2.seconds)
-            onExitCompleted()
+            // Si NO había turno abierto, mostrar resultado 2 segundos y cerrar
+            if (activeShift == null) {
+                delay(2.seconds)
+                onExitCompleted()
+            }
+        } else {
+            showExitOpenShiftDialog = false
+            showExitCloseShiftDialog = false
+            isWaitingToExitLeavingOpen = false
+            isBackupSyncDone = false
+            exitStep = ExitProgressStep.IDLE
+            exitErrorMessage = null
+        }
+    }
+
+    LaunchedEffect(isWaitingToExitLeavingOpen, isBackupSyncDone) {
+        if (isWaitingToExitLeavingOpen) {
+            if (!autoBackupEnabled || isAndroid() || isBackupSyncDone) {
+                onExitCompleted()
+            }
         }
     }
 
@@ -779,7 +854,7 @@ fun App(
                         showExtraPrices = ajustesUiState.showExtraPricesChecador
                     )
 
-                    if (isExiting && autoBackupEnabled && !isAndroid() && exitStep != ExitProgressStep.IDLE) {
+                    if (isExiting && autoBackupEnabled && !isAndroid() && activeShift == null && exitStep != ExitProgressStep.IDLE) {
                         val titleText = when (exitStep) {
                             ExitProgressStep.BACKING_UP -> stringResource(Res.string.exit_backup_sync_title_backing_up)
                             ExitProgressStep.SYNCING_CLOUD -> stringResource(Res.string.exit_backup_sync_title_syncing)
@@ -863,6 +938,78 @@ fun App(
                                 }
                             },
                             confirmButton = {}
+                        )
+                    }
+
+                    // Diálogo de salida cuando hay un turno de caja abierto
+                    if (showExitOpenShiftDialog && activeShift != null) {
+                        com.dnavarro.poskmp.ui.turnos.ExitWithOpenShiftDialog(
+                            activeShift = activeShift!!,
+                            exitStep = exitStep,
+                            exitErrorMessage = exitErrorMessage,
+                            autoBackupEnabled = autoBackupEnabled,
+                            isWaitingToExit = isWaitingToExitLeavingOpen,
+                            onPerformCutAndExit = {
+                                coroutineScope.launch {
+                                    val summaryRes = shiftRepository.getShiftSummary(activeShift!!.id)
+                                    if (summaryRes.isSuccess) {
+                                        exitShiftSummary = summaryRes.getOrNull()
+                                        showExitOpenShiftDialog = false
+                                        showExitCloseShiftDialog = true
+                                    } else {
+                                        exitShiftError = summaryRes.exceptionOrNull()?.message ?: "Error al obtener resumen de turno"
+                                    }
+                                }
+                            },
+                            onExitLeavingShiftOpen = {
+                                if (!autoBackupEnabled || isAndroid() || isBackupSyncDone) {
+                                    showExitOpenShiftDialog = false
+                                    onExitCompleted()
+                                } else {
+                                    isWaitingToExitLeavingOpen = true
+                                }
+                            },
+                            onCancel = {
+                                showExitOpenShiftDialog = false
+                                isWaitingToExitLeavingOpen = false
+                                onCancelExit()
+                            }
+                        )
+                    }
+
+                    // Diálogo de corte de caja durante el flujo de salida
+                    if (showExitCloseShiftDialog && exitShiftSummary != null && activeShift != null) {
+                        com.dnavarro.poskmp.ui.turnos.CloseShiftDialog(
+                            summary = exitShiftSummary!!,
+                            isClosing = isClosingExitShift,
+                            errorMessage = exitShiftError,
+                            onConfirmClose = { countedCash, notes ->
+                                coroutineScope.launch {
+                                    isClosingExitShift = true
+                                    exitShiftError = null
+                                    val closeRes = shiftRepository.closeShift(activeShift!!.id, countedCash, notes)
+                                    if (closeRes.isSuccess) {
+                                        showExitCloseShiftDialog = false
+                                        if (autoBackupEnabled && !isAndroid()) {
+                                            withContext(Dispatchers.IO) {
+                                                try {
+                                                    backupRepository.performBackup()
+                                                    syncRepository.syncAll(isManual = true)
+                                                } catch (_: Exception) {}
+                                            }
+                                        }
+                                        isClosingExitShift = false
+                                        onExitCompleted()
+                                    } else {
+                                        isClosingExitShift = false
+                                        exitShiftError = closeRes.exceptionOrNull()?.message ?: "Error al cerrar turno"
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                showExitCloseShiftDialog = false
+                                onCancelExit()
+                            }
                         )
                     }
                 }

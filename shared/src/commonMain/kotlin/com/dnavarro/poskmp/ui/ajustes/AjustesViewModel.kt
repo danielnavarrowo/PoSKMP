@@ -11,6 +11,9 @@ import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.data.updater.UpdateRepository
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase
+import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
+import com.dnavarro.poskmp.domain.usecase.DeleteCashierUseCase
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.materialkolor.PaletteStyle
@@ -30,7 +33,11 @@ private data class UpdateInternalState(
     val connectionTestResult: String? = null,
     val syncMessage: String? = null,
     val isBackingUp: Boolean = false,
-    val backupMessage: String? = null
+    val backupMessage: String? = null,
+    val isSavingCashier: Boolean = false,
+    val isDeletingCashier: Boolean = false,
+    val cashierActionError: String? = null,
+    val cashierActionSuccess: String? = null
 )
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
@@ -44,7 +51,10 @@ class AjustesViewModel(
     private val repository: SettingsRepository,
     private val updateRepository: UpdateRepository,
     private val syncRepository: SyncRepository,
-    private val backupRepository: BackupRepository
+    private val backupRepository: BackupRepository,
+    private val getCashiersUseCase: GetCashiersUseCase,
+    private val saveCashierUseCase: SaveCashierUseCase,
+    private val deleteCashierUseCase: DeleteCashierUseCase
 ) : ViewModel() {
 
     private val _updateState = MutableStateFlow(UpdateInternalState())
@@ -165,8 +175,9 @@ class AjustesViewModel(
     val uiState: StateFlow<AjustesUiState> = combine(
         _baseUiState,
         _updateState,
-        syncRepository.syncState
-    ) { baseState, updateState, syncState ->
+        syncRepository.syncState,
+        getCashiersUseCase()
+    ) { baseState, updateState, syncState, cashiers ->
         baseState.copy(
             syncState = syncState,
             currentVersion = updateRepository.getCurrentVersion(),
@@ -177,7 +188,12 @@ class AjustesViewModel(
             connectionTestResult = updateState.connectionTestResult,
             syncMessage = updateState.syncMessage,
             isBackingUp = updateState.isBackingUp,
-            backupMessage = updateState.backupMessage
+            backupMessage = updateState.backupMessage,
+            cashiers = cashiers,
+            isSavingCashier = updateState.isSavingCashier,
+            isDeletingCashier = updateState.isDeletingCashier,
+            cashierActionError = updateState.cashierActionError,
+            cashierActionSuccess = updateState.cashierActionSuccess
         )
     }.stateIn(
         scope = viewModelScope,
@@ -449,5 +465,62 @@ class AjustesViewModel(
 
     fun dismissBackupMessage() {
         _updateState.value = _updateState.value.copy(backupMessage = null)
+    }
+
+    fun saveCashier(id: String?, nombre: String, pin: String) {
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(
+                isSavingCashier = true,
+                cashierActionError = null,
+                cashierActionSuccess = null
+            )
+            val result = saveCashierUseCase(id, nombre, pin)
+            if (result.isSuccess) {
+                _updateState.value = _updateState.value.copy(
+                    isSavingCashier = false,
+                    cashierActionSuccess = if (id == null) "Cajero agregado exitosamente" else "Cajero actualizado exitosamente"
+                )
+                launch(Dispatchers.IO) {
+                    syncRepository.syncAll()
+                }
+            } else {
+                _updateState.value = _updateState.value.copy(
+                    isSavingCashier = false,
+                    cashierActionError = result.exceptionOrNull()?.message ?: "Error al guardar cajero"
+                )
+            }
+        }
+    }
+
+    fun deleteCashier(id: String) {
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(
+                isDeletingCashier = true,
+                cashierActionError = null,
+                cashierActionSuccess = null
+            )
+            val result = deleteCashierUseCase(id)
+            if (result.isSuccess) {
+                _updateState.value = _updateState.value.copy(
+                    isDeletingCashier = false,
+                    cashierActionSuccess = "Cajero eliminado exitosamente"
+                )
+                launch(Dispatchers.IO) {
+                    syncRepository.syncAll()
+                }
+            } else {
+                _updateState.value = _updateState.value.copy(
+                    isDeletingCashier = false,
+                    cashierActionError = result.exceptionOrNull()?.message ?: "Error al eliminar cajero"
+                )
+            }
+        }
+    }
+
+    fun clearCashierActionMessage() {
+        _updateState.value = _updateState.value.copy(
+            cashierActionError = null,
+            cashierActionSuccess = null
+        )
     }
 }

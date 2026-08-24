@@ -51,7 +51,10 @@ class SqlDelightSaleDataSource(
                 total_items = sale.total_items,
                 customer_id = sale.customer_id,
                 created_at = sale.created_at,
-                sync_state = sale.sync_state
+                sync_state = sale.sync_state,
+                shift_id = sale.shift_id,
+                cashier_id = sale.cashier_id,
+                cashier_name = sale.cashier_name
             )
 
             items.forEach { item ->

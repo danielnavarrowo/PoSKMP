@@ -589,4 +589,73 @@
     <string name="exit_backup_sync_step_sync">Paso 2 de 2: Sincronizando datos con la nube...</string>
     <string name="exit_backup_sync_success">¡Copia de seguridad y sincronización completadas con éxito!</string>
     <string name="exit_backup_sync_error">Hubo un problema al respaldar o sincronizar: %1$s</string>
+
+    <!-- Turnos de Cajero y Movimientos de Caja -->
+    <string name="open_shift_dialog_title">Apertura de Turno</string>
+    <string name="open_shift_dialog_subtitle">Selecciona el cajero e ingresa el fondo de caja para comenzar a vender.</string>
+    <string name="cashier_label">Cajero</string>
+    <string name="pin_label">PIN de 4 dígitos</string>
+    <string name="pin_placeholder">0000</string>
+    <string name="initial_cash_label">Fondo de caja inicial</string>
+    <string name="open_shift_button">Iniciar Turno</string>
+    <string name="active_shift_badge">Turno activo: %1$s</string>
+    <string name="no_active_shift_badge">Sin turno activo</string>
+
+    <string name="btn_cash_inflow">Entrada de efectivo</string>
+    <string name="btn_cash_outflow">Salida de efectivo</string>
+    <string name="btn_close_shift">Cerrar turno</string>
+
+    <string name="cash_inflow_title">Entrada de Efectivo</string>
+    <string name="cash_outflow_title">Salida de Efectivo</string>
+    <string name="cash_movement_amount_label">Monto</string>
+    <string name="cash_movement_reason_label">Motivo (Opcional)</string>
+    <string name="cash_inflow_reason_placeholder">Ej. Cambio adicional, aportación inicial</string>
+    <string name="cash_outflow_reason_placeholder">Ej. Pago a proveedor, retiro a caja fuerte</string>
+    <string name="cash_movement_confirm_button">Registrar Movimiento</string>
+
+    <string name="close_shift_dialog_title">Corte de Caja y Cierre de Turno</string>
+    <string name="close_shift_dialog_subtitle">Cajero: %1$s • Inicio: %2$s</string>
+    <string name="shift_summary_cash_section">Desglose de Efectivo en Caja</string>
+    <string name="shift_cash_sales">Ventas en efectivo:</string>
+    <string name="shift_cash_inflows">Entradas de efectivo:</string>
+    <string name="shift_cash_outflows">Salidas de efectivo:</string>
+    <string name="expected_cash_label">Efectivo esperado en caja:</string>
+    <string name="shift_summary_other_payments_section">Resumen de Ventas del Turno</string>
+    <string name="shift_total_sales">Total ventas:</string>
+    <string name="shift_total_tickets">Total tickets emitidos:</string>
+    <string name="shift_credit_sales">Crédito:</string>
+    <string name="counted_cash_label">Efectivo contado en caja</string>
+    <string name="difference_balanced">Caja cuadrada ($0.00)</string>
+    <string name="difference_surplus">Sobrante: +%1$s</string>
+    <string name="difference_shortage">Faltante: -%1$s</string>
+    <string name="close_shift_notes_label">Observaciones (Opcional)</string>
+    <string name="close_shift_notes_placeholder">Ej. Billetes dañados, aclaraciones del turno</string>
+    <string name="close_shift_button">Cerrar Turno y Guardar Corte</string>
+    <string name="shift_start_time_label">Inicio de turno</string>
+
+    <!-- Diálogo de Cierre de Aplicación con Turno Abierto -->
+    <string name="exit_with_open_shift_title">Turno de caja abierto</string>
+    <string name="exit_with_open_shift_message">El turno de caja de %1$s aún se encuentra abierto. ¿Qué deseas hacer antes de salir?</string>
+    <string name="exit_dialog_close_shift_and_exit_button">Hacer corte de caja y salir</string>
+    <string name="exit_dialog_leave_shift_open_and_exit_button">Salir y dejar turno abierto</string>
+    <string name="exit_dialog_cancel_button">Cancelar</string>
+    <string name="exit_dialog_waiting_backup">Guardando respaldo antes de salir...</string>
+
+    <!-- Administración de Cajeros en Ajustes -->
+    <string name="cashier_management_section_title">Administración de Cajeros</string>
+    <string name="cashier_management_section_desc">Administra los cajeros del sistema y sus códigos PIN de 4 dígitos para apertura de turno.</string>
+    <string name="add_cashier_button">Agregar Cajero</string>
+    <string name="add_cashier_dialog_title">Nuevo Cajero</string>
+    <string name="edit_cashier_dialog_title">Editar Cajero</string>
+    <string name="cashier_name_label">Nombre del Cajero</string>
+    <string name="cashier_name_placeholder">Ej. Juan Pérez</string>
+    <string name="cashier_pin_label">PIN (4 dígitos)</string>
+    <string name="cashier_pin_field_placeholder">0000</string>
+    <string name="cashier_pin_helper">El PIN debe constar exactamente de 4 dígitos numéricos.</string>
+    <string name="save_cashier_button">Guardar</string>
+    <string name="delete_cashier_dialog_title">Eliminar Cajero</string>
+    <string name="delete_cashier_dialog_message">¿Estás seguro de que deseas eliminar al cajero \"%1$s\"? No aparecerá para nuevas aperturas de turno.</string>
+    <string name="delete_cashier_confirm_button">Eliminar</string>
+    <string name="no_cashiers_found">No hay cajeros registrados.</string>
+    <string name="cashier_card_pin_masked">PIN: ••••</string>
 </resources>

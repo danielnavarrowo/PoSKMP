@@ -3,6 +3,8 @@ package com.dnavarro.poskmp.ui.ventas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.domain.model.CashMovementType
+import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
@@ -10,7 +12,12 @@ import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.domain.model.SalesSummary
+import com.dnavarro.poskmp.domain.model.ShiftSummary
+import com.dnavarro.poskmp.domain.usecase.CloseShiftUseCase
+import com.dnavarro.poskmp.domain.usecase.GetActiveShiftUseCase
 import com.dnavarro.poskmp.domain.usecase.GetSalesSummaryUseCase
+import com.dnavarro.poskmp.domain.usecase.GetShiftSummaryUseCase
+import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,12 +42,25 @@ data class VentasUiState(
     val categorySalesMetrics: List<CategorySalesMetric> = emptyList(),
     val dailySalesMetrics: List<DailySalesMetric> = emptyList(),
     val recentSales: List<Sale> = emptyList(),
-    val selectedSaleDetails: Pair<Sale, List<SaleItem>>? = null
+    val selectedSaleDetails: Pair<Sale, List<SaleItem>>? = null,
+    val activeShift: CashierShift? = null,
+    val showInflowDialog: Boolean = false,
+    val showOutflowDialog: Boolean = false,
+    val showCloseShiftDialog: Boolean = false,
+    val shiftSummary: ShiftSummary? = null,
+    val isRecordingMovement: Boolean = false,
+    val isClosingShift: Boolean = false,
+    val shiftActionError: String? = null,
+    val shiftActionSuccess: String? = null
 )
 
 class VentasViewModel(
     private val getSalesSummaryUseCase: GetSalesSummaryUseCase,
-    private val saleRepository: SaleRepository
+    private val saleRepository: SaleRepository,
+    private val getActiveShiftUseCase: GetActiveShiftUseCase,
+    private val recordCashMovementUseCase: RecordCashMovementUseCase,
+    private val getShiftSummaryUseCase: GetShiftSummaryUseCase,
+    private val closeShiftUseCase: CloseShiftUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
@@ -48,6 +68,15 @@ class VentasViewModel(
 
     init {
         loadDataForPeriod(SalesPeriodPreset.HOY)
+        observeActiveShift()
+    }
+
+    private fun observeActiveShift() {
+        viewModelScope.launch {
+            getActiveShiftUseCase().collect { shift ->
+                _uiState.update { it.copy(activeShift = shift) }
+            }
+        }
     }
 
     fun selectPeriod(preset: SalesPeriodPreset) {
@@ -97,6 +126,132 @@ class VentasViewModel(
             val items = saleRepository.getItemsBySaleId(sale.id)
             _uiState.update { it.copy(selectedSaleDetails = Pair(sale, items)) }
         }
+    }
+
+    // Acciones de Turno y Movimientos
+    fun openInflowDialog() {
+        _uiState.update {
+            it.copy(
+                showInflowDialog = true,
+                showOutflowDialog = false,
+                showCloseShiftDialog = false,
+                shiftActionError = null
+            )
+        }
+    }
+
+    fun openOutflowDialog() {
+        _uiState.update {
+            it.copy(
+                showInflowDialog = false,
+                showOutflowDialog = true,
+                showCloseShiftDialog = false,
+                shiftActionError = null
+            )
+        }
+    }
+
+    fun openCloseShiftDialog() {
+        val activeShift = _uiState.value.activeShift
+        if (activeShift == null) {
+            _uiState.update { it.copy(shiftActionError = "No hay ningún turno activo.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, shiftActionError = null) }
+            val summaryResult = getShiftSummaryUseCase(activeShift.id)
+            if (summaryResult.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        showCloseShiftDialog = true,
+                        shiftSummary = summaryResult.getOrNull()
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        shiftActionError = summaryResult.exceptionOrNull()?.message ?: "Error al obtener resumen de turno"
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissShiftDialogs() {
+        _uiState.update {
+            it.copy(
+                showInflowDialog = false,
+                showOutflowDialog = false,
+                showCloseShiftDialog = false,
+                shiftActionError = null
+            )
+        }
+    }
+
+    fun recordCashMovement(type: CashMovementType, amount: Double, reason: String) {
+        val activeShift = _uiState.value.activeShift
+        if (activeShift == null) {
+            _uiState.update { it.copy(shiftActionError = "No hay ningún turno activo para registrar movimientos.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRecordingMovement = true, shiftActionError = null) }
+            val result = recordCashMovementUseCase(
+                shiftId = activeShift.id,
+                cashierId = activeShift.cashierId,
+                type = type,
+                amount = amount,
+                reason = reason
+            )
+            _uiState.update {
+                if (result.isSuccess) {
+                    it.copy(
+                        isRecordingMovement = false,
+                        showInflowDialog = false,
+                        showOutflowDialog = false,
+                        shiftActionSuccess = if (type == CashMovementType.ENTRADA) "Entrada de efectivo registrada" else "Salida de efectivo registrada"
+                    )
+                } else {
+                    it.copy(
+                        isRecordingMovement = false,
+                        shiftActionError = result.exceptionOrNull()?.message ?: "Error al registrar movimiento"
+                    )
+                }
+            }
+        }
+    }
+
+    fun closeShift(countedCash: Double, notes: String?) {
+        val activeShift = _uiState.value.activeShift
+        if (activeShift == null) {
+            _uiState.update { it.copy(shiftActionError = "No hay ningún turno activo.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isClosingShift = true, shiftActionError = null) }
+            val result = closeShiftUseCase(activeShift.id, countedCash, notes)
+            _uiState.update {
+                if (result.isSuccess) {
+                    it.copy(
+                        isClosingShift = false,
+                        showCloseShiftDialog = false,
+                        shiftSummary = null,
+                        shiftActionSuccess = "Turno cerrado exitosamente. Corte de caja guardado."
+                    )
+                } else {
+                    it.copy(
+                        isClosingShift = false,
+                        shiftActionError = result.exceptionOrNull()?.message ?: "Error al cerrar turno"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearShiftActionResult() {
+        _uiState.update { it.copy(shiftActionError = null, shiftActionSuccess = null) }
     }
 
     private fun loadDataForPeriod(preset: SalesPeriodPreset) {
@@ -163,4 +318,3 @@ class VentasViewModel(
         }
     }
 }
-

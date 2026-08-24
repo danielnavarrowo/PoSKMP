@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.ui.graphics.Color
+import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
@@ -48,5 +49,10 @@ data class AjustesUiState(
     val isTestingConnection: Boolean = false,
     val connectionTestResult: String? = null,
     val syncMessage: String? = null,
-    val receiptSettings: ReceiptSettings = ReceiptSettings()
+    val receiptSettings: ReceiptSettings = ReceiptSettings(),
+    val cashiers: List<Cashier> = emptyList(),
+    val isSavingCashier: Boolean = false,
+    val isDeletingCashier: Boolean = false,
+    val cashierActionError: String? = null,
+    val cashierActionSuccess: String? = null
 )

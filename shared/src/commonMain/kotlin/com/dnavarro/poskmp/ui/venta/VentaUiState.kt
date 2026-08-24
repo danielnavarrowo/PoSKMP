@@ -47,7 +47,11 @@ data class VentaUiState(
     val lastReceipt: ReceiptDocument? = null,
     val isPrintingReceipt: Boolean = false,
     val receiptPrintError: Boolean = false,
-    val receiptPrintSuccessful: Boolean = false
+    val receiptPrintSuccessful: Boolean = false,
+    val activeShift: com.dnavarro.poskmp.domain.model.CashierShift? = null,
+    val cashiers: List<com.dnavarro.poskmp.domain.model.Cashier> = emptyList(),
+    val isOpeningShift: Boolean = false,
+    val openShiftError: String? = null
 ) {
     val rawTotal: Double
         get() = cartItems.sumOf { it.product.precio * it.quantity }

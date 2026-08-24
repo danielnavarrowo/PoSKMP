@@ -140,6 +140,15 @@ import poskmp.shared.generated.resources.title_top_sellers
 import poskmp.shared.generated.resources.uncategorized_label
 import poskmp.shared.generated.resources.units_sold_count
 import poskmp.shared.generated.resources.ventas_title
+import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.active_shift_badge
+import poskmp.shared.generated.resources.no_active_shift_badge
+import poskmp.shared.generated.resources.btn_cash_inflow
+import poskmp.shared.generated.resources.btn_cash_outflow
+import poskmp.shared.generated.resources.btn_close_shift
+import com.dnavarro.poskmp.domain.model.CashMovementType
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun VentasScreen(
@@ -160,6 +169,13 @@ fun VentasScreen(
         onDismissDateRangePicker = { viewModel.dismissDateRangePicker() },
         onOpenDateRangePicker = { viewModel.openDateRangePicker() },
         onSelectSaleForDetail = { viewModel.selectSaleForDetail(it) },
+        onOpenInflowDialog = { viewModel.openInflowDialog() },
+        onOpenOutflowDialog = { viewModel.openOutflowDialog() },
+        onOpenCloseShiftDialog = { viewModel.openCloseShiftDialog() },
+        onDismissShiftDialogs = { viewModel.dismissShiftDialogs() },
+        onRecordCashMovement = { type, amount, reason -> viewModel.recordCashMovement(type, amount, reason) },
+        onCloseShift = { countedCash, notes -> viewModel.closeShift(countedCash, notes) },
+        onClearShiftActionResult = { viewModel.clearShiftActionResult() },
         modifier = modifier
     )
 }
@@ -173,8 +189,22 @@ fun VentasScreen(
     onDismissDateRangePicker: () -> Unit,
     onOpenDateRangePicker: () -> Unit,
     onSelectSaleForDetail: (Sale?) -> Unit,
+    onOpenInflowDialog: () -> Unit = {},
+    onOpenOutflowDialog: () -> Unit = {},
+    onOpenCloseShiftDialog: () -> Unit = {},
+    onDismissShiftDialogs: () -> Unit = {},
+    onRecordCashMovement: (CashMovementType, Double, String) -> Unit = { _, _, _ -> },
+    onCloseShift: (Double, String?) -> Unit = { _, _ -> },
+    onClearShiftActionResult: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    LaunchedEffect(state.shiftActionSuccess) {
+        if (state.shiftActionSuccess != null) {
+            kotlinx.coroutines.delay(3000.milliseconds)
+            onClearShiftActionResult()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -209,6 +239,130 @@ fun VentasScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
+                // Banner de Éxito / Feedback de Acciones de Turno
+                if (state.shiftActionSuccess != null) {
+                    item {
+                        Surface(
+                            color = Color(0xFF10B981).copy(alpha = 0.15f),
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.check),
+                                    contentDescription = null,
+                                    tint = Color(0xFF10B981),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = state.shiftActionSuccess,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF047857)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Shift Actions Card (Entrada, Salida, Cerrar turno)
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.person),
+                                        contentDescription = null,
+                                        tint = if (state.activeShift != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = if (state.activeShift != null) {
+                                            stringResource(Res.string.active_shift_badge, state.activeShift.cashierName)
+                                        } else {
+                                            stringResource(Res.string.no_active_shift_badge)
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (state.activeShift != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            // 3 Action Buttons: Entrada, Salida, Cerrar Turno
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                androidx.compose.material3.FilledTonalButton(
+                                    onClick = onOpenInflowDialog,
+                                    enabled = state.activeShift != null,
+                                    shape = MaterialTheme.shapes.small,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.btn_cash_inflow),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                androidx.compose.material3.FilledTonalButton(
+                                    onClick = onOpenOutflowDialog,
+                                    enabled = state.activeShift != null,
+                                    shape = MaterialTheme.shapes.small,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.btn_cash_outflow),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                androidx.compose.material3.Button(
+                                    onClick = onOpenCloseShiftDialog,
+                                    enabled = state.activeShift != null,
+                                    shape = MaterialTheme.shapes.small,
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.btn_close_shift),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 // Period Filter Selector
                 item {
                     Column(
@@ -488,6 +642,43 @@ fun VentasScreen(
             sale = sale,
             items = items,
             onDismiss = { onSelectSaleForDetail(null) }
+        )
+    }
+
+    // Cash Inflow Dialog
+    if (state.showInflowDialog) {
+        com.dnavarro.poskmp.ui.turnos.CashMovementDialog(
+            type = CashMovementType.ENTRADA,
+            isLoading = state.isRecordingMovement,
+            errorMessage = state.shiftActionError,
+            onConfirm = { amount, reason ->
+                onRecordCashMovement(CashMovementType.ENTRADA, amount, reason)
+            },
+            onDismiss = onDismissShiftDialogs
+        )
+    }
+
+    // Cash Outflow Dialog
+    if (state.showOutflowDialog) {
+        com.dnavarro.poskmp.ui.turnos.CashMovementDialog(
+            type = CashMovementType.SALIDA,
+            isLoading = state.isRecordingMovement,
+            errorMessage = state.shiftActionError,
+            onConfirm = { amount, reason ->
+                onRecordCashMovement(CashMovementType.SALIDA, amount, reason)
+            },
+            onDismiss = onDismissShiftDialogs
+        )
+    }
+
+    // Close Shift Dialog
+    if (state.showCloseShiftDialog && state.shiftSummary != null) {
+        com.dnavarro.poskmp.ui.turnos.CloseShiftDialog(
+            summary = state.shiftSummary,
+            isClosing = state.isClosingShift,
+            errorMessage = state.shiftActionError,
+            onConfirmClose = onCloseShift,
+            onDismiss = onDismissShiftDialogs
         )
     }
 }

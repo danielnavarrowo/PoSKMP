@@ -270,11 +270,15 @@ CREATE TABLE sales (
     customer_id    TEXT    DEFAULT NULL,
     created_at     INTEGER NOT NULL,
     sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    shift_id       TEXT    DEFAULT NULL,
+    cashier_id     TEXT    DEFAULT NULL,
+    cashier_name   TEXT    DEFAULT NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_sales_created_at ON sales(created_at);
 CREATE INDEX idx_sales_customer_id ON sales(customer_id);
+CREATE INDEX idx_sales_shift_id ON sales(shift_id);
 
 CREATE TABLE sale_items (
     id              TEXT    PRIMARY KEY NOT NULL,
@@ -300,8 +304,9 @@ CREATE INDEX idx_sale_items_created_at ON sale_items(created_at);
 insertSale:
 INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
-    pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
+    shift_id, cashier_id, cashier_name
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectUnsyncedSales:
 SELECT * FROM sales WHERE sync_state != 'SYNCED';
@@ -312,8 +317,9 @@ UPDATE sales SET sync_state = ? WHERE id = ?;
 upsertSyncedSale:
 INSERT OR REPLACE INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
-    pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+    pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
+    shift_id, cashier_id, cashier_name
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?);
 
 selectSalesByCustomerId:
 SELECT * FROM sales
@@ -452,3 +458,136 @@ SELECT * FROM deleted_sync_records;
 
 deleteDeletedSyncRecord:
 DELETE FROM deleted_sync_records WHERE id = ?;
+
+-- ============================================
+-- CASHIERS, SHIFTS & CASH MOVEMENTS TABLES & QUERIES
+-- ============================================
+
+CREATE TABLE cashiers (
+    id         TEXT    PRIMARY KEY NOT NULL,
+    nombre     TEXT    NOT NULL,
+    pin        TEXT    NOT NULL DEFAULT '0000',
+    activo     INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    sync_state TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+);
+
+CREATE INDEX idx_cashiers_activo ON cashiers(activo);
+
+CREATE TABLE shifts (
+    id                   TEXT    PRIMARY KEY NOT NULL,
+    cashier_id           TEXT    NOT NULL,
+    cashier_name         TEXT    NOT NULL,
+    start_time           INTEGER NOT NULL,
+    end_time             INTEGER DEFAULT NULL,
+    initial_cash         REAL    NOT NULL DEFAULT 0.0,
+    final_cash_expected  REAL    DEFAULT NULL,
+    final_cash_counted   REAL    DEFAULT NULL,
+    difference           REAL    DEFAULT NULL,
+    notes                TEXT    DEFAULT NULL,
+    is_closed            INTEGER NOT NULL DEFAULT 0,
+    sync_state           TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    FOREIGN KEY (cashier_id) REFERENCES cashiers(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_shifts_is_closed ON shifts(is_closed);
+CREATE INDEX idx_shifts_start_time ON shifts(start_time);
+
+CREATE TABLE cash_movements (
+    id          TEXT    PRIMARY KEY NOT NULL,
+    shift_id    TEXT    NOT NULL,
+    cashier_id  TEXT    NOT NULL,
+    tipo        TEXT    NOT NULL, -- 'ENTRADA', 'SALIDA'
+    monto       REAL    NOT NULL,
+    motivo      TEXT    NOT NULL,
+    created_at  INTEGER NOT NULL,
+    sync_state  TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE CASCADE,
+    FOREIGN KEY (cashier_id) REFERENCES cashiers(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_cash_movements_shift_id ON cash_movements(shift_id);
+
+-- Cashier Queries
+selectAllActiveCashiers:
+SELECT * FROM cashiers WHERE activo = 1 ORDER BY nombre ASC;
+
+selectAllCashiers:
+SELECT * FROM cashiers ORDER BY nombre ASC;
+
+selectCashierById:
+SELECT * FROM cashiers WHERE id = ?;
+
+countCashiers:
+SELECT COUNT(id) FROM cashiers;
+
+countActiveCashiers:
+SELECT COUNT(id) FROM cashiers WHERE activo = 1;
+
+insertCashier:
+INSERT OR REPLACE INTO cashiers (
+    id, nombre, pin, activo, created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateCashier:
+UPDATE cashiers
+SET nombre = ?, pin = ?, activo = ?, updated_at = ?, sync_state = ?
+WHERE id = ?;
+
+deactivateCashier:
+UPDATE cashiers
+SET activo = 0, updated_at = ?, sync_state = 'PENDING_UPDATE'
+WHERE id = ?;
+
+-- Shift Queries
+selectActiveShift:
+SELECT * FROM shifts WHERE is_closed = 0 ORDER BY start_time DESC LIMIT 1;
+
+selectShiftById:
+SELECT * FROM shifts WHERE id = ?;
+
+selectAllShifts:
+SELECT * FROM shifts ORDER BY start_time DESC;
+
+insertShift:
+INSERT INTO shifts (
+    id, cashier_id, cashier_name, start_time, end_time,
+    initial_cash, final_cash_expected, final_cash_counted, difference, notes, is_closed, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+closeShift:
+UPDATE shifts
+SET end_time = ?, final_cash_expected = ?, final_cash_counted = ?, difference = ?, notes = ?, is_closed = 1, sync_state = 'PENDING_UPDATE'
+WHERE id = ?;
+
+-- Cash Movements Queries
+selectMovementsByShiftId:
+SELECT * FROM cash_movements WHERE shift_id = ? ORDER BY created_at ASC;
+
+insertCashMovement:
+INSERT INTO cash_movements (
+    id, shift_id, cashier_id, tipo, monto, motivo, created_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+sumMovementsByShiftAndType:
+SELECT COALESCE(SUM(monto), 0.0) AS total FROM cash_movements WHERE shift_id = ? AND tipo = ?;
+
+-- Shift Sales Summary Queries
+selectSalesSummaryByShift:
+SELECT 
+    COALESCE(SUM(total), 0.0) AS total_ventas,
+    COALESCE(SUM(
+        CASE 
+            WHEN metodo_pago = 'EFECTIVO' THEN total
+            WHEN metodo_pago = 'MIXTO' THEN (pago_con - cambio)
+            ELSE 0.0 
+        END
+    ), 0.0) AS ventas_efectivo,
+    COALESCE(SUM(CASE WHEN metodo_pago = 'TARJETA' THEN total ELSE 0.0 END), 0.0) AS ventas_tarjeta,
+    COALESCE(SUM(CASE WHEN metodo_pago = 'TRANSFERENCIA' THEN total ELSE 0.0 END), 0.0) AS ventas_transferencia,
+    COALESCE(SUM(CASE WHEN metodo_pago = 'CREDITO' THEN total ELSE 0.0 END), 0.0) AS ventas_credito,
+    COALESCE(SUM(CASE WHEN metodo_pago = 'MIXTO' THEN total ELSE 0.0 END), 0.0) AS ventas_mixto,
+    COUNT(id) AS total_transacciones
+FROM sales
+WHERE (shift_id = :shiftId OR (created_at >= :startTime AND (:endTime IS NULL OR created_at <= :endTime)));

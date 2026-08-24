@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.domain.usecase
 
 import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.data.ShiftRepository
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.ui.CartItem
@@ -9,7 +10,8 @@ import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.roundPrice
 
 class RecordSaleUseCase(
-    private val saleRepository: SaleRepository
+    private val saleRepository: SaleRepository,
+    private val shiftRepository: ShiftRepository? = null
 ) {
     suspend operator fun invoke(
         cartItems: List<CartItem>,
@@ -17,13 +19,25 @@ class RecordSaleUseCase(
         cambio: Double,
         metodoPago: String = "EFECTIVO",
         customerId: String? = null,
-        roundTicketTotal: Boolean = false
+        roundTicketTotal: Boolean = false,
+        shiftId: String? = null,
+        cashierId: String? = null,
+        cashierName: String? = null
     ): Long {
         if (cartItems.isEmpty()) return 0L
 
         val now = currentTimeMillis()
         val saleId = generateUUID()
         val nextFolio = saleRepository.getNextFolio()
+
+        // Si no se pasó shiftId explícito, obtener del turno activo
+        val activeShift = if (shiftId == null && shiftRepository != null) {
+            shiftRepository.getActiveShift()
+        } else null
+
+        val finalShiftId = shiftId ?: activeShift?.id
+        val finalCashierId = cashierId ?: activeShift?.cashierId
+        val finalCashierName = cashierName ?: activeShift?.cashierName
 
         var total = 0.0
         var totalOriginal = 0.0
@@ -86,7 +100,10 @@ class RecordSaleUseCase(
             totalItems = totalItemsCount,
             customerId = customerId,
             createdAt = now,
-            syncState = "PENDING_INSERT"
+            syncState = "PENDING_INSERT",
+            shiftId = finalShiftId,
+            cashierId = finalCashierId,
+            cashierName = finalCashierName
         )
 
         return saleRepository.recordSale(sale, saleItems)

@@ -198,6 +198,24 @@ fun VentaScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Si no hay un turno de caja abierto, mostrar la vista de apertura de turno en toda la pantalla
+    if (uiState.activeShift == null) {
+        com.dnavarro.poskmp.ui.turnos.OpenShiftView(
+            cashiers = uiState.cashiers,
+            isOpening = uiState.isOpeningShift,
+            errorMessage = uiState.openShiftError,
+            onOpenShift = { cashierId, pin, initialCash ->
+                viewModel.openShift(cashierId, pin, initialCash)
+            },
+            onClearError = {
+                viewModel.clearOpenShiftError()
+            },
+            modifier = modifier
+        )
+        return
+    }
+
     LaunchedEffect(uiState.lastReceipt?.folio) {
         if (uiState.lastReceipt != null) {
             viewModel.printLastReceipt()
