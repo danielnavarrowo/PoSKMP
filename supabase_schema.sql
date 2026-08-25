@@ -135,16 +135,21 @@ CREATE TABLE IF NOT EXISTS public.sale_items (
 
 CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON public.sale_items(sale_id);
 
--- 9. TABLA: store_settings (Ajustes de Negocio y Reglas de Redondeo)
+-- 9. TABLA: store_settings (Ajustes de Negocio, Datos de la Tienda y Reglas)
 CREATE TABLE IF NOT EXISTS public.store_settings (
-    id                       TEXT PRIMARY KEY DEFAULT 'default',
-    default_retail_margin    NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
-    default_wholesale_margin  NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
-    is_rounding_enabled      BOOLEAN NOT NULL DEFAULT false,
-    round_retail_price       BOOLEAN NOT NULL DEFAULT false,
-    round_wholesale_price    BOOLEAN NOT NULL DEFAULT false,
-    round_ticket_total       BOOLEAN NOT NULL DEFAULT false,
-    updated_at               BIGINT NOT NULL
+    id                                 TEXT PRIMARY KEY DEFAULT 'default',
+    store_name                         TEXT NOT NULL DEFAULT '',
+    store_address                      TEXT NOT NULL DEFAULT '',
+    store_phone                        TEXT NOT NULL DEFAULT '',
+    receipt_footer                     TEXT NOT NULL DEFAULT '',
+    default_retail_margin              NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
+    default_wholesale_margin           NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
+    is_rounding_enabled                BOOLEAN NOT NULL DEFAULT false,
+    round_retail_price                 BOOLEAN NOT NULL DEFAULT false,
+    round_wholesale_price              BOOLEAN NOT NULL DEFAULT false,
+    round_ticket_total                 BOOLEAN NOT NULL DEFAULT false,
+    disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false,
+    updated_at                         BIGINT NOT NULL
 );
 
 -- 10. TABLA: deleted_records (Registro de Eliminaciones / Tombstones para Sincronización)
@@ -202,4 +207,12 @@ ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS shift_id TEXT REFERENCES publi
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS cashier_id TEXT REFERENCES public.cashiers(id) ON DELETE SET NULL;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS cashier_name TEXT;
 CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON public.sales(shift_id);
+
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS siempre_mayoreo BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_address TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_phone TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS receipt_footer TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false;
 */

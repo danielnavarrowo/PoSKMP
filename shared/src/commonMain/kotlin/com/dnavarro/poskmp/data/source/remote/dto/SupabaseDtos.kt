@@ -102,6 +102,14 @@ data class SaleItemDto(
 @Serializable
 data class StoreSettingsDto(
     val id: String = "default",
+    @SerialName("store_name")
+    val storeName: String = "",
+    @SerialName("store_address")
+    val storeAddress: String = "",
+    @SerialName("store_phone")
+    val storePhone: String = "",
+    @SerialName("receipt_footer")
+    val receiptFooter: String = "",
     @SerialName("default_retail_margin")
     val defaultRetailMargin: Double = 0.0,
     @SerialName("default_wholesale_margin")
@@ -114,6 +122,8 @@ data class StoreSettingsDto(
     val roundWholesalePrice: Boolean = false,
     @SerialName("round_ticket_total")
     val roundTicketTotal: Boolean = false,
+    @SerialName("disallow_card_payment_on_wholesale")
+    val disallowCardPaymentOnWholesale: Boolean = false,
     @SerialName("updated_at")
     val updatedAt: Long
 )

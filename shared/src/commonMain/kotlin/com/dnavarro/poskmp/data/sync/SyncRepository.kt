@@ -234,18 +234,24 @@ class SyncRepositoryImpl(
                 totalPushed += unsyncedSales.size
             }
 
-            // F) Ajustes de Negocio (Márgenes y Redondeo)
+            // F) Ajustes de Negocio (Márgenes, Redondeo, Datos de Tienda, Políticas)
             val localSettingsUpdatedAt = settingsRepository.businessSettingsUpdatedAtFlow.first()
             val lastSyncForPush = settingsRepository.lastSyncTimestampFlow.first()
             if (localSettingsUpdatedAt > lastSyncForPush || localSettingsUpdatedAt > 0L) {
+                val receiptSettings = settingsRepository.receiptSettingsFlow.first()
                 val storeSettingsDto = StoreSettingsDto(
                     id = "default",
+                    storeName = receiptSettings.storeName,
+                    storeAddress = receiptSettings.storeAddress,
+                    storePhone = receiptSettings.storePhone,
+                    receiptFooter = receiptSettings.footerMessage,
                     defaultRetailMargin = settingsRepository.defaultRetailMarginFlow.first(),
                     defaultWholesaleMargin = settingsRepository.defaultWholesaleMarginFlow.first(),
                     isRoundingEnabled = settingsRepository.isRoundingEnabledFlow.first(),
                     roundRetailPrice = settingsRepository.roundRetailPriceFlow.first(),
                     roundWholesalePrice = settingsRepository.roundWholesalePriceFlow.first(),
                     roundTicketTotal = settingsRepository.roundTicketTotalFlow.first(),
+                    disallowCardPaymentOnWholesale = settingsRepository.disallowCardPaymentOnWholesaleFlow.first(),
                     updatedAt = if (localSettingsUpdatedAt > 0L) localSettingsUpdatedAt else currentTimeMillis()
                 )
                 val pushSettingsResult = remoteDataSource.pushStoreSettings(url, key, storeSettingsDto)
@@ -424,6 +430,11 @@ class SyncRepositoryImpl(
                             roundRetailPrice = remoteSettings.roundRetailPrice,
                             roundWholesalePrice = remoteSettings.roundWholesalePrice,
                             roundTicketTotal = remoteSettings.roundTicketTotal,
+                            disallowCardPaymentOnWholesale = remoteSettings.disallowCardPaymentOnWholesale,
+                            storeName = remoteSettings.storeName,
+                            storeAddress = remoteSettings.storeAddress,
+                            storePhone = remoteSettings.storePhone,
+                            receiptFooter = remoteSettings.receiptFooter,
                             updatedAt = remoteSettings.updatedAt
                         )
                         totalPulled++

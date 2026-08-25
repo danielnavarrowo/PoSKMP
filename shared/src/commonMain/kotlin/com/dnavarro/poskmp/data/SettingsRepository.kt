@@ -77,6 +77,11 @@ interface SettingsRepository {
         roundRetailPrice: Boolean,
         roundWholesalePrice: Boolean,
         roundTicketTotal: Boolean,
+        disallowCardPaymentOnWholesale: Boolean = false,
+        storeName: String = "",
+        storeAddress: String = "",
+        storePhone: String = "",
+        receiptFooter: String = "",
         updatedAt: Long
     )
 
@@ -387,6 +392,11 @@ class SettingsRepositoryImpl(
         roundRetailPrice: Boolean,
         roundWholesalePrice: Boolean,
         roundTicketTotal: Boolean,
+        disallowCardPaymentOnWholesale: Boolean,
+        storeName: String,
+        storeAddress: String,
+        storePhone: String,
+        receiptFooter: String,
         updatedAt: Long
     ) {
         dataStore.edit { preferences ->
@@ -396,6 +406,11 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = roundRetailPrice
             preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = roundWholesalePrice
             preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = roundTicketTotal
+            preferences[PreferenceKeys.DISALLOW_CARD_PAYMENT_ON_WHOLESALE] = disallowCardPaymentOnWholesale
+            preferences[PreferenceKeys.STORE_NAME] = storeName
+            preferences[PreferenceKeys.STORE_ADDRESS] = storeAddress
+            preferences[PreferenceKeys.STORE_PHONE] = storePhone
+            preferences[PreferenceKeys.RECEIPT_FOOTER] = receiptFooter
             preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = updatedAt
         }
     }
@@ -449,6 +464,7 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.RECEIPT_FONT_SIZE] = settings.fontSize.coerceIn(8, 32)
             preferences[PreferenceKeys.RECEIPT_FEED_LINES] = settings.feedLines.coerceIn(0, 10)
             preferences[PreferenceKeys.RECEIPT_FOOTER] = settings.footerMessage
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
 }

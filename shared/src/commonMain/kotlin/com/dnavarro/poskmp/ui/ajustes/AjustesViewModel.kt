@@ -393,6 +393,9 @@ class AjustesViewModel(
     fun setReceiptSettings(settings: ReceiptSettings) {
         viewModelScope.launch {
             repository.setReceiptSettings(settings)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
         }
     }
 
