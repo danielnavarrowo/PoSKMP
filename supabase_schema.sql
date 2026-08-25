@@ -25,15 +25,16 @@ CREATE INDEX IF NOT EXISTS idx_products_activo ON public.products(activo);
 
 -- 2. TABLA: customers (Directorio de Clientes)
 CREATE TABLE IF NOT EXISTS public.customers (
-    id             TEXT PRIMARY KEY,
-    nombre         TEXT NOT NULL,
-    telefono       TEXT NOT NULL DEFAULT '',
-    direccion      TEXT NOT NULL DEFAULT '',
-    notas          TEXT NOT NULL DEFAULT '',
-    limite_credito NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    activo         BOOLEAN NOT NULL DEFAULT true,
-    created_at     BIGINT NOT NULL,
-    updated_at     BIGINT NOT NULL
+    id              TEXT PRIMARY KEY,
+    nombre          TEXT NOT NULL,
+    telefono        TEXT NOT NULL DEFAULT '',
+    direccion       TEXT NOT NULL DEFAULT '',
+    notas           TEXT NOT NULL DEFAULT '',
+    limite_credito  NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    siempre_mayoreo BOOLEAN NOT NULL DEFAULT false,
+    activo          BOOLEAN NOT NULL DEFAULT true,
+    created_at      BIGINT NOT NULL,
+    updated_at      BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_updated_at ON public.customers(updated_at);

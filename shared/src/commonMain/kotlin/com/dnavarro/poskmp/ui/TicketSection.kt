@@ -61,37 +61,15 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.OutlinedButton
+import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.venta.HeldTicket
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.add
-import poskmp.shared.generated.resources.back
-import poskmp.shared.generated.resources.back_to_catalog_desc
-import poskmp.shared.generated.resources.checkout_button
-import poskmp.shared.generated.resources.clear_all_button
-import poskmp.shared.generated.resources.close
-import poskmp.shared.generated.resources.current_ticket_title
-import poskmp.shared.generated.resources.decrease_desc
-import poskmp.shared.generated.resources.discard_held_ticket_desc
-import poskmp.shared.generated.resources.hold_ticket_button_desc
-import poskmp.shared.generated.resources.increase_desc
-import poskmp.shared.generated.resources.items_count_label
-import poskmp.shared.generated.resources.money
-import poskmp.shared.generated.resources.pause
-import poskmp.shared.generated.resources.pieces_count_label
-import poskmp.shared.generated.resources.remove
-import poskmp.shared.generated.resources.shopping_cart
-import poskmp.shared.generated.resources.ticket_empty_message
-import poskmp.shared.generated.resources.total_label
-import poskmp.shared.generated.resources.total_without_discount_label
-import poskmp.shared.generated.resources.trash
-import poskmp.shared.generated.resources.undo
-import poskmp.shared.generated.resources.undo_button_desc
-import poskmp.shared.generated.resources.wholesale_badge
+import poskmp.shared.generated.resources.*
 import kotlin.math.roundToInt
 
 @Composable
@@ -112,7 +90,10 @@ fun TicketSection(
     heldTickets: List<HeldTicket> = emptyList(),
     onHoldTicket: () -> Unit = {},
     onResumeHeldTicket: (HeldTicket) -> Unit = {},
-    onDiscardHeldTicket: (HeldTicket) -> Unit = {}
+    onDiscardHeldTicket: (HeldTicket) -> Unit = {},
+    selectedCustomer: Customer? = null,
+    onAssignCustomerClick: () -> Unit = {},
+    onClearCustomerClick: () -> Unit = {}
 ) {
     val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
     var previousSize by remember { mutableIntStateOf(0) }
@@ -376,7 +357,110 @@ fun TicketSection(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Selector / Asignación de Cliente
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.person),
+                        contentDescription = null,
+                        tint = if (selectedCustomer != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = selectedCustomer?.nombre ?: stringResource(Res.string.general_public_label),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (selectedCustomer?.siempreMayoreo == true) {
+                                Surface(
+                                    shape = MaterialTheme.shapes.extraSmall,
+                                    color = MaterialTheme.colorScheme.tertiaryContainer
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.badge_customer_always_wholesale),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                        if (selectedCustomer != null) {
+                            if (selectedCustomer.saldoDeudor > 0.0) {
+                                Text(
+                                    text = stringResource(Res.string.customer_balance_format, selectedCustomer.saldoDeudor.toString().formatPrice()),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            } else {
+                                Text(
+                                    text = stringResource(Res.string.customer_no_debt_pending),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = stringResource(Res.string.no_customer_assigned),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (selectedCustomer != null) {
+                        IconButton(
+                            onClick = onClearCustomerClick,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.close),
+                                contentDescription = stringResource(Res.string.remove_customer_button),
+                                tint = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    OutlinedButton(
+                        onClick = onAssignCustomerClick,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            text = if (selectedCustomer != null) stringResource(Res.string.change_customer_button) else stringResource(Res.string.assign_customer_button),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = onCheckout,

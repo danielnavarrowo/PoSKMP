@@ -184,6 +184,8 @@ fun AjustesScreen(
         onRoundWholesalePriceChange = { viewModel.setRoundWholesalePrice(it) },
         roundTicketTotal = uiState.roundTicketTotal,
         onRoundTicketTotalChange = { viewModel.setRoundTicketTotal(it) },
+        disallowCardPaymentOnWholesale = uiState.disallowCardPaymentOnWholesale,
+        onDisallowCardPaymentOnWholesaleChange = { viewModel.setDisallowCardPaymentOnWholesale(it) },
         receiptSettings = uiState.receiptSettings,
         onReceiptSettingsChange = { viewModel.setReceiptSettings(it) },
         supabaseUrl = uiState.supabaseUrl,
@@ -257,6 +259,8 @@ fun AjustesScreen(
     onRoundWholesalePriceChange: (Boolean) -> Unit = {},
     roundTicketTotal: Boolean = false,
     onRoundTicketTotalChange: (Boolean) -> Unit = {},
+    disallowCardPaymentOnWholesale: Boolean = false,
+    onDisallowCardPaymentOnWholesaleChange: (Boolean) -> Unit = {},
     receiptSettings: ReceiptSettings = ReceiptSettings(),
     onReceiptSettingsChange: (ReceiptSettings) -> Unit = {},
     supabaseUrl: String = "",
@@ -1653,6 +1657,59 @@ fun AjustesScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // Card: Políticas de Cobro
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = stringResource(Res.string.payment_policies_section_title),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(Res.string.payment_policies_section_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                Text(
+                                    text = stringResource(Res.string.disallow_card_on_wholesale_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.disallow_card_on_wholesale_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Switch(
+                                checked = disallowCardPaymentOnWholesale,
+                                onCheckedChange = onDisallowCardPaymentOnWholesaleChange
+                            )
                         }
                     }
                 }

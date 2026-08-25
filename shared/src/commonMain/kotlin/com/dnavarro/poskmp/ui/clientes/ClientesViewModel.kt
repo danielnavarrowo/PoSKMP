@@ -95,7 +95,8 @@ class ClientesViewModel(
         telefono: String,
         direccion: String,
         notas: String,
-        limiteCredito: Double
+        limiteCredito: Double,
+        siempreMayoreo: Boolean = false
     ) {
         viewModelScope.launch {
             val result = saveCustomerUseCase(
@@ -104,7 +105,8 @@ class ClientesViewModel(
                 telefono = telefono,
                 direccion = direccion,
                 notas = notas,
-                limiteCredito = limiteCredito
+                limiteCredito = limiteCredito,
+                siempreMayoreo = siempreMayoreo
             )
             result.onSuccess {
                 dismissCustomerFormDialog()

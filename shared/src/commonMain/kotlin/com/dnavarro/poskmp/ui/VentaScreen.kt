@@ -126,13 +126,14 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add_button
 import poskmp.shared.generated.resources.add_to_ticket_button
-import poskmp.shared.generated.resources.assign_customer_button
+import poskmp.shared.generated.resources.badge_customer_always_wholesale
 import poskmp.shared.generated.resources.barcode_not_found_message
 import poskmp.shared.generated.resources.barcode_not_found_title
+import poskmp.shared.generated.resources.btn_go_back_to_ticket
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.card
+import poskmp.shared.generated.resources.card_payment_blocked_wholesale_warning
 import poskmp.shared.generated.resources.cash_received_label
-import poskmp.shared.generated.resources.change_customer_button
 import poskmp.shared.generated.resources.change_to_deliver_label
 import poskmp.shared.generated.resources.checkout_change_label
 import poskmp.shared.generated.resources.checkout_field_credito
@@ -150,16 +151,14 @@ import poskmp.shared.generated.resources.credit_charge_summary
 import poskmp.shared.generated.resources.credit_limit_exceeded_warning
 import poskmp.shared.generated.resources.credit_sale_requires_customer_error
 import poskmp.shared.generated.resources.customer_balance_format
-import poskmp.shared.generated.resources.customer_no_debt_pending
 import poskmp.shared.generated.resources.default_quantity_placeholder
-import poskmp.shared.generated.resources.general_public_label
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.insufficient_amount_error
 import poskmp.shared.generated.resources.kg_suffix
+import poskmp.shared.generated.resources.mixed_card_payment_blocked_wholesale_warning
 import poskmp.shared.generated.resources.mixed_credit_requires_customer_error
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.money_transfer
-import poskmp.shared.generated.resources.no_customer_assigned
 import poskmp.shared.generated.resources.not_registered
 import poskmp.shared.generated.resources.payment_method_credito
 import poskmp.shared.generated.resources.payment_method_efectivo
@@ -172,7 +171,6 @@ import poskmp.shared.generated.resources.pesos_currency_label
 import poskmp.shared.generated.resources.price_per_kg_label
 import poskmp.shared.generated.resources.quantity_prompt_title
 import poskmp.shared.generated.resources.quantity_weight_label
-import poskmp.shared.generated.resources.remove_customer_button
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
@@ -672,7 +670,10 @@ fun VentaScreen(
                             onDiscardHeldTicket = { ticket ->
                                 viewModel.discardHeldTicket(ticket)
                                 reclaimSearchBarFocus()
-                            }
+                            },
+                            selectedCustomer = uiState.selectedCustomer,
+                            onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
+                            onClearCustomerClick = { viewModel.clearSelectedCustomer() }
                         )
                     }
                 }
@@ -765,7 +766,10 @@ fun VentaScreen(
                                 onDiscardHeldTicket = { ticket ->
                                     viewModel.discardHeldTicket(ticket)
                                     reclaimSearchBarFocus()
-                                }
+                                },
+                                selectedCustomer = uiState.selectedCustomer,
+                                onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
+                                onClearCustomerClick = { viewModel.clearSelectedCustomer() }
                             )
                         }
                     }
@@ -1140,10 +1144,14 @@ fun VentaScreen(
             mCash - remainingNeededForCash
         } else 0.0
 
+        val hasWholesaleProducts = cartItems.any { it.product.precio == it.product.precio_mayoreo && it.product.precio_mayoreo > 0.0 }
+        val isCardBlockedByWholesale = uiState.disallowCardPaymentOnWholesale && hasWholesaleProducts
+
         val isCheckoutValid = when (selectedPaymentMethod) {
             PaymentMethod.EFECTIVO -> paymentAmount >= total || paymentText.isEmpty()
-            PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> true
-            PaymentMethod.MIXTO -> totalReceivedMixto >= total && (mCredit == 0.0 || selectedCustomer != null)
+            PaymentMethod.TARJETA -> !isCardBlockedByWholesale
+            PaymentMethod.TRANSFERENCIA -> true
+            PaymentMethod.MIXTO -> totalReceivedMixto >= total && (mCredit == 0.0 || selectedCustomer != null) && (!isCardBlockedByWholesale || mCard == 0.0)
             PaymentMethod.CREDITO -> selectedCustomer != null
         }
 
@@ -1258,35 +1266,54 @@ fun VentaScreen(
                         }
                     }
 
-                    // Customer Assignment Row
-                    Surface(
-                        shape = ShapeDefaults.cardShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    // Active Customer Badge (if selected)
+                    if (selectedCustomer != null) {
+                        Surface(
+                            shape = ShapeDefaults.cardShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.person),
-                                contentDescription = null,
-                                tint = if (selectedCustomer != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = selectedCustomer?.nombre ?: stringResource(Res.string.general_public_label),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.person),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                if (selectedCustomer != null) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = selectedCustomer.nombre,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (selectedCustomer.siempreMayoreo) {
+                                            Surface(
+                                                shape = MaterialTheme.shapes.extraSmall,
+                                                color = MaterialTheme.colorScheme.tertiaryContainer
+                                            ) {
+                                                Text(
+                                                    text = stringResource(Res.string.badge_customer_always_wholesale),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                     if (selectedCustomer.saldoDeudor > 0.0) {
                                         Text(
                                             text = stringResource(Res.string.customer_balance_format, selectedCustomer.saldoDeudor.toString().formatPrice()),
@@ -1294,43 +1321,8 @@ fun VentaScreen(
                                             color = MaterialTheme.colorScheme.error,
                                             fontWeight = FontWeight.SemiBold
                                         )
-                                    } else {
-                                        Text(
-                                            text = stringResource(Res.string.customer_no_debt_pending),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
                                     }
-                                } else {
-                                    Text(
-                                        text = stringResource(Res.string.no_customer_assigned),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
                                 }
-                            }
-                            if (selectedCustomer != null) {
-                                IconButton(
-                                    onClick = { viewModel.clearSelectedCustomer() },
-                                    modifier = Modifier.size(28.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.close),
-                                        contentDescription = stringResource(Res.string.remove_customer_button),
-                                        tint = MaterialTheme.colorScheme.outline,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-                            OutlinedButton(
-                                onClick = { viewModel.setShowCustomerDialog(true) },
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = if (selectedCustomer != null) stringResource(Res.string.change_customer_button) else stringResource(Res.string.assign_customer_button),
-                                    fontSize = 11.sp
-                                )
                             }
                         }
                     }
@@ -1504,13 +1496,24 @@ fun VentaScreen(
                                             shape = MaterialTheme.shapes.small,
                                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                                         ) {
-                                            Text(
-                                                text = stringResource(Res.string.mixed_credit_requires_customer_error),
-                                                color = MaterialTheme.colorScheme.error,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(8.dp)
-                                            )
+                                            Column(
+                                                modifier = Modifier.padding(10.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Text(
+                                                    text = stringResource(Res.string.mixed_credit_requires_customer_error),
+                                                    color = MaterialTheme.colorScheme.error,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                OutlinedButton(
+                                                    onClick = { showCheckoutDialog = false },
+                                                    modifier = Modifier.align(Alignment.End),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                                ) {
+                                                    Text(stringResource(Res.string.btn_go_back_to_ticket), fontSize = 12.sp)
+                                                }
+                                            }
                                         }
                                     } else {
                                         val limit = selectedCustomer.limiteCredito
@@ -1526,6 +1529,22 @@ fun VentaScreen(
                                         }
                                     }
                                 }
+
+                                if (mCard > 0.0 && isCardBlockedByWholesale) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(Res.string.mixed_card_payment_blocked_wholesale_warning),
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -1536,13 +1555,24 @@ fun VentaScreen(
                                     shape = MaterialTheme.shapes.small,
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                                 ) {
-                                    Text(
-                                        text = stringResource(Res.string.credit_sale_requires_customer_error),
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(8.dp)
-                                    )
+                                    Column(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(Res.string.credit_sale_requires_customer_error),
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        OutlinedButton(
+                                            onClick = { showCheckoutDialog = false },
+                                            modifier = Modifier.align(Alignment.End),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(stringResource(Res.string.btn_go_back_to_ticket), fontSize = 12.sp)
+                                        }
+                                    }
                                 }
                             } else {
                                 val limit = selectedCustomer.limiteCredito
@@ -1567,7 +1597,36 @@ fun VentaScreen(
                             }
                         }
 
-                        PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> {
+                        PaymentMethod.TARJETA -> {
+                            if (isCardBlockedByWholesale) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                                    shape = MaterialTheme.shapes.small,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.card),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = stringResource(Res.string.card_payment_blocked_wholesale_warning),
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        PaymentMethod.TRANSFERENCIA -> {
                             // Exact payment for digital transactions
                         }
                     }

@@ -32,6 +32,7 @@ data class AjustesUiState(
     val roundRetailPrice: Boolean = false,
     val roundWholesalePrice: Boolean = false,
     val roundTicketTotal: Boolean = false,
+    val disallowCardPaymentOnWholesale: Boolean = false,
     val currentVersion: String = AppConstants.APP_VERSION,
     val isCheckingUpdates: Boolean = false,
     val updateCheckResult: UpdateCheckResult? = null,

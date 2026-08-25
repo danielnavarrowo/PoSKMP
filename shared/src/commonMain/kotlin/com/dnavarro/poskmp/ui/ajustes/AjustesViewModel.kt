@@ -52,7 +52,7 @@ class AjustesViewModel(
     private val updateRepository: UpdateRepository,
     private val syncRepository: SyncRepository,
     private val backupRepository: BackupRepository,
-    private val getCashiersUseCase: GetCashiersUseCase,
+    getCashiersUseCase: GetCashiersUseCase,
     private val saveCashierUseCase: SaveCashierUseCase,
     private val deleteCashierUseCase: DeleteCashierUseCase
 ) : ViewModel() {
@@ -99,9 +99,10 @@ class AjustesViewModel(
             repository.isRoundingEnabledFlow,
             repository.roundRetailPriceFlow,
             repository.roundWholesalePriceFlow,
-            repository.roundTicketTotalFlow
-        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal ->
-            Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal)
+            repository.roundTicketTotalFlow,
+            repository.disallowCardPaymentOnWholesaleFlow
+        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale ->
+            Tuple5(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale)
         },
         combine(
             combine(
@@ -122,7 +123,7 @@ class AjustesViewModel(
             Tuple6(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp)
         }
     ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal),
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale),
         (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp) ->
         AjustesUiState(
             defaultScreen = defaultScreen,
@@ -134,6 +135,7 @@ class AjustesViewModel(
             roundRetailPrice = roundRetailPrice,
             roundWholesalePrice = roundWholesalePrice,
             roundTicketTotal = roundTicketTotal,
+            disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
             supabaseUrl = supabaseUrl,
             supabaseKey = supabaseKey,
             lastSyncTimestamp = lastSyncTimestamp,
@@ -161,6 +163,7 @@ class AjustesViewModel(
             roundRetailPrice = behaviorState.roundRetailPrice,
             roundWholesalePrice = behaviorState.roundWholesalePrice,
             roundTicketTotal = behaviorState.roundTicketTotal,
+            disallowCardPaymentOnWholesale = behaviorState.disallowCardPaymentOnWholesale,
             supabaseUrl = behaviorState.supabaseUrl,
             supabaseKey = behaviorState.supabaseKey,
             lastSyncTimestamp = behaviorState.lastSyncTimestamp,
@@ -306,6 +309,15 @@ class AjustesViewModel(
     fun setRoundTicketTotal(enabled: Boolean) {
         viewModelScope.launch {
             repository.setRoundTicketTotal(enabled)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
+        }
+    }
+
+    fun setDisallowCardPaymentOnWholesale(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setDisallowCardPaymentOnWholesale(enabled)
             launch(Dispatchers.IO) {
                 syncRepository.syncAll()
             }

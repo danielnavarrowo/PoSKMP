@@ -444,6 +444,9 @@
     <string name="field_customer_notes">Notas extra</string>
     <string name="field_customer_credit_limit">Límite de crédito ($)</string>
     <string name="field_customer_credit_limit_hint">0.00 para crédito sin límite</string>
+    <string name="field_customer_always_wholesale">Vender siempre a precio de mayoreo</string>
+    <string name="field_customer_always_wholesale_hint">Aplica automáticamente el precio de mayoreo a los productos del ticket cuando este cliente está seleccionado.</string>
+    <string name="badge_customer_always_wholesale">Mayoreo</string>
     <string name="customer_name_required_error">El nombre del cliente es obligatorio.</string>
     <string name="statement_title_format">Estado de Cuenta • %1$s</string>
     <string name="statement_summary_balance">Saldo Deudor: $%1$s</string>
@@ -498,8 +501,9 @@
     <string name="customer_assigned_title">Cliente Asignado</string>
     <string name="customer_note_format">Nota: %1$s</string>
     <string name="customer_phone_format">Tel: %1$s</string>
-    <string name="credit_sale_requires_customer_error">Debes asignar un cliente para realizar una venta a crédito.</string>
-    <string name="mixed_credit_requires_customer_error">Asigna un cliente para registrar el saldo pendiente a crédito.</string>
+    <string name="credit_sale_requires_customer_error">Para vender a crédito debes seleccionar un cliente. Por favor regresa al ticket y asigna un cliente antes de cobrar.</string>
+    <string name="mixed_credit_requires_customer_error">Para incluir crédito en el pago debes asignar un cliente previamente en el ticket.</string>
+    <string name="btn_go_back_to_ticket">Regresar al ticket</string>
     <string name="credit_charge_summary">Se cargará $%1$s a la cuenta de crédito del cliente.</string>
     <string name="mixed_charge_summary">Se pagará $%1$s al contado y $%2$s a la cuenta de crédito del cliente.</string>
     <string name="credit_limit_exceeded_warning">Advertencia: Esta venta excede el límite de crédito del cliente ($%1$s).</string>
@@ -515,6 +519,14 @@
     <string name="round_wholesale_price_subtitle">Aplica el redondeo al precio de mayoreo al guardar</string>
     <string name="round_ticket_total_title">Redondear total del ticket antes del cobro</string>
     <string name="round_ticket_total_subtitle">Redondea el total acumulado en el ticket de venta al finalizar</string>
+
+    <!-- Payment Policies Settings Strings -->
+    <string name="payment_policies_section_title">Políticas de Cobro</string>
+    <string name="payment_policies_section_subtitle">Restricciones y reglas de validación en métodos de pago</string>
+    <string name="disallow_card_on_wholesale_title">Bloquear pago con tarjeta en mayoreo</string>
+    <string name="disallow_card_on_wholesale_subtitle">Impide realizar ventas con tarjeta cuando el ticket incluye productos a precio de mayoreo</string>
+    <string name="card_payment_blocked_wholesale_warning">El pago con tarjeta no está permitido porque el ticket contiene productos con precio de mayoreo.</string>
+    <string name="mixed_card_payment_blocked_wholesale_warning">No se permite incluir monto con tarjeta porque el ticket contiene productos con precio de mayoreo.</string>
 
     <!-- Supabase Cloud Sync Settings Strings -->
     <string name="supabase_section_title">Sincronización en la Nube (Supabase)</string>

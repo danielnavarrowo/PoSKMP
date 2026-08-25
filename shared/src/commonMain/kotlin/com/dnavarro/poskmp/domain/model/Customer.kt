@@ -7,6 +7,7 @@ data class Customer(
     val direccion: String = "",
     val notas: String = "",
     val limiteCredito: Double = 0.0,
+    val siempreMayoreo: Boolean = false,
     val activo: Boolean = true,
     val saldoDeudor: Double = 0.0,
     val totalCompras: Long = 0L,

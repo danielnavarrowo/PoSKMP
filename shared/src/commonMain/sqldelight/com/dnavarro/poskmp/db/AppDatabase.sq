@@ -86,16 +86,17 @@ WHERE activo = 1 AND (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :q
 -- ============================================
 
 CREATE TABLE customers (
-    id             TEXT    PRIMARY KEY NOT NULL,
-    nombre         TEXT    NOT NULL,
-    telefono       TEXT    NOT NULL DEFAULT '',
-    direccion      TEXT    NOT NULL DEFAULT '',
-    notas          TEXT    NOT NULL DEFAULT '',
-    limite_credito REAL    NOT NULL DEFAULT 0.0,
-    activo         INTEGER NOT NULL DEFAULT 1,
-    created_at     INTEGER NOT NULL,
-    updated_at     INTEGER NOT NULL,
-    sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+    id              TEXT    PRIMARY KEY NOT NULL,
+    nombre          TEXT    NOT NULL,
+    telefono        TEXT    NOT NULL DEFAULT '',
+    direccion       TEXT    NOT NULL DEFAULT '',
+    notas           TEXT    NOT NULL DEFAULT '',
+    limite_credito  REAL    NOT NULL DEFAULT 0.0,
+    siempre_mayoreo INTEGER NOT NULL DEFAULT 0,
+    activo          INTEGER NOT NULL DEFAULT 1,
+    created_at      INTEGER NOT NULL,
+    updated_at      INTEGER NOT NULL,
+    sync_state      TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
 );
 
 CREATE INDEX idx_customers_nombre ON customers(nombre);
@@ -179,12 +180,12 @@ ORDER BY c.nombre ASC;
 
 insertCustomer:
 INSERT INTO customers (
-    id, nombre, telefono, direccion, notas, limite_credito, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    id, nombre, telefono, direccion, notas, limite_credito, siempre_mayoreo, activo, created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateCustomer:
 UPDATE customers
-SET nombre = ?, telefono = ?, direccion = ?, notas = ?, limite_credito = ?, updated_at = ?, sync_state = ?
+SET nombre = ?, telefono = ?, direccion = ?, notas = ?, limite_credito = ?, siempre_mayoreo = ?, updated_at = ?, sync_state = ?
 WHERE id = ?;
 
 setCustomerActiveStatus:
@@ -203,8 +204,8 @@ UPDATE customers SET sync_state = ? WHERE id = ?;
 
 upsertSyncedCustomer:
 INSERT OR REPLACE INTO customers (
-    id, nombre, telefono, direccion, notas, limite_credito, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+    id, nombre, telefono, direccion, notas, limite_credito, siempre_mayoreo, activo, created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
 
 -- Customer Payments Queries
 

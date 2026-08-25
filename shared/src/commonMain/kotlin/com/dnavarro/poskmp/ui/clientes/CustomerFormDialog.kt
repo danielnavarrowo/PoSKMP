@@ -35,19 +35,25 @@ import poskmp.shared.generated.resources.field_customer_credit_limit
 import poskmp.shared.generated.resources.field_customer_credit_limit_hint
 import poskmp.shared.generated.resources.field_customer_name
 import poskmp.shared.generated.resources.field_customer_notes
-import poskmp.shared.generated.resources.field_customer_phone
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import poskmp.shared.generated.resources.*
 
 @Composable
 fun CustomerFormDialog(
     customer: Customer?,
     onDismissRequest: () -> Unit,
-    onSave: (id: String?, nombre: String, telefono: String, direccion: String, notas: String, limiteCredito: Double) -> Unit
+    onSave: (id: String?, nombre: String, telefono: String, direccion: String, notas: String, limiteCredito: Double, siempreMayoreo: Boolean) -> Unit
 ) {
     val isEdit = customer != null
     var nombre by remember(customer) { mutableStateOf(customer?.nombre ?: "") }
     var telefono by remember(customer) { mutableStateOf(customer?.telefono ?: "") }
     var direccion by remember(customer) { mutableStateOf(customer?.direccion ?: "") }
     var notas by remember(customer) { mutableStateOf(customer?.notas ?: "") }
+    var siempreMayoreo by remember(customer) { mutableStateOf(customer?.siempreMayoreo ?: false) }
     var limiteCreditoText by remember(customer) {
         mutableStateOf(
             if (customer != null && customer.limiteCredito > 0.0) {
@@ -122,6 +128,38 @@ fun CustomerFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text(
+                                text = stringResource(Res.string.field_customer_always_wholesale),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(Res.string.field_customer_always_wholesale_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = siempreMayoreo,
+                            onCheckedChange = { siempreMayoreo = it }
+                        )
+                    }
+                }
+
                 OutlinedTextField(
                     value = notas,
                     onValueChange = { notas = it },
@@ -139,7 +177,7 @@ fun CustomerFormDialog(
                     hasAttemptedSave = true
                     if (isNombreValid) {
                         val limite = limiteCreditoText.toDoubleOrNull() ?: 0.0
-                        onSave(customer?.id, nombre, telefono, direccion, notas, limite)
+                        onSave(customer?.id, nombre, telefono, direccion, notas, limite, siempreMayoreo)
                     }
                 }
             ) {

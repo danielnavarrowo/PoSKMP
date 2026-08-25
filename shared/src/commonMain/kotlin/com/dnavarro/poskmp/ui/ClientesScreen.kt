@@ -71,6 +71,7 @@ import poskmp.shared.generated.resources.customer_note_format
 import poskmp.shared.generated.resources.customer_purchases_format
 import poskmp.shared.generated.resources.delete
 import poskmp.shared.generated.resources.delete_button
+import poskmp.shared.generated.resources.badge_customer_always_wholesale
 import poskmp.shared.generated.resources.delete_customer_confirm_format
 import poskmp.shared.generated.resources.delete_customer_has_debt_warning
 import poskmp.shared.generated.resources.delete_customer_title
@@ -131,7 +132,7 @@ fun ClientesContent(
     onOpenCreateCustomer: () -> Unit,
     onOpenEditCustomer: (Customer) -> Unit,
     onDismissCustomerForm: () -> Unit,
-    onSaveCustomer: (id: String?, nombre: String, telefono: String, direccion: String, notas: String, limiteCredito: Double) -> Unit,
+    onSaveCustomer: (id: String?, nombre: String, telefono: String, direccion: String, notas: String, limiteCredito: Double, siempreMayoreo: Boolean) -> Unit,
     onOpenAccountStatement: (Customer) -> Unit,
     onDismissAccountStatement: () -> Unit,
     onOpenRecordPayment: (Customer) -> Unit,
@@ -550,6 +551,20 @@ private fun CustomerListItem(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (customer.siempreMayoreo) {
+                            Surface(
+                                shape = MaterialTheme.shapes.extraSmall,
+                                color = MaterialTheme.colorScheme.tertiaryContainer
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.badge_customer_always_wholesale),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
                     }
                 }
 

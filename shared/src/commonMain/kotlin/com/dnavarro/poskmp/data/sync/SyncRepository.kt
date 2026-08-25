@@ -131,6 +131,7 @@ class SyncRepositoryImpl(
                         direccion = c.direccion,
                         notas = c.notas,
                         limiteCredito = c.limite_credito,
+                        siempreMayoreo = c.siempre_mayoreo == 1L,
                         activo = c.activo == 1L,
                         createdAt = c.created_at,
                         updatedAt = c.updated_at
@@ -317,7 +318,7 @@ class SyncRepositoryImpl(
             }
             val remoteCustomers = pulledCustomersResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, nombre, telefono, direccion, notas, limiteCredito, activo, createdAt, updatedAt) in remoteCustomers) {
+                for ((id, nombre, telefono, direccion, notas, limiteCredito, siempreMayoreo, activo, createdAt, updatedAt) in remoteCustomers) {
                     val local = queries.selectCustomerById(id).executeAsOneOrNull()
                     if (local == null || updatedAt >= local.updated_at || local.sync_state == "SYNCED") {
                         queries.upsertSyncedCustomer(
@@ -327,6 +328,7 @@ class SyncRepositoryImpl(
                             direccion = direccion,
                             notas = notas,
                             limite_credito = limiteCredito,
+                            siempre_mayoreo = if (siempreMayoreo) 1L else 0L,
                             activo = if (activo) 1L else 0L,
                             created_at = createdAt,
                             updated_at = updatedAt

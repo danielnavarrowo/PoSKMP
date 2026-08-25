@@ -32,6 +32,8 @@ data class CustomerDto(
     val notas: String = "",
     @SerialName("limite_credito")
     val limiteCredito: Double = 0.0,
+    @SerialName("siempre_mayoreo")
+    val siempreMayoreo: Boolean = false,
     val activo: Boolean = true,
     @SerialName("created_at")
     val createdAt: Long,

@@ -44,6 +44,7 @@ interface SettingsRepository {
     val roundRetailPriceFlow: Flow<Boolean>
     val roundWholesalePriceFlow: Flow<Boolean>
     val roundTicketTotalFlow: Flow<Boolean>
+    val disallowCardPaymentOnWholesaleFlow: Flow<Boolean>
     val supabaseUrlFlow: Flow<String>
     val supabaseKeyFlow: Flow<String>
     val lastSyncTimestampFlow: Flow<Long>
@@ -68,6 +69,7 @@ interface SettingsRepository {
     suspend fun setRoundRetailPrice(enabled: Boolean)
     suspend fun setRoundWholesalePrice(enabled: Boolean)
     suspend fun setRoundTicketTotal(enabled: Boolean)
+    suspend fun setDisallowCardPaymentOnWholesale(disallow: Boolean)
     suspend fun setBusinessSettings(
         defaultRetailMargin: Double,
         defaultWholesaleMargin: Double,
@@ -110,6 +112,7 @@ class SettingsRepositoryImpl(
         val ROUND_RETAIL_PRICE = booleanPreferencesKey("round_retail_price")
         val ROUND_WHOLESALE_PRICE = booleanPreferencesKey("round_wholesale_price")
         val ROUND_TICKET_TOTAL = booleanPreferencesKey("round_ticket_total")
+        val DISALLOW_CARD_PAYMENT_ON_WHOLESALE = booleanPreferencesKey("disallow_card_payment_on_wholesale")
         val SUPABASE_URL = stringPreferencesKey("supabase_url")
         val SUPABASE_KEY = stringPreferencesKey("supabase_key")
         val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
@@ -207,6 +210,10 @@ class SettingsRepositoryImpl(
 
     override val roundTicketTotalFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.ROUND_TICKET_TOTAL] ?: false
+    }
+
+    override val disallowCardPaymentOnWholesaleFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.DISALLOW_CARD_PAYMENT_ON_WHOLESALE] ?: false
     }
 
     override val supabaseUrlFlow: Flow<String> = dataStore.data.map { preferences ->
@@ -362,6 +369,13 @@ class SettingsRepositoryImpl(
     override suspend fun setRoundTicketTotal(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = enabled
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
+        }
+    }
+
+    override suspend fun setDisallowCardPaymentOnWholesale(disallow: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DISALLOW_CARD_PAYMENT_ON_WHOLESALE] = disallow
             preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }

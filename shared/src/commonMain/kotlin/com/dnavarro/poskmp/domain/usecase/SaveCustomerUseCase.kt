@@ -15,6 +15,7 @@ class SaveCustomerUseCase(
         direccion: String = "",
         notas: String = "",
         limiteCredito: Double = 0.0,
+        siempreMayoreo: Boolean = false,
         activo: Boolean = true
     ): Result<Customer> {
         val trimmedNombre = nombre.trim()
@@ -35,6 +36,7 @@ class SaveCustomerUseCase(
             direccion = direccion.trim(),
             notas = notas.trim(),
             limiteCredito = limiteCredito.coerceAtLeast(0.0),
+            siempreMayoreo = siempreMayoreo,
             activo = activo,
             saldoDeudor = existing?.saldoDeudor ?: 0.0,
             totalCompras = existing?.totalCompras ?: 0L,

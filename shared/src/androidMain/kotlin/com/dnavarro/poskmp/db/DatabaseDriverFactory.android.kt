@@ -7,7 +7,9 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 actual class DatabaseDriverFactory actual constructor() {
     actual fun createDriver(): SqlDriver {
         val context = appContext ?: throw IllegalStateException("DatabaseDriverFactory.appContext must be initialized on Android")
-        return AndroidSqliteDriver(AppDatabase.Schema, context, "pos_database.db")
+        val driver = AndroidSqliteDriver(AppDatabase.Schema, context, "pos_database.db")
+        DatabaseMigrator.migrate(driver)
+        return driver
     }
 
     companion object {

@@ -15,6 +15,7 @@ actual class DatabaseDriverFactory actual constructor() {
         if (!dbFileExists) {
             AppDatabase.Schema.create(driver)
         }
+        DatabaseMigrator.migrate(driver)
         return driver
     }
 }
