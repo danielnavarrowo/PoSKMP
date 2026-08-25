@@ -17,14 +17,14 @@ import kotlinx.coroutines.withContext
 interface SaleLocalDataSource {
     suspend fun recordSale(sale: Sales, items: List<Sale_items>): Long
     suspend fun getNextFolio(): Long
-    suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long): SalesSummary
-    suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long): List<ProductSalesMetric>
-    suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long): List<ProductSalesMetric>
+    suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long, shiftId: String? = null): SalesSummary
+    suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long, shiftId: String? = null): List<ProductSalesMetric>
+    suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getRecentSales(limit: Long, offset: Long): List<Sales>
-    suspend fun getSalesBetween(startTime: Long, endTime: Long, limit: Long, offset: Long): List<Sales>
-    suspend fun getPaymentMethodSalesBetween(startTime: Long, endTime: Long): List<PaymentMethodMetric>
-    suspend fun getCategorySalesBetween(startTime: Long, endTime: Long): List<CategorySalesMetric>
-    suspend fun getDailySalesBetween(startTime: Long, endTime: Long): List<DailySalesMetric>
+    suspend fun getSalesBetween(startTime: Long, endTime: Long, limit: Long, offset: Long, shiftId: String? = null): List<Sales>
+    suspend fun getPaymentMethodSalesBetween(startTime: Long, endTime: Long, shiftId: String? = null): List<PaymentMethodMetric>
+    suspend fun getCategorySalesBetween(startTime: Long, endTime: Long, shiftId: String? = null): List<CategorySalesMetric>
+    suspend fun getDailySalesBetween(startTime: Long, endTime: Long, shiftId: String? = null): List<DailySalesMetric>
     suspend fun getSaleById(id: String): Sales?
     suspend fun getItemsBySaleId(saleId: String): List<Sale_items>
     suspend fun getTotalSalesCount(): Long
@@ -80,8 +80,16 @@ class SqlDelightSaleDataSource(
         queries.getNextFolio().executeAsOne()
     }
 
-    override suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long): SalesSummary = withContext(Dispatchers.IO) {
-        val result = queries.selectSalesSummaryBetween(startTime, endTime).executeAsOne()
+    override suspend fun getSalesSummaryBetween(
+        startTime: Long,
+        endTime: Long,
+        shiftId: String?
+    ): SalesSummary = withContext(Dispatchers.IO) {
+        val result = queries.selectSalesSummaryBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsOne()
         SalesSummary(
             totalVentas = result.total_ventas,
             totalSinDescuento = result.total_sin_descuento,
@@ -96,9 +104,15 @@ class SqlDelightSaleDataSource(
     override suspend fun getTopSellingProductsBetween(
         startTime: Long,
         endTime: Long,
-        limit: Long
+        limit: Long,
+        shiftId: String?
     ): List<ProductSalesMetric> = withContext(Dispatchers.IO) {
-        queries.selectTopSellingProductsBetween(startTime, endTime, limit).executeAsList().map { row ->
+        queries.selectTopSellingProductsBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime,
+            limit = limit
+        ).executeAsList().map { row ->
             ProductSalesMetric(
                 productId = row.product_id,
                 productNombre = row.product_nombre,
@@ -112,9 +126,15 @@ class SqlDelightSaleDataSource(
     override suspend fun getLeastSellingProductsBetween(
         startTime: Long,
         endTime: Long,
-        limit: Long
+        limit: Long,
+        shiftId: String?
     ): List<ProductSalesMetric> = withContext(Dispatchers.IO) {
-        queries.selectLeastSellingProductsBetween(startTime, endTime, limit).executeAsList().map { row ->
+        queries.selectLeastSellingProductsBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime,
+            limit = limit
+        ).executeAsList().map { row ->
             ProductSalesMetric(
                 productId = row.product_id,
                 productNombre = row.product_nombre,
@@ -133,16 +153,28 @@ class SqlDelightSaleDataSource(
         startTime: Long,
         endTime: Long,
         limit: Long,
-        offset: Long
+        offset: Long,
+        shiftId: String?
     ): List<Sales> = withContext(Dispatchers.IO) {
-        queries.selectSalesBetween(startTime, endTime, limit, offset).executeAsList()
+        queries.selectSalesBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime,
+            limit = limit,
+            offset = offset
+        ).executeAsList()
     }
 
     override suspend fun getPaymentMethodSalesBetween(
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        shiftId: String?
     ): List<PaymentMethodMetric> = withContext(Dispatchers.IO) {
-        queries.selectPaymentMethodSalesBetween(startTime, endTime).executeAsList().map { row ->
+        queries.selectPaymentMethodSalesBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsList().map { row ->
             PaymentMethodMetric(
                 metodoPago = row.metodo_pago,
                 totalRecaudado = row.total_recaudado,
@@ -153,9 +185,14 @@ class SqlDelightSaleDataSource(
 
     override suspend fun getCategorySalesBetween(
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        shiftId: String?
     ): List<CategorySalesMetric> = withContext(Dispatchers.IO) {
-        queries.selectCategorySalesBetween(startTime, endTime).executeAsList().map { row ->
+        queries.selectCategorySalesBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsList().map { row ->
             CategorySalesMetric(
                 categoria = row.categoria,
                 totalRecaudado = row.total_recaudado,
@@ -166,9 +203,14 @@ class SqlDelightSaleDataSource(
 
     override suspend fun getDailySalesBetween(
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        shiftId: String?
     ): List<DailySalesMetric> = withContext(Dispatchers.IO) {
-        queries.selectDailySalesBetween(startTime, endTime).executeAsList().map { row ->
+        queries.selectDailySalesBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsList().map { row ->
             DailySalesMetric(
                 fecha = row.dia,
                 diaLabel = row.dia,

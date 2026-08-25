@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.dnavarro.poskmp.data.ShiftRepository
+
 enum class SalesPeriodPreset {
     HOY, AYER, ESTA_SEMANA, ESTE_MES, RANGO
 }
@@ -34,6 +36,8 @@ data class VentasUiState(
     val customStartDate: Long? = null,
     val customEndDate: Long? = null,
     val showDateRangePicker: Boolean = false,
+    val shiftsForSelectedPeriod: List<CashierShift> = emptyList(),
+    val selectedShiftId: String? = null,
     val isLoading: Boolean = false,
     val summary: SalesSummary = SalesSummary(0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0.0),
     val topSellers: List<ProductSalesMetric> = emptyList(),
@@ -57,6 +61,7 @@ data class VentasUiState(
 class VentasViewModel(
     private val getSalesSummaryUseCase: GetSalesSummaryUseCase,
     private val saleRepository: SaleRepository,
+    private val shiftRepository: ShiftRepository,
     private val getActiveShiftUseCase: GetActiveShiftUseCase,
     private val recordCashMovementUseCase: RecordCashMovementUseCase,
     private val getShiftSummaryUseCase: GetShiftSummaryUseCase,
@@ -79,11 +84,23 @@ class VentasViewModel(
         }
     }
 
+    fun selectShiftFilter(shiftId: String?) {
+        _uiState.update { it.copy(selectedShiftId = shiftId) }
+        val (startTime, endTime) = if (_uiState.value.selectedPeriod == SalesPeriodPreset.RANGO &&
+            _uiState.value.customStartDate != null && _uiState.value.customEndDate != null
+        ) {
+            Pair(_uiState.value.customStartDate!!, _uiState.value.customEndDate!!)
+        } else {
+            getPeriodTimeRange(_uiState.value.selectedPeriod)
+        }
+        loadDataForRange(startTime, endTime, shiftId = shiftId, preserveSelectedShift = true)
+    }
+
     fun selectPeriod(preset: SalesPeriodPreset) {
         if (preset == SalesPeriodPreset.RANGO) {
             _uiState.update { it.copy(showDateRangePicker = true) }
         } else {
-            _uiState.update { it.copy(selectedPeriod = preset, showDateRangePicker = false) }
+            _uiState.update { it.copy(selectedPeriod = preset, showDateRangePicker = false, selectedShiftId = null) }
             loadDataForPeriod(preset)
         }
     }
@@ -94,7 +111,8 @@ class VentasViewModel(
                 selectedPeriod = SalesPeriodPreset.RANGO,
                 customStartDate = startDateMillis,
                 customEndDate = endDateMillis,
-                showDateRangePicker = false
+                showDateRangePicker = false,
+                selectedShiftId = null
             )
         }
         loadDataForRange(startDateMillis, endDateMillis)
@@ -110,11 +128,14 @@ class VentasViewModel(
 
     fun refresh() {
         val currentState = _uiState.value
-        if (currentState.selectedPeriod == SalesPeriodPreset.RANGO && currentState.customStartDate != null && currentState.customEndDate != null) {
-            loadDataForRange(currentState.customStartDate, currentState.customEndDate)
+        val (startTime, endTime) = if (currentState.selectedPeriod == SalesPeriodPreset.RANGO &&
+            currentState.customStartDate != null && currentState.customEndDate != null
+        ) {
+            Pair(currentState.customStartDate, currentState.customEndDate)
         } else {
-            loadDataForPeriod(currentState.selectedPeriod)
+            getPeriodTimeRange(currentState.selectedPeriod)
         }
+        loadDataForRange(startTime, endTime, shiftId = currentState.selectedShiftId, preserveSelectedShift = true)
     }
 
     fun selectSaleForDetail(sale: Sale?) {
@@ -259,21 +280,37 @@ class VentasViewModel(
         loadDataForRange(startTime, endTime)
     }
 
-    private fun loadDataForRange(startTime: Long, endTime: Long) {
+    private fun loadDataForRange(
+        startTime: Long,
+        endTime: Long,
+        shiftId: String? = null,
+        preserveSelectedShift: Boolean = false
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val summary = getSalesSummaryUseCase.getSummary(startTime, endTime)
-            val topSellers = getSalesSummaryUseCase.getTopSellers(startTime, endTime, limit = 10)
-            val leastSellers = getSalesSummaryUseCase.getLeastSellers(startTime, endTime, limit = 10)
-            val paymentMethodMetrics = getSalesSummaryUseCase.getPaymentMethodMetrics(startTime, endTime, summary.totalVentas)
-            val categorySalesMetrics = getSalesSummaryUseCase.getCategorySalesMetrics(startTime, endTime, summary.totalVentas)
-            val dailySalesMetrics = getSalesSummaryUseCase.getDailySalesMetrics(startTime, endTime)
-            val recentSales = saleRepository.getSalesBetween(startTime, endTime, limit = 50, offset = 0)
+            val shifts = shiftRepository.getShiftsBetween(startTime, endTime)
+            val effectiveShiftId = if (preserveSelectedShift && shifts.any { it.id == shiftId }) {
+                shiftId
+            } else if (preserveSelectedShift && shiftId == null) {
+                null
+            } else {
+                null
+            }
+
+            val summary = getSalesSummaryUseCase.getSummary(startTime, endTime, effectiveShiftId)
+            val topSellers = getSalesSummaryUseCase.getTopSellers(startTime, endTime, limit = 10, shiftId = effectiveShiftId)
+            val leastSellers = getSalesSummaryUseCase.getLeastSellers(startTime, endTime, limit = 10, shiftId = effectiveShiftId)
+            val paymentMethodMetrics = getSalesSummaryUseCase.getPaymentMethodMetrics(startTime, endTime, summary.totalVentas, shiftId = effectiveShiftId)
+            val categorySalesMetrics = getSalesSummaryUseCase.getCategorySalesMetrics(startTime, endTime, summary.totalVentas, shiftId = effectiveShiftId)
+            val dailySalesMetrics = getSalesSummaryUseCase.getDailySalesMetrics(startTime, endTime, shiftId = effectiveShiftId)
+            val recentSales = saleRepository.getSalesBetween(startTime, endTime, limit = 50, offset = 0, shiftId = effectiveShiftId)
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
+                    shiftsForSelectedPeriod = shifts,
+                    selectedShiftId = effectiveShiftId,
                     summary = summary,
                     topSellers = topSellers,
                     leastSellers = leastSellers,

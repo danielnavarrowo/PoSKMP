@@ -17,6 +17,7 @@ interface ShiftLocalDataSource {
     suspend fun getActiveShift(): Shifts?
     suspend fun getShiftById(id: String): Shifts?
     suspend fun getAllShifts(): List<Shifts>
+    suspend fun getShiftsBetween(startTime: Long, endTime: Long): List<Shifts>
     suspend fun insertShift(shift: Shifts)
     suspend fun closeShift(
         id: String,
@@ -60,6 +61,10 @@ class SqlDelightShiftDataSource(
 
     override suspend fun getAllShifts(): List<Shifts> = withContext(Dispatchers.IO) {
         queries.selectAllShifts().executeAsList()
+    }
+
+    override suspend fun getShiftsBetween(startTime: Long, endTime: Long): List<Shifts> = withContext(Dispatchers.IO) {
+        queries.selectShiftsBetween(startTime, endTime).executeAsList()
     }
 
     override suspend fun insertShift(shift: Shifts): Unit = withContext(Dispatchers.IO) {

@@ -658,4 +658,12 @@
     <string name="delete_cashier_confirm_button">Eliminar</string>
     <string name="no_cashiers_found">No hay cajeros registrados.</string>
     <string name="cashier_card_pin_masked">PIN: ••••</string>
+
+    <!-- Filtro de Turnos en VentasScreen -->
+    <string name="shift_filter_label">Turno de caja:</string>
+    <string name="all_shifts_option">Ver información de todos los turnos</string>
+    <string name="no_shifts_for_period">No se registraron turnos en este período</string>
+    <string name="shift_status_open">Abierto</string>
+    <string name="shift_dropdown_item_format">%1$s • %2$s (%3$s - %4$s)</string>
+    <string name="shift_dropdown_item_open_format">%1$s • %2$s (%3$s - Abierto)</string>
 </resources>

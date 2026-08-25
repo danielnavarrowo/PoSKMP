@@ -56,22 +56,24 @@ class SaleRepositoryImpl(
 
     override suspend fun getNextFolio(): Long = localDataSource.getNextFolio()
 
-    override suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long): SalesSummary =
-        localDataSource.getSalesSummaryBetween(startTime, endTime)
+    override suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long, shiftId: String?): SalesSummary =
+        localDataSource.getSalesSummaryBetween(startTime, endTime, shiftId)
 
     override suspend fun getTopSellingProductsBetween(
         startTime: Long,
         endTime: Long,
-        limit: Long
+        limit: Long,
+        shiftId: String?
     ): List<ProductSalesMetric> =
-        localDataSource.getTopSellingProductsBetween(startTime, endTime, limit)
+        localDataSource.getTopSellingProductsBetween(startTime, endTime, limit, shiftId)
 
     override suspend fun getLeastSellingProductsBetween(
         startTime: Long,
         endTime: Long,
-        limit: Long
+        limit: Long,
+        shiftId: String?
     ): List<ProductSalesMetric> =
-        localDataSource.getLeastSellingProductsBetween(startTime, endTime, limit)
+        localDataSource.getLeastSellingProductsBetween(startTime, endTime, limit, shiftId)
 
     override suspend fun getRecentSales(limit: Long, offset: Long): List<Sale> {
         return localDataSource.getRecentSales(limit, offset).map { row ->
@@ -100,9 +102,10 @@ class SaleRepositoryImpl(
         startTime: Long,
         endTime: Long,
         limit: Long,
-        offset: Long
+        offset: Long,
+        shiftId: String?
     ): List<Sale> {
-        return localDataSource.getSalesBetween(startTime, endTime, limit, offset).map { row ->
+        return localDataSource.getSalesBetween(startTime, endTime, limit, offset, shiftId).map { row ->
             Sale(
                 id = row.id,
                 folio = row.folio,
@@ -126,21 +129,24 @@ class SaleRepositoryImpl(
 
     override suspend fun getPaymentMethodSalesBetween(
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        shiftId: String?
     ): List<PaymentMethodMetric> =
-        localDataSource.getPaymentMethodSalesBetween(startTime, endTime)
+        localDataSource.getPaymentMethodSalesBetween(startTime, endTime, shiftId)
 
     override suspend fun getCategorySalesBetween(
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        shiftId: String?
     ): List<CategorySalesMetric> =
-        localDataSource.getCategorySalesBetween(startTime, endTime)
+        localDataSource.getCategorySalesBetween(startTime, endTime, shiftId)
 
     override suspend fun getDailySalesBetween(
         startTime: Long,
-        endTime: Long
+        endTime: Long,
+        shiftId: String?
     ): List<DailySalesMetric> =
-        localDataSource.getDailySalesBetween(startTime, endTime)
+        localDataSource.getDailySalesBetween(startTime, endTime, shiftId)
 
     override suspend fun getSaleById(id: String): Sale? {
         val row = localDataSource.getSaleById(id) ?: return null

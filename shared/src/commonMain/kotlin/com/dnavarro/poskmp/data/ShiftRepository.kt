@@ -20,6 +20,7 @@ interface ShiftRepository {
     val activeShiftFlow: Flow<CashierShift?>
     suspend fun getActiveShift(): CashierShift?
     suspend fun getShiftById(id: String): CashierShift?
+    suspend fun getShiftsBetween(startTime: Long, endTime: Long): List<CashierShift>
     val activeCashiersFlow: Flow<List<Cashier>>
     suspend fun getAllActiveCashiers(): List<Cashier>
     suspend fun getCashierById(id: String): Cashier?
@@ -53,6 +54,9 @@ class ShiftRepositoryImpl(
 
     override suspend fun getShiftById(id: String): CashierShift? =
         localDataSource.getShiftById(id)?.toDomain()
+
+    override suspend fun getShiftsBetween(startTime: Long, endTime: Long): List<CashierShift> =
+        localDataSource.getShiftsBetween(startTime, endTime).map { it.toDomain() }
 
     override val activeCashiersFlow: Flow<List<Cashier>> =
         localDataSource.getAllActiveCashiersFlow().map { list -> list.map { it.toDomain() } }

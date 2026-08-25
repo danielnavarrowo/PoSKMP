@@ -359,31 +359,36 @@ SELECT
     COUNT(id) AS total_ticket_count,
     COALESCE(AVG(total), 0.0) AS promedio_ticket
 FROM sales 
-WHERE created_at >= :startTime AND created_at <= :endTime;
+WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+   OR (:shiftId IS NOT NULL AND shift_id = :shiftId);
 
 selectTopSellingProductsBetween:
 SELECT 
-    product_id,
-    product_nombre,
-    SUM(cantidad) AS total_unidades,
-    SUM(subtotal) AS total_recaudado,
-    SUM(ganancia) AS ganancia_generada
-FROM sale_items
-WHERE created_at >= :startTime AND created_at <= :endTime
-GROUP BY product_id, product_nombre
+    si.product_id,
+    si.product_nombre,
+    SUM(si.cantidad) AS total_unidades,
+    SUM(si.subtotal) AS total_recaudado,
+    SUM(si.ganancia) AS ganancia_generada
+FROM sale_items si
+INNER JOIN sales s ON si.sale_id = s.id
+WHERE (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
+   OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+GROUP BY si.product_id, si.product_nombre
 ORDER BY total_unidades DESC
 LIMIT :limit;
 
 selectLeastSellingProductsBetween:
 SELECT 
-    product_id,
-    product_nombre,
-    SUM(cantidad) AS total_unidades,
-    SUM(subtotal) AS total_recaudado,
-    SUM(ganancia) AS ganancia_generada
-FROM sale_items
-WHERE created_at >= :startTime AND created_at <= :endTime
-GROUP BY product_id, product_nombre
+    si.product_id,
+    si.product_nombre,
+    SUM(si.cantidad) AS total_unidades,
+    SUM(si.subtotal) AS total_recaudado,
+    SUM(si.ganancia) AS ganancia_generada
+FROM sale_items si
+INNER JOIN sales s ON si.sale_id = s.id
+WHERE (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
+   OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+GROUP BY si.product_id, si.product_nombre
 ORDER BY total_unidades ASC
 LIMIT :limit;
 
@@ -394,7 +399,8 @@ LIMIT :limit OFFSET :offset;
 
 selectSalesBetween:
 SELECT * FROM sales 
-WHERE created_at >= :startTime AND created_at <= :endTime
+WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+   OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
 ORDER BY created_at DESC 
 LIMIT :limit OFFSET :offset;
 
@@ -404,7 +410,8 @@ SELECT
     COALESCE(SUM(total), 0.0) AS total_recaudado,
     COUNT(id) AS total_transacciones
 FROM sales
-WHERE created_at >= :startTime AND created_at <= :endTime
+WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+   OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
 GROUP BY metodo_pago
 ORDER BY total_recaudado DESC;
 
@@ -414,8 +421,10 @@ SELECT
     COALESCE(SUM(si.subtotal), 0.0) AS total_recaudado,
     COALESCE(SUM(si.cantidad), 0.0) AS total_unidades
 FROM sale_items si
+INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
-WHERE si.created_at >= :startTime AND si.created_at <= :endTime
+WHERE (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
+   OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 GROUP BY COALESCE(p.categoria, 'Sin categoría')
 ORDER BY total_recaudado DESC;
 
@@ -426,7 +435,8 @@ SELECT
     COALESCE(SUM(ganancia), 0.0) AS total_ganancia,
     COUNT(id) AS total_transacciones
 FROM sales
-WHERE created_at >= :startTime AND created_at <= :endTime
+WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+   OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
 GROUP BY dia
 ORDER BY dia ASC;
 
@@ -549,6 +559,12 @@ SELECT * FROM shifts WHERE id = ?;
 
 selectAllShifts:
 SELECT * FROM shifts ORDER BY start_time DESC;
+
+selectShiftsBetween:
+SELECT * FROM shifts 
+WHERE (start_time BETWEEN :startTime AND :endTime) 
+   OR (start_time <= :endTime AND (end_time >= :startTime OR is_closed = 0))
+ORDER BY start_time DESC;
 
 insertShift:
 INSERT INTO shifts (

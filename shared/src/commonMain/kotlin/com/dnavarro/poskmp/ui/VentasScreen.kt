@@ -25,11 +25,16 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
@@ -61,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
@@ -87,66 +93,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.accept_button
-import poskmp.shared.generated.resources.cancel
-import poskmp.shared.generated.resources.card
-import poskmp.shared.generated.resources.category_stat_format
-import poskmp.shared.generated.resources.close_button
-import poskmp.shared.generated.resources.custom_range_active_format
-import poskmp.shared.generated.resources.daily_sales_avg_format
-import poskmp.shared.generated.resources.date_range_end_label
-import poskmp.shared.generated.resources.date_range_start_label
-import poskmp.shared.generated.resources.empty_category_sales
-import poskmp.shared.generated.resources.empty_daily_sales
-import poskmp.shared.generated.resources.empty_payment_methods
-import poskmp.shared.generated.resources.empty_period_sales
-import poskmp.shared.generated.resources.empty_recent_sales_history
-import poskmp.shared.generated.resources.kpi_average_ticket
-import poskmp.shared.generated.resources.kpi_gross_total
-import poskmp.shared.generated.resources.kpi_issued_tickets
-import poskmp.shared.generated.resources.kpi_margin
-import poskmp.shared.generated.resources.kpi_net_profit
-import poskmp.shared.generated.resources.kpi_total_sales
-import poskmp.shared.generated.resources.kpi_without_discount
-import poskmp.shared.generated.resources.money
-import poskmp.shared.generated.resources.money_transfer
-import poskmp.shared.generated.resources.payment_method_credito
-import poskmp.shared.generated.resources.payment_method_efectivo
-import poskmp.shared.generated.resources.payment_method_label
-import poskmp.shared.generated.resources.payment_method_mixto
-import poskmp.shared.generated.resources.payment_method_stat_format
-import poskmp.shared.generated.resources.payment_method_tarjeta
-import poskmp.shared.generated.resources.payment_method_transferencia
-import poskmp.shared.generated.resources.payments
-import poskmp.shared.generated.resources.period_range
-import poskmp.shared.generated.resources.period_this_month
-import poskmp.shared.generated.resources.period_this_week
-import poskmp.shared.generated.resources.period_today
-import poskmp.shared.generated.resources.period_yesterday
-import poskmp.shared.generated.resources.select_date_range_title
-import poskmp.shared.generated.resources.ticket_detail_profit
-import poskmp.shared.generated.resources.ticket_detail_title
-import poskmp.shared.generated.resources.ticket_detail_total
-import poskmp.shared.generated.resources.ticket_folio_format
-import poskmp.shared.generated.resources.ticket_items_and_method
-import poskmp.shared.generated.resources.ticket_profit_label
-import poskmp.shared.generated.resources.title_category_sales
-import poskmp.shared.generated.resources.title_daily_sales
-import poskmp.shared.generated.resources.title_least_sellers
-import poskmp.shared.generated.resources.title_payment_methods
-import poskmp.shared.generated.resources.title_recent_sales_history
-import poskmp.shared.generated.resources.title_top_sellers
-import poskmp.shared.generated.resources.uncategorized_label
-import poskmp.shared.generated.resources.units_sold_count
-import poskmp.shared.generated.resources.ventas_title
-import poskmp.shared.generated.resources.check
-import poskmp.shared.generated.resources.person
-import poskmp.shared.generated.resources.active_shift_badge
-import poskmp.shared.generated.resources.no_active_shift_badge
-import poskmp.shared.generated.resources.btn_cash_inflow
-import poskmp.shared.generated.resources.btn_cash_outflow
-import poskmp.shared.generated.resources.btn_close_shift
+import poskmp.shared.generated.resources.*
 import com.dnavarro.poskmp.domain.model.CashMovementType
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -168,6 +115,7 @@ fun VentasScreen(
         onSetCustomDateRange = { start, end -> viewModel.setCustomDateRange(start, end) },
         onDismissDateRangePicker = { viewModel.dismissDateRangePicker() },
         onOpenDateRangePicker = { viewModel.openDateRangePicker() },
+        onSelectShiftFilter = { viewModel.selectShiftFilter(it) },
         onSelectSaleForDetail = { viewModel.selectSaleForDetail(it) },
         onOpenInflowDialog = { viewModel.openInflowDialog() },
         onOpenOutflowDialog = { viewModel.openOutflowDialog() },
@@ -180,7 +128,7 @@ fun VentasScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VentasScreen(
     state: VentasUiState,
@@ -188,6 +136,7 @@ fun VentasScreen(
     onSetCustomDateRange: (startDateMillis: Long, endDateMillis: Long) -> Unit,
     onDismissDateRangePicker: () -> Unit,
     onOpenDateRangePicker: () -> Unit,
+    onSelectShiftFilter: (String?) -> Unit = {},
     onSelectSaleForDetail: (Sale?) -> Unit,
     onOpenInflowDialog: () -> Unit = {},
     onOpenOutflowDialog: () -> Unit = {},
@@ -435,6 +384,114 @@ fun VentasScreen(
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Dropdown Selector de Turnos de Caja
+                        var shiftDropdownExpanded by remember { mutableStateOf(false) }
+                        val selectedShift = state.shiftsForSelectedPeriod.firstOrNull { it.id == state.selectedShiftId }
+                        val selectedShiftLabel = if (selectedShift != null) {
+                            formatShiftDisplay(selectedShift)
+                        } else {
+                            stringResource(Res.string.all_shifts_option)
+                        }
+
+                        ExposedDropdownMenuBox(
+                            expanded = shiftDropdownExpanded,
+                            onExpandedChange = { shiftDropdownExpanded = it },
+                            modifier = Modifier.fillMaxWidth(if (isCompact) 1f else 0.55f)
+                        ) {
+                            OutlinedTextField(
+                                value = selectedShiftLabel,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(Res.string.shift_filter_label)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shiftDropdownExpanded) },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.person),
+                                        contentDescription = null,
+                                        tint = if (selectedShift != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                shape = MaterialTheme.shapes.medium,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = shiftDropdownExpanded,
+                                onDismissRequest = { shiftDropdownExpanded = false }
+                            ) {
+                                // Opción por defecto: Ver información de todos los turnos
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = stringResource(Res.string.all_shifts_option),
+                                            fontWeight = if (state.selectedShiftId == null) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (state.selectedShiftId == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
+                                    onClick = {
+                                        onSelectShiftFilter(null)
+                                        shiftDropdownExpanded = false
+                                    },
+                                    leadingIcon = {
+                                        if (state.selectedShiftId == null) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.check),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                )
+
+                                if (state.shiftsForSelectedPeriod.isNotEmpty()) {
+                                    HorizontalDivider()
+                                }
+
+                                state.shiftsForSelectedPeriod.forEach { shift ->
+                                    val isCurrent = shift.id == state.selectedShiftId
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(
+                                                    text = formatShiftDisplay(shift),
+                                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (!shift.isClosed) {
+                                                    Text(
+                                                        text = stringResource(Res.string.shift_status_open),
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onClick = {
+                                            onSelectShiftFilter(shift.id)
+                                            shiftDropdownExpanded = false
+                                        },
+                                        leadingIcon = {
+                                            if (isCurrent) {
+                                                Icon(
+                                                    painter = painterResource(Res.drawable.check),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -900,6 +957,21 @@ private fun formatDateDisplay(epochMillis: Long): String {
         .atZone(java.time.ZoneId.systemDefault())
         .toLocalDate()
         .format(formatter)
+}
+
+private fun formatShiftDisplay(shift: CashierShift): String {
+    val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a")
+    val zone = java.time.ZoneId.systemDefault()
+    val startTimeStr = java.time.Instant.ofEpochMilli(shift.startTime).atZone(zone).format(timeFormatter)
+    val endTimeStr = if (shift.isClosed && shift.endTime != null) {
+        java.time.Instant.ofEpochMilli(shift.endTime).atZone(zone).format(timeFormatter)
+    } else {
+        "Abierto"
+    }
+    val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM")
+    val dateStr = java.time.Instant.ofEpochMilli(shift.startTime).atZone(zone).format(dateFormatter)
+
+    return "${shift.cashierName} • $dateStr ($startTimeStr - $endTimeStr)"
 }
 
 @Composable
