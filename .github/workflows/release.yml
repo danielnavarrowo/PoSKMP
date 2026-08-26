@@ -154,7 +154,7 @@ jobs:
           # Create portable ZIP containing the full application directory (exe + app/ + runtime/)
           $appDir = Get-ChildItem -Path desktopApp/build/compose/binaries/main-release/app -Directory | Select-Object -First 1
           if ($appDir) {
-            Compress-Archive -Path $appDir.FullName -DestinationPath artifacts/desktop-windows/PoSKMP-windows-portable.zip
+            Compress-Archive -Path "$($appDir.FullName)\*" -DestinationPath artifacts/desktop-windows/PoSKMP-windows-portable.zip -Force
           }
 
       - name: Upload Desktop Artifacts

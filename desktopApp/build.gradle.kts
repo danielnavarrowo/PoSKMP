@@ -38,6 +38,14 @@ compose.desktop {
             jvmArgs += listOf(
                 "-Dapp.version=$appVersion"
             )
+            windows {
+                perUserInstall = true
+                menu = true
+                shortcut = true
+                dirChooser = true
+                menuGroup = "PoSKMP"
+                upgradeUuid = "d7b2a9e1-6c3f-4b8a-9e12-3456789abcde"
+            }
         }
     }
 }
