@@ -128,9 +128,9 @@ SELECT c.*,
             WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
             ELSE 0.0 
         END
-    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
     COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
-    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA') AS total_compras
 FROM customers c
 WHERE c.activo = 1
 ORDER BY c.nombre ASC;
@@ -143,9 +143,9 @@ SELECT c.*,
             WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
             ELSE 0.0 
         END
-    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
     COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
-    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA') AS total_compras
 FROM customers c
 ORDER BY c.nombre ASC;
 
@@ -157,9 +157,9 @@ SELECT c.*,
             WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
             ELSE 0.0 
         END
-    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
     COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
-    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA') AS total_compras
 FROM customers c
 WHERE c.id = ?;
 
@@ -171,9 +171,9 @@ SELECT c.*,
             WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
             ELSE 0.0 
         END
-    ) FROM sales s WHERE s.customer_id = c.id), 0.0) -
+    ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
     COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c.id), 0.0) AS saldo_deudor,
-    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id) AS total_compras
+    (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA') AS total_compras
 FROM customers c
 WHERE c.activo = 1 AND (c.nombre LIKE '%' || :query || '%' OR c.telefono LIKE '%' || :query || '%' OR c.direccion LIKE '%' || :query || '%')
 ORDER BY c.nombre ASC;
@@ -247,7 +247,7 @@ LEFT JOIN (
                 WHEN s.metodo_pago = 'MIXTO' AND s.total > s.pago_con THEN (s.total - s.pago_con)
                 ELSE 0.0 
             END
-        ) FROM sales s WHERE s.customer_id = c2.id), 0.0) -
+        ) FROM sales s WHERE s.customer_id = c2.id AND s.estado != 'CANCELADA'), 0.0) -
         COALESCE((SELECT SUM(cp.monto) FROM customer_payments cp WHERE cp.customer_id = c2.id), 0.0) AS saldo
     FROM customers c2
 ) deuda ON c.id = deuda.id
@@ -274,12 +274,14 @@ CREATE TABLE sales (
     shift_id       TEXT    DEFAULT NULL,
     cashier_id     TEXT    DEFAULT NULL,
     cashier_name   TEXT    DEFAULT NULL,
+    estado         TEXT    NOT NULL DEFAULT 'COMPLETADA',
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_sales_created_at ON sales(created_at);
 CREATE INDEX idx_sales_customer_id ON sales(customer_id);
 CREATE INDEX idx_sales_shift_id ON sales(shift_id);
+CREATE INDEX idx_sales_estado ON sales(estado);
 
 CREATE TABLE sale_items (
     id              TEXT    PRIMARY KEY NOT NULL,
@@ -306,8 +308,8 @@ insertSale:
 INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
-    shift_id, cashier_id, cashier_name
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    shift_id, cashier_id, cashier_name, estado
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectUnsyncedSales:
 SELECT * FROM sales WHERE sync_state != 'SYNCED';
@@ -319,8 +321,13 @@ upsertSyncedSale:
 INSERT OR REPLACE INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
-    shift_id, cashier_id, cashier_name
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?);
+    shift_id, cashier_id, cashier_name, estado
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?, ?);
+
+cancelSale:
+UPDATE sales
+SET estado = 'CANCELADA', sync_state = 'PENDING_UPDATE'
+WHERE id = ?;
 
 selectSalesByCustomerId:
 SELECT * FROM sales
@@ -329,7 +336,7 @@ ORDER BY created_at DESC;
 
 selectCreditSalesByCustomerId:
 SELECT * FROM sales
-WHERE customer_id = ? AND (metodo_pago = 'CREDITO' OR (metodo_pago = 'MIXTO' AND total > pago_con))
+WHERE customer_id = ? AND estado != 'CANCELADA' AND (metodo_pago = 'CREDITO' OR (metodo_pago = 'MIXTO' AND total > pago_con))
 ORDER BY created_at DESC;
 
 insertSaleItem:
@@ -360,8 +367,10 @@ SELECT
     COUNT(id) AS total_ticket_count,
     COALESCE(AVG(total), 0.0) AS promedio_ticket
 FROM sales 
-WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
-   OR (:shiftId IS NOT NULL AND shift_id = :shiftId);
+WHERE estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
+);
 
 selectTopSellingProductsBetween:
 SELECT 
@@ -372,8 +381,10 @@ SELECT
     SUM(si.ganancia) AS ganancia_generada
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
-WHERE (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
-   OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+WHERE s.estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+)
 GROUP BY si.product_id, si.product_nombre
 ORDER BY total_unidades DESC
 LIMIT :limit;
@@ -387,8 +398,10 @@ SELECT
     SUM(si.ganancia) AS ganancia_generada
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
-WHERE (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
-   OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+WHERE s.estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+)
 GROUP BY si.product_id, si.product_nombre
 ORDER BY total_unidades ASC
 LIMIT :limit;
@@ -411,8 +424,10 @@ SELECT
     COALESCE(SUM(total), 0.0) AS total_recaudado,
     COUNT(id) AS total_transacciones
 FROM sales
-WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
-   OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
+WHERE estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
+)
 GROUP BY metodo_pago
 ORDER BY total_recaudado DESC;
 
@@ -424,8 +439,10 @@ SELECT
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
-WHERE (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
-   OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+WHERE s.estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+)
 GROUP BY COALESCE(p.categoria, 'Sin categoría')
 ORDER BY total_recaudado DESC;
 
@@ -436,8 +453,10 @@ SELECT
     COALESCE(SUM(ganancia), 0.0) AS total_ganancia,
     COUNT(id) AS total_transacciones
 FROM sales
-WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
-   OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
+WHERE estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
+)
 GROUP BY dia
 ORDER BY dia ASC;
 
@@ -448,7 +467,7 @@ selectItemsBySaleId:
 SELECT * FROM sale_items WHERE sale_id = ?;
 
 selectAllSalesCount:
-SELECT COUNT(id) FROM sales;
+SELECT COUNT(id) FROM sales WHERE estado != 'CANCELADA';
 
 -- ============================================
 -- TOMBSTONES / DELETED SYNC RECORDS
@@ -607,4 +626,16 @@ SELECT
     COALESCE(SUM(CASE WHEN metodo_pago = 'MIXTO' THEN total ELSE 0.0 END), 0.0) AS ventas_mixto,
     COUNT(id) AS total_transacciones
 FROM sales
-WHERE (shift_id = :shiftId OR (created_at >= :startTime AND (:endTime IS NULL OR created_at <= :endTime)));
+WHERE estado != 'CANCELADA' AND (shift_id = :shiftId OR (created_at >= :startTime AND (:endTime IS NULL OR created_at <= :endTime)));
+
+selectCancelledSalesSummaryByShift:
+SELECT 
+    COALESCE(SUM(total), 0.0) AS total_cancelado,
+    COUNT(id) AS total_tickets_cancelados
+FROM sales
+WHERE estado = 'CANCELADA' AND (shift_id = :shiftId OR (created_at >= :startTime AND (:endTime IS NULL OR created_at <= :endTime)));
+
+selectCancelledSalesByShift:
+SELECT * FROM sales
+WHERE estado = 'CANCELADA' AND (shift_id = :shiftId OR (created_at >= :startTime AND (:endTime IS NULL OR created_at <= :endTime)))
+ORDER BY created_at DESC;

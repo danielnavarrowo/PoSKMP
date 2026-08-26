@@ -30,6 +30,7 @@ import com.dnavarro.poskmp.data.updater.UpdateRepository
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.createDatabase
 import com.dnavarro.poskmp.domain.usecase.ApplyBulkModificationUseCase
+import com.dnavarro.poskmp.domain.usecase.CancelSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.CloseShiftUseCase
 import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
 import com.dnavarro.poskmp.domain.usecase.GetActiveShiftUseCase
@@ -102,6 +103,7 @@ val domainModule = module {
     factoryOf(::GetShiftSummaryUseCase)
     factoryOf(::SaveCashierUseCase)
     factoryOf(::DeleteCashierUseCase)
+    factoryOf(::CancelSaleUseCase)
 }
 
 val viewModelModule = module {

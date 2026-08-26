@@ -23,6 +23,7 @@ interface SaleRepository {
     suspend fun getSaleById(id: String): Sale?
     suspend fun getItemsBySaleId(saleId: String): List<SaleItem>
     suspend fun getTotalSalesCount(): Long
+    suspend fun cancelSale(saleId: String)
     fun getLastSale(): Flow<Sale?>
 }
 

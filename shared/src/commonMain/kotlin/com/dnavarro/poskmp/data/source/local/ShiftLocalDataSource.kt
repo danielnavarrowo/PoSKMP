@@ -6,6 +6,8 @@ import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.Cash_movements
 import com.dnavarro.poskmp.db.Cashiers
+import com.dnavarro.poskmp.db.Sales
+import com.dnavarro.poskmp.db.SelectCancelledSalesSummaryByShift
 import com.dnavarro.poskmp.db.SelectSalesSummaryByShift
 import com.dnavarro.poskmp.db.Shifts
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +43,8 @@ interface ShiftLocalDataSource {
     suspend fun getMovementsByShiftId(shiftId: String): List<Cash_movements>
     suspend fun getSumMovementsByShiftAndType(shiftId: String, tipo: String): Double
     suspend fun getSalesSummaryByShift(shiftId: String, startTime: Long, endTime: Long?): SelectSalesSummaryByShift
+    suspend fun getCancelledSalesSummaryByShift(shiftId: String, startTime: Long, endTime: Long?): SelectCancelledSalesSummaryByShift
+    suspend fun getCancelledSalesByShift(shiftId: String, startTime: Long, endTime: Long?): List<Sales>
 }
 
 class SqlDelightShiftDataSource(
@@ -174,5 +178,29 @@ class SqlDelightShiftDataSource(
             startTime = startTime,
             endTime = endTime
         ).executeAsOne()
+    }
+
+    override suspend fun getCancelledSalesSummaryByShift(
+        shiftId: String,
+        startTime: Long,
+        endTime: Long?
+    ): SelectCancelledSalesSummaryByShift = withContext(Dispatchers.IO) {
+        queries.selectCancelledSalesSummaryByShift(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsOne()
+    }
+
+    override suspend fun getCancelledSalesByShift(
+        shiftId: String,
+        startTime: Long,
+        endTime: Long?
+    ): List<Sales> = withContext(Dispatchers.IO) {
+        queries.selectCancelledSalesByShift(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsList()
     }
 }

@@ -77,7 +77,11 @@ import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.ventas.SalesPeriodPreset
 import com.dnavarro.poskmp.ui.ventas.VentasUiState
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.style.TextDecoration
+import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.formatShiftInterval
 import ir.ehsannarmani.compose_charts.ColumnChart
 import ir.ehsannarmani.compose_charts.PieChart
 import ir.ehsannarmani.compose_charts.models.BarProperties
@@ -117,6 +121,9 @@ fun VentasScreen(
         onOpenDateRangePicker = { viewModel.openDateRangePicker() },
         onSelectShiftFilter = { viewModel.selectShiftFilter(it) },
         onSelectSaleForDetail = { viewModel.selectSaleForDetail(it) },
+        onOpenCancelSaleDialog = { viewModel.openCancelSaleDialog(it) },
+        onDismissCancelSaleDialog = { viewModel.dismissCancelSaleDialog() },
+        onConfirmCancelSale = { viewModel.cancelSale(it) },
         onOpenInflowDialog = { viewModel.openInflowDialog() },
         onOpenOutflowDialog = { viewModel.openOutflowDialog() },
         onOpenCloseShiftDialog = { viewModel.openCloseShiftDialog() },
@@ -138,6 +145,9 @@ fun VentasScreen(
     onOpenDateRangePicker: () -> Unit,
     onSelectShiftFilter: (String?) -> Unit = {},
     onSelectSaleForDetail: (Sale?) -> Unit,
+    onOpenCancelSaleDialog: (Sale) -> Unit = {},
+    onDismissCancelSaleDialog: () -> Unit = {},
+    onConfirmCancelSale: (Sale) -> Unit = {},
     onOpenInflowDialog: () -> Unit = {},
     onOpenOutflowDialog: () -> Unit = {},
     onOpenCloseShiftDialog: () -> Unit = {},
@@ -675,7 +685,8 @@ fun VentasScreen(
                     items(state.recentSales, key = { it.id }) { sale ->
                         SaleTicketCard(
                             sale = sale,
-                            onClick = { onSelectSaleForDetail(sale) }
+                            onClick = { onSelectSaleForDetail(sale) },
+                            onCancelSale = { onOpenCancelSaleDialog(sale) }
                         )
                     }
                 }
@@ -698,7 +709,52 @@ fun VentasScreen(
         SaleDetailDialog(
             sale = sale,
             items = items,
-            onDismiss = { onSelectSaleForDetail(null) }
+            onDismiss = { onSelectSaleForDetail(null) },
+            onCancelSale = { onOpenCancelSaleDialog(sale) }
+        )
+    }
+
+    // Cancel Sale Confirmation Dialog
+    state.saleToCancel?.let { sale ->
+        AlertDialog(
+            onDismissRequest = {
+                if (!state.isCancellingSale) onDismissCancelSaleDialog()
+            },
+            title = {
+                Text(
+                    text = stringResource(Res.string.cancel_sale_confirm_title),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(Res.string.cancel_sale_confirm_message, sale.folio),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = { onConfirmCancelSale(sale) },
+                    enabled = !state.isCancellingSale,
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
+                    Text(
+                        stringResource(Res.string.cancel_sale_confirm_action),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onDismissCancelSaleDialog,
+                    enabled = !state.isCancellingSale
+                ) {
+                    Text(stringResource(Res.string.cancel_sale_keep_action))
+                }
+            }
         )
     }
 
@@ -708,6 +764,7 @@ fun VentasScreen(
             type = CashMovementType.ENTRADA,
             isLoading = state.isRecordingMovement,
             errorMessage = state.shiftActionError,
+            movements = state.activeShiftMovements,
             onConfirm = { amount, reason ->
                 onRecordCashMovement(CashMovementType.ENTRADA, amount, reason)
             },
@@ -721,6 +778,7 @@ fun VentasScreen(
             type = CashMovementType.SALIDA,
             isLoading = state.isRecordingMovement,
             errorMessage = state.shiftActionError,
+            movements = state.activeShiftMovements,
             onConfirm = { amount, reason ->
                 onRecordCashMovement(CashMovementType.SALIDA, amount, reason)
             },
@@ -960,18 +1018,12 @@ private fun formatDateDisplay(epochMillis: Long): String {
 }
 
 private fun formatShiftDisplay(shift: CashierShift): String {
-    val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a")
-    val zone = java.time.ZoneId.systemDefault()
-    val startTimeStr = java.time.Instant.ofEpochMilli(shift.startTime).atZone(zone).format(timeFormatter)
-    val endTimeStr = if (shift.isClosed && shift.endTime != null) {
-        java.time.Instant.ofEpochMilli(shift.endTime).atZone(zone).format(timeFormatter)
-    } else {
-        "Abierto"
-    }
-    val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM")
-    val dateStr = java.time.Instant.ofEpochMilli(shift.startTime).atZone(zone).format(dateFormatter)
-
-    return "${shift.cashierName} • $dateStr ($startTimeStr - $endTimeStr)"
+    return formatShiftInterval(
+        startTime = shift.startTime,
+        endTime = shift.endTime,
+        isClosed = shift.isClosed,
+        cashierName = shift.cashierName
+    )
 }
 
 @Composable
@@ -1131,13 +1183,17 @@ private fun ProductMetricRow(metric: ProductSalesMetric) {
 private fun SaleTicketCard(
     sale: Sale,
     onClick: () -> Unit,
+    onCancelSale: (Sale) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isCancelled = sale.isCancelled
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isCancelled) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainerLow
+        ),
         shape = MaterialTheme.shapes.medium
     ) {
         Row(
@@ -1152,7 +1208,7 @@ private fun SaleTicketCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = if (isCancelled) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.size(40.dp)
                 ) {
@@ -1160,17 +1216,43 @@ private fun SaleTicketCard(
                         Text(
                             "#${sale.folio}",
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = if (isCancelled) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                             fontSize = 14.sp
                         )
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            stringResource(Res.string.ticket_folio_format, sale.folio),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (isCancelled) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.sale_status_cancelled),
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
-                        stringResource(Res.string.ticket_folio_format, sale.folio),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+                        text = formatEpochMillisToDateTime(sale.createdAt),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1186,20 +1268,40 @@ private fun SaleTicketCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "$${sale.total.toString().formatPrice()}",
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1
-                )
-                Text(
-                    stringResource(Res.string.ticket_profit_label, sale.ganancia.toString().formatPrice()),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "$${sale.total.toString().formatPrice()}",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 16.sp,
+                        color = if (isCancelled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                        style = if (isCancelled) TextStyle(textDecoration = TextDecoration.LineThrough) else TextStyle.Default,
+                        maxLines = 1
+                    )
+                    Text(
+                        stringResource(Res.string.ticket_profit_label, sale.ganancia.toString().formatPrice()),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+
+                if (!isCancelled) {
+                    IconButton(
+                        onClick = { onCancelSale(sale) },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.close),
+                            contentDescription = stringResource(Res.string.cancel_sale_button),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -1209,19 +1311,60 @@ private fun SaleTicketCard(
 private fun SaleDetailDialog(
     sale: Sale,
     items: List<SaleItem>,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onCancelSale: () -> Unit
 ) {
+    val isCancelled = sale.isCancelled
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.ticket_detail_title, sale.folio), fontWeight = FontWeight.Bold) },
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(Res.string.ticket_detail_title, sale.folio),
+                    fontWeight = FontWeight.Bold
+                )
+                if (isCancelled) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.sale_status_cancelled),
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = formatEpochMillisToDateTime(sale.createdAt),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(stringResource(Res.string.ticket_detail_total, sale.total.toString().formatPrice()), fontWeight = FontWeight.Bold)
-                    Text(stringResource(Res.string.ticket_detail_profit, sale.ganancia.toString().formatPrice()), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(Res.string.ticket_detail_total, sale.total.toString().formatPrice()),
+                        fontWeight = FontWeight.Bold,
+                        style = if (isCancelled) TextStyle(textDecoration = TextDecoration.LineThrough) else TextStyle.Default
+                    )
+                    Text(
+                        stringResource(Res.string.ticket_detail_profit, sale.ganancia.toString().formatPrice()),
+                        color = if (isCancelled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider()
@@ -1262,8 +1405,24 @@ private fun SaleDetailDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.close_button))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!isCancelled) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = {
+                            onDismiss()
+                            onCancelSale()
+                        },
+                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(stringResource(Res.string.cancel_sale_button))
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.close_button))
+                }
             }
         }
     )

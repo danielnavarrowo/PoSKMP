@@ -28,6 +28,7 @@ interface SaleLocalDataSource {
     suspend fun getSaleById(id: String): Sales?
     suspend fun getItemsBySaleId(saleId: String): List<Sale_items>
     suspend fun getTotalSalesCount(): Long
+    suspend fun cancelSale(saleId: String)
     fun getLastSale(): Flow<Sales?>
 }
 
@@ -54,7 +55,8 @@ class SqlDelightSaleDataSource(
                 sync_state = sale.sync_state,
                 shift_id = sale.shift_id,
                 cashier_id = sale.cashier_id,
-                cashier_name = sale.cashier_name
+                cashier_name = sale.cashier_name,
+                estado = sale.estado
             )
 
             items.forEach { item ->
@@ -231,6 +233,12 @@ class SqlDelightSaleDataSource(
 
     override suspend fun getTotalSalesCount(): Long = withContext(Dispatchers.IO) {
         queries.selectAllSalesCount().executeAsOne()
+    }
+
+    override suspend fun cancelSale(saleId: String) {
+        withContext(Dispatchers.IO) {
+            queries.cancelSale(saleId)
+        }
     }
 
     override fun getLastSale(): Flow<Sales?> {

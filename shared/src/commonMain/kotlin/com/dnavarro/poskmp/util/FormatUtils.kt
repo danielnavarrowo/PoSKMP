@@ -74,29 +74,74 @@ fun parseCsvLine(line: String): List<String> {
     return result
 }
 
-fun formatCurrentDate(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
-    val locale = java.util.Locale.forLanguageTag("es-MX")
-    val dayOfWeek = dateTime.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)
-        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
-    val dayOfMonth = dateTime.dayOfMonth
-    val month = dateTime.month.getDisplayName(java.time.format.TextStyle.FULL, locale)
+private val SPANISH_DAYS_OF_WEEK = arrayOf(
+    "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"
+)
 
+private val SPANISH_MONTHS = arrayOf(
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+)
+
+fun getSpanishDayOfWeek(dayOfWeek: java.time.DayOfWeek): String {
+    val idx = dayOfWeek.value - 1
+    return if (idx in SPANISH_DAYS_OF_WEEK.indices) SPANISH_DAYS_OF_WEEK[idx] else dayOfWeek.name
+}
+
+fun getSpanishMonthName(monthValue: Int): String {
+    val idx = monthValue - 1
+    return if (idx in SPANISH_MONTHS.indices) SPANISH_MONTHS[idx] else monthValue.toString()
+}
+
+fun formatCurrentDate(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
+    val dayOfWeek = getSpanishDayOfWeek(dateTime.dayOfWeek)
+    val dayOfMonth = dateTime.dayOfMonth
+    val month = getSpanishMonthName(dateTime.monthValue)
     return "$dayOfWeek, $dayOfMonth de $month"
 }
 
 fun formatCurrentTime(dateTime: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
-    val locale = java.util.Locale.forLanguageTag("es-MX")
-    val hour12 = dateTime.format(java.time.format.DateTimeFormatter.ofPattern("h:mm", locale))
+    val hour = if (dateTime.hour % 12 == 0) 12 else dateTime.hour % 12
+    val minute = dateTime.minute.toString().padStart(2, '0')
+    val amPm = if (dateTime.hour < 12) "a. m." else "p. m."
+    return "$hour:$minute $amPm"
+}
 
-    return "$hour12"
+fun formatTimeOnly(epochMillis: Long): String {
+    val instant = java.time.Instant.ofEpochMilli(epochMillis)
+    val dateTime = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
+    val hour = if (dateTime.hour % 12 == 0) 12 else dateTime.hour % 12
+    val minute = dateTime.minute.toString().padStart(2, '0')
+    val amPm = if (dateTime.hour < 12) "a. m." else "p. m."
+    return "$hour:$minute $amPm"
 }
 
 fun formatEpochMillisToDateTime(epochMillis: Long): String {
     val instant = java.time.Instant.ofEpochMilli(epochMillis)
     val dateTime = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
-    val locale = java.util.Locale.forLanguageTag("es-MX")
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy - h:mm a", locale)
-    return dateTime.format(formatter)
+    val day = dateTime.dayOfMonth.toString().padStart(2, '0')
+    val month = dateTime.monthValue.toString().padStart(2, '0')
+    val year = dateTime.year
+    val hour = if (dateTime.hour % 12 == 0) 12 else dateTime.hour % 12
+    val minute = dateTime.minute.toString().padStart(2, '0')
+    val amPm = if (dateTime.hour < 12) "a. m." else "p. m."
+    return "$day/$month/$year - $hour:$minute $amPm"
+}
+
+fun formatShiftInterval(startTime: Long, endTime: Long?, isClosed: Boolean, cashierName: String): String {
+    val startInstant = java.time.Instant.ofEpochMilli(startTime)
+    val startDt = java.time.LocalDateTime.ofInstant(startInstant, java.time.ZoneId.systemDefault())
+    val startDay = startDt.dayOfMonth.toString().padStart(2, '0')
+    val startMonth = startDt.monthValue.toString().padStart(2, '0')
+    val startTimeStr = formatTimeOnly(startTime)
+
+    val endTimeStr = if (isClosed && endTime != null) {
+        formatTimeOnly(endTime)
+    } else {
+        "Abierto"
+    }
+
+    return "$cashierName • $startDay/$startMonth ($startTimeStr - $endTimeStr)"
 }
 
 /**

@@ -115,6 +115,7 @@ import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.formatTimeOnly
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -596,10 +597,7 @@ fun App(
 
                                                 Spacer(modifier = Modifier.height(2.dp))
                                                 val shortSyncText = if (lastSyncTimestamp > 0L) {
-                                                    val instant = java.time.Instant.ofEpochMilli(lastSyncTimestamp)
-                                                    val time = LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
-                                                        .format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
-                                                    time
+                                                    formatTimeOnly(lastSyncTimestamp)
                                                 } else {
                                                     "--:--"
                                                 }

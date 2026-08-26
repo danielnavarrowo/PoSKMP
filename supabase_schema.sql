@@ -111,12 +111,14 @@ CREATE TABLE IF NOT EXISTS public.sales (
     created_at     BIGINT NOT NULL,
     shift_id       TEXT REFERENCES public.shifts(id) ON DELETE SET NULL,
     cashier_id     TEXT REFERENCES public.cashiers(id) ON DELETE SET NULL,
-    cashier_name   TEXT
+    cashier_name   TEXT,
+    estado         TEXT NOT NULL DEFAULT 'COMPLETADA'
 );
 
 CREATE INDEX IF NOT EXISTS idx_sales_created_at ON public.sales(created_at);
 CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON public.sales(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON public.sales(shift_id);
+CREATE INDEX IF NOT EXISTS idx_sales_estado ON public.sales(estado);
 
 -- 8. TABLA: sale_items (Partidas / Renglones de Ventas)
 CREATE TABLE IF NOT EXISTS public.sale_items (
@@ -206,7 +208,9 @@ CREATE INDEX IF NOT EXISTS idx_cash_movements_shift_id ON public.cash_movements(
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS shift_id TEXT REFERENCES public.shifts(id) ON DELETE SET NULL;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS cashier_id TEXT REFERENCES public.cashiers(id) ON DELETE SET NULL;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS cashier_name TEXT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS estado TEXT NOT NULL DEFAULT 'COMPLETADA';
 CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON public.sales(shift_id);
+CREATE INDEX IF NOT EXISTS idx_sales_estado ON public.sales(estado);
 
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS siempre_mayoreo BOOLEAN NOT NULL DEFAULT false;
 

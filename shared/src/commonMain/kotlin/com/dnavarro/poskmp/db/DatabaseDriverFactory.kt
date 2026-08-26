@@ -103,6 +103,10 @@ private fun ensureTablesExist(driver: SqlDriver) {
                 customer_id    TEXT    DEFAULT NULL,
                 created_at     INTEGER NOT NULL,
                 sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+                shift_id       TEXT    DEFAULT NULL,
+                cashier_id     TEXT    DEFAULT NULL,
+                cashier_name   TEXT    DEFAULT NULL,
+                estado         TEXT    NOT NULL DEFAULT 'COMPLETADA',
                 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
             );
             """.trimIndent(),
@@ -135,12 +139,22 @@ private fun ensureTablesExist(driver: SqlDriver) {
     }
 
     try {
+        driver.execute(null, "ALTER TABLE sales ADD COLUMN estado TEXT NOT NULL DEFAULT 'COMPLETADA';", 0)
+    } catch (_: Exception) {
+    }
+
+    try {
         driver.execute(null, "CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id);", 0)
     } catch (_: Exception) {
     }
 
     try {
         driver.execute(null, "CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON sales(shift_id);", 0)
+    } catch (_: Exception) {
+    }
+
+    try {
+        driver.execute(null, "CREATE INDEX IF NOT EXISTS idx_sales_estado ON sales(estado);", 0)
     } catch (_: Exception) {
     }
 

@@ -34,7 +34,8 @@ class SaleRepositoryImpl(
             sync_state = sale.syncState,
             shift_id = sale.shiftId,
             cashier_id = sale.cashierId,
-            cashier_name = sale.cashierName
+            cashier_name = sale.cashierName,
+            estado = sale.estado
         )
         val dbItems = items.map { item ->
             Sale_items(
@@ -93,7 +94,8 @@ class SaleRepositoryImpl(
                 syncState = row.sync_state,
                 shiftId = row.shift_id,
                 cashierId = row.cashier_id,
-                cashierName = row.cashier_name
+                cashierName = row.cashier_name,
+                estado = row.estado
             )
         }
     }
@@ -122,7 +124,8 @@ class SaleRepositoryImpl(
                 syncState = row.sync_state,
                 shiftId = row.shift_id,
                 cashierId = row.cashier_id,
-                cashierName = row.cashier_name
+                cashierName = row.cashier_name,
+                estado = row.estado
             )
         }
     }
@@ -166,7 +169,8 @@ class SaleRepositoryImpl(
             syncState = row.sync_state,
             shiftId = row.shift_id,
             cashierId = row.cashier_id,
-            cashierName = row.cashier_name
+            cashierName = row.cashier_name,
+            estado = row.estado
         )
     }
 
@@ -190,6 +194,8 @@ class SaleRepositoryImpl(
 
     override suspend fun getTotalSalesCount(): Long = localDataSource.getTotalSalesCount()
 
+    override suspend fun cancelSale(saleId: String) = localDataSource.cancelSale(saleId)
+
     override fun getLastSale(): Flow<Sale?> {
         return localDataSource.getLastSale().map { row ->
             row?.let {
@@ -209,7 +215,8 @@ class SaleRepositoryImpl(
                     syncState = it.sync_state,
                     shiftId = it.shift_id,
                     cashierId = it.cashier_id,
-                    cashierName = it.cashier_name
+                    cashierName = it.cashier_name,
+                    estado = it.estado
                 )
             }
         }

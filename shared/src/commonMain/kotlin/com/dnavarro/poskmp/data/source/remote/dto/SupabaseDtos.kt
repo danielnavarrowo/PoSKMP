@@ -74,7 +74,8 @@ data class SaleDto(
     @SerialName("customer_id")
     val customerId: String? = null,
     @SerialName("created_at")
-    val createdAt: Long
+    val createdAt: Long,
+    val estado: String = "COMPLETADA"
 )
 
 @Serializable

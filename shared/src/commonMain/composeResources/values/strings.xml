@@ -394,6 +394,14 @@
     <string name="ticket_detail_title">Detalle de Ticket #%1$d</string>
     <string name="ticket_detail_total">Total: $%1$s</string>
     <string name="ticket_detail_profit">Ganancia: +$%1$s</string>
+    <string name="sale_status_cancelled">Cancelada</string>
+    <string name="cancel_sale_button">Cancelar venta</string>
+    <string name="cancel_sale_confirm_title">¿Cancelar venta?</string>
+    <string name="cancel_sale_confirm_message">¿Estás seguro de cancelar la venta con Folio #%1$d? Esta acción excluirá la venta de todas las métricas, reportes y del corte de caja.</string>
+    <string name="cancel_sale_confirm_action">Sí, cancelar venta</string>
+    <string name="cancel_sale_keep_action">No, mantener</string>
+    <string name="cancel_sale_success">Venta #%1$d cancelada exitosamente</string>
+    <string name="cancel_sale_error">Error al cancelar la venta: %1$s</string>
 
     <!-- Update System -->
     <string name="updates_section_title">Actualizaciones del Sistema</string>
@@ -631,6 +639,11 @@
     <string name="cash_inflow_reason_placeholder">Ej. Cambio adicional, aportación inicial</string>
     <string name="cash_outflow_reason_placeholder">Ej. Pago a proveedor, retiro a caja fuerte</string>
     <string name="cash_movement_confirm_button">Registrar Movimiento</string>
+    <string name="shift_movements_history_title">Historial de movimientos del turno</string>
+    <string name="shift_movements_empty">No se han registrado movimientos de efectivo en este turno.</string>
+    <string name="shift_movement_no_reason">Sin motivo especificado</string>
+    <string name="shift_movement_entry_badge">Entrada</string>
+    <string name="shift_movement_exit_badge">Salida</string>
 
     <string name="close_shift_dialog_title">Corte de Caja y Cierre de Turno</string>
     <string name="close_shift_dialog_subtitle">Cajero: %1$s • Inicio: %2$s</string>
@@ -651,6 +664,10 @@
     <string name="close_shift_notes_placeholder">Ej. Billetes dañados, aclaraciones del turno</string>
     <string name="close_shift_button">Cerrar Turno y Guardar Corte</string>
     <string name="shift_start_time_label">Inicio de turno</string>
+    <string name="shift_summary_cancelled_section">Ventas Canceladas en el Turno</string>
+    <string name="shift_cancelled_total_label">Total cancelado:</string>
+    <string name="shift_cancelled_tickets_label">Tickets cancelados:</string>
+    <string name="shift_cancelled_disclaimer">Excluidas del total de ventas y del balance de efectivo.</string>
 
     <!-- Diálogo de Cierre de Aplicación con Turno Abierto -->
     <string name="exit_with_open_shift_title">Turno de caja abierto</string>

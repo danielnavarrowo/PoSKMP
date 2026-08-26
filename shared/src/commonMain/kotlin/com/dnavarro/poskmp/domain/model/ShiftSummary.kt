@@ -12,5 +12,8 @@ data class ShiftSummary(
     val totalSalidas: Double = 0.0,
     val efectivoEsperado: Double = 0.0,
     val totalTransacciones: Long = 0L,
+    val totalVentasCanceladas: Double = 0.0,
+    val totalTicketsCancelados: Long = 0L,
+    val cancelledSales: List<Sale> = emptyList(),
     val movements: List<CashMovement> = emptyList()
 )

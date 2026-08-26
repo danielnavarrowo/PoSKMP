@@ -8,6 +8,7 @@ import com.dnavarro.poskmp.domain.model.CashMovement
 import com.dnavarro.poskmp.domain.model.CashMovementType
 import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.domain.model.CashierShift
+import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.ShiftSummary
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
@@ -151,9 +152,6 @@ class ShiftRepositoryImpl(
             if (amount <= 0.0) {
                 return@withContext Result.failure(IllegalArgumentException("El monto debe ser mayor a 0."))
             }
-            if (reason.isBlank()) {
-                return@withContext Result.failure(IllegalArgumentException("El motivo no puede estar vacío."))
-            }
 
             val now = currentTimeMillis()
             val movement = Cash_movements(
@@ -191,6 +189,37 @@ class ShiftRepositoryImpl(
             val totalSalidas = localDataSource.getSumMovementsByShiftAndType(shiftId, CashMovementType.SALIDA.name)
             val movements = localDataSource.getMovementsByShiftId(shiftId).map { it.toDomain() }
 
+            val cancelledSalesSummary = localDataSource.getCancelledSalesSummaryByShift(
+                shiftId = shiftId,
+                startTime = shiftDb.start_time,
+                endTime = shiftDb.end_time
+            )
+            val cancelledSales = localDataSource.getCancelledSalesByShift(
+                shiftId = shiftId,
+                startTime = shiftDb.start_time,
+                endTime = shiftDb.end_time
+            ).map { row ->
+                Sale(
+                    id = row.id,
+                    folio = row.folio,
+                    total = row.total,
+                    totalOriginal = row.total_original,
+                    totalCosto = row.total_costo,
+                    ganancia = row.ganancia,
+                    pagoCon = row.pago_con,
+                    cambio = row.cambio,
+                    metodoPago = row.metodo_pago,
+                    totalItems = row.total_items,
+                    customerId = row.customer_id,
+                    createdAt = row.created_at,
+                    syncState = row.sync_state,
+                    shiftId = row.shift_id,
+                    cashierId = row.cashier_id,
+                    cashierName = row.cashier_name,
+                    estado = row.estado
+                )
+            }
+
             val ventasEfectivo = salesSummary.ventas_efectivo
             val fondoInicial = shiftDb.initial_cash
             val efectivoEsperado = fondoInicial + ventasEfectivo + totalEntradas - totalSalidas
@@ -207,6 +236,9 @@ class ShiftRepositoryImpl(
                 totalSalidas = totalSalidas,
                 efectivoEsperado = efectivoEsperado,
                 totalTransacciones = salesSummary.total_transacciones,
+                totalVentasCanceladas = cancelledSalesSummary.total_cancelado,
+                totalTicketsCancelados = cancelledSalesSummary.total_tickets_cancelados,
+                cancelledSales = cancelledSales,
                 movements = movements
             )
             Result.success(shiftSummary)

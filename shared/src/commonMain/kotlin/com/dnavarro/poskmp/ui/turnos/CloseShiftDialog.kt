@@ -34,7 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.ShiftSummary
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
@@ -53,14 +55,19 @@ import poskmp.shared.generated.resources.difference_shortage
 import poskmp.shared.generated.resources.difference_surplus
 import poskmp.shared.generated.resources.expected_cash_label
 import poskmp.shared.generated.resources.initial_cash_label
+import poskmp.shared.generated.resources.shift_cancelled_disclaimer
+import poskmp.shared.generated.resources.shift_cancelled_tickets_label
+import poskmp.shared.generated.resources.shift_cancelled_total_label
 import poskmp.shared.generated.resources.shift_cash_inflows
 import poskmp.shared.generated.resources.shift_cash_outflows
 import poskmp.shared.generated.resources.shift_cash_sales
 import poskmp.shared.generated.resources.shift_credit_sales
+import poskmp.shared.generated.resources.shift_summary_cancelled_section
 import poskmp.shared.generated.resources.shift_summary_cash_section
 import poskmp.shared.generated.resources.shift_summary_other_payments_section
 import poskmp.shared.generated.resources.shift_total_sales
 import poskmp.shared.generated.resources.shift_total_tickets
+import poskmp.shared.generated.resources.ticket_folio_format
 import poskmp.shared.generated.resources.warning
 
 @Composable
@@ -211,6 +218,108 @@ fun CloseShiftDialog(
                         }
                         if (summary.ventasCredito > 0.0) {
                             ShiftRowItem(label = stringResource(Res.string.shift_credit_sales), value = summary.ventasCredito.toString().formatPrice())
+                        }
+                    }
+                }
+
+                // Card 3: Ventas Canceladas del Turno (si las hubo)
+                if (summary.totalTicketsCancelados > 0L || summary.cancelledSales.isNotEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.shift_summary_cancelled_section),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Surface(
+                                    color = MaterialTheme.colorScheme.error,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "${summary.totalTicketsCancelados} ${if (summary.totalTicketsCancelados == 1L) "ticket" else "tickets"}",
+                                        color = MaterialTheme.colorScheme.onError,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                            )
+
+                            ShiftRowItem(
+                                label = stringResource(Res.string.shift_cancelled_total_label),
+                                value = summary.totalVentasCanceladas.toString().formatPrice(),
+                                valueColor = MaterialTheme.colorScheme.error,
+                                bold = true
+                            )
+                            ShiftRowItem(
+                                label = stringResource(Res.string.shift_cancelled_tickets_label),
+                                value = summary.totalTicketsCancelados.toString()
+                            )
+
+                            if (summary.cancelledSales.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    summary.cancelledSales.forEach { sale ->
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f, fill = false)) {
+                                                    Text(
+                                                        text = stringResource(Res.string.ticket_folio_format, sale.folio),
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 13.sp
+                                                    )
+                                                    Text(
+                                                        text = "${formatEpochMillisToDateTime(sale.createdAt)} • ${sale.metodoPago}",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                                Text(
+                                                    text = "$${sale.total.toString().formatPrice()}",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Text(
+                                text = stringResource(Res.string.shift_cancelled_disclaimer),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
                         }
                     }
                 }

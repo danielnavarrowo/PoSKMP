@@ -16,5 +16,8 @@ data class Sale(
     val syncState: String = "PENDING_INSERT",
     val shiftId: String? = null,
     val cashierId: String? = null,
-    val cashierName: String? = null
-)
+    val cashierName: String? = null,
+    val estado: String = "COMPLETADA"
+) {
+    val isCancelled: Boolean get() = estado == "CANCELADA"
+}

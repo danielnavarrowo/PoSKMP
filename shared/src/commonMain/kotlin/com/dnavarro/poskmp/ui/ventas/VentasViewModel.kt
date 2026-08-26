@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.ventas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.domain.model.CashMovement
 import com.dnavarro.poskmp.domain.model.CashMovementType
 import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
@@ -13,12 +14,14 @@ import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.domain.model.SalesSummary
 import com.dnavarro.poskmp.domain.model.ShiftSummary
+import com.dnavarro.poskmp.domain.usecase.CancelSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.CloseShiftUseCase
 import com.dnavarro.poskmp.domain.usecase.GetActiveShiftUseCase
 import com.dnavarro.poskmp.domain.usecase.GetSalesSummaryUseCase
 import com.dnavarro.poskmp.domain.usecase.GetShiftSummaryUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
 import com.dnavarro.poskmp.util.currentTimeMillis
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,7 +50,10 @@ data class VentasUiState(
     val dailySalesMetrics: List<DailySalesMetric> = emptyList(),
     val recentSales: List<Sale> = emptyList(),
     val selectedSaleDetails: Pair<Sale, List<SaleItem>>? = null,
+    val saleToCancel: Sale? = null,
+    val isCancellingSale: Boolean = false,
     val activeShift: CashierShift? = null,
+    val activeShiftMovements: List<CashMovement> = emptyList(),
     val showInflowDialog: Boolean = false,
     val showOutflowDialog: Boolean = false,
     val showCloseShiftDialog: Boolean = false,
@@ -65,11 +71,13 @@ class VentasViewModel(
     private val getActiveShiftUseCase: GetActiveShiftUseCase,
     private val recordCashMovementUseCase: RecordCashMovementUseCase,
     private val getShiftSummaryUseCase: GetShiftSummaryUseCase,
-    private val closeShiftUseCase: CloseShiftUseCase
+    private val closeShiftUseCase: CloseShiftUseCase,
+    private val cancelSaleUseCase: CancelSaleUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
     val uiState: StateFlow<VentasUiState> = _uiState.asStateFlow()
+    private var movementsJob: Job? = null
 
     init {
         loadDataForPeriod(SalesPeriodPreset.HOY)
@@ -80,6 +88,16 @@ class VentasViewModel(
         viewModelScope.launch {
             getActiveShiftUseCase().collect { shift ->
                 _uiState.update { it.copy(activeShift = shift) }
+                movementsJob?.cancel()
+                if (shift != null) {
+                    movementsJob = viewModelScope.launch {
+                        shiftRepository.getMovementsForShiftFlow(shift.id).collect { movements ->
+                            _uiState.update { it.copy(activeShiftMovements = movements) }
+                        }
+                    }
+                } else {
+                    _uiState.update { it.copy(activeShiftMovements = emptyList()) }
+                }
             }
         }
     }
@@ -146,6 +164,39 @@ class VentasViewModel(
         viewModelScope.launch {
             val items = saleRepository.getItemsBySaleId(sale.id)
             _uiState.update { it.copy(selectedSaleDetails = Pair(sale, items)) }
+        }
+    }
+
+    fun openCancelSaleDialog(sale: Sale) {
+        _uiState.update { it.copy(saleToCancel = sale) }
+    }
+
+    fun dismissCancelSaleDialog() {
+        _uiState.update { it.copy(saleToCancel = null) }
+    }
+
+    fun cancelSale(sale: Sale) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCancellingSale = true) }
+            val result = cancelSaleUseCase(sale.id)
+            if (result.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        isCancellingSale = false,
+                        saleToCancel = null,
+                        selectedSaleDetails = null,
+                        shiftActionSuccess = "Venta #${sale.folio} cancelada exitosamente"
+                    )
+                }
+                refresh()
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isCancellingSale = false,
+                        shiftActionError = result.exceptionOrNull()?.message ?: "Error al cancelar la venta"
+                    )
+                }
+            }
         }
     }
 

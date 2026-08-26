@@ -190,7 +190,8 @@ class SyncRepositoryImpl(
                         metodoPago = s.metodo_pago,
                         totalItems = s.total_items,
                         customerId = s.customer_id,
-                        createdAt = s.created_at
+                        createdAt = s.created_at,
+                        estado = s.estado
                     )
                 }
                 val pushSaleResult = remoteDataSource.pushSales(url, key, saleDtos)
@@ -371,7 +372,7 @@ class SyncRepositoryImpl(
             }
             val remoteSales = pulledSalesResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt) in remoteSales) {
+                for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, estado) in remoteSales) {
                     queries.upsertSyncedSale(
                         id = id,
                         folio = folio,
@@ -387,7 +388,8 @@ class SyncRepositoryImpl(
                         created_at = createdAt,
                         shift_id = null,
                         cashier_id = null,
-                        cashier_name = null
+                        cashier_name = null,
+                        estado = estado
                     )
                 }
             }
