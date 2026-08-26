@@ -88,6 +88,7 @@ import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.ui.ajustes.BackupSettingsSection
+import com.dnavarro.poskmp.ui.components.SyncedSettingBadge
 import com.dnavarro.poskmp.ui.ajustes.PrinterSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.StoreInfoSettingsSection
 import com.dnavarro.poskmp.theme.DarkModeConfig
@@ -201,6 +202,8 @@ fun AjustesScreen(
         backupMessage = uiState.backupMessage,
         onPerformManualBackup = { viewModel.performManualBackup() },
         onDismissBackupMessage = { viewModel.dismissBackupMessage() },
+        onBackupDirectoryPathChange = { viewModel.setBackupDirectoryPath(it) },
+        onResetBackupDirectoryPath = { viewModel.resetBackupDirectoryPathToDefault() },
         syncState = uiState.syncState,
         isTestingConnection = uiState.isTestingConnection,
         connectionTestResult = uiState.connectionTestResult,
@@ -276,6 +279,8 @@ fun AjustesScreen(
     backupMessage: String? = null,
     onPerformManualBackup: () -> Unit = {},
     onDismissBackupMessage: () -> Unit = {},
+    onBackupDirectoryPathChange: (String) -> Unit = {},
+    onResetBackupDirectoryPath: () -> Unit = {},
     syncState: SyncStateEnum = SyncStateEnum.IDLE,
     isTestingConnection: Boolean = false,
     connectionTestResult: String? = null,
@@ -1121,7 +1126,9 @@ fun AjustesScreen(
                         isBackingUp = isBackingUp,
                         backupMessage = backupMessage,
                         onPerformManualBackup = onPerformManualBackup,
-                        onDismissBackupMessage = onDismissBackupMessage
+                        onDismissBackupMessage = onDismissBackupMessage,
+                        onBackupDirectoryPathChange = onBackupDirectoryPathChange,
+                        onResetBackupDirectoryPath = onResetBackupDirectoryPath
                     )
                 }
             }
@@ -1444,12 +1451,18 @@ fun AjustesScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = stringResource(Res.string.default_margins_section_title),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.default_margins_section_title),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            SyncedSettingBadge()
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = stringResource(Res.string.default_margins_section_subtitle),
@@ -1508,12 +1521,18 @@ fun AjustesScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = stringResource(Res.string.rounding_section_title),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.rounding_section_title),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            SyncedSettingBadge()
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = stringResource(Res.string.rounding_section_subtitle),
@@ -1585,7 +1604,7 @@ fun AjustesScreen(
 
                                     Switch(
                                         checked = roundRetailPrice,
-                                        onCheckedChange = onRoundRetailPriceChange
+                                        onRoundRetailPriceChange
                                     )
                                 }
 
@@ -1672,12 +1691,18 @@ fun AjustesScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            text = stringResource(Res.string.payment_policies_section_title),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.payment_policies_section_title),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            SyncedSettingBadge()
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = stringResource(Res.string.payment_policies_section_subtitle),

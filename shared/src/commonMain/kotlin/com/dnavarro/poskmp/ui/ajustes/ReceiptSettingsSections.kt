@@ -1,4 +1,7 @@
 package com.dnavarro.poskmp.ui.ajustes
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+import com.dnavarro.poskmp.ui.components.SyncedSettingBadge
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -87,11 +90,17 @@ fun StoreInfoSettingsSection(
         shape = androidx.compose.material3.MaterialTheme.shapes.medium
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text = stringResource(Res.string.store_info_section_title),
-                fontWeight = FontWeight.Bold,
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(Res.string.store_info_section_title),
+                    fontWeight = FontWeight.Bold,
+                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+                )
+                SyncedSettingBadge()
+            }
             Text(
                 text = stringResource(Res.string.store_info_section_subtitle),
                 fontSize = 12.sp,
@@ -297,7 +306,18 @@ fun PrinterSettingsSection(
                 fontSize = 12.sp,
                 color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(Res.string.receipt_footer_label),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                SyncedSettingBadge()
+            }
             OutlinedTextField(
                 value = footerMessage,
                 onValueChange = { footerMessage = it },

@@ -527,6 +527,7 @@
     <string name="disallow_card_on_wholesale_subtitle">Impide realizar ventas con tarjeta cuando el ticket incluye productos a precio de mayoreo</string>
     <string name="card_payment_blocked_wholesale_warning">El pago con tarjeta no está permitido porque el ticket contiene productos con precio de mayoreo.</string>
     <string name="mixed_card_payment_blocked_wholesale_warning">No se permite incluir monto con tarjeta porque el ticket contiene productos con precio de mayoreo.</string>
+    <string name="synced_badge_label">Sincronizado</string>
 
     <!-- Supabase Cloud Sync Settings Strings -->
     <string name="supabase_section_title">Sincronización en la Nube (Supabase)</string>
@@ -584,6 +585,12 @@
     <string name="auto_backup_title">Copia de seguridad automática al salir</string>
     <string name="auto_backup_subtitle">Generar un respaldo local y sincronizar con la nube automáticamente al cerrar la aplicación (conserva los últimos 7 respaldos)</string>
     <string name="backup_path_label">Ubicación de los respaldos (máx. 7 archivos)</string>
+    <string name="change_backup_path_button">Cambiar</string>
+    <string name="reset_backup_path_button">Restablecer</string>
+    <string name="change_backup_path_dialog_title">Ubicación de Copias de Seguridad</string>
+    <string name="change_backup_path_dialog_desc">Selecciona la carpeta donde se guardarán los respaldos locales o escribe la ruta manualmente.</string>
+    <string name="change_backup_path_dialog_label">Ruta de la carpeta</string>
+    <string name="browse_folder_button">Examinar…</string>
     <string name="last_backup_label">Último respaldo exitoso</string>
     <string name="last_backup_never">Ninguno registrado</string>
     <string name="last_backup_format">Último respaldo: %1$s</string>

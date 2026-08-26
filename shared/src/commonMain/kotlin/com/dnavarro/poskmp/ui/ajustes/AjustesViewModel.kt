@@ -42,7 +42,7 @@ private data class UpdateInternalState(
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
-private data class Tuple6<A, B, C, D, E, F>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F)
+private data class Tuple7<A, B, C, D, E, F, G>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F, val g: G)
 
 /**
  * ViewModel for Settings screen according to Google UI Layer architecture.
@@ -115,16 +115,17 @@ class AjustesViewModel(
             },
             combine(
                 repository.autoBackupEnabledFlow,
-                repository.lastBackupTimestampFlow
-            ) { autoBackupEnabled, lastBackupTimestamp ->
-                Pair(autoBackupEnabled, lastBackupTimestamp)
+                repository.lastBackupTimestampFlow,
+                backupRepository.backupDirectoryPathFlow
+            ) { autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath ->
+                Triple(autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
             }
-        ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp) ->
-            Tuple6(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp)
+        ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
+            Tuple7(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
         }
     ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin),
         (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale),
-        (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp) ->
+        (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
         AjustesUiState(
             defaultScreen = defaultScreen,
             isChecadorDialog = isChecadorDialog,
@@ -142,7 +143,7 @@ class AjustesViewModel(
             autoSyncEnabled = autoSyncEnabled,
             autoBackupEnabled = autoBackupEnabled,
             lastBackupTimestamp = lastBackupTimestamp,
-            backupDirectoryPath = backupRepository.getBackupDirectoryPath()
+            backupDirectoryPath = backupDirectoryPath
         )
     }
 
@@ -203,7 +204,7 @@ class AjustesViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = AjustesUiState(
             currentVersion = updateRepository.getCurrentVersion(),
-            backupDirectoryPath = backupRepository.getBackupDirectoryPath()
+            backupDirectoryPath = backupRepository.getDefaultBackupDirectoryPath()
         )
     )
 
@@ -480,6 +481,18 @@ class AjustesViewModel(
 
     fun dismissBackupMessage() {
         _updateState.value = _updateState.value.copy(backupMessage = null)
+    }
+
+    fun setBackupDirectoryPath(path: String) {
+        viewModelScope.launch {
+            backupRepository.setBackupDirectoryPath(path)
+        }
+    }
+
+    fun resetBackupDirectoryPathToDefault() {
+        viewModelScope.launch {
+            backupRepository.resetBackupDirectoryPathToDefault()
+        }
     }
 
     fun saveCashier(id: String?, nombre: String, pin: String) {

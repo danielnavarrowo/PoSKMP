@@ -51,6 +51,7 @@ interface SettingsRepository {
     val autoSyncEnabledFlow: Flow<Boolean>
     val autoBackupEnabledFlow: Flow<Boolean>
     val lastBackupTimestampFlow: Flow<Long>
+    val backupDirectoryPathFlow: Flow<String>
     val businessSettingsUpdatedAtFlow: Flow<Long>
     val receiptSettingsFlow: Flow<ReceiptSettings>
 
@@ -91,6 +92,7 @@ interface SettingsRepository {
     suspend fun setAutoSyncEnabled(enabled: Boolean)
     suspend fun setAutoBackupEnabled(enabled: Boolean)
     suspend fun setLastBackupTimestamp(timestamp: Long)
+    suspend fun setBackupDirectoryPath(path: String)
     suspend fun setReceiptSettings(settings: ReceiptSettings)
 }
 
@@ -124,6 +126,7 @@ class SettingsRepositoryImpl(
         val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
         val AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")
         val LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
+        val BACKUP_DIRECTORY_PATH = stringPreferencesKey("backup_directory_path")
         val BUSINESS_SETTINGS_UPDATED_AT = longPreferencesKey("business_settings_updated_at")
         val STORE_NAME = stringPreferencesKey("store_name")
         val STORE_ADDRESS = stringPreferencesKey("store_address")
@@ -243,6 +246,10 @@ class SettingsRepositoryImpl(
 
     override val lastBackupTimestampFlow: Flow<Long> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.LAST_BACKUP_TIMESTAMP] ?: 0L
+    }
+
+    override val backupDirectoryPathFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.BACKUP_DIRECTORY_PATH] ?: ""
     }
 
     override val receiptSettingsFlow: Flow<ReceiptSettings> = combine(
@@ -448,6 +455,17 @@ class SettingsRepositoryImpl(
     override suspend fun setLastBackupTimestamp(timestamp: Long) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.LAST_BACKUP_TIMESTAMP] = timestamp
+        }
+    }
+
+    override suspend fun setBackupDirectoryPath(path: String) {
+        dataStore.edit { preferences ->
+            val clean = path.trim()
+            if (clean.isEmpty()) {
+                preferences.remove(PreferenceKeys.BACKUP_DIRECTORY_PATH)
+            } else {
+                preferences[PreferenceKeys.BACKUP_DIRECTORY_PATH] = clean
+            }
         }
     }
 

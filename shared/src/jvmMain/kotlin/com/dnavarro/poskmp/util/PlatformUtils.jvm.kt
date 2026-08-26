@@ -92,6 +92,36 @@ actual fun saveFile(
     }
 }
 
+actual fun pickDirectory(
+    initialPath: String,
+    onDirectoryPicked: (path: String) -> Unit,
+    onError: (String) -> Unit
+) {
+    SwingUtilities.invokeLater {
+        try {
+            val chooser = javax.swing.JFileChooser().apply {
+                fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+                dialogTitle = runBlocking { getString(Res.string.change_backup_path_dialog_title) }
+                isAcceptAllFileFilterUsed = false
+                val initFile = File(initialPath).takeIf { it.exists() }
+                if (initFile != null) {
+                    currentDirectory = initFile
+                    selectedFile = initFile
+                }
+            }
+            val result = chooser.showOpenDialog(null)
+            if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+                val selected = chooser.selectedFile
+                if (selected != null) {
+                    onDirectoryPicked(selected.absolutePath)
+                }
+            }
+        } catch (e: Exception) {
+            onError(e.message ?: "Error al seleccionar carpeta")
+        }
+    }
+}
+
 actual fun parseImportFile(
     fileName: String,
     content: ByteArray

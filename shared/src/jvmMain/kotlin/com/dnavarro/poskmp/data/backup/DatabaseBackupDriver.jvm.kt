@@ -8,14 +8,22 @@ import kotlinx.coroutines.withContext
 
 actual class DatabaseBackupDriver actual constructor() {
     private val dbFile = File(System.getProperty("user.home"), ".poskmp/pos_database.db")
-    private val backupDir = File(System.getProperty("user.home"), ".poskmp/backups")
+    private val defaultBackupDir = File(System.getProperty("user.home"), ".poskmp/backups")
 
-    actual fun getBackupDirectoryPath(): String = backupDir.absolutePath
+    actual fun getDefaultBackupDirectoryPath(): String = defaultBackupDir.absolutePath
 
-    actual suspend fun createBackup(): Result<String> = withContext(Dispatchers.IO) {
+    actual fun getBackupDirectoryPath(customPath: String?): String {
+        if (!customPath.isNullOrBlank()) {
+            return File(customPath.trim()).absolutePath
+        }
+        return defaultBackupDir.absolutePath
+    }
+
+    actual suspend fun createBackup(customPath: String?): Result<String> = withContext(Dispatchers.IO) {
         try {
-            if (!backupDir.exists()) {
-                backupDir.mkdirs()
+            val targetDir = if (!customPath.isNullOrBlank()) File(customPath.trim()) else defaultBackupDir
+            if (!targetDir.exists()) {
+                targetDir.mkdirs()
             }
             if (!dbFile.exists()) {
                 dbFile.parentFile?.mkdirs()
@@ -23,19 +31,19 @@ actual class DatabaseBackupDriver actual constructor() {
             }
 
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
-            val targetFile = File(backupDir, "pos_database_backup_$timestamp.db")
+            val targetFile = File(targetDir, "pos_database_backup_$timestamp.db")
             dbFile.copyTo(targetFile, overwrite = true)
 
             val walFile = File(dbFile.parentFile, "pos_database.db-wal")
             if (walFile.exists()) {
-                walFile.copyTo(File(backupDir, "pos_database_backup_$timestamp.db-wal"), overwrite = true)
+                walFile.copyTo(File(targetDir, "pos_database_backup_$timestamp.db-wal"), overwrite = true)
             }
             val shmFile = File(dbFile.parentFile, "pos_database.db-shm")
             if (shmFile.exists()) {
-                shmFile.copyTo(File(backupDir, "pos_database_backup_$timestamp.db-shm"), overwrite = true)
+                shmFile.copyTo(File(targetDir, "pos_database_backup_$timestamp.db-shm"), overwrite = true)
             }
 
-            cleanupOldBackups(MAX_BACKUPS)
+            cleanupOldBackups(targetDir, MAX_BACKUPS)
 
             Result.success(targetFile.absolutePath)
         } catch (e: Exception) {
@@ -43,7 +51,7 @@ actual class DatabaseBackupDriver actual constructor() {
         }
     }
 
-    private fun cleanupOldBackups(maxKeep: Int) {
+    private fun cleanupOldBackups(backupDir: File, maxKeep: Int) {
         try {
             val dbFiles = backupDir.listFiles { file ->
                 file.isFile && file.name.startsWith("pos_database_backup_") && file.name.endsWith(".db")

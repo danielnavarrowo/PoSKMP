@@ -12,17 +12,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,24 +41,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
+import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.pickDirectory
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.auto_backup_subtitle
-import poskmp.shared.generated.resources.auto_backup_title
-import poskmp.shared.generated.resources.backing_up_progress
-import poskmp.shared.generated.resources.backup_error_message
-import poskmp.shared.generated.resources.backup_path_label
-import poskmp.shared.generated.resources.backup_section_subtitle
-import poskmp.shared.generated.resources.backup_section_title
-import poskmp.shared.generated.resources.backup_success_message
-import poskmp.shared.generated.resources.check
-import poskmp.shared.generated.resources.close
-import poskmp.shared.generated.resources.last_backup_label
-import poskmp.shared.generated.resources.last_backup_never
-import poskmp.shared.generated.resources.perform_backup_button
-import poskmp.shared.generated.resources.restore
-import poskmp.shared.generated.resources.warning
+import poskmp.shared.generated.resources.*
 
 @Composable
 fun BackupSettingsSection(
@@ -60,8 +57,12 @@ fun BackupSettingsSection(
     backupMessage: String?,
     onPerformManualBackup: () -> Unit,
     onDismissBackupMessage: () -> Unit,
+    onBackupDirectoryPathChange: (String) -> Unit = {},
+    onResetBackupDirectoryPath: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showEditPathDialog by remember { mutableStateOf(false) }
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -117,12 +118,36 @@ fun BackupSettingsSection(
 
             // 2. Backup path
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = stringResource(Res.string.backup_path_label),
-                    fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.backup_path_label),
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (!isAndroid()) {
+                        OutlinedButton(
+                            onClick = { showEditPathDialog = true },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.edit),
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(Res.string.change_backup_path_button),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(6.dp))
                 Box(
                     modifier = Modifier
@@ -262,5 +287,102 @@ fun BackupSettingsSection(
                 }
             }
         }
+    }
+
+    if (showEditPathDialog) {
+        var tempPath by remember { mutableStateOf(backupDirectoryPath) }
+        var pathError by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { showEditPathDialog = false },
+            title = {
+                Text(
+                    text = stringResource(Res.string.change_backup_path_dialog_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(Res.string.change_backup_path_dialog_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = tempPath,
+                        onValueChange = {
+                            tempPath = it
+                            pathError = null
+                        },
+                        label = { Text(stringResource(Res.string.change_backup_path_dialog_label)) },
+                        singleLine = true,
+                        isError = pathError != null,
+                        supportingText = pathError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = {
+                                onResetBackupDirectoryPath()
+                                showEditPathDialog = false
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.undo),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(stringResource(Res.string.reset_backup_path_button))
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                pickDirectory(
+                                    initialPath = tempPath.ifBlank { backupDirectoryPath },
+                                    onDirectoryPicked = { selectedPath ->
+                                        tempPath = selectedPath
+                                        pathError = null
+                                    },
+                                    onError = { err ->
+                                        pathError = err
+                                    }
+                                )
+                            }
+                        ) {
+                            Text(stringResource(Res.string.browse_folder_button))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clean = tempPath.trim()
+                        if (clean.isNotEmpty()) {
+                            onBackupDirectoryPathChange(clean)
+                            showEditPathDialog = false
+                        } else {
+                            onResetBackupDirectoryPath()
+                            showEditPathDialog = false
+                        }
+                    }
+                ) {
+                    Text(stringResource(Res.string.save_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditPathDialog = false }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
     }
 }

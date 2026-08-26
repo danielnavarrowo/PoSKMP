@@ -48,6 +48,14 @@ actual fun pickFile(
     onError("Importación de archivos no disponible en Android.")
 }
 
+actual fun pickDirectory(
+    initialPath: String,
+    onDirectoryPicked: (path: String) -> Unit,
+    onError: (String) -> Unit
+) {
+    onError("Selección de carpetas no disponible en Android.")
+}
+
 object AndroidSaveFileHandler {
     var content: String? = null
     var defaultFileName: String? = null

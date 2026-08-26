@@ -24,6 +24,12 @@ expect fun saveFile(
     onError: (String) -> Unit
 )
 
+expect fun pickDirectory(
+    initialPath: String,
+    onDirectoryPicked: (path: String) -> Unit,
+    onError: (String) -> Unit
+)
+
 expect fun parseImportFile(
     fileName: String,
     content: ByteArray

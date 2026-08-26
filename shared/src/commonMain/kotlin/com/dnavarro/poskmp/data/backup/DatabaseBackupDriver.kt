@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.data.backup
 
 expect class DatabaseBackupDriver() {
-    fun getBackupDirectoryPath(): String
-    suspend fun createBackup(): Result<String>
+    fun getDefaultBackupDirectoryPath(): String
+    fun getBackupDirectoryPath(customPath: String? = null): String
+    suspend fun createBackup(customPath: String? = null): Result<String>
 }
