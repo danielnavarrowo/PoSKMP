@@ -67,6 +67,7 @@ import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.venta.HeldTicket
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
+import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
@@ -474,7 +475,11 @@ fun TicketSection(
             ) {
                 Icon(painter = painterResource(Res.drawable.money), contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(Res.string.checkout_button), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (isAndroid()) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

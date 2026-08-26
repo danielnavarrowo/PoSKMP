@@ -1,7 +1,16 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import com.dnavarro.poskmp.util.isAndroid
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -164,6 +173,38 @@ fun VentasScreen(
         }
     }
 
+    val desktopFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            try {
+                desktopFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(
+        state.showInflowDialog,
+        state.showOutflowDialog,
+        state.showCloseShiftDialog,
+        state.showDateRangePicker,
+        state.selectedSaleDetails,
+        state.saleToCancel
+    ) {
+        if (!state.showInflowDialog &&
+            !state.showOutflowDialog &&
+            !state.showCloseShiftDialog &&
+            !state.showDateRangePicker &&
+            state.selectedSaleDetails == null &&
+            state.saleToCancel == null &&
+            !isAndroid()
+        ) {
+            try {
+                desktopFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -183,7 +224,40 @@ fun VentasScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusRequester(desktopFocusRequester)
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                when (keyEvent.key) {
+                                    Key.F7 -> {
+                                        if (state.activeShift != null) {
+                                            onOpenInflowDialog()
+                                            true
+                                        } else false
+                                    }
+                                    Key.F8 -> {
+                                        if (state.activeShift != null) {
+                                            onOpenOutflowDialog()
+                                            true
+                                        } else false
+                                    }
+                                    Key.F9 -> {
+                                        if (state.activeShift != null) {
+                                            onOpenCloseShiftDialog()
+                                            true
+                                        } else false
+                                    }
+                                    else -> false
+                                }
+                            } else false
+                        }
+                } else Modifier
+            )
     ) { innerPadding ->
         BoxWithConstraints(
             modifier = Modifier
@@ -280,7 +354,8 @@ fun VentasScreen(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = stringResource(Res.string.btn_cash_inflow),
+                                        text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
+                                        else stringResource(Res.string.btn_cash_inflow_desktop),
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1
@@ -294,7 +369,8 @@ fun VentasScreen(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = stringResource(Res.string.btn_cash_outflow),
+                                        text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
+                                        else stringResource(Res.string.btn_cash_outflow_desktop),
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1
@@ -312,7 +388,8 @@ fun VentasScreen(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = stringResource(Res.string.btn_close_shift),
+                                        text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
+                                        else stringResource(Res.string.btn_close_shift_desktop),
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1

@@ -735,6 +735,11 @@ fun App(
                                                         true
                                                     }
 
+                                                    Key.F5 -> {
+                                                        selectedScreen = Screen.CLIENTES
+                                                        true
+                                                    }
+
                                                     else -> false
                                                 }
                                             }

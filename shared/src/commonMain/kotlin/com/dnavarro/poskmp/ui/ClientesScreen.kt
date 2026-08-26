@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,9 +35,18 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,11 +61,13 @@ import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.clientes.CustomerFormDialog
 import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.add_customer_button
+import poskmp.shared.generated.resources.add_customer_button_desktop
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.clientes_title
 import poskmp.shared.generated.resources.close
@@ -144,8 +156,50 @@ fun ClientesContent(
     onDeleteCustomer: (id: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val desktopFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            try {
+                desktopFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(
+        state.showCustomerForm,
+        state.selectedCustomerForStatement,
+        state.showPaymentDialogFor,
+        state.showDeleteConfirmFor
+    ) {
+        if (!state.showCustomerForm &&
+            state.selectedCustomerForStatement == null &&
+            state.showPaymentDialogFor == null &&
+            state.showDeleteConfirmFor == null &&
+            !isAndroid()
+        ) {
+            try {
+                desktopFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusRequester(desktopFocusRequester)
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.F10) {
+                                onOpenCreateCustomer()
+                                true
+                            } else false
+                        }
+                } else Modifier
+            ),
         topBar = {
             TopAppBar(
                 title = {
@@ -165,7 +219,12 @@ fun ClientesContent(
             ExtendedFloatingActionButton(
                 onClick = onOpenCreateCustomer,
                 icon = { Icon(painter = painterResource(Res.drawable.add), contentDescription = null) },
-                text = { Text(stringResource(Res.string.add_customer_button)) },
+                text = {
+                    Text(
+                        if (isAndroid()) stringResource(Res.string.add_customer_button)
+                        else stringResource(Res.string.add_customer_button_desktop)
+                    )
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )

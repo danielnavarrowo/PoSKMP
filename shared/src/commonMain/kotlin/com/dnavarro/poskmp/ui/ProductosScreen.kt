@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -72,7 +73,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -141,6 +149,7 @@ import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.new_product_button
+import poskmp.shared.generated.resources.new_product_button_desktop
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
 import poskmp.shared.generated.resources.price_display_label
@@ -253,6 +262,23 @@ fun ProductosScreen(
     var pendingScanCode by remember { mutableStateOf<String?>(null) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     val fabContainerColor = MaterialTheme.colorScheme.secondary
+    val desktopFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            try {
+                desktopFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(showProductDialogFor, showBulkModificationFor, showFilterBottomSheet) {
+        if (showProductDialogFor == null && showBulkModificationFor == null && !showFilterBottomSheet && !isAndroid()) {
+            try {
+                desktopFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
 
     LaunchedEffect(pendingScanCode, sortedProducts) {
         val code = pendingScanCode
@@ -433,13 +459,33 @@ fun ProductosScreen(
                         Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
                     },
                     text = {
-                        Text(stringResource(Res.string.new_product_button))
+                        Text(
+                            if (isAndroid()) stringResource(Res.string.new_product_button)
+                            else stringResource(Res.string.new_product_button_desktop)
+                        )
                     }
                 )
             }
         },
         containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusRequester(desktopFocusRequester)
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.F10) {
+                                viewModel.onShowProductDialog(
+                                    Products(id = "", codigos = "[]", nombre = "", precio = 0.0, costo = 0.0, categoria = "", activo = 1L, por_peso = 0L, precio_mayoreo = 0.0, es_favorito = 0L, piezas = 1.0, updated_at = 0L, sync_state = "")
+                                )
+                                true
+                            } else false
+                        }
+                } else Modifier
+            )
     ) { innerPadding ->
         PullToRefreshBox(
             isRefreshing = uiState.isSyncing,

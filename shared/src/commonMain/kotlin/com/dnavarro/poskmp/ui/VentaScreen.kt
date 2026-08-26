@@ -539,9 +539,11 @@ fun VentaScreen(
                                 }
 
                                 Key.F12 -> {
-                                    paymentAmountInput = TextFieldValue("")
-                                    showCheckoutDialog = true
-                                    true
+                                    if (cartItems.isNotEmpty()) {
+                                        paymentAmountInput = TextFieldValue("")
+                                        showCheckoutDialog = true
+                                        true
+                                    } else false
                                 }
 
                                 else -> false
