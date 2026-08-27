@@ -22,9 +22,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,13 +66,13 @@ import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.add_customer_button
 import poskmp.shared.generated.resources.add_customer_button_desktop
+import poskmp.shared.generated.resources.badge_customer_always_wholesale
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.clientes_title
 import poskmp.shared.generated.resources.close
@@ -85,7 +88,6 @@ import poskmp.shared.generated.resources.customer_note_format
 import poskmp.shared.generated.resources.customer_purchases_format
 import poskmp.shared.generated.resources.delete
 import poskmp.shared.generated.resources.delete_button
-import poskmp.shared.generated.resources.badge_customer_always_wholesale
 import poskmp.shared.generated.resources.delete_customer_confirm_format
 import poskmp.shared.generated.resources.delete_customer_has_debt_warning
 import poskmp.shared.generated.resources.delete_customer_title
@@ -103,8 +105,7 @@ import poskmp.shared.generated.resources.payments
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_customer_placeholder
-
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun ClientesScreen(
@@ -140,6 +141,7 @@ fun ClientesScreen(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ClientesContent(
     state: ClientesUiState,
@@ -218,64 +220,80 @@ fun ClientesContent(
         }
     }
 
-    Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .then(
-                if (!isAndroid()) {
-                    Modifier
-                        .focusable()
-                        .onPreviewKeyEvent { handleKeyNavigation(it) }
-                } else Modifier
-            ),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(Res.string.clientes_title),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onOpenCreateCustomer,
-                icon = { Icon(painter = painterResource(Res.drawable.add), contentDescription = null) },
-                text = {
-                    Text(
-                        if (isAndroid()) stringResource(Res.string.add_customer_button)
-                        else stringResource(Res.string.add_customer_button_desktop)
-                    )
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.surface
-    ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = state.isSyncing,
-            onRefresh = onRefresh,
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val isCompact = maxWidth < 700.dp
+
+        Scaffold(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            BoxWithConstraints(
-                modifier = Modifier.fillMaxSize()
-            ) {
-            val isCompact = maxWidth < 700.dp
+                .padding(horizontal = 16.dp)
+                .then(
+                    if (!isAndroid()) {
+                        Modifier
+                            .focusable()
+                            .onPreviewKeyEvent { handleKeyNavigation(it) }
+                    } else Modifier
+                ),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.clientes_title),
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = TextAlign.Center
 
-            Column(
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            },
+            floatingActionButton = {
+                if (isCompact) {
+                    ExtendedFloatingActionButton(
+                        onClick = onOpenCreateCustomer,
+                        icon = { Icon(painter = painterResource(Res.drawable.add), contentDescription = null) },
+                        text = {
+                            Text(
+                                if (isAndroid()) stringResource(Res.string.add_customer_button)
+                                else stringResource(Res.string.add_customer_button_desktop)
+                            )
+                        },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    LargeExtendedFloatingActionButton(
+                        onClick = onOpenCreateCustomer,
+                        icon = { Icon(painter = painterResource(Res.drawable.add), contentDescription = null) },
+                        text = {
+                            Text(
+                                if (isAndroid()) stringResource(Res.string.add_customer_button)
+                                else stringResource(Res.string.add_customer_button_desktop)
+                            )
+                        },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        ) { innerPadding ->
+            PullToRefreshBox(
+                isRefreshing = state.isSyncing,
+                onRefresh = onRefresh,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(innerPadding)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
                 // Search Bar
                 OutlinedTextField(
                     value = state.searchQuery,
@@ -322,7 +340,7 @@ fun ClientesContent(
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 88.dp)
+                    contentPadding = PaddingValues(bottom = if (isCompact) 88.dp else 128.dp)
                 ) {
                     // KPI Cards Grid
                     item {
@@ -446,7 +464,6 @@ fun ClientesContent(
             }
         }
     }
-    }
 
     // Dialogs
     if (state.showCustomerForm) {
@@ -553,6 +570,7 @@ fun ClientesContent(
             }
         )
     }
+}
 }
 
 @Composable

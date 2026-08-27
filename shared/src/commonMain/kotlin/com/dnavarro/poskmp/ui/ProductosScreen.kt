@@ -44,11 +44,13 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeExtendedFloatingActionButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -100,14 +102,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.productos.FavoriteFilterOption
+import com.dnavarro.poskmp.ui.productos.ProductTableColumn
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
-import com.dnavarro.poskmp.util.matchesBarcode
-import com.dnavarro.poskmp.util.parseBarcodes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -123,14 +124,12 @@ import poskmp.shared.generated.resources.bulk_op_deactivate_title
 import poskmp.shared.generated.resources.bulk_op_delete_title
 import poskmp.shared.generated.resources.bulk_op_mark_as_favorite_title
 import poskmp.shared.generated.resources.bulk_op_set_profit_title
-import poskmp.shared.generated.resources.category_label_format
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
-import poskmp.shared.generated.resources.codes_display_label
+import poskmp.shared.generated.resources.columns_section_title
 import poskmp.shared.generated.resources.cost_display_label
 import poskmp.shared.generated.resources.delete
-import poskmp.shared.generated.resources.delete_desc
 import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.edit
 import poskmp.shared.generated.resources.favorite_desc
@@ -164,6 +163,7 @@ import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.reset_filters
 import poskmp.shared.generated.resources.sad_face
+import poskmp.shared.generated.resources.scan_with_camera_desc
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
@@ -175,6 +175,7 @@ import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.status_inactive
 import poskmp.shared.generated.resources.wholesale
+import poskmp.shared.generated.resources.wholesale_display_label
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class ProductSortField {
@@ -267,9 +268,8 @@ fun ProductosScreen(
 
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var showCameraScanner by remember { mutableStateOf(false) }
-    var pendingScanCode by remember { mutableStateOf<String?>(null) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
-    val fabContainerColor = MaterialTheme.colorScheme.secondary
+    val fabContainerColor = MaterialTheme.colorScheme.tertiary
 
     var selectedProductIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
     val searchBarFocusRequester = remember { FocusRequester() }
@@ -282,7 +282,8 @@ fun ProductosScreen(
                 delay(50.milliseconds)
                 try {
                     searchBarFocusRequester.requestFocus()
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                }
             }
         }
     }
@@ -292,7 +293,8 @@ fun ProductosScreen(
             delay(100.milliseconds)
             try {
                 searchBarFocusRequester.requestFocus()
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -312,7 +314,8 @@ fun ProductosScreen(
         if (selectedProductIndex in sortedProducts.indices) {
             try {
                 listState.animateScrollToItem(selectedProductIndex)
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -325,7 +328,21 @@ fun ProductosScreen(
 
             Key.F10 -> {
                 viewModel.onShowProductDialog(
-                    Products(id = "", codigos = "[]", nombre = "", precio = 0.0, costo = 0.0, categoria = "", activo = 1L, por_peso = 0L, precio_mayoreo = 0.0, es_favorito = 0L, piezas = 1.0, updated_at = 0L, sync_state = "")
+                    Products(
+                        id = "",
+                        codigos = "[]",
+                        nombre = "",
+                        precio = 0.0,
+                        costo = 0.0,
+                        categoria = "",
+                        activo = 1L,
+                        por_peso = 0L,
+                        precio_mayoreo = 0.0,
+                        es_favorito = 0L,
+                        piezas = 1.0,
+                        updated_at = 0L,
+                        sync_state = ""
+                    )
                 )
                 true
             }
@@ -366,873 +383,951 @@ fun ProductosScreen(
         }
     }
 
-    LaunchedEffect(pendingScanCode, sortedProducts) {
-        val code = pendingScanCode
-        if (!code.isNullOrBlank()) {
-            val matched = sortedProducts.find { p ->
-                p.parseBarcodes().matchesBarcode(code)
-            }
-            if (matched != null) {
-                viewModel.onShowProductDialog(matched)
-                pendingScanCode = null
-            }
-        }
-    }
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val isCompact = maxWidth < 720.dp
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = stringResource(Res.string.product_admin_title),
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.titleLarge,
-                        textAlign = TextAlign.Center
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
-                )
-            )
-        },
-        floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                // Menu FAB for Bulk Operations (Appears ABOVE when products are selected)
-                AnimatedVisibility(
-                    visible = selectedProductIds.isNotEmpty(),
-                    enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
-                            scaleIn(
-                                initialScale = 0.8f,
-                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                            ),
-                    exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
-                            scaleOut(
-                                targetScale = 0.8f,
-                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                            )
-                ) {
-                    PlatformBackHandler(enabled = isFabMenuExpanded) {
-                        isFabMenuExpanded = false
-                    }
-                    FloatingActionButtonMenu(
-                        modifier = Modifier.align(Alignment.End).offset(x = 16.dp),
-                        expanded = isFabMenuExpanded,
-                        button = {
-                            ToggleFloatingActionButton(
-                                checked = isFabMenuExpanded,
-                                containerColor = { _ -> fabContainerColor },
-                                onCheckedChange = { isFabMenuExpanded = !isFabMenuExpanded }
-                            ) {
-                                val iconRes =
-                                    if (checkedProgress > 0.5f) Res.drawable.close else Res.drawable.edit
-                                Icon(
-                                    painter = painterResource(iconRes),
-                                    tint = MaterialTheme.colorScheme.onSecondary,
-                                    contentDescription = null,
-                                    modifier = Modifier.graphicsLayer {
-                                        rotationZ = checkedProgress * 180f
-                                    }
-                                )
-                            }
-                        }
-                    ) {
-                        FloatingActionButtonMenuItem(
-                            onClick = {
-                                isFabMenuExpanded = false
-                                viewModel.onShowBulkModificationDialog(BulkProductOperation.CHANGE_PRICES)
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.money),
-                                    contentDescription = null
-                                )
-                            },
-                            text = { Text(stringResource(Res.string.bulk_op_change_prices_title)) },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        FloatingActionButtonMenuItem(
-                            onClick = {
-                                isFabMenuExpanded = false
-                                viewModel.onShowBulkModificationDialog(BulkProductOperation.SET_PROFIT)
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.edit),
-                                    contentDescription = null
-                                )
-                            },
-                            text = { Text(stringResource(Res.string.bulk_op_set_profit_title)) },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        FloatingActionButtonMenuItem(
-                            onClick = {
-                                isFabMenuExpanded = false
-                                viewModel.onShowBulkModificationDialog(BulkProductOperation.CHANGE_CATEGORY)
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.products),
-                                    contentDescription = null
-                                )
-                            },
-                            text = { Text(stringResource(Res.string.bulk_op_change_category_title)) },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        FloatingActionButtonMenuItem(
-                            onClick = {
-                                isFabMenuExpanded = false
-                                viewModel.onShowBulkModificationDialog(BulkProductOperation.MARK_AS_FAVORITE)
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.star),
-                                    contentDescription = null
-                                )
-                            },
-                            text = { Text(stringResource(Res.string.bulk_op_mark_as_favorite_title)) },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        FloatingActionButtonMenuItem(
-                            onClick = {
-                                isFabMenuExpanded = false
-                                viewModel.onShowBulkModificationDialog(BulkProductOperation.DEACTIVATE)
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.remove),
-                                    contentDescription = null
-                                )
-                            },
-                            text = { Text(stringResource(Res.string.bulk_op_deactivate_title)) },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        FloatingActionButtonMenuItem(
-                            onClick = {
-                                isFabMenuExpanded = false
-                                viewModel.onShowBulkModificationDialog(BulkProductOperation.DELETE)
-                            },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.delete),
-                                    contentDescription = null
-                                )
-                            },
-                            text = { Text(stringResource(Res.string.bulk_op_delete_title)) },
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-
-                ExtendedFloatingActionButton(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    onClick = {
-                        viewModel.onShowProductDialog(
-                            Products(id = "", codigos = "[]", nombre = "", precio = 0.0, costo = 0.0, categoria = "", activo = 1L, por_peso = 0L, precio_mayoreo = 0.0, es_favorito = 0L, piezas = 1.0, updated_at = 0L, sync_state = "")
-                        )
-                    },
-                    icon = {
-                        Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-                    },
-                    text = {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
                         Text(
-                            if (isAndroid()) stringResource(Res.string.new_product_button)
-                            else stringResource(Res.string.new_product_button_desktop)
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.product_admin_title),
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = TextAlign.Center
                         )
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .then(
-                if (!isAndroid()) {
-                    Modifier
-                        .onPreviewKeyEvent(handleKeyNavigation)
-                } else Modifier
-            )
-    ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = uiState.isSyncing,
-            onRefresh = { viewModel.refreshSync() },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
-        ) {
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-            val isCompact = maxWidth < 720.dp
-            val availableWidth = maxWidth
-            val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
-            val selectAllState = when {
-                sortedProducts.isEmpty() -> ToggleableState.Off
-                selectedFilteredCount == sortedProducts.size -> ToggleableState.On
-                selectedFilteredCount > 0 -> ToggleableState.Indeterminate
-                else -> ToggleableState.Off
-            }
-
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // SEARCH BAR
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+            },
+            floatingActionButton = {
+                Column(
+                    horizontalAlignment = Alignment.End
                 ) {
-                    if (isCompact) {
-                        Box(
-                            modifier = Modifier
-                                .size(54.dp)
-                                .clip(MaterialShapes.Clover8Leaf.toShape())
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            TriStateCheckbox(
-                                state = selectAllState,
-                                onClick = {
-                                    viewModel.onSelectAllProducts(sortedProducts.map { it.id })
+                    // Menu FAB for Bulk Operations (Appears ABOVE when products are selected)
+                    AnimatedVisibility(
+                        visible = selectedProductIds.isNotEmpty(),
+                        enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                                scaleIn(
+                                    initialScale = 0.8f,
+                                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                ),
+                        exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                                scaleOut(
+                                    targetScale = 0.8f,
+                                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                )
+                    ) {
+                        PlatformBackHandler(enabled = isFabMenuExpanded) {
+                            isFabMenuExpanded = false
+                        }
+                        FloatingActionButtonMenu(
+                            modifier = Modifier.align(Alignment.End).offset(x = 16.dp),
+                            expanded = isFabMenuExpanded,
+                            button = {
+                                ToggleFloatingActionButton(
+                                    checked = isFabMenuExpanded,
+                                    containerColor = { _ -> fabContainerColor },
+                                    onCheckedChange = { isFabMenuExpanded = !isFabMenuExpanded }
+                                ) {
+                                    val iconRes =
+                                        if (checkedProgress > 0.5f) Res.drawable.close else Res.drawable.edit
+                                    Icon(
+                                        painter = painterResource(iconRes),
+                                        tint = MaterialTheme.colorScheme.onTertiary,
+                                        contentDescription = null,
+                                        modifier = Modifier.graphicsLayer {
+                                            rotationZ = checkedProgress * 180f
+                                        }
+                                    )
                                 }
+                            }
+                        ) {
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    isFabMenuExpanded = false
+                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.CHANGE_PRICES)
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.money),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(stringResource(Res.string.bulk_op_change_prices_title)) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    isFabMenuExpanded = false
+                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.SET_PROFIT)
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.edit),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(stringResource(Res.string.bulk_op_set_profit_title)) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    isFabMenuExpanded = false
+                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.CHANGE_CATEGORY)
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.products),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(stringResource(Res.string.bulk_op_change_category_title)) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    isFabMenuExpanded = false
+                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.MARK_AS_FAVORITE)
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.star),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(stringResource(Res.string.bulk_op_mark_as_favorite_title)) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    isFabMenuExpanded = false
+                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.DEACTIVATE)
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.remove),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(stringResource(Res.string.bulk_op_deactivate_title)) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    isFabMenuExpanded = false
+                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.DELETE)
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.delete),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(stringResource(Res.string.bulk_op_delete_title)) },
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
                             )
                         }
-
-                        Spacer(modifier = Modifier.width(6.dp))
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .height(54.dp)
-                            .weight(1f)
-                            .background(
-                                color = if (searchQuery.isNotEmpty())
-                                    MaterialTheme.colorScheme.surfaceContainerLowest
-                                else
-                                    MaterialTheme.colorScheme.surfaceContainer,
-                                shape = ShapeDefaults.cardShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    if (isAndroid()) {
+                        FloatingActionButton(
+                            onClick = {
+                                viewModel.onShowProductDialog(
+                                    Products(
+                                        id = "",
+                                        codigos = "[]",
+                                        nombre = "",
+                                        precio = 0.0,
+                                        costo = 0.0,
+                                        categoria = "",
+                                        activo = 1L,
+                                        por_peso = 0L,
+                                        precio_mayoreo = 0.0,
+                                        es_favorito = 0L,
+                                        piezas = 1.0,
+                                        updated_at = 0L,
+                                        sync_state = ""
+                                    )
+                                )
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
                         ) {
                             Icon(
-                                painter = painterResource(Res.drawable.search),
-                                contentDescription = stringResource(Res.string.search_desc),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                modifier = Modifier.size(24.dp)
+                                painter = painterResource(Res.drawable.add),
+                                contentDescription = stringResource(Res.string.new_product_button)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier.weight(1f),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                if (searchQuery.isEmpty()) {
-                                    Text(
-                                        text = stringResource(Res.string.search_placeholder),
-                                        style = MaterialTheme.typography.titleSmall.copy(
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                        ),
-                                        textAlign = TextAlign.Start
-                                    )
-                                }
+                        }
+                        Spacer(modifier.height(16.dp))
 
-                                BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = {
-                                        viewModel.onSearchQueryChanged(it)
-                                        selectedProductIndex = -1
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .then(
-                                            if (!isAndroid()) {
-                                                Modifier
-                                                    .focusRequester(searchBarFocusRequester)
-                                                    .onPreviewKeyEvent(handleKeyNavigation)
-                                            } else Modifier
-                                        ),
-                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        textAlign = TextAlign.Start
-                                    ),
-                                    singleLine = true
-                                )
-                            }
-
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    modifier = Modifier
-                                        .size(32.dp),
-                                    onClick = {
-                                        viewModel.onSearchQueryChanged("")
-                                        pendingScanCode = null
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.close),
-                                        contentDescription = stringResource(Res.string.clear_desc),
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-
-                            if (isAndroid()) {
-                                IconButton(
-                                    onClick = { showCameraScanner = true },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
+                        if (isCompact) {
+                            ExtendedFloatingActionButton(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                onClick = { showCameraScanner = true },
+                                icon = {
                                     Icon(
                                         painter = painterResource(Res.drawable.barcode_scanner),
-                                        contentDescription = stringResource(Res.string.search_desc),
-                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        contentDescription = null
                                     )
+                                },
+                                text = {
+                                    Text(stringResource(Res.string.scan_with_camera_desc))
                                 }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box {
-                        IconButton(
-                            onClick = { showFilterBottomSheet = true },
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(MaterialShapes.Cookie4Sided.toShape())
-                                .background(
-                                    if (uiState.hasActiveFilters) MaterialTheme.colorScheme.primaryContainer
-                                    else MaterialTheme.colorScheme.surfaceContainerHigh
-                                ),
-                        ) {
-                            Icon(
-                                painter = if(uiState.hasActiveFilters) painterResource(Res.drawable.filter_on)
-                                else painterResource(Res.drawable.filter),
-                                contentDescription = stringResource(Res.string.filter_and_sort_title),
-                                tint = if (uiState.hasActiveFilters) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurface
                             )
-                        }
-                        if (uiState.hasActiveFilters) {
-                            Badge(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = (-2).dp, y = 2.dp)
-                                    .size(10.dp),
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
-
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // PRODUCTS TABLE
-                Card(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = ShapeDefaults.cardShape,
-                ) {
-
-                    if (sortedProducts.isEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.sad_face),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(96.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                stringResource(Res.string.no_products_registered),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.headlineMedium,
+                        } else {
+                            LargeExtendedFloatingActionButton(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                onClick = { showCameraScanner = true },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.barcode_scanner),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = {
+                                    Text(stringResource(Res.string.scan_with_camera_desc))
+                                }
                             )
                         }
                     } else {
                         if (isCompact) {
-                            // Mobile Compact List
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                itemsIndexed(sortedProducts) { index, product ->
-                                    val shape = if (sortedProducts.size == 1) {
-                                        ShapeDefaults.cardShape
-                                    } else if (index == 0) {
-                                        ShapeDefaults.topListItemShape
-                                    } else if (index == sortedProducts.lastIndex) {
-                                        ShapeDefaults.bottomListItemShape
-                                    } else {
-                                        ShapeDefaults.middleListItemShape
-                                    }
-                                    val isSelected = product.id in selectedProductIds
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .combinedClickable(
-                                                onClick = {
-                                                    if (selectedProductIds.isNotEmpty()) {
-                                                        viewModel.onToggleSelectProduct(product.id)
-                                                    } else {
-                                                        viewModel.onShowProductDialog(product)
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    viewModel.onToggleSelectProduct(product.id)
-                                                }
-                                            ),
-                                        shape = shape,
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
-                                        ),
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = product.nombre,
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                                                    modifier = Modifier.weight(1f),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-
-                                                IconButton(
-                                                    onClick = {
-                                                        viewModel.deleteProductSoft(product.id)
-                                                    },
-                                                    modifier = Modifier.size(28.dp)
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.delete),
-                                                        contentDescription = stringResource(Res.string.delete_desc)
-                                                    )
-                                                }
-
-                                            }
-
-                                            Spacer(modifier = Modifier.height(4.dp))
-
-                                            // Barcodes
-                                            val codesDisplay = product.formatBarcodesForDisplay()
-                                            Text(
-                                                stringResource(
-                                                    Res.string.codes_display_label,
-                                                    codesDisplay
-                                                ),
-                                                fontSize = 12.sp,
-                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-
-                                            Spacer(modifier = Modifier.height(4.dp))
-
-                                            // Category
-                                            Text(
-                                                stringResource(
-                                                    Res.string.category_label_format,
-                                                    product.categoria
-                                                        ?: stringResource(Res.string.no_category)
-                                                ),
-                                                fontSize = 12.sp,
-                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-
-                                            Spacer(modifier = Modifier.height(6.dp))
-
-                                            // Prices & Cost
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Column {
-                                                    Text(
-                                                        text = stringResource(
-                                                            Res.string.price_display_label,
-                                                            product.precio.toString().formatPrice()
-                                                        ),
-                                                        fontSize = 13.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-                                                    )
-                                                    Text(
-                                                        stringResource(
-                                                            Res.string.cost_display_label,
-                                                            product.costo.toString().formatPrice()
-                                                        ),
-                                                        fontSize = 11.sp,
-                                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
-                                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                    if (product.es_favorito == 1L) {
-                                                        Badge(
-                                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                            modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape())
-                                                                .size(28.dp)
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.star_filled),
-                                                                contentDescription = stringResource(
-                                                                    Res.string.favorite_desc
-                                                                ),
-                                                                modifier = Modifier.size(18.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                    if (product.activo == 0L) {
-                                                        Badge(
-                                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                                            modifier = Modifier.clip(MaterialShapes.Sunny.toShape())
-                                                                .size(28.dp)
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.disabled),
-                                                                contentDescription = stringResource(
-                                                                    Res.string.status_inactive
-                                                                ),
-                                                                modifier = Modifier.size(18.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            // Desktop Table Layout
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                var columnWeights by rememberSaveable {
-                                    mutableStateOf(listOf(0.18f, 0.28f, 0.14f, 0.10f, 0.10f, 0.10f))
-                                }
-                                val tableWidthPx = with(LocalDensity.current) { availableWidth.toPx() }
-                                val resizeColumn = { index: Int, dragAmount: Float ->
-                                    val weightDelta = dragAmount / tableWidthPx
-                                    val current = columnWeights[index]
-                                    val next = columnWeights[index + 1]
-                                    val minimumWeight = 0.06f
-                                    val constrainedDelta = weightDelta.coerceIn(
-                                        minimumWeight - current,
-                                        next - minimumWeight
-                                    )
-                                    columnWeights = columnWeights.toMutableList().also { weights ->
-                                        weights[index] = current + constrainedDelta
-                                        weights[index + 1] = next - constrainedDelta
-                                    }
-                                }
-                                val onHeaderClick = { field: ProductSortField ->
-                                    if (sortField == field) {
-                                        viewModel.onSortOrderChanged(
-                                            if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
+                            ExtendedFloatingActionButton(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                onClick = {
+                                    viewModel.onShowProductDialog(
+                                        Products(
+                                            id = "",
+                                            codigos = "[]",
+                                            nombre = "",
+                                            precio = 0.0,
+                                            costo = 0.0,
+                                            categoria = "",
+                                            activo = 1L,
+                                            por_peso = 0L,
+                                            precio_mayoreo = 0.0,
+                                            es_favorito = 0L,
+                                            piezas = 1.0,
+                                            updated_at = 0L,
+                                            sync_state = ""
                                         )
-                                    } else {
-                                        viewModel.onSortFieldChanged(field)
-                                        viewModel.onSortOrderChanged(ProductSortOrder.ASC)
-                                    }
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.add),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = {
+                                    Text(stringResource(Res.string.new_product_button_desktop))
                                 }
+                            )
+                        } else {
+                            LargeExtendedFloatingActionButton(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                onClick = {
+                                    viewModel.onShowProductDialog(
+                                        Products(
+                                            id = "",
+                                            codigos = "[]",
+                                            nombre = "",
+                                            precio = 0.0,
+                                            costo = 0.0,
+                                            categoria = "",
+                                            activo = 1L,
+                                            por_peso = 0L,
+                                            precio_mayoreo = 0.0,
+                                            es_favorito = 0L,
+                                            piezas = 1.0,
+                                            updated_at = 0L,
+                                            sync_state = ""
+                                        )
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.add),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = {
+                                    Text(stringResource(Res.string.new_product_button_desktop))
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.background,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .then(
+                    if (!isAndroid()) {
+                        Modifier
+                            .onPreviewKeyEvent(handleKeyNavigation)
+                    } else Modifier
+                )
+        ) { innerPadding ->
+            PullToRefreshBox(
+                isRefreshing = uiState.isSyncing,
+                onRefresh = { viewModel.refreshSync() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = innerPadding.calculateTopPadding())
+            ) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+                    val isCompact = maxWidth < 720.dp
+                    val availableWidth = maxWidth
+                    val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
+                    val selectAllState = when {
+                        sortedProducts.isEmpty() -> ToggleableState.Off
+                        selectedFilteredCount == sortedProducts.size -> ToggleableState.On
+                        selectedFilteredCount > 0 -> ToggleableState.Indeterminate
+                        else -> ToggleableState.Off
+                    }
 
-                                Row(
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // SEARCH BAR
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isCompact) {
+                                Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .size(54.dp)
+                                        .clip(MaterialShapes.Clover8Leaf.toShape())
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     TriStateCheckbox(
                                         state = selectAllState,
                                         onClick = {
                                             viewModel.onSelectAllProducts(sortedProducts.map { it.id })
-                                        },
-                                        modifier = Modifier.weight(0.05f)
-                                    )
-                                    TableHeader(
-                                        stringResource(Res.string.header_codes),
-                                        columnWeights[0],
-                                        ProductSortField.CODIGO,
-                                        sortField,
-                                        sortOrder,
-                                        onHeaderClick,
-                                        onResize = { resizeColumn(0, it) }
-                                    )
-                                    TableHeader(
-                                        stringResource(Res.string.header_product_name),
-                                        columnWeights[1],
-                                        ProductSortField.NOMBRE,
-                                        sortField,
-                                        sortOrder,
-                                        onHeaderClick,
-                                        onResize = { resizeColumn(1, it) }
-                                    )
-                                    TableHeader(
-                                        stringResource(Res.string.header_category),
-                                        columnWeights[2],
-                                        ProductSortField.CATEGORIA,
-                                        sortField,
-                                        sortOrder,
-                                        onHeaderClick,
-                                        onResize = { resizeColumn(2, it) }
-                                    )
-                                    TableHeader(
-                                        stringResource(Res.string.header_retail_price),
-                                        columnWeights[3],
-                                        ProductSortField.PRECIO,
-                                        sortField,
-                                        sortOrder,
-                                        onHeaderClick,
-                                        onResize = { resizeColumn(3, it) }
-                                    )
-                                    TableHeader(
-                                        stringResource(Res.string.header_cost),
-                                        columnWeights[4],
-                                        ProductSortField.COSTO,
-                                        sortField,
-                                        sortOrder,
-                                        onHeaderClick,
-                                        onResize = { resizeColumn(4, it) }
-                                    )
-                                    TableHeader(
-                                        stringResource(Res.string.wholesale),
-                                        columnWeights[5],
-                                        ProductSortField.MAYOREO,
-                                        sortField,
-                                        sortOrder,
-                                        onHeaderClick
+                                        }
                                     )
                                 }
 
-                                 LazyColumn(
-                                    state = listState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                    contentPadding = PaddingValues(bottom = 12.dp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .height(54.dp)
+                                    .weight(1f)
+                                    .background(
+                                        color = if (searchQuery.isNotEmpty())
+                                            MaterialTheme.colorScheme.surfaceContainerLowest
+                                        else
+                                            MaterialTheme.colorScheme.surfaceContainer,
+                                        shape = ShapeDefaults.cardShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    itemsIndexed(sortedProducts) { index, product ->
-                                        val shape =
-                                            if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
-                                            else ShapeDefaults.middleListItemShape
-                                        val isHighlighted = selectedProductIndex == index
+                                    Icon(
+                                        painter = painterResource(Res.drawable.search),
+                                        contentDescription = stringResource(Res.string.search_desc),
+                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Box(
+                                        modifier = Modifier.weight(1f),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        if (searchQuery.isEmpty()) {
+                                            Text(
+                                                text = stringResource(Res.string.search_placeholder),
+                                                style = MaterialTheme.typography.titleSmall.copy(
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(
+                                                        alpha = 0.6f
+                                                    )
+                                                ),
+                                                textAlign = TextAlign.Start
+                                            )
+                                        }
+
+                                        BasicTextField(
+                                            value = searchQuery,
+                                            onValueChange = {
+                                                viewModel.onSearchQueryChanged(it)
+                                                selectedProductIndex = -1
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .then(
+                                                    if (!isAndroid()) {
+                                                        Modifier
+                                                            .focusRequester(searchBarFocusRequester)
+                                                            .onPreviewKeyEvent(handleKeyNavigation)
+                                                    } else Modifier
+                                                ),
+                                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                textAlign = TextAlign.Start
+                                            ),
+                                            singleLine = true
+                                        )
+                                    }
+
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(
+                                            modifier = Modifier
+                                                .size(32.dp),
+                                            onClick = {
+                                                viewModel.onSearchQueryChanged("")
+                                            }
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.close),
+                                                contentDescription = stringResource(Res.string.clear_desc),
+                                                tint = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box {
+                                IconButton(
+                                    onClick = { showFilterBottomSheet = true },
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(MaterialShapes.Cookie4Sided.toShape())
+                                        .background(
+                                            if (uiState.hasActiveFilters) MaterialTheme.colorScheme.primaryContainer
+                                            else MaterialTheme.colorScheme.surfaceContainerHigh
+                                        ),
+                                ) {
+                                    Icon(
+                                        painter = if (uiState.hasActiveFilters) painterResource(Res.drawable.filter_on)
+                                        else painterResource(Res.drawable.filter),
+                                        contentDescription = stringResource(Res.string.filter_and_sort_title),
+                                        tint = if (uiState.hasActiveFilters) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                if (uiState.hasActiveFilters) {
+                                    Badge(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = (-2).dp, y = 2.dp)
+                                            .size(10.dp),
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // PRODUCTS TABLE
+                        Card(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = ShapeDefaults.cardShape,
+                        ) {
+
+                            if (sortedProducts.isEmpty()) {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.sad_face),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(96.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        stringResource(Res.string.no_products_registered),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.headlineMedium,
+                                    )
+                                }
+                            } else {
+                                if (isCompact) {
+                                    // Mobile Compact List
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        contentPadding = PaddingValues(bottom = 156.dp)
+                                    ) {
+                                        itemsIndexed(sortedProducts) { index, product ->
+                                            val shape = if (sortedProducts.size == 1) {
+                                                ShapeDefaults.cardShape
+                                            } else if (index == 0) {
+                                                ShapeDefaults.topListItemShape
+                                            } else if (index == sortedProducts.lastIndex) {
+                                                ShapeDefaults.bottomListItemShape
+                                            } else {
+                                                ShapeDefaults.middleListItemShape
+                                            }
+                                            val isSelected = product.id in selectedProductIds
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .combinedClickable(
+                                                        onClick = {
+                                                            if (selectedProductIds.isNotEmpty()) {
+                                                                viewModel.onToggleSelectProduct(
+                                                                    product.id
+                                                                )
+                                                            } else {
+                                                                viewModel.onShowProductDialog(
+                                                                    product
+                                                                )
+                                                            }
+                                                        },
+                                                        onLongClick = {
+                                                            viewModel.onToggleSelectProduct(product.id)
+                                                        }
+                                                    ),
+                                                shape = shape,
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
+                                                ),
+                                            ) {
+                                                Column(modifier = Modifier.padding(12.dp)) {
+
+                                                    Row {
+                                                        Text(
+                                                            modifier = Modifier.weight(.9f),
+                                                            text = product.nombre,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            style = MaterialTheme.typography.titleMedium
+
+                                                        )
+                                                        Row(
+                                                            horizontalArrangement = Arrangement.spacedBy(
+                                                                6.dp
+                                                            )
+                                                        ) {
+                                                            if (product.es_favorito == 1L) {
+                                                                Badge(
+                                                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                                    modifier = Modifier.clip(
+                                                                        MaterialShapes.Cookie12Sided.toShape()
+                                                                    )
+                                                                        .size(28.dp)
+                                                                ) {
+                                                                    Icon(
+                                                                        painter = painterResource(
+                                                                            Res.drawable.star_filled
+                                                                        ),
+                                                                        contentDescription = stringResource(
+                                                                            Res.string.favorite_desc
+                                                                        ),
+                                                                        modifier = Modifier.size(18.dp)
+                                                                    )
+                                                                }
+                                                            }
+                                                            if (product.activo == 0L) {
+                                                                Badge(
+                                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                                                    modifier = Modifier.clip(
+                                                                        MaterialShapes.Sunny.toShape()
+                                                                    )
+                                                                        .size(28.dp)
+                                                                ) {
+                                                                    Icon(
+                                                                        painter = painterResource(
+                                                                            Res.drawable.disabled
+                                                                        ),
+                                                                        contentDescription = stringResource(
+                                                                            Res.string.status_inactive
+                                                                        ),
+                                                                        modifier = Modifier.size(18.dp)
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                    }
+
+                                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                    ) {
+                                                        if (product.costo > 0.0) {
+                                                            Text(
+                                                                stringResource(
+                                                                    Res.string.cost_display_label,
+                                                                    product.costo.toString()
+                                                                        .formatPrice()
+                                                                ),
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                                                    alpha = 0.7f
+                                                                ) else MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                        if (product.precio > 0.0) {
+                                                            Text(
+                                                                text = stringResource(
+                                                                    Res.string.price_display_label,
+                                                                    product.precio.toString()
+                                                                        .formatPrice()
+                                                                ),
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                                                            )
+                                                        }
+                                                        if (product.precio_mayoreo > 0.0) {
+                                                            Text(
+                                                                stringResource(
+                                                                    Res.string.wholesale_display_label,
+                                                                    product.precio_mayoreo.toString()
+                                                                        .formatPrice()
+                                                                ),
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                                                    alpha = 0.7f
+                                                                ) else MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+
+
+                                                    }
+
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // Desktop Table Layout
+                                    Column(modifier = Modifier.fillMaxSize()) {
+                                        val activeColumns = remember(uiState.visibleColumns) {
+                                            ProductTableColumn.entries.filter { it in uiState.visibleColumns }
+                                        }
+                                        val totalDefaultWeight = remember(activeColumns) {
+                                            activeColumns.sumOf { it.defaultWeight.toDouble() }.toFloat().coerceAtLeast(0.01f)
+                                        }
+                                        var columnWeights by remember(activeColumns) {
+                                            mutableStateOf(activeColumns.map { (it.defaultWeight / totalDefaultWeight) * 0.95f })
+                                        }
+                                        val tableWidthPx =
+                                            with(LocalDensity.current) { availableWidth.toPx() }
+                                        val resizeColumn = { index: Int, dragAmount: Float ->
+                                            if (index in 0 until activeColumns.lastIndex) {
+                                                val weightDelta = dragAmount / tableWidthPx
+                                                val current = columnWeights[index]
+                                                val next = columnWeights[index + 1]
+                                                val minimumWeight = 0.05f
+                                                val constrainedDelta = weightDelta.coerceIn(
+                                                    minimumWeight - current,
+                                                    next - minimumWeight
+                                                )
+                                                columnWeights =
+                                                    columnWeights.toMutableList().also { weights ->
+                                                        weights[index] = current + constrainedDelta
+                                                        weights[index + 1] = next - constrainedDelta
+                                                    }
+                                            }
+                                        }
+                                        val onHeaderClick = { field: ProductSortField ->
+                                            if (sortField == field) {
+                                                viewModel.onSortOrderChanged(
+                                                    if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
+                                                )
+                                            } else {
+                                                viewModel.onSortFieldChanged(field)
+                                                viewModel.onSortOrderChanged(ProductSortOrder.ASC)
+                                            }
+                                        }
 
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .clip(shape)
-                                                .background(
-                                                    if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-                                                    else MaterialTheme.colorScheme.surfaceContainerLowest
-                                                )
-                                                .then(
-                                                    if (isHighlighted) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, shape)
-                                                    else Modifier
-                                                )
-                                                .clickable {
-                                                    selectedProductIndex = index
-                                                    viewModel.onShowProductDialog(product)
-                                                }
-                                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Checkbox(
-                                                checked = product.id in selectedProductIds,
-                                                onCheckedChange = {
-                                                    viewModel.onToggleSelectProduct(
-                                                        product.id
-                                                    )
+                                            TriStateCheckbox(
+                                                state = selectAllState,
+                                                onClick = {
+                                                    viewModel.onSelectAllProducts(sortedProducts.map { it.id })
                                                 },
                                                 modifier = Modifier.weight(0.05f)
                                             )
-                                            val codesDisplay = product.formatBarcodesForDisplay()
-                                            Text(
-                                                text = codesDisplay,
-                                                modifier = Modifier.weight(columnWeights[0]),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-
-                                            Row(
-                                                modifier = Modifier.weight(columnWeights[1]),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = product.nombre,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
+                                            activeColumns.forEachIndexed { index, col ->
+                                                TableHeader(
+                                                    stringResource(col.titleRes),
+                                                    columnWeights.getOrElse(index) { (col.defaultWeight / totalDefaultWeight) * 0.95f },
+                                                    col.sortField,
+                                                    sortField,
+                                                    sortOrder,
+                                                    onHeaderClick,
+                                                    onResize = if (index < activeColumns.lastIndex) {
+                                                        { resizeColumn(index, it) }
+                                                    } else null
                                                 )
-                                                if (product.es_favorito == 1L) {
-                                                    Spacer(modifier = Modifier.width(4.dp))
+                                            }
+                                        }
 
-                                                    Badge(
-                                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                        modifier = Modifier.clip(MaterialShapes.Cookie12Sided.toShape())
-                                                            .size(28.dp)
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.star_filled),
-                                                            contentDescription = stringResource(Res.string.favorite_desc),
-                                                            modifier = Modifier.size(18.dp)
+                                        LazyColumn(
+                                            state = listState,
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                                            contentPadding = PaddingValues(bottom = if (isAndroid()) 160.dp else 192.dp)
+                                        ) {
+                                            itemsIndexed(sortedProducts) { index, product ->
+                                                val shape =
+                                                    if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
+                                                    else ShapeDefaults.middleListItemShape
+                                                val isHighlighted = selectedProductIndex == index
+
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(shape)
+                                                        .background(
+                                                            if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(
+                                                                alpha = 0.45f
+                                                            )
+                                                            else MaterialTheme.colorScheme.surfaceContainerLowest
                                                         )
-                                                    }
-                                                }
-                                                if (
-                                                    product.activo == 0L
+                                                        .then(
+                                                            if (isHighlighted) Modifier.border(
+                                                                2.dp,
+                                                                MaterialTheme.colorScheme.primary,
+                                                                shape
+                                                            )
+                                                            else Modifier
+                                                        )
+                                                        .clickable {
+                                                            selectedProductIndex = index
+                                                            viewModel.onShowProductDialog(product)
+                                                        }
+                                                        .padding(
+                                                            horizontal = 16.dp,
+                                                            vertical = 10.dp
+                                                        ),
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Spacer(modifier = Modifier.width(4.dp))
-
-                                                    Badge(
-                                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                                        modifier = Modifier.clip(MaterialShapes.Sunny.toShape())
-                                                            .size(28.dp)
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.disabled),
-                                                            contentDescription = stringResource(Res.string.status_inactive),
-                                                            modifier = Modifier.size(18.dp)
-                                                        )
+                                                    Checkbox(
+                                                        checked = product.id in selectedProductIds,
+                                                        onCheckedChange = {
+                                                            viewModel.onToggleSelectProduct(
+                                                                product.id
+                                                            )
+                                                        },
+                                                        modifier = Modifier.weight(0.05f)
+                                                    )
+                                                    activeColumns.forEachIndexed { colIndex, col ->
+                                                        val weight = columnWeights.getOrElse(colIndex) { (col.defaultWeight / totalDefaultWeight) * 0.95f }
+                                                        when (col) {
+                                                            ProductTableColumn.CODIGO -> {
+                                                                val codesDisplay = product.formatBarcodesForDisplay()
+                                                                Text(
+                                                                    text = codesDisplay,
+                                                                    modifier = Modifier.weight(weight),
+                                                                    style = MaterialTheme.typography.bodyMedium,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
+                                                            ProductTableColumn.NOMBRE -> {
+                                                                Row(
+                                                                    modifier = Modifier.weight(weight),
+                                                                    verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                    Text(
+                                                                        text = product.nombre,
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        maxLines = 1,
+                                                                        overflow = TextOverflow.Ellipsis
+                                                                    )
+                                                                    if (product.es_favorito == 1L) {
+                                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                                        Badge(
+                                                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                                            modifier = Modifier.clip(
+                                                                                MaterialShapes.Cookie12Sided.toShape()
+                                                                            ).size(28.dp)
+                                                                        ) {
+                                                                            Icon(
+                                                                                painter = painterResource(Res.drawable.star_filled),
+                                                                                contentDescription = stringResource(
+                                                                                    Res.string.favorite_desc
+                                                                                ),
+                                                                                modifier = Modifier.size(18.dp)
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                    if (product.activo == 0L) {
+                                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                                        Badge(
+                                                                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                                                            modifier = Modifier.clip(
+                                                                                MaterialShapes.Sunny.toShape()
+                                                                            ).size(28.dp)
+                                                                        ) {
+                                                                            Icon(
+                                                                                painter = painterResource(Res.drawable.disabled),
+                                                                                contentDescription = stringResource(
+                                                                                    Res.string.status_inactive
+                                                                                ),
+                                                                                modifier = Modifier.size(18.dp)
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            ProductTableColumn.CATEGORIA -> {
+                                                                Text(
+                                                                    text = product.categoria ?: stringResource(Res.string.no_category),
+                                                                    modifier = Modifier.weight(weight),
+                                                                    style = MaterialTheme.typography.bodyMedium,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
+                                                            ProductTableColumn.PRECIO -> {
+                                                                Text(
+                                                                    text = "$${product.precio.toString().formatPrice()}",
+                                                                    modifier = Modifier.weight(weight),
+                                                                    style = MaterialTheme.typography.bodyMedium,
+                                                                    fontWeight = FontWeight.Bold
+                                                                )
+                                                            }
+                                                            ProductTableColumn.COSTO -> {
+                                                                Text(
+                                                                    text = "$${product.costo.toString().formatPrice()}",
+                                                                    modifier = Modifier.weight(weight),
+                                                                    style = MaterialTheme.typography.bodyMedium
+                                                                )
+                                                            }
+                                                            ProductTableColumn.MAYOREO -> {
+                                                                Text(
+                                                                    text = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                                                    modifier = Modifier.weight(weight),
+                                                                    style = MaterialTheme.typography.bodyMedium
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
-
-                                            Text(
-                                                text = product.categoria
-                                                    ?: stringResource(Res.string.no_category),
-                                                modifier = Modifier.weight(columnWeights[2]),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-
-                                            Text(
-                                                text = "$${
-                                                    product.precio.toString().formatPrice()
-                                                }",
-                                                modifier = Modifier.weight(columnWeights[3]),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-
-                                            Text(
-                                                text = "$${product.costo.toString().formatPrice()}",
-                                                modifier = Modifier.weight(columnWeights[4]),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                            )
-
-                                            Text(
-                                                text = "$${
-                                                    product.precio_mayoreo.toString().formatPrice()
-                                                }",
-                                                modifier = Modifier.weight(columnWeights[5]),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                            )
                                         }
                                     }
                                 }
-
                             }
+
                         }
                     }
-
                 }
             }
-        }
-    }
 
-        // PRODUCT FORM DIALOG
-        if (showProductDialogFor != null) {
-            ProductFormDialog(
-                product = if (showProductDialogFor.id.isEmpty()) null else showProductDialogFor,
-                onDismiss = { viewModel.onDismissProductDialog() },
-                onSave = { updatedProduct ->
-                    viewModel.saveProduct(updatedProduct)
-                },
-                onValidateBarcodes = { codes ->
-                    viewModel.validateBarcodes(codes, showProductDialogFor.id.ifEmpty { null })
-                },
-                existingCategories = uiState.availableCategories,
-                defaultRetailMarginPercentage = uiState.defaultRetailMargin,
-                defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
-                roundRetailPrice = uiState.roundRetailPrice,
-                roundWholesalePrice = uiState.roundWholesalePrice
-            )
-        }
+            // PRODUCT FORM DIALOG
+            if (showProductDialogFor != null) {
+                ProductFormDialog(
+                    product = if (showProductDialogFor.id.isEmpty()) null else showProductDialogFor,
+                    onDismiss = { viewModel.onDismissProductDialog() },
+                    onSave = { updatedProduct ->
+                        viewModel.saveProduct(updatedProduct)
+                    },
+                    onValidateBarcodes = { codes ->
+                        viewModel.validateBarcodes(codes, showProductDialogFor.id.ifEmpty { null })
+                    },
+                    existingCategories = uiState.availableCategories,
+                    defaultRetailMarginPercentage = uiState.defaultRetailMargin,
+                    defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
+                    roundRetailPrice = uiState.roundRetailPrice,
+                    roundWholesalePrice = uiState.roundWholesalePrice
+                )
+            }
 
-        showBulkModificationFor?.let { op ->
-            BulkProductModificationDialog(
-                selectedCount = selectedProductIds.size,
-                operation = op,
-                onDismiss = { viewModel.onShowBulkModificationDialog(null) },
-                onApply = { modification ->
-                    viewModel.applyBulkModification(modification)
-                }
-            )
-        }
-
-        if (showCameraScanner) {
-            PlatformBarcodeScanner(
-                onScanResult = { scannedCode ->
-                    showCameraScanner = false
-                    val code = scannedCode.trim()
-                    if (code.isNotEmpty()) {
-                        viewModel.onSearchQueryChanged(code)
-                        pendingScanCode = code
+            showBulkModificationFor?.let { op ->
+                BulkProductModificationDialog(
+                    selectedCount = selectedProductIds.size,
+                    operation = op,
+                    onDismiss = { viewModel.onShowBulkModificationDialog(null) },
+                    onApply = { modification ->
+                        viewModel.applyBulkModification(modification)
                     }
-                },
-                onClose = { showCameraScanner = false }
-            )
-        }
+                )
+            }
 
-        if (showFilterBottomSheet) {
-            ProductFilterAndSortBottomSheet(
-                sortField = sortField,
-                sortOrder = sortOrder,
-                selectedCategory = uiState.selectedCategory,
-                favoriteFilter = uiState.favoriteFilter,
-                statusFilter = uiState.statusFilter,
-                availableCategories = uiState.availableCategories,
-                onSortFieldSelected = { viewModel.onSortFieldChanged(it) },
-                onSortOrderSelected = { viewModel.onSortOrderChanged(it) },
-                onCategorySelected = { viewModel.onCategoryFilterChanged(it) },
-                onFavoriteFilterSelected = { viewModel.onFavoriteFilterChanged(it) },
-                onStatusFilterSelected = { viewModel.onStatusFilterChanged(it) },
-                onResetFilters = { viewModel.onResetFilters() },
-                onDismissRequest = { showFilterBottomSheet = false }
-            )
+            if (showCameraScanner) {
+                PlatformBarcodeScanner(
+                    onScanResult = { scannedCode ->
+                        showCameraScanner = false
+                        val code = scannedCode.trim()
+                        if (code.isNotEmpty()) {
+                            viewModel.onSearchQueryChanged(code)
+                        }
+                    },
+                    onClose = { showCameraScanner = false }
+                )
+            }
+
+            if (showFilterBottomSheet) {
+                ProductFilterAndSortBottomSheet(
+                    isCompact = isCompact,
+                    sortField = sortField,
+                    sortOrder = sortOrder,
+                    selectedCategory = uiState.selectedCategory,
+                    favoriteFilter = uiState.favoriteFilter,
+                    statusFilter = uiState.statusFilter,
+                    availableCategories = uiState.availableCategories,
+                    visibleColumns = uiState.visibleColumns,
+                    onToggleColumn = { viewModel.onToggleColumn(it) },
+                    onSortFieldSelected = { viewModel.onSortFieldChanged(it) },
+                    onSortOrderSelected = { viewModel.onSortOrderChanged(it) },
+                    onCategorySelected = { viewModel.onCategoryFilterChanged(it) },
+                    onFavoriteFilterSelected = { viewModel.onFavoriteFilterChanged(it) },
+                    onStatusFilterSelected = { viewModel.onStatusFilterChanged(it) },
+                    onResetFilters = { viewModel.onResetFilters() },
+                    onDismissRequest = { showFilterBottomSheet = false }
+                )
+            }
         }
     }
 }
@@ -1240,12 +1335,15 @@ fun ProductosScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ProductFilterAndSortBottomSheet(
+    isCompact: Boolean = false,
     sortField: ProductSortField,
     sortOrder: ProductSortOrder,
     selectedCategory: String?,
     favoriteFilter: FavoriteFilterOption,
     statusFilter: StatusFilterOption,
     availableCategories: List<String>,
+    visibleColumns: Set<ProductTableColumn> = ProductTableColumn.entries.toSet(),
+    onToggleColumn: (ProductTableColumn) -> Unit = {},
     onSortFieldSelected: (ProductSortField) -> Unit,
     onSortOrderSelected: (ProductSortOrder) -> Unit,
     onCategorySelected: (String?) -> Unit,
@@ -1302,7 +1400,7 @@ fun ProductFilterAndSortBottomSheet(
                             MaterialTheme.colorScheme.surfaceContainerHigh
                         ),
 
-                ) {
+                    ) {
                     Icon(
                         painter = painterResource(Res.drawable.filter_off),
                         contentDescription = stringResource(Res.string.reset_filters),
@@ -1366,8 +1464,14 @@ fun ProductFilterAndSortBottomSheet(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             val orderOptions = listOf(
-                                Pair(ProductSortOrder.ASC, "▲ " + stringResource(Res.string.sort_order_asc)),
-                                Pair(ProductSortOrder.DESC, "▼ " + stringResource(Res.string.sort_order_desc))
+                                Pair(
+                                    ProductSortOrder.ASC,
+                                    "▲ " + stringResource(Res.string.sort_order_asc)
+                                ),
+                                Pair(
+                                    ProductSortOrder.DESC,
+                                    "▼ " + stringResource(Res.string.sort_order_desc)
+                                )
                             )
                             orderOptions.forEachIndexed { index, (order, label) ->
                                 val isSelected = sortOrder == order
@@ -1402,7 +1506,37 @@ fun ProductFilterAndSortBottomSheet(
                     }
                 }
 
-                // Section 3: Filter by Category
+                // Section 3: Visible Columns (Wide View Only)
+                if (!isCompact) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = stringResource(Res.string.columns_section_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                ProductTableColumn.entries.forEach { col ->
+                                    val isSelected = visibleColumns.contains(col)
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = { onToggleColumn(col) },
+                                        label = { Text(stringResource(col.titleRes)) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 4: Filter by Category
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(

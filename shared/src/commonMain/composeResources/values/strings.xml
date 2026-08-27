@@ -125,7 +125,7 @@
     <!-- ChecadorDialog -->
     <string name="price_checker_title">Checador de Precios</string>
     <string name="barcode_input_placeholder">Acerca el código de barras al escáner</string>
-    <string name="scan_with_camera_desc">Escanear con cámara</string>
+    <string name="scan_with_camera_desc">Escanear</string>
     <string name="category_label_format">Categoría: %1$s</string>
     <string name="product_not_found">Producto no encontrado</string>
     <string name="query_button">Consultar</string>
@@ -236,6 +236,7 @@
     <string name="codes_display_label">Código: %1$s</string>
     <string name="price_display_label">Precio: $%1$s</string>
     <string name="cost_display_label">Costo: $%1$s</string>
+    <string name="wholesale_display_label">Mayoreo: $%1$s</string>
     <string name="status_active">Activo</string>
     <string name="status_inactive">Inactivo</string>
     <string name="header_codes">Código(s)</string>
@@ -264,6 +265,7 @@
     <string name="filter_status_all">Todos</string>
     <string name="filter_status_active_only">Activos</string>
     <string name="filter_status_inactive_only">Inactivos</string>
+    <string name="columns_section_title">Columnas visibles</string>
     <string name="reset_filters">Restablecer</string>
     <string name="apply_filters_button">Aplicar</string>
 

@@ -35,6 +35,7 @@ private data class DisplayState(
     val selectedCategory: String? = null,
     val favoriteFilter: FavoriteFilterOption = FavoriteFilterOption.ALL,
     val statusFilter: StatusFilterOption = StatusFilterOption.ALL,
+    val visibleColumns: Set<ProductTableColumn> = ProductTableColumn.entries.toSet(),
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet()
@@ -95,6 +96,7 @@ class ProductosViewModel(
             selectedCategory = display.selectedCategory,
             favoriteFilter = display.favoriteFilter,
             statusFilter = display.statusFilter,
+            visibleColumns = display.visibleColumns,
             showProductDialogFor = display.showProductDialogFor,
             showBulkModificationFor = display.showBulkModificationFor,
             selectedProductIds = display.selectedProductIds,
@@ -132,6 +134,18 @@ class ProductosViewModel(
 
     fun onStatusFilterChanged(filter: StatusFilterOption) {
         _displayState.update { it.copy(statusFilter = filter) }
+    }
+
+    fun onToggleColumn(column: ProductTableColumn) {
+        _displayState.update { state ->
+            val current = state.visibleColumns
+            val updated = if (current.contains(column)) {
+                if (current.size > 1) current - column else current
+            } else {
+                current + column
+            }
+            state.copy(visibleColumns = updated)
+        }
     }
 
     fun onResetFilters() {

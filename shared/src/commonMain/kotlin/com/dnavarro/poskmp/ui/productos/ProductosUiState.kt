@@ -5,6 +5,27 @@ import com.dnavarro.poskmp.ui.BulkProductOperation
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
+import org.jetbrains.compose.resources.StringResource
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.header_category
+import poskmp.shared.generated.resources.header_codes
+import poskmp.shared.generated.resources.header_cost
+import poskmp.shared.generated.resources.header_product_name
+import poskmp.shared.generated.resources.header_retail_price
+import poskmp.shared.generated.resources.wholesale
+
+enum class ProductTableColumn(
+    val titleRes: StringResource,
+    val sortField: ProductSortField,
+    val defaultWeight: Float
+) {
+    CODIGO(Res.string.header_codes, ProductSortField.CODIGO, 0.18f),
+    NOMBRE(Res.string.header_product_name, ProductSortField.NOMBRE, 0.28f),
+    CATEGORIA(Res.string.header_category, ProductSortField.CATEGORIA, 0.14f),
+    PRECIO(Res.string.header_retail_price, ProductSortField.PRECIO, 0.10f),
+    COSTO(Res.string.header_cost, ProductSortField.COSTO, 0.10f),
+    MAYOREO(Res.string.wholesale, ProductSortField.MAYOREO, 0.10f)
+}
 
 enum class FavoriteFilterOption {
     ALL, ONLY_FAVORITES, ONLY_NON_FAVORITES
@@ -25,6 +46,7 @@ data class ProductosUiState(
     val selectedCategory: String? = null,
     val favoriteFilter: FavoriteFilterOption = FavoriteFilterOption.ALL,
     val statusFilter: StatusFilterOption = StatusFilterOption.ALL,
+    val visibleColumns: Set<ProductTableColumn> = ProductTableColumn.entries.toSet(),
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet(),
