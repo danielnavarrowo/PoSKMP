@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui.clientes
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,12 +24,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,6 +46,9 @@ import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.domain.model.PaymentMethod
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -70,8 +82,49 @@ fun RecordPaymentDialog(
     val amount = amountText.toDoubleOrNull() ?: 0.0
     val isAmountValid = amount > 0.0
 
+    val amountFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                amountFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun attemptConfirm() {
+        hasAttemptedConfirm = true
+        if (isAmountValid) {
+            onConfirm(amount, selectedMethod.name, notes)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismissRequest,
+        modifier = Modifier.then(
+            if (!isAndroid()) {
+                Modifier
+                    .focusable()
+                    .onPreviewKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    if (isAmountValid) {
+                                        attemptConfirm()
+                                        true
+                                    } else false
+                                }
+                                Key.Escape -> {
+                                    onDismissRequest()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
+            } else Modifier
+        ),
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
@@ -171,7 +224,9 @@ fun RecordPaymentDialog(
                         }
                     } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (!isAndroid()) Modifier.focusRequester(amountFocusRequester) else Modifier)
                 )
 
                 // Notes Field
@@ -187,15 +242,13 @@ fun RecordPaymentDialog(
         },
         confirmButton = {
             Button(
-                onClick = {
-                    hasAttemptedConfirm = true
-                    if (isAmountValid) {
-                        onConfirm(amount, selectedMethod.name, notes)
-                    }
-                },
+                onClick = { attemptConfirm() },
                 enabled = isAmountValid
             ) {
-                Text(stringResource(Res.string.record_payment_confirm))
+                Text(
+                    if (isAndroid()) stringResource(Res.string.record_payment_confirm)
+                    else "${stringResource(Res.string.record_payment_confirm)} (Enter)"
+                )
             }
         },
         dismissButton = {

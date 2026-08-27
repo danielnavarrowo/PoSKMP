@@ -1,6 +1,8 @@
 package com.dnavarro.poskmp.ui.venta
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,8 +27,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,6 +51,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -51,6 +69,7 @@ import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_customer_placeholder
 import poskmp.shared.generated.resources.select_customer_dialog_title
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CustomerSelectionDialog(
@@ -61,6 +80,69 @@ fun CustomerSelectionDialog(
     onSelectCustomer: (Customer?) -> Unit,
     onDismissRequest: () -> Unit
 ) {
+    val initialHighlightIndex = remember(customers, selectedCustomer) {
+        if (selectedCustomer != null) {
+            val found = customers.indexOfFirst { it.id == selectedCustomer.id }
+            if (found >= 0) found + 1 else 0
+        } else 0
+    }
+
+    var highlightedIndex by remember(customers) { mutableIntStateOf(initialHighlightIndex) }
+    val searchBarFocusRequester = remember { FocusRequester() }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                searchBarFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(highlightedIndex) {
+        if (highlightedIndex in 0..customers.size) {
+            try {
+                listState.animateScrollToItem(highlightedIndex)
+            } catch (_: Exception) {}
+        }
+    }
+
+    val handleKeyEvent: (KeyEvent) -> Boolean = { keyEvent ->
+        if (keyEvent.type == KeyEventType.KeyDown) {
+            when (keyEvent.key) {
+                Key.DirectionDown -> {
+                    if (highlightedIndex < customers.size) {
+                        highlightedIndex++
+                    }
+                    true
+                }
+                Key.DirectionUp -> {
+                    if (highlightedIndex > 0) {
+                        highlightedIndex--
+                    }
+                    true
+                }
+                Key.Enter, Key.NumPadEnter -> {
+                    if (highlightedIndex == 0) {
+                        onSelectCustomer(null)
+                    } else {
+                        val customerIndex = highlightedIndex - 1
+                        if (customerIndex in customers.indices) {
+                            onSelectCustomer(customers[customerIndex])
+                        }
+                    }
+                    true
+                }
+                Key.Escape -> {
+                    onDismissRequest()
+                    true
+                }
+                else -> false
+            }
+        } else false
+    }
+
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -68,7 +150,12 @@ fun CustomerSelectionDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.85f),
+                .fillMaxHeight(0.85f)
+                .then(
+                    if (!isAndroid()) {
+                        Modifier.onPreviewKeyEvent(handleKeyEvent)
+                    } else Modifier
+                ),
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerLowest
         ) {
@@ -103,8 +190,19 @@ fun CustomerSelectionDialog(
                 // Search Bar
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    modifier = Modifier.fillMaxWidth(),
+                    onValueChange = {
+                        onSearchQueryChange(it)
+                        highlightedIndex = 0
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (!isAndroid()) {
+                                Modifier
+                                    .focusRequester(searchBarFocusRequester)
+                                    .onPreviewKeyEvent(handleKeyEvent)
+                            } else Modifier
+                        ),
                     placeholder = {
                         Text(
                             stringResource(Res.string.search_customer_placeholder),
@@ -120,7 +218,10 @@ fun CustomerSelectionDialog(
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { onSearchQueryChange("") }) {
+                            IconButton(onClick = {
+                                onSearchQueryChange("")
+                                highlightedIndex = 0
+                            }) {
                                 Icon(
                                     painter = painterResource(Res.drawable.close),
                                     contentDescription = stringResource(Res.string.close_button),
@@ -137,19 +238,29 @@ fun CustomerSelectionDialog(
 
                 // List
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Option 1: Public General (Clear customer)
                     item {
+                        val isHighlighted = highlightedIndex == 0
+                        val isSelected = selectedCustomer == null
+
                         Surface(
-                            onClick = { onSelectCustomer(null) },
-                            shape = MaterialTheme.shapes.medium,
-                            color = if (selectedCustomer == null) {
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainerLow
+                            onClick = {
+                                highlightedIndex = 0
+                                onSelectCustomer(null)
                             },
+                            shape = MaterialTheme.shapes.medium,
+                            color = when {
+                                isHighlighted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                else -> MaterialTheme.colorScheme.surfaceContainerLow
+                            },
+                            border = if (isHighlighted) {
+                                BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                            } else null,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -215,18 +326,26 @@ fun CustomerSelectionDialog(
                             }
                         }
                     } else {
-                        items(customers, key = { it.id }) { customer ->
+                        itemsIndexed(customers, key = { _, it -> it.id }) { index, customer ->
+                            val itemIndex = index + 1
+                            val isHighlighted = highlightedIndex == itemIndex
                             val isSelected = selectedCustomer?.id == customer.id
                             val hasDebt = customer.saldoDeudor > 0.0
 
                             Surface(
-                                onClick = { onSelectCustomer(customer) },
-                                shape = MaterialTheme.shapes.medium,
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerLow
+                                onClick = {
+                                    highlightedIndex = itemIndex
+                                    onSelectCustomer(customer)
                                 },
+                                shape = MaterialTheme.shapes.medium,
+                                color = when {
+                                    isHighlighted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                    isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                    else -> MaterialTheme.colorScheme.surfaceContainerLow
+                                },
+                                border = if (isHighlighted) {
+                                    BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                } else null,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(

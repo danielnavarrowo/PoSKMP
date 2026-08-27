@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
@@ -65,8 +67,10 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,11 +81,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -246,7 +254,8 @@ fun RowScope.TableHeader(
 @Composable
 fun ProductosScreen(
     viewModel: ProductosViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    refocusTrigger: Int = 0
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery = uiState.searchQuery
@@ -262,22 +271,97 @@ fun ProductosScreen(
     var pendingScanCode by remember { mutableStateOf<String?>(null) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     val fabContainerColor = MaterialTheme.colorScheme.secondary
-    val desktopFocusRequester = remember { FocusRequester() }
+
+    var selectedProductIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
+    val searchBarFocusRequester = remember { FocusRequester() }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    fun reclaimSearchBarFocus() {
+        if (!isAndroid()) {
+            coroutineScope.launch {
+                delay(50.milliseconds)
+                try {
+                    searchBarFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
+            delay(100.milliseconds)
             try {
-                desktopFocusRequester.requestFocus()
+                searchBarFocusRequester.requestFocus()
             } catch (_: Exception) {}
         }
     }
 
     LaunchedEffect(showProductDialogFor, showBulkModificationFor, showFilterBottomSheet) {
         if (showProductDialogFor == null && showBulkModificationFor == null && !showFilterBottomSheet && !isAndroid()) {
+            reclaimSearchBarFocus()
+        }
+    }
+
+    LaunchedEffect(refocusTrigger) {
+        if (refocusTrigger > 0) {
+            reclaimSearchBarFocus()
+        }
+    }
+
+    LaunchedEffect(selectedProductIndex) {
+        if (selectedProductIndex in sortedProducts.indices) {
             try {
-                desktopFocusRequester.requestFocus()
+                listState.animateScrollToItem(selectedProductIndex)
             } catch (_: Exception) {}
         }
+    }
+
+    val handleKeyNavigation: (KeyEvent) -> Boolean = { keyEvent ->
+        if (keyEvent.type == KeyEventType.KeyDown) {
+            when (keyEvent.key) {
+                Key.F3 -> {
+                    reclaimSearchBarFocus()
+                    true
+                }
+                Key.F10 -> {
+                    viewModel.onShowProductDialog(
+                        Products(id = "", codigos = "[]", nombre = "", precio = 0.0, costo = 0.0, categoria = "", activo = 1L, por_peso = 0L, precio_mayoreo = 0.0, es_favorito = 0L, piezas = 1.0, updated_at = 0L, sync_state = "")
+                    )
+                    true
+                }
+                Key.DirectionDown -> {
+                    if (sortedProducts.isNotEmpty()) {
+                        if (selectedProductIndex < sortedProducts.lastIndex) {
+                            selectedProductIndex++
+                        } else {
+                            selectedProductIndex = sortedProducts.lastIndex
+                        }
+                        true
+                    } else false
+                }
+                Key.DirectionUp -> {
+                    if (sortedProducts.isNotEmpty()) {
+                        if (selectedProductIndex > 0) {
+                            selectedProductIndex--
+                        } else {
+                            selectedProductIndex = 0
+                        }
+                        true
+                    } else false
+                }
+                Key.Enter, Key.NumPadEnter -> {
+                    if (selectedProductIndex in sortedProducts.indices) {
+                        viewModel.onShowProductDialog(sortedProducts[selectedProductIndex])
+                        true
+                    } else if (sortedProducts.isNotEmpty()) {
+                        viewModel.onShowProductDialog(sortedProducts[0])
+                        true
+                    } else false
+                }
+                else -> false
+            }
+        } else false
     }
 
     LaunchedEffect(pendingScanCode, sortedProducts) {
@@ -474,16 +558,7 @@ fun ProductosScreen(
             .then(
                 if (!isAndroid()) {
                     Modifier
-                        .focusRequester(desktopFocusRequester)
-                        .focusable()
-                        .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.F10) {
-                                viewModel.onShowProductDialog(
-                                    Products(id = "", codigos = "[]", nombre = "", precio = 0.0, costo = 0.0, categoria = "", activo = 1L, por_peso = 0L, precio_mayoreo = 0.0, es_favorito = 0L, piezas = 1.0, updated_at = 0L, sync_state = "")
-                                )
-                                true
-                            } else false
-                        }
+                        .onPreviewKeyEvent(handleKeyNavigation)
                 } else Modifier
             )
     ) { innerPadding ->
@@ -578,8 +653,19 @@ fun ProductosScreen(
 
                                 BasicTextField(
                                     value = searchQuery,
-                                    onValueChange = { viewModel.onSearchQueryChanged(it) },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    onValueChange = {
+                                        viewModel.onSearchQueryChanged(it)
+                                        selectedProductIndex = -1
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(
+                                            if (!isAndroid()) {
+                                                Modifier
+                                                    .focusRequester(searchBarFocusRequester)
+                                                    .onPreviewKeyEvent(handleKeyNavigation)
+                                            } else Modifier
+                                        ),
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                                         color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Start
@@ -945,7 +1031,8 @@ fun ProductosScreen(
                                     )
                                 }
 
-                                LazyColumn(
+                                 LazyColumn(
+                                    state = listState,
                                     modifier = Modifier.fillMaxSize(),
                                     verticalArrangement = Arrangement.spacedBy(2.dp),
                                     contentPadding = PaddingValues(bottom = 12.dp)
@@ -954,13 +1041,24 @@ fun ProductosScreen(
                                         val shape =
                                             if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
                                             else ShapeDefaults.middleListItemShape
+                                        val isHighlighted = selectedProductIndex == index
 
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clip(shape)
-                                                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                                                .clickable { viewModel.onShowProductDialog(product) }
+                                                .background(
+                                                    if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                                    else MaterialTheme.colorScheme.surfaceContainerLowest
+                                                )
+                                                .then(
+                                                    if (isHighlighted) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, shape)
+                                                    else Modifier
+                                                )
+                                                .clickable {
+                                                    selectedProductIndex = index
+                                                    viewModel.onShowProductDialog(product)
+                                                }
                                                 .padding(horizontal = 16.dp, vertical = 10.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
@@ -1161,7 +1259,21 @@ fun ProductFilterAndSortBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = modifier
+        modifier = modifier.then(
+            if (!isAndroid()) {
+                Modifier.onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        when (keyEvent.key) {
+                            Key.Enter, Key.NumPadEnter, Key.Escape -> {
+                                onDismissRequest()
+                                true
+                            }
+                            else -> false
+                        }
+                    } else false
+                }
+            } else Modifier
+        )
     ) {
         Column(
             modifier = Modifier

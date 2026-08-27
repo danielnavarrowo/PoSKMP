@@ -455,11 +455,14 @@ fun App(
                     val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(appMaxWidth) else NavigationSuiteType.None
 
                     val focusRequester = remember { FocusRequester() }
+                    var ventaRefocusTrigger by remember { mutableStateOf(0) }
+                    var productosRefocusTrigger by remember { mutableStateOf(0) }
+                    var clientesRefocusTrigger by remember { mutableStateOf(0) }
                     LaunchedEffect(currentScreen, isChecadorDialog) {
                         if (currentScreen == Screen.CHECADOR && isChecadorDialog) {
                             showPriceCheckerDialog = true
                         }
-                        if (!isAndroid() && currentScreen != Screen.VENTA) {
+                        if (!isAndroid() && currentScreen != Screen.VENTA && currentScreen != Screen.PRODUCTOS && currentScreen != Screen.CLIENTES) {
                             try {
                                 focusRequester.requestFocus()
                             } catch (_: Exception) {
@@ -713,6 +716,7 @@ fun App(
                                                 keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
                                                     Key.F1 -> {
                                                         selectedScreen = Screen.VENTA
+                                                        ventaRefocusTrigger++
                                                         true
                                                     }
 
@@ -727,6 +731,7 @@ fun App(
 
                                                     Key.F3 -> {
                                                         selectedScreen = Screen.PRODUCTOS
+                                                        productosRefocusTrigger++
                                                         true
                                                     }
 
@@ -737,6 +742,7 @@ fun App(
 
                                                     Key.F5 -> {
                                                         selectedScreen = Screen.CLIENTES
+                                                        clientesRefocusTrigger++
                                                         true
                                                     }
 
@@ -822,18 +828,26 @@ fun App(
                                     when (targetScreen) {
                                         Screen.VENTA -> VentaScreen(
                                             viewModel = koinViewModel<VentaViewModel>(),
-                                            isCompact = isCompact
+                                            isCompact = isCompact,
+                                            refocusTrigger = ventaRefocusTrigger
                                         )
 
-                                        Screen.PRODUCTOS -> ProductosScreen(viewModel = koinViewModel<ProductosViewModel>())
-                                        Screen.CLIENTES -> ClientesScreen(viewModel = koinViewModel<ClientesViewModel>())
+                                        Screen.PRODUCTOS -> ProductosScreen(
+                                            viewModel = koinViewModel<ProductosViewModel>(),
+                                            refocusTrigger = productosRefocusTrigger
+                                        )
+                                        Screen.CLIENTES -> ClientesScreen(
+                                            viewModel = koinViewModel<ClientesViewModel>(),
+                                            refocusTrigger = clientesRefocusTrigger
+                                        )
                                         Screen.VENTAS -> VentasScreen(viewModel = koinViewModel<VentasViewModel>())
                                         Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
                                         Screen.CHECADOR -> {
                                             if (isChecadorDialog) {
                                                 VentaScreen(
                                                     viewModel = koinViewModel<VentaViewModel>(),
-                                                    isCompact = isCompact
+                                                    isCompact = isCompact,
+                                                    refocusTrigger = ventaRefocusTrigger
                                                 )
                                             } else {
                                                 ChecadorScreen(

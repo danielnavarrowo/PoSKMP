@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -98,6 +99,15 @@ fun TicketSection(
 ) {
     val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
     var previousSize by remember { mutableIntStateOf(0) }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex in cartItems.indices) {
+            try {
+                listState.animateScrollToItem(selectedIndex)
+            } catch (_: Exception) {}
+        }
+    }
 
     LaunchedEffect(cartItems.size) {
         if (cartItems.isNotEmpty()) {
@@ -239,6 +249,7 @@ fun TicketSection(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(vertical = 8.dp)

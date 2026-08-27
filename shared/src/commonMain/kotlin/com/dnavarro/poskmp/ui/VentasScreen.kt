@@ -108,6 +108,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
 import com.dnavarro.poskmp.domain.model.CashMovementType
+import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -793,10 +794,46 @@ fun VentasScreen(
 
     // Cancel Sale Confirmation Dialog
     state.saleToCancel?.let { sale ->
+        val cancelConfirmButtonFocusRequester = remember { FocusRequester() }
+
+        LaunchedEffect(sale) {
+            if (!isAndroid()) {
+                delay(100.milliseconds)
+                try {
+                    cancelConfirmButtonFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+
         AlertDialog(
             onDismissRequest = {
                 if (!state.isCancellingSale) onDismissCancelSaleDialog()
             },
+            modifier = Modifier.then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                when (keyEvent.key) {
+                                    Key.Enter, Key.NumPadEnter -> {
+                                        if (!state.isCancellingSale) {
+                                            onConfirmCancelSale(sale)
+                                            true
+                                        } else false
+                                    }
+                                    Key.Escape -> {
+                                        if (!state.isCancellingSale) {
+                                            onDismissCancelSaleDialog()
+                                            true
+                                        } else false
+                                    }
+                                    else -> false
+                                }
+                            } else false
+                        }
+                } else Modifier
+            ),
             title = {
                 Text(
                     text = stringResource(Res.string.cancel_sale_confirm_title),
@@ -813,13 +850,15 @@ fun VentasScreen(
                 androidx.compose.material3.Button(
                     onClick = { onConfirmCancelSale(sale) },
                     enabled = !state.isCancellingSale,
+                    modifier = if (!isAndroid()) Modifier.focusRequester(cancelConfirmButtonFocusRequester) else Modifier,
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
                     Text(
-                        stringResource(Res.string.cancel_sale_confirm_action),
+                        if (isAndroid()) stringResource(Res.string.cancel_sale_confirm_action)
+                        else "${stringResource(Res.string.cancel_sale_confirm_action)} (Enter)",
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -930,8 +969,48 @@ private fun DateRangePickerDialog(
 
     var activeDateStep by remember { mutableIntStateOf(0) } // 0: Start Date, 1: End Date
 
+    val acceptButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                acceptButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     DatePickerDialog(
         onDismissRequest = onDismissRequest,
+        modifier = Modifier.then(
+            if (!isAndroid()) {
+                Modifier
+                    .focusable()
+                    .onPreviewKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    val startUtc = startDatePickerState.selectedDateMillis
+                                    val endUtc = endDatePickerState.selectedDateMillis ?: startUtc
+                                    if (startUtc != null && endUtc != null &&
+                                        startUtc <= todayUtcMillis &&
+                                        endUtc <= todayUtcMillis
+                                    ) {
+                                        val (startLocal, endLocal) = convertUtcDatesToLocalMillis(startUtc, endUtc)
+                                        onDateRangeSelected(startLocal, endLocal)
+                                        true
+                                    } else false
+                                }
+                                Key.Escape -> {
+                                    onDismissRequest()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
+            } else Modifier
+        ),
         confirmButton = {
             TextButton(
                 onClick = {
@@ -942,12 +1021,16 @@ private fun DateRangePickerDialog(
                         onDateRangeSelected(startLocal, endLocal)
                     }
                 },
+                modifier = if (!isAndroid()) Modifier.focusRequester(acceptButtonFocusRequester) else Modifier,
                 enabled = startDatePickerState.selectedDateMillis != null &&
                         endDatePickerState.selectedDateMillis != null &&
                         startDatePickerState.selectedDateMillis!! <= todayUtcMillis &&
                         endDatePickerState.selectedDateMillis!! <= todayUtcMillis
             ) {
-                Text(stringResource(Res.string.accept_button))
+                Text(
+                    if (isAndroid()) stringResource(Res.string.accept_button)
+                    else "${stringResource(Res.string.accept_button)} (Enter)"
+                )
             }
         },
         dismissButton = {
@@ -1392,8 +1475,36 @@ private fun SaleDetailDialog(
     onCancelSale: () -> Unit
 ) {
     val isCancelled = sale.isCancelled
+    val closeButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                closeButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.then(
+            if (!isAndroid()) {
+                Modifier
+                    .focusable()
+                    .onPreviewKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter, Key.Escape -> {
+                                    onDismiss()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
+            } else Modifier
+        ),
         title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1497,8 +1608,14 @@ private fun SaleDetailDialog(
                         Text(stringResource(Res.string.cancel_sale_button))
                     }
                 }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.close_button))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = if (!isAndroid()) Modifier.focusRequester(closeButtonFocusRequester) else Modifier
+                ) {
+                    Text(
+                        if (isAndroid()) stringResource(Res.string.close_button)
+                        else "${stringResource(Res.string.close_button)} (Enter)"
+                    )
                 }
             }
         }

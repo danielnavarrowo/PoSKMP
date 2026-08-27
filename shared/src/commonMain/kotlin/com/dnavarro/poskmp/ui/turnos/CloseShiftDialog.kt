@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui.turnos
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,13 +26,21 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +49,9 @@ import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.ShiftSummary
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -86,9 +98,46 @@ fun CloseShiftDialog(
     val expectedCash = summary.efectivoEsperado
     val difference = if (countedCash != null) countedCash - expectedCash else null
 
+    val countedCashFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                countedCashFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = modifier.width(520.dp),
+        modifier = modifier
+            .width(520.dp)
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                when (keyEvent.key) {
+                                    Key.Enter, Key.NumPadEnter -> {
+                                        if (countedCash != null && !isClosing) {
+                                            onConfirmClose(countedCash, notesText.ifBlank { null })
+                                            true
+                                        } else false
+                                    }
+                                    Key.Escape -> {
+                                        if (!isClosing) {
+                                            onDismiss()
+                                            true
+                                        } else false
+                                    }
+                                    else -> false
+                                }
+                            } else false
+                        }
+                } else Modifier
+            ),
         title = {
             Column {
                 Text(
@@ -333,7 +382,9 @@ fun CloseShiftDialog(
                         prefix = { Text("$ ", fontWeight = FontWeight.Bold) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (!isAndroid()) Modifier.focusRequester(countedCashFocusRequester) else Modifier),
                         shape = MaterialTheme.shapes.medium
                     )
 

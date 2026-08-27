@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,19 +16,31 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.apply_changes_button
+import poskmp.shared.generated.resources.apply_changes_button_desktop
 import poskmp.shared.generated.resources.bulk_deactivate_confirmation
 import poskmp.shared.generated.resources.bulk_delete_confirmation
 import poskmp.shared.generated.resources.bulk_favorite_confirmation
@@ -51,6 +64,7 @@ import poskmp.shared.generated.resources.bulk_select_profit_error
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.cost_price
 import poskmp.shared.generated.resources.delete_button
+import poskmp.shared.generated.resources.delete_button_desktop
 import poskmp.shared.generated.resources.new_category
 import poskmp.shared.generated.resources.retail_price
 import poskmp.shared.generated.resources.retail_profit_pct
@@ -116,6 +130,29 @@ fun BulkProductModificationDialog(
     var categoryText by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val firstFocusRequester = remember { FocusRequester() }
+    val confirmButtonFocusRequester = remember { FocusRequester() }
+
+    val hasTextField = when (operation) {
+        BulkProductOperation.CHANGE_PRICES,
+        BulkProductOperation.SET_PROFIT,
+        BulkProductOperation.CHANGE_CATEGORY -> true
+        else -> false
+    }
+
+    LaunchedEffect(operation) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                if (hasTextField) {
+                    firstFocusRequester.requestFocus()
+                } else {
+                    confirmButtonFocusRequester.requestFocus()
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
     val costPriceLabel = stringResource(Res.string.bulk_label_cost_price)
     val retailPriceLabel = stringResource(Res.string.bulk_label_retail_price)
     val wholesalePriceLabel = stringResource(Res.string.bulk_label_wholesale_price)
@@ -177,6 +214,27 @@ fun BulkProductModificationDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.then(
+            if (!isAndroid()) {
+                Modifier
+                    .focusable()
+                    .onPreviewKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    createModification()?.let(onApply)
+                                    true
+                                }
+                                Key.Escape -> {
+                                    onDismiss()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
+            } else Modifier
+        ),
         title = { Text(stringResource(operation.titleRes)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -188,20 +246,33 @@ fun BulkProductModificationDialog(
                 when (operation) {
                     BulkProductOperation.CHANGE_PRICES -> {
                         PriceOption(stringResource(Res.string.cost_price), changeCost, { changeCost = it }, costText, { costText = it })
-                        PriceOption(stringResource(Res.string.retail_price), changeRetail, { changeRetail = it }, retailText, { retailText = it })
+                        PriceOption(
+                            stringResource(Res.string.retail_price),
+                            changeRetail,
+                            { changeRetail = it },
+                            retailText,
+                            { retailText = it },
+                            modifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
+                        )
                         PriceOption(stringResource(Res.string.wholesale_price), changeWholesale, { changeWholesale = it }, wholesaleText, { wholesaleText = it })
                     }
 
                     BulkProductOperation.SET_PROFIT -> {
                         Text(stringResource(Res.string.bulk_profit_cost_requirement))
-                        DecimalInput(stringResource(Res.string.retail_profit_pct), retailProfitText) { retailProfitText = it }
+                        DecimalInput(
+                            stringResource(Res.string.retail_profit_pct),
+                            retailProfitText,
+                            modifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
+                        ) { retailProfitText = it }
                         DecimalInput(stringResource(Res.string.wholesale_profit_pct), wholesaleProfitText) { wholesaleProfitText = it }
                     }
 
                     BulkProductOperation.CHANGE_CATEGORY -> OutlinedTextField(
                         value = categoryText,
                         onValueChange = { categoryText = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier),
                         label = { Text(stringResource(Res.string.new_category)) },
                         singleLine = true
                     )
@@ -220,12 +291,20 @@ fun BulkProductModificationDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
         },
         confirmButton = {
-            Button(onClick = {
-                createModification()?.let(onApply)
-            }) {
+            Button(
+                onClick = {
+                    createModification()?.let(onApply)
+                },
+                modifier = if (!isAndroid() && !hasTextField) Modifier.focusRequester(confirmButtonFocusRequester) else Modifier
+            ) {
                 Text(
-                    if (operation == BulkProductOperation.DELETE) stringResource(Res.string.delete_button)
-                    else stringResource(Res.string.apply_changes_button)
+                    if (isAndroid()) {
+                        if (operation == BulkProductOperation.DELETE) stringResource(Res.string.delete_button)
+                        else stringResource(Res.string.apply_changes_button)
+                    } else {
+                        if (operation == BulkProductOperation.DELETE) stringResource(Res.string.delete_button_desktop)
+                        else stringResource(Res.string.apply_changes_button_desktop)
+                    }
                 )
             }
         }
@@ -233,7 +312,14 @@ fun BulkProductModificationDialog(
 }
 
 @Composable
-private fun PriceOption(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, value: String, onValueChange: (String) -> Unit) {
+private fun PriceOption(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = checked, onCheckedChange = onCheckedChange)
         OutlinedTextField(
@@ -243,7 +329,7 @@ private fun PriceOption(label: String, checked: Boolean, onCheckedChange: (Boole
                     onValueChange(input)
                 }
             },
-            modifier = Modifier.fillMaxWidth().padding(start = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 4.dp).then(modifier),
             prefix = { Text("$") },
             label = { Text(label) },
             enabled = checked,
@@ -254,7 +340,12 @@ private fun PriceOption(label: String, checked: Boolean, onCheckedChange: (Boole
 }
 
 @Composable
-private fun DecimalInput(label: String, value: String, onValueChange: (String) -> Unit) {
+private fun DecimalInput(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onValueChange: (String) -> Unit
+) {
     OutlinedTextField(
         value = value,
         onValueChange = { input ->
@@ -262,7 +353,7 @@ private fun DecimalInput(label: String, value: String, onValueChange: (String) -
                 onValueChange(input)
             }
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(modifier),
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)

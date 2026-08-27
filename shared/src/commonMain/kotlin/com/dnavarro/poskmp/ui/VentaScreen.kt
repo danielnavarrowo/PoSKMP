@@ -193,7 +193,8 @@ data class CartItem(
 fun VentaScreen(
     viewModel: VentaViewModel,
     isCompact: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    refocusTrigger: Int = 0
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -320,8 +321,27 @@ fun VentaScreen(
         }
     }
 
-    LaunchedEffect(showWeightDialogForProduct, showCheckoutDialog, showUnregisteredDialog, showProductDialogFor) {
-        if (showWeightDialogForProduct == null && !showCheckoutDialog && !showUnregisteredDialog && showProductDialogFor == null) {
+    LaunchedEffect(
+        showWeightDialogForProduct,
+        showCheckoutDialog,
+        showUnregisteredDialog,
+        showProductDialogFor,
+        uiState.showCustomerDialog,
+        uiState.lastReceipt
+    ) {
+        if (showWeightDialogForProduct == null &&
+            !showCheckoutDialog &&
+            !showUnregisteredDialog &&
+            showProductDialogFor == null &&
+            !uiState.showCustomerDialog &&
+            uiState.lastReceipt == null
+        ) {
+            reclaimSearchBarFocus()
+        }
+    }
+
+    LaunchedEffect(refocusTrigger) {
+        if (refocusTrigger > 0) {
             reclaimSearchBarFocus()
         }
     }
@@ -466,17 +486,21 @@ fun VentaScreen(
 
             if (shouldIntercept) {
                 if (keyEvent.type == KeyEventType.KeyDown) {
-                    val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                    val currentIndex = if (selectedIndex in cartItems.indices) selectedIndex else cartItems.lastIndex
                     val currentItem = cartItems[currentIndex]
                     when {
                         isUp -> {
                             if (currentIndex > 0) {
                                 selectedIndex = currentIndex - 1
+                            } else {
+                                selectedIndex = 0
                             }
                         }
                         isDown -> {
                             if (currentIndex < cartItems.lastIndex) {
                                 selectedIndex = currentIndex + 1
+                            } else {
+                                selectedIndex = cartItems.lastIndex
                             }
                         }
                         isPlus -> {
@@ -491,7 +515,7 @@ fun VentaScreen(
                         else -> {
                             removeCartItem(currentItem)
                             if (selectedIndex >= cartItems.size) {
-                                selectedIndex = cartItems.size - 1
+                                selectedIndex = (cartItems.size - 1).coerceAtLeast(0)
                             }
                         }
                     }
@@ -519,6 +543,11 @@ fun VentaScreen(
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
                             keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.F1 -> {
+                                    reclaimSearchBarFocus()
+                                    true
+                                }
+
                                 Key.F7 -> {
                                     openUnregisteredDialog()
                                     true

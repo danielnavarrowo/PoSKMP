@@ -12,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -28,6 +30,8 @@ import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 import com.dnavarro.poskmp.util.roundPrice
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.math.roundToLong
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -260,6 +264,17 @@ fun ProductFormDialog(
         }
     }
 
+    val firstNameFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                firstNameFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     fun submitForm() {
         val id = product?.id?.ifEmpty { generateUUID() } ?: generateUUID()
         val finalBarcodes = (formBarcodes + parseBarcodes(barcodeInput)).distinct()
@@ -290,13 +305,25 @@ fun ProductFormDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.onKeyEvent { keyEvent ->
-            keyEvent.type == KeyEventType.KeyDown &&
-                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
-                submitForm()
-                true
-            } else false
-        },
+        modifier = Modifier.then(
+            if (!isAndroid()) {
+                Modifier.onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        val isEnter = keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
+                        val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                        if (isEnter && isCtrlOrMeta) {
+                            if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
+                                submitForm()
+                                true
+                            } else false
+                        } else if (keyEvent.key == Key.Escape) {
+                            onDismiss()
+                            true
+                        } else false
+                    } else false
+                }
+            } else Modifier
+        ),
         shape = ShapeDefaults.cardShape,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
@@ -313,7 +340,13 @@ fun ProductFormDialog(
                 OutlinedTextField(
                     value = formNombre,
                     onValueChange = { formNombre = it },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (!isAndroid()) {
+                                Modifier.focusRequester(firstNameFocusRequester)
+                            } else Modifier
+                        ),
                     label = { Text(stringResource(Res.string.product_name_label), style = MaterialTheme.typography.labelLarge) },
                     singleLine = true
                 )
@@ -684,7 +717,13 @@ fun ProductFormDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = MaterialTheme.shapes.small
             ) {
-                Text(if (isNew) stringResource(Res.string.save_button) else stringResource(Res.string.save_changes_button))
+                Text(
+                    if (isAndroid()) {
+                        if (isNew) stringResource(Res.string.save_button) else stringResource(Res.string.save_changes_button)
+                    } else {
+                        if (isNew) stringResource(Res.string.save_button_desktop) else stringResource(Res.string.save_changes_button_desktop)
+                    }
+                )
             }
         },
         dismissButton = {

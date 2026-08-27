@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.clientes
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,12 +30,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -46,6 +55,9 @@ import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -76,6 +88,17 @@ fun AccountStatementDialog(
 ) {
     var paymentToDelete by remember { mutableStateOf<AccountStatementItem?>(null) }
 
+    val closeFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                closeFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -83,7 +106,14 @@ fun AccountStatementDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .fillMaxHeight(0.88f),
+                .fillMaxHeight(0.88f)
+                .then(
+                    if (!isAndroid()) {
+                        Modifier
+                            .focusRequester(closeFocusRequester)
+                            .focusable()
+                    } else Modifier
+                ),
             shape = ShapeDefaults.cardShape,
             color = MaterialTheme.colorScheme.surfaceContainerLowest
         ) {
@@ -151,7 +181,7 @@ fun AccountStatementDialog(
                                 } else {
                                     stringResource(Res.string.customer_credit_no_limit)
                                 },
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -175,22 +205,22 @@ fun AccountStatementDialog(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Movements List
+                // Statement Items List
                 if (isLoading) {
                     Box(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
                 } else if (statementItems.isEmpty()) {
                     Box(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = stringResource(Res.string.statement_empty),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
@@ -214,8 +244,35 @@ fun AccountStatementDialog(
 
     // Delete Payment Confirmation Dialog
     paymentToDelete?.let { paymentItem ->
+        val deletePaymentFocusRequester = remember { FocusRequester() }
+
+        LaunchedEffect(paymentItem) {
+            if (!isAndroid()) {
+                delay(100.milliseconds)
+                try {
+                    deletePaymentFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+
         AlertDialog(
             onDismissRequest = { paymentToDelete = null },
+            modifier = Modifier.then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    onDeletePayment(paymentItem.id)
+                                    paymentToDelete = null
+                                    true
+                                }
+                                else -> false
+                            }
+                        }
+                } else Modifier
+            ),
             shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
@@ -230,10 +287,12 @@ fun AccountStatementDialog(
                     onClick = {
                         onDeletePayment(paymentItem.id)
                         paymentToDelete = null
-                    }
+                    },
+                    modifier = if (!isAndroid()) Modifier.focusRequester(deletePaymentFocusRequester) else Modifier
                 ) {
                     Text(
-                        stringResource(Res.string.delete_button),
+                        if (isAndroid()) stringResource(Res.string.delete_button)
+                        else "${stringResource(Res.string.delete_button)} (Enter)",
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )

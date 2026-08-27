@@ -1,8 +1,11 @@
 package com.dnavarro.poskmp.ui.clientes
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -10,19 +13,33 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.accept_button
@@ -35,11 +52,6 @@ import poskmp.shared.generated.resources.field_customer_credit_limit
 import poskmp.shared.generated.resources.field_customer_credit_limit_hint
 import poskmp.shared.generated.resources.field_customer_name
 import poskmp.shared.generated.resources.field_customer_notes
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Alignment
 import poskmp.shared.generated.resources.*
 
 @Composable
@@ -64,8 +76,48 @@ fun CustomerFormDialog(
     var hasAttemptedSave by remember { mutableStateOf(false) }
     val isNombreValid = nombre.trim().isNotEmpty()
 
+    val nombreFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                nombreFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun attemptSave() {
+        hasAttemptedSave = true
+        if (isNombreValid) {
+            val limite = limiteCreditoText.toDoubleOrNull() ?: 0.0
+            onSave(customer?.id, nombre, telefono, direccion, notas, limite, siempreMayoreo)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismissRequest,
+        modifier = Modifier.then(
+            if (!isAndroid()) {
+                Modifier
+                    .focusable()
+                    .onPreviewKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    attemptSave()
+                                    true
+                                }
+                                Key.Escape -> {
+                                    onDismissRequest()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
+            } else Modifier
+        ),
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
@@ -92,7 +144,9 @@ fun CustomerFormDialog(
                     } else null,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (!isAndroid()) Modifier.focusRequester(nombreFocusRequester) else Modifier)
                 )
 
                 OutlinedTextField(
@@ -173,15 +227,12 @@ fun CustomerFormDialog(
         },
         confirmButton = {
             Button(
-                onClick = {
-                    hasAttemptedSave = true
-                    if (isNombreValid) {
-                        val limite = limiteCreditoText.toDoubleOrNull() ?: 0.0
-                        onSave(customer?.id, nombre, telefono, direccion, notas, limite, siempreMayoreo)
-                    }
-                }
+                onClick = { attemptSave() }
             ) {
-                Text(stringResource(Res.string.accept_button))
+                Text(
+                    if (isAndroid()) stringResource(Res.string.accept_button)
+                    else "${stringResource(Res.string.accept_button)} (Enter)"
+                )
             }
         },
         dismissButton = {

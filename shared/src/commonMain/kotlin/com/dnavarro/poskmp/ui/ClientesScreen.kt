@@ -62,6 +62,8 @@ import com.dnavarro.poskmp.ui.clientes.CustomerFormDialog
 import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -107,12 +109,14 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 @Composable
 fun ClientesScreen(
     viewModel: ClientesViewModel,
+    refocusTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     ClientesContent(
         state = state,
+        refocusTrigger = refocusTrigger,
         onRefresh = viewModel::refreshSync,
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onOpenCreateCustomer = viewModel::openCreateCustomerDialog,
@@ -139,6 +143,7 @@ fun ClientesScreen(
 @Composable
 fun ClientesContent(
     state: ClientesUiState,
+    refocusTrigger: Int = 0,
     onRefresh: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
     onOpenCreateCustomer: () -> Unit,
@@ -156,13 +161,27 @@ fun ClientesContent(
     onDeleteCustomer: (id: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val desktopFocusRequester = remember { FocusRequester() }
+    val searchBarFocusRequester = remember { FocusRequester() }
+
+    fun reclaimSearchBarFocus() {
+        if (!isAndroid()) {
+            try {
+                searchBarFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
-            try {
-                desktopFocusRequester.requestFocus()
-            } catch (_: Exception) {}
+            delay(100.milliseconds)
+            reclaimSearchBarFocus()
+        }
+    }
+
+    LaunchedEffect(refocusTrigger) {
+        if (refocusTrigger > 0 && !isAndroid()) {
+            delay(100.milliseconds)
+            reclaimSearchBarFocus()
         }
     }
 
@@ -178,9 +197,23 @@ fun ClientesContent(
             state.showDeleteConfirmFor == null &&
             !isAndroid()
         ) {
-            try {
-                desktopFocusRequester.requestFocus()
-            } catch (_: Exception) {}
+            delay(100.milliseconds)
+            reclaimSearchBarFocus()
+        }
+    }
+
+    fun handleKeyNavigation(keyEvent: androidx.compose.ui.input.key.KeyEvent): Boolean {
+        if (keyEvent.type != KeyEventType.KeyDown) return false
+        return when (keyEvent.key) {
+            Key.F5 -> {
+                reclaimSearchBarFocus()
+                true
+            }
+            Key.F10 -> {
+                onOpenCreateCustomer()
+                true
+            }
+            else -> false
         }
     }
 
@@ -190,14 +223,8 @@ fun ClientesContent(
             .then(
                 if (!isAndroid()) {
                     Modifier
-                        .focusRequester(desktopFocusRequester)
                         .focusable()
-                        .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.F10) {
-                                onOpenCreateCustomer()
-                                true
-                            } else false
-                        }
+                        .onPreviewKeyEvent { handleKeyNavigation(it) }
                 } else Modifier
             ),
         topBar = {
@@ -254,7 +281,14 @@ fun ClientesContent(
                     onValueChange = onSearchQueryChange,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 12.dp),
+                        .padding(top = 8.dp, bottom = 12.dp)
+                        .then(
+                            if (!isAndroid()) {
+                                Modifier
+                                    .focusRequester(searchBarFocusRequester)
+                                    .onPreviewKeyEvent { handleKeyNavigation(it) }
+                            } else Modifier
+                        ),
                     placeholder = {
                         Text(
                             stringResource(Res.string.search_customer_placeholder),
@@ -444,8 +478,40 @@ fun ClientesContent(
     }
 
     state.showDeleteConfirmFor?.let { customer ->
+        val deleteConfirmFocusRequester = remember { FocusRequester() }
+
+        LaunchedEffect(customer) {
+            if (!isAndroid()) {
+                delay(100.milliseconds)
+                try {
+                    deleteConfirmFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+
         AlertDialog(
             onDismissRequest = onDismissDeleteConfirm,
+            modifier = Modifier.then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                when (keyEvent.key) {
+                                    Key.Enter, Key.NumPadEnter -> {
+                                        onDeleteCustomer(customer.id)
+                                        true
+                                    }
+                                    Key.Escape -> {
+                                        onDismissDeleteConfirm()
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            } else false
+                        }
+                } else Modifier
+            ),
             shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
@@ -473,10 +539,12 @@ fun ClientesContent(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { onDeleteCustomer(customer.id) }
+                    onClick = { onDeleteCustomer(customer.id) },
+                    modifier = if (!isAndroid()) Modifier.focusRequester(deleteConfirmFocusRequester) else Modifier
                 ) {
                     Text(
-                        stringResource(Res.string.delete_button),
+                        if (isAndroid()) stringResource(Res.string.delete_button)
+                        else "${stringResource(Res.string.delete_button)} (Enter)",
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )

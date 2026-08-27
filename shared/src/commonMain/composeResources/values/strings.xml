@@ -8,7 +8,9 @@
     <string name="back_button">Atrás</string>
     <string name="next_button">Siguiente</string>
     <string name="delete_button">Eliminar</string>
+    <string name="delete_button_desktop">Eliminar (Enter)</string>
     <string name="save_button">Guardar</string>
+    <string name="save_button_desktop">Guardar (Ctrl + Enter)</string>
     <string name="accept_button">Aceptar</string>
     <string name="no_category">Sin categoría</string>
     <string name="clear_desc">Limpiar</string>
@@ -163,6 +165,7 @@
     <string name="bulk_deactivate_confirmation">Los %1$d productos seleccionados quedarán inactivos.</string>
     <string name="bulk_delete_confirmation">¿Confirmas la eliminación definitiva de los %1$d productos seleccionados?</string>
     <string name="apply_changes_button">Aplicar cambios</string>
+    <string name="apply_changes_button_desktop">Aplicar cambios (Enter)</string>
 
     <!-- TicketSection -->
     <string name="back_to_catalog_desc">Volver al catálogo</string>
@@ -210,6 +213,7 @@
     <string name="sell_by_weight_label">Venta p/ Peso</string>
     <string name="mark_as_favorite_label">Marcar como Favorito</string>
     <string name="save_changes_button">Guardar Cambios</string>
+    <string name="save_changes_button_desktop">Guardar Cambios (Ctrl + Enter)</string>
     <string name="error_wholesale_less_than_cost">El precio de mayoreo no puede ser menor que el costo.</string>
     <string name="error_retail_less_than_wholesale">El precio de venta no puede ser menor que el mayoreo.</string>
     <string name="error_retail_less_than_cost">El precio de venta no puede ser menor que el costo.</string>
