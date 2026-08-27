@@ -22,7 +22,7 @@
     <string name="tab_productos">Productos</string>
     <string name="tab_productos_desktop">Productos (F3)</string>
     <string name="tab_ventas_historial">Historial de Ventas</string>
-    <string name="tab_ventas_historial_desktop">Ventas (F4)</string>
+    <string name="tab_ventas_historial_desktop">Ventas y Reportes (F4)</string>
     <string name="nav_clientes_desktop">Clientes (F5)</string>
     <string name="tab_checador">Checador</string>
     <string name="tab_checador_desktop">Checador (F2)</string>

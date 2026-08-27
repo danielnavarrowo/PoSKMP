@@ -109,7 +109,6 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.PaymentMethod
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.venta.CustomerSelectionDialog
-import com.dnavarro.poskmp.ui.venta.ReceiptPreviewDialog
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
@@ -275,6 +274,8 @@ fun VentaScreen(
 
     val coroutineScope = rememberCoroutineScope()
     val searchBarFocusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val scaffoldDirective = remember(adaptiveInfo) {
@@ -287,6 +288,10 @@ fun VentaScreen(
     )
 
     PlatformBackHandler(enabled = navigator.canNavigateBack()) {
+        if (isAndroid()) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
         coroutineScope.launch {
             navigator.navigateBack()
         }
@@ -355,8 +360,6 @@ fun VentaScreen(
 
     // Active products are observed via viewModel.uiState
 
-    val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
     val desktopFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
@@ -734,6 +737,10 @@ fun VentaScreen(
                                 onModifyProduct = { product -> showProductDialogFor = product },
                                 isCompact = isCompact,
                                 onViewCartClick = {
+                                    if (isAndroid()) {
+                                        focusManager.clearFocus(force = true)
+                                        keyboardController?.hide()
+                                    }
                                     coroutineScope.launch {
                                         navigator.navigateTo(ThreePaneScaffoldRole.Secondary)
                                     }
@@ -763,6 +770,13 @@ fun VentaScreen(
                     },
                     supportingPane = {
                         AnimatedPane {
+                            LaunchedEffect(Unit) {
+                                if (isAndroid()) {
+                                    delay(50.milliseconds)
+                                    focusManager.clearFocus(force = true)
+                                    keyboardController?.hide()
+                                }
+                            }
                             TicketSection(
                                 cartItems = cartItems,
                                 total = total,
@@ -778,6 +792,10 @@ fun VentaScreen(
                                 onSelectedIndexChange = { selectedIndex = it },
                                 onBackClick = if (navigator.canNavigateBack()) {
                                     {
+                                        if (isAndroid()) {
+                                            focusManager.clearFocus(force = true)
+                                            keyboardController?.hide()
+                                        }
                                         coroutineScope.launch {
                                             navigator.navigateBack()
                                         }
@@ -1693,18 +1711,6 @@ fun VentaScreen(
             }
         )
     }
-
-    uiState.lastReceipt?.let { receipt ->
-        ReceiptPreviewDialog(
-            receipt = receipt,
-            isPrinting = uiState.isPrintingReceipt,
-            printSuccessful = uiState.receiptPrintSuccessful,
-            printError = uiState.receiptPrintError,
-            onPrint = { viewModel.printLastReceipt() },
-            onDismiss = { viewModel.dismissLastReceipt() }
-        )
-    }
-
     if (uiState.showCustomerDialog) {
         CustomerSelectionDialog(
             customers = uiState.filteredCustomers,

@@ -14,10 +14,12 @@ import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -43,7 +45,7 @@ private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D,
 /**
  * ViewModel for Productos screen, hosting state and handling UI events according to Google UI & Domain Layer architecture.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class ProductosViewModel(
     private val repository: ProductRepository,
     settingsRepository: SettingsRepository,
@@ -56,7 +58,11 @@ class ProductosViewModel(
     private val _searchQuery = MutableStateFlow("")
     private val _displayState = MutableStateFlow(DisplayState())
 
-    private val _productsFlow = _searchQuery.flatMapLatest { query ->
+    private val _debouncedSearchQuery = _searchQuery.debounce { query ->
+        if (query.isEmpty()) 0L else 300L
+    }
+
+    private val _productsFlow = _debouncedSearchQuery.flatMapLatest { query ->
         getProductsUseCase(query = query, activeOnly = false)
     }
 

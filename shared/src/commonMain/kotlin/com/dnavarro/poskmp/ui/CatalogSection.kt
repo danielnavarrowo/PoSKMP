@@ -328,7 +328,13 @@ fun CatalogSection(
                                 .fillMaxWidth()
                                 .height(140.dp)
                                 .combinedClickable(
-                                    onClick = { onProductClick(product) },
+                                    onClick = {
+                                        onProductClick(product)
+                                        if (latestSearchQuery.value.isNotEmpty()) {
+                                            latestSearchQuery.value = ""
+                                            onSearchQueryChange("")
+                                        }
+                                    },
                                     onLongClick = { showContextMenu = true }
                                 )
                                 .pointerInput(product) {

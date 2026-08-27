@@ -7,10 +7,12 @@ import com.dnavarro.poskmp.domain.usecase.GetCustomerAccountStatementUseCase
 import com.dnavarro.poskmp.domain.usecase.GetCustomersUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordCustomerPaymentUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCustomerUseCase
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -18,6 +20,7 @@ import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import kotlinx.coroutines.Dispatchers
 
+@OptIn(FlowPreview::class)
 class ClientesViewModel(
     private val getCustomersUseCase: GetCustomersUseCase,
     private val saveCustomerUseCase: SaveCustomerUseCase,
@@ -29,12 +32,14 @@ class ClientesViewModel(
     private val _searchQuery = MutableStateFlow("")
     private val _internalState = MutableStateFlow(ClientesUiState())
 
-    val uiState: StateFlow<ClientesUiState> = combine(
+    private val _debouncedSearchQuery = _searchQuery.debounce { query ->
+        if (query.isEmpty()) 0L else 300L
+    }
+
+    private val _filteredCustomersFlow = combine(
         getCustomersUseCase(),
-        _searchQuery,
-        _internalState,
-        syncRepository.syncState
-    ) { customerList, query, internal, syncState ->
+        _debouncedSearchQuery
+    ) { customerList, query ->
         val filtered = if (query.isBlank()) {
             customerList
         } else {
@@ -48,6 +53,16 @@ class ClientesViewModel(
 
         val totalDebt = customerList.filter { it.saldoDeudor > 0.0 }.sumOf { it.saldoDeudor }
         val debtorsCount = customerList.count { it.saldoDeudor > 0.0 }.toLong()
+        Triple(customerList, filtered, Pair(totalDebt, debtorsCount))
+    }
+
+    val uiState: StateFlow<ClientesUiState> = combine(
+        _filteredCustomersFlow,
+        _searchQuery,
+        _internalState,
+        syncRepository.syncState
+    ) { (customerList, filtered, debtPair), query, internal, syncState ->
+        val (totalDebt, debtorsCount) = debtPair
         val debtSummary = internal.debtSummary.copy(
             totalClientes = customerList.size.toLong(),
             totalDeudaAcumulada = totalDebt,

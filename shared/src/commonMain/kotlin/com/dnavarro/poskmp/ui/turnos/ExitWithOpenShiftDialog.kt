@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui.turnos
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,14 +19,25 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.ExitProgressStep
 import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -54,9 +66,38 @@ fun ExitWithOpenShiftDialog(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val closeShiftButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                closeShiftButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     AlertDialog(
         onDismissRequest = { if (!isWaitingToExit) onCancel() },
-        modifier = modifier.width(460.dp),
+        modifier = modifier
+            .width(460.dp)
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    if (!isWaitingToExit) {
+                                        onPerformCutAndExit()
+                                        true
+                                    } else false
+                                }
+                                else -> false
+                            }
+                        }
+                } else Modifier
+            ),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -170,9 +211,14 @@ fun ExitWithOpenShiftDialog(
                         onClick = onPerformCutAndExit,
                         enabled = !isWaitingToExit,
                         shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (!isAndroid()) Modifier.focusRequester(closeShiftButtonFocusRequester) else Modifier)
                     ) {
-                        Text(stringResource(Res.string.exit_dialog_close_shift_and_exit_button))
+                        Text(
+                            if (isAndroid()) stringResource(Res.string.exit_dialog_close_shift_and_exit_button)
+                            else "${stringResource(Res.string.exit_dialog_close_shift_and_exit_button)} (Enter)"
+                        )
                     }
 
                     FilledTonalButton(

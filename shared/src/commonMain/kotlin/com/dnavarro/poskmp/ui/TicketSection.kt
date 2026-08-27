@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -53,6 +54,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -69,6 +72,8 @@ import com.dnavarro.poskmp.ui.venta.HeldTicket
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
 import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.*
@@ -97,6 +102,17 @@ fun TicketSection(
     onAssignCustomerClick: () -> Unit = {},
     onClearCustomerClick: () -> Unit = {}
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(Unit) {
+        if (isAndroid()) {
+            delay(50.milliseconds)
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+    }
+
     val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
     var previousSize by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
@@ -516,58 +532,68 @@ private fun TicketItemRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .focusRequester(focusRequester)
-            .onFocusChanged { focusState ->
-                if (focusState.isFocused || focusState.hasFocus) {
-                    onSelectedIndexChange(index)
-                }
-            }
-            .onKeyEvent { keyEvent ->
-                !isTextFieldFocused && keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-                    Key.DirectionUp -> {
-                        if (index > 0) {
-                            focusRequesters[index - 1]?.requestFocus()
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusRequester(focusRequester)
+                        .focusable()
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused || focusState.hasFocus) {
+                                onSelectedIndexChange(index)
+                            }
                         }
-                        true
-                    }
+                        .onKeyEvent { keyEvent ->
+                            !isTextFieldFocused && keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.DirectionUp -> {
+                                    if (index > 0) {
+                                        focusRequesters[index - 1]?.requestFocus()
+                                    }
+                                    true
+                                }
 
-                    Key.DirectionDown -> {
-                        if (index < cartItemsSize - 1) {
-                            focusRequesters[index + 1]?.requestFocus()
+                                Key.DirectionDown -> {
+                                    if (index < cartItemsSize - 1) {
+                                        focusRequesters[index + 1]?.requestFocus()
+                                    }
+                                    true
+                                }
+
+                                Key.Plus, Key.NumPadAdd, Key.Equals -> {
+                                    val increment = if (item.product.por_peso == 1L) 0.1 else 1.0
+                                    onUpdateQuantity(item, increment)
+                                    true
+                                }
+
+                                Key.Minus, Key.NumPadSubtract -> {
+                                    val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
+                                    onUpdateQuantity(item, -decrement)
+                                    true
+                                }
+
+                                Key.Delete -> {
+                                    onRemoveItem(item)
+                                    true
+                                }
+
+                                else -> false
+                            }
                         }
-                        true
+                        .clickable {
+                            focusRequester.requestFocus()
+                            onSelectedIndexChange(index)
+                        }
+                } else {
+                    Modifier.clickable {
+                        onSelectedIndexChange(index)
                     }
-
-                    Key.Plus, Key.NumPadAdd, Key.Equals -> {
-                        val increment = if (item.product.por_peso == 1L) 0.1 else 1.0
-                        onUpdateQuantity(item, increment)
-                        true
-                    }
-
-                    Key.Minus, Key.NumPadSubtract -> {
-                        val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
-                        onUpdateQuantity(item, -decrement)
-                        true
-                    }
-
-                    Key.Delete -> {
-                        onRemoveItem(item)
-                        true
-                    }
-
-                    else -> false
                 }
-            }
-            .clickable {
-                focusRequester.requestFocus()
-                onSelectedIndexChange(index)
-            }
+            )
             .background(
-                if (isRowFocused) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                if (isRowFocused && !isAndroid()) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                 else MaterialTheme.colorScheme.surfaceContainerLow
             )
             .then(
-                if (isRowFocused) {
+                if (isRowFocused && !isAndroid()) {
                     Modifier.border(
                         width = 2.dp,
                         color = MaterialTheme.colorScheme.primary,
@@ -745,7 +771,9 @@ private fun ItemQuantityControls(
                     } else {
                         textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
                     }
-                    focusRequester.requestFocus()
+                    if (!isAndroid()) {
+                        focusRequester.requestFocus()
+                    }
                 }
             ),
             modifier = Modifier
