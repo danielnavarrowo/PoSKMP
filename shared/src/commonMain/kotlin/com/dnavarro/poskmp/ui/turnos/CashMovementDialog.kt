@@ -113,24 +113,16 @@ fun CashMovementDialog(
                     Modifier
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                when (keyEvent.key) {
-                                    Key.Enter, Key.NumPadEnter -> {
-                                        if (isValid && !isLoading) {
-                                            val amount = amountText.toDoubleOrNull() ?: 0.0
-                                            onConfirm(amount, reasonText)
-                                            true
-                                        } else false
-                                    }
-                                    Key.Escape -> {
-                                        if (!isLoading) {
-                                            onDismiss()
-                                            true
-                                        } else false
-                                    }
-                                    else -> false
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    if (isValid && !isLoading) {
+                                        val amount = amountText.toDoubleOrNull() ?: 0.0
+                                        onConfirm(amount, reasonText)
+                                        true
+                                    } else false
                                 }
-                            } else false
+                                else -> false
+                            }
                         }
                 } else Modifier
             ),

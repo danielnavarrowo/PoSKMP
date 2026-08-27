@@ -102,19 +102,13 @@ fun CustomerFormDialog(
                 Modifier
                     .focusable()
                     .onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            when (keyEvent.key) {
-                                Key.Enter, Key.NumPadEnter -> {
-                                    attemptSave()
-                                    true
-                                }
-                                Key.Escape -> {
-                                    onDismissRequest()
-                                    true
-                                }
-                                else -> false
+                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                            Key.Enter, Key.NumPadEnter -> {
+                                attemptSave()
+                                true
                             }
-                        } else false
+                            else -> false
+                        }
                     }
             } else Modifier
         ),

@@ -169,7 +169,7 @@ fun VentasScreen(
 ) {
     LaunchedEffect(state.shiftActionSuccess) {
         if (state.shiftActionSuccess != null) {
-            kotlinx.coroutines.delay(3000.milliseconds)
+            delay(3000.milliseconds)
             onClearShiftActionResult()
         }
     }
@@ -233,29 +233,30 @@ fun VentasScreen(
                         .focusRequester(desktopFocusRequester)
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                when (keyEvent.key) {
-                                    Key.F7 -> {
-                                        if (state.activeShift != null) {
-                                            onOpenInflowDialog()
-                                            true
-                                        } else false
-                                    }
-                                    Key.F8 -> {
-                                        if (state.activeShift != null) {
-                                            onOpenOutflowDialog()
-                                            true
-                                        } else false
-                                    }
-                                    Key.F9 -> {
-                                        if (state.activeShift != null) {
-                                            onOpenCloseShiftDialog()
-                                            true
-                                        } else false
-                                    }
-                                    else -> false
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.F7 -> {
+                                    if (state.activeShift != null) {
+                                        onOpenInflowDialog()
+                                        true
+                                    } else false
                                 }
-                            } else false
+
+                                Key.F8 -> {
+                                    if (state.activeShift != null) {
+                                        onOpenOutflowDialog()
+                                        true
+                                    } else false
+                                }
+
+                                Key.F9 -> {
+                                    if (state.activeShift != null) {
+                                        onOpenCloseShiftDialog()
+                                        true
+                                    } else false
+                                }
+
+                                else -> false
+                            }
                         }
                 } else Modifier
             )
@@ -814,23 +815,15 @@ fun VentasScreen(
                     Modifier
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                when (keyEvent.key) {
-                                    Key.Enter, Key.NumPadEnter -> {
-                                        if (!state.isCancellingSale) {
-                                            onConfirmCancelSale(sale)
-                                            true
-                                        } else false
-                                    }
-                                    Key.Escape -> {
-                                        if (!state.isCancellingSale) {
-                                            onDismissCancelSaleDialog()
-                                            true
-                                        } else false
-                                    }
-                                    else -> false
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    if (!state.isCancellingSale) {
+                                        onConfirmCancelSale(sale)
+                                        true
+                                    } else false
                                 }
-                            } else false
+                                else -> false
+                            }
                         }
                 } else Modifier
             ),
@@ -987,27 +980,21 @@ private fun DateRangePickerDialog(
                 Modifier
                     .focusable()
                     .onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            when (keyEvent.key) {
-                                Key.Enter, Key.NumPadEnter -> {
-                                    val startUtc = startDatePickerState.selectedDateMillis
-                                    val endUtc = endDatePickerState.selectedDateMillis ?: startUtc
-                                    if (startUtc != null && endUtc != null &&
-                                        startUtc <= todayUtcMillis &&
-                                        endUtc <= todayUtcMillis
-                                    ) {
-                                        val (startLocal, endLocal) = convertUtcDatesToLocalMillis(startUtc, endUtc)
-                                        onDateRangeSelected(startLocal, endLocal)
-                                        true
-                                    } else false
-                                }
-                                Key.Escape -> {
-                                    onDismissRequest()
+                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                            Key.Enter, Key.NumPadEnter -> {
+                                val startUtc = startDatePickerState.selectedDateMillis
+                                val endUtc = endDatePickerState.selectedDateMillis ?: startUtc
+                                if (startUtc != null && endUtc != null &&
+                                    startUtc <= todayUtcMillis &&
+                                    endUtc <= todayUtcMillis
+                                ) {
+                                    val (startLocal, endLocal) = convertUtcDatesToLocalMillis(startUtc, endUtc)
+                                    onDateRangeSelected(startLocal, endLocal)
                                     true
-                                }
-                                else -> false
+                                } else false
                             }
-                        } else false
+                            else -> false
+                        }
                     }
             } else Modifier
         ),
@@ -1493,15 +1480,14 @@ private fun SaleDetailDialog(
                 Modifier
                     .focusable()
                     .onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            when (keyEvent.key) {
-                                Key.Enter, Key.NumPadEnter, Key.Escape -> {
-                                    onDismiss()
-                                    true
-                                }
-                                else -> false
+                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                            Key.Enter, Key.NumPadEnter-> {
+                                onDismiss()
+                                true
                             }
-                        } else false
+
+                            else -> false
+                        }
                     }
             } else Modifier
         ),

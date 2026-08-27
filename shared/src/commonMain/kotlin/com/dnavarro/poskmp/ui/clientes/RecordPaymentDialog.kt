@@ -107,21 +107,15 @@ fun RecordPaymentDialog(
                 Modifier
                     .focusable()
                     .onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            when (keyEvent.key) {
-                                Key.Enter, Key.NumPadEnter -> {
-                                    if (isAmountValid) {
-                                        attemptConfirm()
-                                        true
-                                    } else false
-                                }
-                                Key.Escape -> {
-                                    onDismissRequest()
+                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                            Key.Enter, Key.NumPadEnter -> {
+                                if (isAmountValid) {
+                                    attemptConfirm()
                                     true
-                                }
-                                else -> false
+                                } else false
                             }
-                        } else false
+                            else -> false
+                        }
                     }
             } else Modifier
         ),

@@ -118,23 +118,15 @@ fun CloseShiftDialog(
                     Modifier
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                when (keyEvent.key) {
-                                    Key.Enter, Key.NumPadEnter -> {
-                                        if (countedCash != null && !isClosing) {
-                                            onConfirmClose(countedCash, notesText.ifBlank { null })
-                                            true
-                                        } else false
-                                    }
-                                    Key.Escape -> {
-                                        if (!isClosing) {
-                                            onDismiss()
-                                            true
-                                        } else false
-                                    }
-                                    else -> false
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    if (countedCash != null && !isClosing) {
+                                        onConfirmClose(countedCash, notesText.ifBlank { null })
+                                        true
+                                    } else false
                                 }
-                            } else false
+                                else -> false
+                            }
                         }
                 } else Modifier
             ),

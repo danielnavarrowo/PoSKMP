@@ -219,19 +219,14 @@ fun BulkProductModificationDialog(
                 Modifier
                     .focusable()
                     .onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            when (keyEvent.key) {
-                                Key.Enter, Key.NumPadEnter -> {
-                                    createModification()?.let(onApply)
-                                    true
-                                }
-                                Key.Escape -> {
-                                    onDismiss()
-                                    true
-                                }
-                                else -> false
+                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                            Key.Enter, Key.NumPadEnter -> {
+                                createModification()?.let(onApply)
+                                true
                             }
-                        } else false
+
+                            else -> false
+                        }
                     }
             } else Modifier
         ),

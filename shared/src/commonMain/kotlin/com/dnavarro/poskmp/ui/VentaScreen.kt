@@ -490,17 +490,17 @@ fun VentaScreen(
                     val currentItem = cartItems[currentIndex]
                     when {
                         isUp -> {
-                            if (currentIndex > 0) {
-                                selectedIndex = currentIndex - 1
+                            selectedIndex = if (currentIndex > 0) {
+                                currentIndex - 1
                             } else {
-                                selectedIndex = 0
+                                0
                             }
                         }
                         isDown -> {
-                            if (currentIndex < cartItems.lastIndex) {
-                                selectedIndex = currentIndex + 1
+                            selectedIndex = if (currentIndex < cartItems.lastIndex) {
+                                currentIndex + 1
                             } else {
-                                selectedIndex = cartItems.lastIndex
+                                cartItems.lastIndex
                             }
                         }
                         isPlus -> {

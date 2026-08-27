@@ -2,7 +2,6 @@ package com.dnavarro.poskmp.ui.venta
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,38 +108,34 @@ fun CustomerSelectionDialog(
     }
 
     val handleKeyEvent: (KeyEvent) -> Boolean = { keyEvent ->
-        if (keyEvent.type == KeyEventType.KeyDown) {
-            when (keyEvent.key) {
-                Key.DirectionDown -> {
-                    if (highlightedIndex < customers.size) {
-                        highlightedIndex++
-                    }
-                    true
+        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+            Key.DirectionDown -> {
+                if (highlightedIndex < customers.size) {
+                    highlightedIndex++
                 }
-                Key.DirectionUp -> {
-                    if (highlightedIndex > 0) {
-                        highlightedIndex--
-                    }
-                    true
-                }
-                Key.Enter, Key.NumPadEnter -> {
-                    if (highlightedIndex == 0) {
-                        onSelectCustomer(null)
-                    } else {
-                        val customerIndex = highlightedIndex - 1
-                        if (customerIndex in customers.indices) {
-                            onSelectCustomer(customers[customerIndex])
-                        }
-                    }
-                    true
-                }
-                Key.Escape -> {
-                    onDismissRequest()
-                    true
-                }
-                else -> false
+                true
             }
-        } else false
+
+            Key.DirectionUp -> {
+                if (highlightedIndex > 0) {
+                    highlightedIndex--
+                }
+                true
+            }
+
+            Key.Enter, Key.NumPadEnter -> {
+                if (highlightedIndex == 0) {
+                    onSelectCustomer(null)
+                } else {
+                    val customerIndex = highlightedIndex - 1
+                    if (customerIndex in customers.indices) {
+                        onSelectCustomer(customers[customerIndex])
+                    }
+                }
+                true
+            }
+            else -> false
+        }
     }
 
     Dialog(
@@ -344,7 +339,7 @@ fun CustomerSelectionDialog(
                                     else -> MaterialTheme.colorScheme.surfaceContainerLow
                                 },
                                 border = if (isHighlighted) {
-                                    BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                    BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                                 } else null,
                                 modifier = Modifier.fillMaxWidth()
                             ) {

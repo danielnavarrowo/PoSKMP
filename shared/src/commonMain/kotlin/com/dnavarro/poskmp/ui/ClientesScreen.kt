@@ -203,16 +203,17 @@ fun ClientesContent(
     }
 
     fun handleKeyNavigation(keyEvent: androidx.compose.ui.input.key.KeyEvent): Boolean {
-        if (keyEvent.type != KeyEventType.KeyDown) return false
-        return when (keyEvent.key) {
+        return keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
             Key.F5 -> {
                 reclaimSearchBarFocus()
                 true
             }
+
             Key.F10 -> {
                 onOpenCreateCustomer()
                 true
             }
+
             else -> false
         }
     }
@@ -496,19 +497,14 @@ fun ClientesContent(
                     Modifier
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                when (keyEvent.key) {
-                                    Key.Enter, Key.NumPadEnter -> {
-                                        onDeleteCustomer(customer.id)
-                                        true
-                                    }
-                                    Key.Escape -> {
-                                        onDismissDeleteConfirm()
-                                        true
-                                    }
-                                    else -> false
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    onDeleteCustomer(customer.id)
+                                    true
                                 }
-                            } else false
+
+                                else -> false
+                            }
                         }
                 } else Modifier
             ),

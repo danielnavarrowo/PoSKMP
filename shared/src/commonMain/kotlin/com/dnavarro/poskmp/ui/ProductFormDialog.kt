@@ -311,13 +311,8 @@ fun ProductFormDialog(
                     if (keyEvent.type == KeyEventType.KeyDown) {
                         val isEnter = keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
                         val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                        if (isEnter && isCtrlOrMeta) {
-                            if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
-                                submitForm()
-                                true
-                            } else false
-                        } else if (keyEvent.key == Key.Escape) {
-                            onDismiss()
+                        isEnter && isCtrlOrMeta && if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
+                            submitForm()
                             true
                         } else false
                     } else false
