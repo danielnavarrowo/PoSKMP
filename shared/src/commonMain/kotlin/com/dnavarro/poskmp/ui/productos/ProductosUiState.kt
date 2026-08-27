@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.productos
 
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.ui.BulkProductOperation
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
@@ -10,8 +11,12 @@ import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.header_category
 import poskmp.shared.generated.resources.header_codes
 import poskmp.shared.generated.resources.header_cost
+import poskmp.shared.generated.resources.header_last_sale
 import poskmp.shared.generated.resources.header_product_name
+import poskmp.shared.generated.resources.header_retail_margin
 import poskmp.shared.generated.resources.header_retail_price
+import poskmp.shared.generated.resources.header_total_sales
+import poskmp.shared.generated.resources.header_wholesale_margin
 import poskmp.shared.generated.resources.wholesale
 
 enum class ProductTableColumn(
@@ -19,13 +24,25 @@ enum class ProductTableColumn(
     val sortField: ProductSortField,
     val defaultWeight: Float
 ) {
-    CODIGO(Res.string.header_codes, ProductSortField.CODIGO, 0.18f),
+    CODIGO(Res.string.header_codes, ProductSortField.CODIGO, 0.12f),
     NOMBRE(Res.string.header_product_name, ProductSortField.NOMBRE, 0.28f),
-    CATEGORIA(Res.string.header_category, ProductSortField.CATEGORIA, 0.14f),
-    PRECIO(Res.string.header_retail_price, ProductSortField.PRECIO, 0.10f),
-    COSTO(Res.string.header_cost, ProductSortField.COSTO, 0.10f),
-    MAYOREO(Res.string.wholesale, ProductSortField.MAYOREO, 0.10f)
+    CATEGORIA(Res.string.header_category, ProductSortField.CATEGORIA, 0.16f),
+    PRECIO(Res.string.header_retail_price, ProductSortField.PRECIO, 0.12f),
+    COSTO(Res.string.header_cost, ProductSortField.COSTO, 0.12f),
+    MAYOREO(Res.string.wholesale, ProductSortField.MAYOREO, 0.12f),
+    MARGEN_VENTA(Res.string.header_retail_margin, ProductSortField.MARGEN_VENTA, 0.10f),
+    MARGEN_MAYOREO(Res.string.header_wholesale_margin, ProductSortField.MARGEN_MAYOREO, 0.10f),
+    VENTAS_TOTALES(Res.string.header_total_sales, ProductSortField.VENTAS_TOTALES, 0.10f),
+    ULTIMA_VENTA(Res.string.header_last_sale, ProductSortField.ULTIMA_VENTA, 0.14f)
 }
+
+val DEFAULT_PRODUCT_TABLE_COLUMNS: Set<ProductTableColumn> = setOf(
+    ProductTableColumn.NOMBRE,
+    ProductTableColumn.CATEGORIA,
+    ProductTableColumn.PRECIO,
+    ProductTableColumn.COSTO,
+    ProductTableColumn.MAYOREO
+)
 
 enum class FavoriteFilterOption {
     ALL, ONLY_FAVORITES, ONLY_NON_FAVORITES
@@ -41,12 +58,13 @@ enum class StatusFilterOption {
 data class ProductosUiState(
     val searchQuery: String = "",
     val rawProducts: List<Products> = emptyList(),
+    val salesStats: Map<String, ProductSalesStats> = emptyMap(),
     val sortField: ProductSortField = ProductSortField.NOMBRE,
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
     val selectedCategory: String? = null,
     val favoriteFilter: FavoriteFilterOption = FavoriteFilterOption.ALL,
     val statusFilter: StatusFilterOption = StatusFilterOption.ALL,
-    val visibleColumns: Set<ProductTableColumn> = ProductTableColumn.entries.toSet(),
+    val visibleColumns: Set<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMNS,
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet(),
@@ -100,6 +118,26 @@ data class ProductosUiState(
                         ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                         ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
                         ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
+                        ProductSortField.MARGEN_VENTA -> {
+                            val m1 = if (p1.costo > 0.0 && p1.precio > 0.0) ((p1.precio - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                            val m2 = if (p2.costo > 0.0 && p2.precio > 0.0) ((p2.precio - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                            m1.compareTo(m2)
+                        }
+                        ProductSortField.MARGEN_MAYOREO -> {
+                            val m1 = if (p1.costo > 0.0 && p1.precio_mayoreo > 0.0) ((p1.precio_mayoreo - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                            val m2 = if (p2.costo > 0.0 && p2.precio_mayoreo > 0.0) ((p2.precio_mayoreo - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                            m1.compareTo(m2)
+                        }
+                        ProductSortField.VENTAS_TOTALES -> {
+                            val v1 = salesStats[p1.id]?.totalVentas ?: 0.0
+                            val v2 = salesStats[p2.id]?.totalVentas ?: 0.0
+                            v1.compareTo(v2)
+                        }
+                        ProductSortField.ULTIMA_VENTA -> {
+                            val d1 = salesStats[p1.id]?.ultimaVenta ?: 0L
+                            val d2 = salesStats[p2.id]?.ultimaVenta ?: 0L
+                            d1.compareTo(d2)
+                        }
                     }
 
                     if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp

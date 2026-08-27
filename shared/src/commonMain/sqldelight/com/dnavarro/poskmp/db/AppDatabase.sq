@@ -469,6 +469,16 @@ SELECT * FROM sale_items WHERE sale_id = ?;
 selectAllSalesCount:
 SELECT COUNT(id) FROM sales WHERE estado != 'CANCELADA';
 
+selectAllProductSalesStats:
+SELECT 
+    si.product_id,
+    COALESCE(SUM(si.cantidad), 0.0) AS total_unidades_vendidas,
+    MAX(s.created_at) AS ultima_venta
+FROM sale_items si
+INNER JOIN sales s ON si.sale_id = s.id
+WHERE s.estado != 'CANCELADA' AND si.product_id IS NOT NULL
+GROUP BY si.product_id;
+
 -- ============================================
 -- TOMBSTONES / DELETED SYNC RECORDS
 -- ============================================

@@ -6,7 +6,9 @@ import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.Products
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import com.dnavarro.poskmp.domain.model.ProductSalesStats
 
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.matchesBarcode
@@ -17,6 +19,7 @@ interface ProductLocalDataSource {
     fun getAllProducts(): Flow<List<Products>>
     fun getActiveProducts(): Flow<List<Products>>
     fun searchProducts(query: String, activeOnly: Boolean = false): Flow<List<Products>>
+    fun getProductSalesStats(): Flow<Map<String, ProductSalesStats>>
     suspend fun getProductById(id: String): Products?
     suspend fun insertProduct(product: Products)
     suspend fun insertProducts(products: List<Products>)
@@ -42,6 +45,18 @@ class SqlDelightProductDataSource(
 
     override fun getActiveProducts(): Flow<List<Products>> {
         return queries.selectActiveProducts().asFlow().mapToList(Dispatchers.IO)
+    }
+
+    override fun getProductSalesStats(): Flow<Map<String, ProductSalesStats>> {
+        return queries.selectAllProductSalesStats().asFlow().mapToList(Dispatchers.IO).map { list ->
+            list.associate { row ->
+                row.product_id to ProductSalesStats(
+                    productId = row.product_id,
+                    totalVentas = row.total_unidades_vendidas,
+                    ultimaVenta = row.ultima_venta
+                )
+            }
+        }
     }
 
     override fun searchProducts(query: String, activeOnly: Boolean): Flow<List<Products>> {

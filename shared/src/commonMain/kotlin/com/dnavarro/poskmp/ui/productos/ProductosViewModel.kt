@@ -12,7 +12,6 @@ import com.dnavarro.poskmp.ui.BulkProductModification
 import com.dnavarro.poskmp.ui.BulkProductOperation
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
-import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +19,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,12 +37,13 @@ private data class DisplayState(
     val selectedCategory: String? = null,
     val favoriteFilter: FavoriteFilterOption = FavoriteFilterOption.ALL,
     val statusFilter: StatusFilterOption = StatusFilterOption.ALL,
-    val visibleColumns: Set<ProductTableColumn> = ProductTableColumn.entries.toSet(),
+    val visibleColumns: Set<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMNS,
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet()
 )
 
+private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 
 /**
@@ -67,6 +70,21 @@ class ProductosViewModel(
         getProductsUseCase(query = query, activeOnly = false)
     }
 
+    private val _needsSalesStats = _displayState.map { display ->
+        display.visibleColumns.contains(ProductTableColumn.VENTAS_TOTALES) ||
+            display.visibleColumns.contains(ProductTableColumn.ULTIMA_VENTA) ||
+            display.sortField == ProductSortField.VENTAS_TOTALES ||
+            display.sortField == ProductSortField.ULTIMA_VENTA
+    }.distinctUntilChanged()
+
+    private val _salesStatsFlow = _needsSalesStats.flatMapLatest { needed ->
+        if (needed) {
+            repository.getProductSalesStats()
+        } else {
+            flowOf(emptyMap())
+        }
+    }
+
     val uiState: StateFlow<ProductosUiState> = combine(
         combine(
             _searchQuery,
@@ -80,17 +98,19 @@ class ProductosViewModel(
         combine(
             settingsRepository.isRoundingEnabledFlow,
             settingsRepository.roundRetailPriceFlow,
-            settingsRepository.roundWholesalePriceFlow
-        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice ->
-            Triple(isRoundingEnabled, roundRetailPrice, roundWholesalePrice)
+            settingsRepository.roundWholesalePriceFlow,
+            _salesStatsFlow
+        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, salesStats ->
+            Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, salesStats)
         },
         syncRepository.syncState
     ) { (query, products, display, defaultRetailMargin, defaultWholesaleMargin),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice),
+        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, salesStats),
         syncState ->
         ProductosUiState(
             searchQuery = query,
             rawProducts = products,
+            salesStats = salesStats,
             sortField = display.sortField,
             sortOrder = display.sortOrder,
             selectedCategory = display.selectedCategory,
@@ -203,16 +223,7 @@ class ProductosViewModel(
         }
     }
 
-    fun deleteProductSoft(productId: String) {
-        viewModelScope.launch {
-            repository.deleteProductSoft(productId, currentTimeMillis())
-            launch(Dispatchers.IO) {
-                syncRepository.syncAll()
-            }
-        }
-    }
-
-     fun applyBulkModification(modification: BulkProductModification) {
+    fun applyBulkModification(modification: BulkProductModification) {
         viewModelScope.launch {
             applyBulkModificationUseCase(_displayState.value.selectedProductIds, modification)
             _displayState.update {

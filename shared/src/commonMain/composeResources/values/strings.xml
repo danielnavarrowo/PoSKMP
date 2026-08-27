@@ -244,6 +244,10 @@
     <string name="header_category">Categoría</string>
     <string name="header_retail_price">Venta</string>
     <string name="header_cost">Costo</string>
+    <string name="header_retail_margin">% Ganancia</string>
+    <string name="header_wholesale_margin">% Gan. Mayoreo</string>
+    <string name="header_total_sales">Ventas Totales</string>
+    <string name="header_last_sale">Última Venta</string>
     <string name="header_actions">Acciones</string>
     <string name="no_catalog_products">No hay productos registrados en el catálogo.</string>
     <string name="favorite_desc">Favorito</string>

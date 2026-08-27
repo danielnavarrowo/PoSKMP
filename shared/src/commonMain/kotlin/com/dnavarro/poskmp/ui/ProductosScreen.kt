@@ -101,13 +101,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.productos.DEFAULT_PRODUCT_TABLE_COLUMNS
 import com.dnavarro.poskmp.ui.productos.FavoriteFilterOption
 import com.dnavarro.poskmp.ui.productos.ProductTableColumn
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
+import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.formatQuantity
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -150,8 +153,12 @@ import poskmp.shared.generated.resources.filter_status_title
 import poskmp.shared.generated.resources.header_category
 import poskmp.shared.generated.resources.header_codes
 import poskmp.shared.generated.resources.header_cost
+import poskmp.shared.generated.resources.header_last_sale
 import poskmp.shared.generated.resources.header_product_name
+import poskmp.shared.generated.resources.header_retail_margin
 import poskmp.shared.generated.resources.header_retail_price
+import poskmp.shared.generated.resources.header_total_sales
+import poskmp.shared.generated.resources.header_wholesale_margin
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.new_product_button_desktop
@@ -179,7 +186,7 @@ import poskmp.shared.generated.resources.wholesale_display_label
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class ProductSortField {
-    CODIGO, NOMBRE, CATEGORIA, PRECIO, COSTO, MAYOREO
+    CODIGO, NOMBRE, CATEGORIA, PRECIO, COSTO, MAYOREO, MARGEN_VENTA, MARGEN_MAYOREO, VENTAS_TOTALES, ULTIMA_VENTA
 }
 
 enum class ProductSortOrder {
@@ -1251,6 +1258,72 @@ fun ProductosScreen(
                                                                     style = MaterialTheme.typography.bodyMedium
                                                                 )
                                                             }
+                                                            ProductTableColumn.MARGEN_VENTA -> {
+                                                                if (product.costo > 0.0 && product.precio > 0.0) {
+                                                                    val margin = ((product.precio - product.costo) / product.costo) * 100.0
+                                                                    val isBelowDefault = (uiState.defaultRetailMargin > 0.0 && margin < uiState.defaultRetailMargin) || margin < 0.0
+                                                                    Text(
+                                                                        text = "${margin.toString().formatPrice()}%",
+                                                                        modifier = Modifier.weight(weight),
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        color = if (isBelowDefault) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                                                        fontWeight = if (isBelowDefault) FontWeight.Bold else FontWeight.Normal
+                                                                    )
+                                                                } else {
+                                                                    Text(
+                                                                        text = "-",
+                                                                        modifier = Modifier.weight(weight),
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                    )
+                                                                }
+                                                            }
+                                                            ProductTableColumn.MARGEN_MAYOREO -> {
+                                                                if (product.costo > 0.0 && product.precio_mayoreo > 0.0) {
+                                                                    val margin = ((product.precio_mayoreo - product.costo) / product.costo) * 100.0
+                                                                    val isBelowDefault = (uiState.defaultWholesaleMargin > 0.0 && margin < uiState.defaultWholesaleMargin) || margin < 0.0
+                                                                    Text(
+                                                                        text = "${margin.toString().formatPrice()}%",
+                                                                        modifier = Modifier.weight(weight),
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        color = if (isBelowDefault) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                                                        fontWeight = if (isBelowDefault) FontWeight.Bold else FontWeight.Normal
+                                                                    )
+                                                                } else {
+                                                                    Text(
+                                                                        text = "-",
+                                                                        modifier = Modifier.weight(weight),
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                    )
+                                                                }
+                                                            }
+                                                            ProductTableColumn.VENTAS_TOTALES -> {
+                                                                val stats = uiState.salesStats[product.id]
+                                                                val total = stats?.totalVentas ?: 0.0
+                                                                val text = if (total == 0.0) {
+                                                                    "0"
+                                                                } else if (product.por_peso == 1L) {
+                                                                    total.formatQuantity(isWeight = true)
+                                                                } else {
+                                                                    if (total % 1.0 == 0.0) total.toLong().toString() else total.toString().formatPrice()
+                                                                }
+                                                                Text(
+                                                                    text = text,
+                                                                    modifier = Modifier.weight(weight),
+                                                                    style = MaterialTheme.typography.bodyMedium
+                                                                )
+                                                            }
+                                                            ProductTableColumn.ULTIMA_VENTA -> {
+                                                                val stats = uiState.salesStats[product.id]
+                                                                val text = stats?.ultimaVenta?.let { formatEpochMillisToDateTime(it) } ?: "-"
+                                                                Text(
+                                                                    text = text,
+                                                                    modifier = Modifier.weight(weight),
+                                                                    style = MaterialTheme.typography.bodyMedium,
+                                                                    color = if (stats?.ultimaVenta != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -1342,7 +1415,7 @@ fun ProductFilterAndSortBottomSheet(
     favoriteFilter: FavoriteFilterOption,
     statusFilter: StatusFilterOption,
     availableCategories: List<String>,
-    visibleColumns: Set<ProductTableColumn> = ProductTableColumn.entries.toSet(),
+    visibleColumns: Set<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMNS,
     onToggleColumn: (ProductTableColumn) -> Unit = {},
     onSortFieldSelected: (ProductSortField) -> Unit,
     onSortOrderSelected: (ProductSortOrder) -> Unit,
@@ -1433,7 +1506,11 @@ fun ProductFilterAndSortBottomSheet(
                                 ProductSortField.CATEGORIA to stringResource(Res.string.header_category),
                                 ProductSortField.PRECIO to stringResource(Res.string.header_retail_price),
                                 ProductSortField.COSTO to stringResource(Res.string.header_cost),
-                                ProductSortField.MAYOREO to stringResource(Res.string.wholesale)
+                                ProductSortField.MAYOREO to stringResource(Res.string.wholesale),
+                                ProductSortField.MARGEN_VENTA to stringResource(Res.string.header_retail_margin),
+                                ProductSortField.MARGEN_MAYOREO to stringResource(Res.string.header_wholesale_margin),
+                                ProductSortField.VENTAS_TOTALES to stringResource(Res.string.header_total_sales),
+                                ProductSortField.ULTIMA_VENTA to stringResource(Res.string.header_last_sale)
                             )
                             options.forEach { (field, label) ->
                                 FilterChip(

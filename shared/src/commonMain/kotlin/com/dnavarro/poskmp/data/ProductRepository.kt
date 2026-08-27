@@ -2,6 +2,7 @@ package com.dnavarro.poskmp.data
 
 import com.dnavarro.poskmp.data.source.local.ProductLocalDataSource
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -12,6 +13,7 @@ interface ProductRepository {
     fun getAllProducts(): Flow<List<Products>>
     fun getActiveProducts(): Flow<List<Products>>
     fun searchProducts(query: String, activeOnly: Boolean = false): Flow<List<Products>>
+    fun getProductSalesStats(): Flow<Map<String, ProductSalesStats>>
     suspend fun getProductById(id: String): Products?
     suspend fun insertProduct(product: Products)
     suspend fun insertProducts(products: List<Products>)
@@ -39,6 +41,9 @@ class ProductRepositoryImpl(
 
     override fun searchProducts(query: String, activeOnly: Boolean): Flow<List<Products>> =
         localDataSource.searchProducts(query, activeOnly)
+
+    override fun getProductSalesStats(): Flow<Map<String, ProductSalesStats>> =
+        localDataSource.getProductSalesStats()
 
     override suspend fun getProductById(id: String): Products? = localDataSource.getProductById(id)
 
