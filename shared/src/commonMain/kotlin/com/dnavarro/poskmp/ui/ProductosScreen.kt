@@ -84,6 +84,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -279,6 +280,7 @@ fun ProductosScreen(
     val fabContainerColor = MaterialTheme.colorScheme.tertiary
 
     var selectedProductIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
+    var selectionAnchorIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
     val searchBarFocusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -356,10 +358,22 @@ fun ProductosScreen(
 
             Key.DirectionDown -> {
                 if (sortedProducts.isNotEmpty()) {
+                    val prevIndex = selectedProductIndex
                     if (selectedProductIndex < sortedProducts.lastIndex) {
                         selectedProductIndex++
                     } else {
                         selectedProductIndex = sortedProducts.lastIndex
+                    }
+                    if (keyEvent.isShiftPressed) {
+                        if (selectionAnchorIndex == -1) {
+                            selectionAnchorIndex = if (prevIndex in sortedProducts.indices) prevIndex else 0
+                        }
+                        val start = minOf(selectionAnchorIndex, selectedProductIndex)
+                        val end = maxOf(selectionAnchorIndex, selectedProductIndex)
+                        val rangeIds = sortedProducts.subList(start, end + 1).map { it.id }.toSet()
+                        viewModel.onSetSelectedProductIds(rangeIds)
+                    } else {
+                        selectionAnchorIndex = selectedProductIndex
                     }
                     true
                 } else false
@@ -367,11 +381,32 @@ fun ProductosScreen(
 
             Key.DirectionUp -> {
                 if (sortedProducts.isNotEmpty()) {
+                    val prevIndex = selectedProductIndex
                     if (selectedProductIndex > 0) {
                         selectedProductIndex--
                     } else {
                         selectedProductIndex = 0
                     }
+                    if (keyEvent.isShiftPressed) {
+                        if (selectionAnchorIndex == -1) {
+                            selectionAnchorIndex = if (prevIndex in sortedProducts.indices) prevIndex else 0
+                        }
+                        val start = minOf(selectionAnchorIndex, selectedProductIndex)
+                        val end = maxOf(selectionAnchorIndex, selectedProductIndex)
+                        val rangeIds = sortedProducts.subList(start, end + 1).map { it.id }.toSet()
+                        viewModel.onSetSelectedProductIds(rangeIds)
+                    } else {
+                        selectionAnchorIndex = selectedProductIndex
+                    }
+                    true
+                } else false
+            }
+
+            Key.Spacebar -> {
+                if (selectedProductIndex in sortedProducts.indices) {
+                    val product = sortedProducts[selectedProductIndex]
+                    viewModel.onToggleSelectProduct(product.id)
+                    selectionAnchorIndex = selectedProductIndex
                     true
                 } else false
             }
@@ -787,6 +822,7 @@ fun ProductosScreen(
                                             onValueChange = {
                                                 viewModel.onSearchQueryChanged(it)
                                                 selectedProductIndex = -1
+                                                selectionAnchorIndex = -1
                                             },
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -1147,6 +1183,7 @@ fun ProductosScreen(
                                                         )
                                                         .clickable {
                                                             selectedProductIndex = index
+                                                            selectionAnchorIndex = index
                                                             viewModel.onShowProductDialog(product)
                                                         }
                                                         .padding(
@@ -1158,6 +1195,8 @@ fun ProductosScreen(
                                                     Checkbox(
                                                         checked = product.id in selectedProductIds,
                                                         onCheckedChange = {
+                                                            selectedProductIndex = index
+                                                            selectionAnchorIndex = index
                                                             viewModel.onToggleSelectProduct(
                                                                 product.id
                                                             )

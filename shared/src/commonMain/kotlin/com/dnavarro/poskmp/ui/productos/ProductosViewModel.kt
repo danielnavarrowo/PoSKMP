@@ -200,6 +200,12 @@ class ProductosViewModel(
         }
     }
 
+    fun onSetSelectedProductIds(productIds: Set<String>) {
+        _displayState.update { state ->
+            state.copy(selectedProductIds = productIds)
+        }
+    }
+
     fun onSelectAllProducts(productIds: List<String>) {
         _displayState.update { state ->
             if (productIds.isEmpty()) return@update state
