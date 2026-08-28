@@ -82,6 +82,8 @@ interface SettingsRepository {
         storeName: String = "",
         storeAddress: String = "",
         storePhone: String = "",
+        transferClabe: String = "",
+        transferBeneficiary: String = "",
         receiptFooter: String = "",
         updatedAt: Long
     )
@@ -131,6 +133,8 @@ class SettingsRepositoryImpl(
         val STORE_NAME = stringPreferencesKey("store_name")
         val STORE_ADDRESS = stringPreferencesKey("store_address")
         val STORE_PHONE = stringPreferencesKey("store_phone")
+        val TRANSFER_CLABE = stringPreferencesKey("transfer_clabe")
+        val TRANSFER_BENEFICIARY = stringPreferencesKey("transfer_beneficiary")
         val PAPER_WIDTH_MM = intPreferencesKey("paper_width_mm")
         val PRINTER_TYPE = stringPreferencesKey("printer_type")
         val PRINTER_ID = stringPreferencesKey("printer_id")
@@ -256,9 +260,11 @@ class SettingsRepositoryImpl(
         combine(
             dataStore.data.map { it[PreferenceKeys.STORE_NAME] ?: "" },
             dataStore.data.map { it[PreferenceKeys.STORE_ADDRESS] ?: "" },
-            dataStore.data.map { it[PreferenceKeys.STORE_PHONE] ?: "" }
-        ) { storeName, storeAddress, storePhone ->
-            Triple(storeName, storeAddress, storePhone)
+            dataStore.data.map { it[PreferenceKeys.STORE_PHONE] ?: "" },
+            dataStore.data.map { it[PreferenceKeys.TRANSFER_CLABE] ?: "" },
+            dataStore.data.map { it[PreferenceKeys.TRANSFER_BENEFICIARY] ?: "" }
+        ) { storeName, storeAddress, storePhone, transferClabe, transferBeneficiary ->
+            listOf(storeName, storeAddress, storePhone, transferClabe, transferBeneficiary)
         },
         combine(
             dataStore.data.map {
@@ -280,11 +286,13 @@ class SettingsRepositoryImpl(
             )
         },
         dataStore.data.map { it[PreferenceKeys.PRINTER_ID] }
-    ) { (storeName, storeAddress, storePhone), printerSettings, printerId ->
+    ) { storeInfoList, printerSettings, printerId ->
         printerSettings.copy(
-            storeName = storeName,
-            storeAddress = storeAddress,
-            storePhone = storePhone,
+            storeName = storeInfoList[0],
+            storeAddress = storeInfoList[1],
+            storePhone = storeInfoList[2],
+            transferClabe = storeInfoList[3],
+            transferBeneficiary = storeInfoList[4],
             printerId = printerId
         )
     }
@@ -403,6 +411,8 @@ class SettingsRepositoryImpl(
         storeName: String,
         storeAddress: String,
         storePhone: String,
+        transferClabe: String,
+        transferBeneficiary: String,
         receiptFooter: String,
         updatedAt: Long
     ) {
@@ -417,6 +427,8 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.STORE_NAME] = storeName
             preferences[PreferenceKeys.STORE_ADDRESS] = storeAddress
             preferences[PreferenceKeys.STORE_PHONE] = storePhone
+            preferences[PreferenceKeys.TRANSFER_CLABE] = transferClabe
+            preferences[PreferenceKeys.TRANSFER_BENEFICIARY] = transferBeneficiary
             preferences[PreferenceKeys.RECEIPT_FOOTER] = receiptFooter
             preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = updatedAt
         }
@@ -474,6 +486,8 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.STORE_NAME] = settings.storeName
             preferences[PreferenceKeys.STORE_ADDRESS] = settings.storeAddress
             preferences[PreferenceKeys.STORE_PHONE] = settings.storePhone
+            preferences[PreferenceKeys.TRANSFER_CLABE] = settings.transferClabe
+            preferences[PreferenceKeys.TRANSFER_BENEFICIARY] = settings.transferBeneficiary
             preferences[PreferenceKeys.PAPER_WIDTH_MM] = settings.paperWidthMm.coerceIn(MIN_PAPER_WIDTH_MM, MAX_PAPER_WIDTH_MM)
             preferences[PreferenceKeys.PRINTER_TYPE] = settings.printerType.name
             settings.printerId?.trim()?.takeIf { it.isNotEmpty() }?.let {

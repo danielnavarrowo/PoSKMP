@@ -489,6 +489,7 @@ fun ClientesContent(
         RecordPaymentDialog(
             customer = customer,
             onDismissRequest = onDismissRecordPayment,
+            receiptSettings = state.receiptSettings,
             onConfirm = { monto, metodoPago, notas ->
                 onRecordPayment(customer.id, monto, metodoPago, notas)
             }

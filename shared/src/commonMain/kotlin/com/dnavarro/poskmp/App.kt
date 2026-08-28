@@ -62,6 +62,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -455,9 +456,9 @@ fun App(
                     val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(appMaxWidth) else NavigationSuiteType.None
 
                     val focusRequester = remember { FocusRequester() }
-                    var ventaRefocusTrigger by remember { mutableStateOf(0) }
-                    var productosRefocusTrigger by remember { mutableStateOf(0) }
-                    var clientesRefocusTrigger by remember { mutableStateOf(0) }
+                    var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
+                    var productosRefocusTrigger by remember { mutableIntStateOf(0) }
+                    var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
                     LaunchedEffect(currentScreen, isChecadorDialog) {
                         if (currentScreen == Screen.CHECADOR && isChecadorDialog) {
                             showPriceCheckerDialog = true
@@ -673,9 +674,9 @@ fun App(
                                                 ) {
                                                     Text(
                                                         text = currentDateTimeText,
-                                                        style = MaterialTheme.typography.labelLarge,
+                                                        style = MaterialTheme.typography.bodyMedium,
                                                         textAlign = TextAlign.Center,
-                                                        fontWeight = FontWeight.Medium,
+                                                        fontWeight = FontWeight.Bold,
                                                     )
                                                 }
                                             }

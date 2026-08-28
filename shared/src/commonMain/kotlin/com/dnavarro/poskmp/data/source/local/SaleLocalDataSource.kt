@@ -18,6 +18,7 @@ interface SaleLocalDataSource {
     suspend fun recordSale(sale: Sales, items: List<Sale_items>): Long
     suspend fun getNextFolio(): Long
     suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long, shiftId: String? = null): SalesSummary
+    suspend fun getSoldProductsBetween(startTime: Long, endTime: Long, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getRecentSales(limit: Long, offset: Long): List<Sales>
@@ -101,6 +102,26 @@ class SqlDelightSaleDataSource(
             totalTicketCount = result.total_ticket_count,
             promedioTicket = result.promedio_ticket
         )
+    }
+
+    override suspend fun getSoldProductsBetween(
+        startTime: Long,
+        endTime: Long,
+        shiftId: String?
+    ): List<ProductSalesMetric> = withContext(Dispatchers.IO) {
+        queries.selectSoldProductsBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsList().map { row ->
+            ProductSalesMetric(
+                productId = row.product_id,
+                productNombre = row.product_nombre,
+                totalUnidades = row.total_unidades ?: 0.0,
+                totalRecaudado = row.total_recaudado ?: 0.0,
+                gananciaGenerada = row.ganancia_generada ?: 0.0
+            )
+        }
     }
 
     override suspend fun getTopSellingProductsBetween(

@@ -14,6 +14,10 @@ class GetSalesSummaryUseCase(
         return saleRepository.getSalesSummaryBetween(startTime, endTime, shiftId)
     }
 
+    suspend fun getSoldProducts(startTime: Long, endTime: Long, shiftId: String? = null): List<ProductSalesMetric> {
+        return saleRepository.getSoldProductsBetween(startTime, endTime, shiftId)
+    }
+
     suspend fun getTopSellers(startTime: Long, endTime: Long, limit: Long = 10, shiftId: String? = null): List<ProductSalesMetric> {
         return saleRepository.getTopSellingProductsBetween(startTime, endTime, limit, shiftId)
     }

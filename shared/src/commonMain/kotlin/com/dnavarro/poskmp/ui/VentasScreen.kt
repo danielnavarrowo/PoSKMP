@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -60,11 +62,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -695,79 +700,22 @@ fun VentasScreen(
                     }
                 }
 
-                // Products Performance Tables (Top & Least Sold)
+                // Sold Products Table
                 item {
-                    if (isCompact) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            TopSellersCard(
-                                topSellers = state.topSellers,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            LeastSellersCard(
-                                leastSellers = state.leastSellers,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            TopSellersCard(
-                                topSellers = state.topSellers,
-                                modifier = Modifier.weight(1f)
-                            )
-                            LeastSellersCard(
-                                leastSellers = state.leastSellers,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-
-                // Recent Ticket History List Header
-                item {
-                    Text(
-                        stringResource(Res.string.title_recent_sales_history),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(top = 8.dp)
+                    SoldProductsCard(
+                        soldProducts = state.soldProducts,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                if (state.recentSales.isEmpty()) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    stringResource(Res.string.empty_recent_sales_history),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    items(state.recentSales, key = { it.id }) { sale ->
-                        SaleTicketCard(
-                            sale = sale,
-                            onClick = { onSelectSaleForDetail(sale) },
-                            onCancelSale = { onOpenCancelSaleDialog(sale) }
-                        )
-                    }
+                // Recent Ticket History List Card (Fixed Height)
+                item {
+                    RecentSalesCard(
+                        sales = state.recentSales,
+                        onSelectSale = { onSelectSaleForDetail(it) },
+                        onCancelSale = { onOpenCancelSaleDialog(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -1174,34 +1122,171 @@ private fun formatShiftDisplay(shift: CashierShift): String {
 }
 
 @Composable
-private fun TopSellersCard(
-    topSellers: List<ProductSalesMetric>,
+private fun SoldProductsCard(
+    soldProducts: List<ProductSalesMetric>,
     modifier: Modifier = Modifier
 ) {
+    var isAscending by rememberSaveable { mutableStateOf(false) }
+
+    val sortedProducts = remember(soldProducts, isAscending) {
+        if (isAscending) {
+            soldProducts.sortedBy { it.totalUnidades }
+        } else {
+            soldProducts.sortedByDescending { it.totalUnidades }
+        }
+    }
+
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         shape = MaterialTheme.shapes.medium
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                stringResource(Res.string.title_top_sellers),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            if (topSellers.isEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    stringResource(Res.string.empty_period_sales),
+                    text = stringResource(Res.string.title_sold_products),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (soldProducts.isNotEmpty()) {
+                    val totalPieces = soldProducts.sumOf { it.totalUnidades }
+                    val piecesFormatted = if (totalPieces % 1.0 == 0.0) {
+                        totalPieces.toLong().toString()
+                    } else {
+                        totalPieces.toString().formatPrice()
+                    }
+                    Text(
+                        text = "$piecesFormatted piezas en total",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (sortedProducts.isEmpty()) {
+                Text(
+                    stringResource(Res.string.empty_sold_products),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                topSellers.take(5).forEachIndexed { index, metric ->
-                    ProductMetricRow(metric)
-                    if (index < topSellers.take(5).lastIndex) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                // Table Header (Clickable to toggle sort order)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .clickable { isAscending = !isAscending }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.header_product_name),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(0.50f)
+                    )
+                    Text(
+                        text = stringResource(Res.string.header_price),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(0.25f),
+                        textAlign = TextAlign.End
+                    )
+                    Row(
+                        modifier = Modifier.weight(0.25f),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.header_sold_pieces),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.End
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            painter = painterResource(Res.drawable.arrow_up),
+                            contentDescription = if (isAscending) "Menor a mayor" else "Mayor a menor",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(14.dp)
+                                .graphicsLayer {
+                                    rotationZ = if (isAscending) 0f else 180f
+                                }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Table Rows inside fixed-height LazyColumn
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(500.dp)
+                ) {
+                    itemsIndexed(sortedProducts, key = { _, item -> item.productId ?: item.productNombre }) { index, metric ->
+                        val unitPrice = if (metric.totalUnidades > 0) metric.totalRecaudado / metric.totalUnidades else 0.0
+                        val qtyFormatted = if (metric.totalUnidades % 1.0 == 0.0) {
+                            metric.totalUnidades.toLong().toString()
+                        } else {
+                            metric.totalUnidades.toString().formatPrice()
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = metric.productNombre,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(0.50f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "$${unitPrice.toString().formatPrice()}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(0.25f),
+                                textAlign = TextAlign.End,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = qtyFormatted,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(0.25f),
+                                textAlign = TextAlign.End,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        if (index < sortedProducts.lastIndex) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1210,8 +1295,10 @@ private fun TopSellersCard(
 }
 
 @Composable
-private fun LeastSellersCard(
-    leastSellers: List<ProductSalesMetric>,
+private fun RecentSalesCard(
+    sales: List<Sale>,
+    onSelectSale: (Sale) -> Unit,
+    onCancelSale: (Sale) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1220,24 +1307,48 @@ private fun LeastSellersCard(
         shape = MaterialTheme.shapes.medium
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                stringResource(Res.string.title_least_sellers),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            if (leastSellers.isEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    stringResource(Res.string.empty_period_sales),
+                    text = stringResource(Res.string.title_recent_sales_history),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (sales.isNotEmpty()) {
+                    Text(
+                        text = "${sales.size} tickets",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (sales.isEmpty()) {
+                Text(
+                    stringResource(Res.string.empty_recent_sales_history),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                leastSellers.take(5).forEachIndexed { index, metric ->
-                    ProductMetricRow(metric)
-                    if (index < leastSellers.take(5).lastIndex) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(500.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(sales, key = { it.id }) { sale ->
+                        SaleTicketCard(
+                            sale = sale,
+                            onClick = { onSelectSale(sale) },
+                            onCancelSale = { onCancelSale(sale) }
+                        )
                     }
                 }
             }
@@ -1288,45 +1399,6 @@ private fun KpiCard(
 }
 
 @Composable
-private fun ProductMetricRow(metric: ProductSalesMetric) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = metric.productNombre,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = stringResource(Res.string.units_sold_count, metric.totalUnidades.toString().formatPrice()),
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = "$${metric.totalRecaudado.toString().formatPrice()}",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = stringResource(Res.string.ticket_profit_label, metric.gananciaGenerada.toString().formatPrice()),
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
 private fun SaleTicketCard(
     sale: Sale,
     onClick: () -> Unit,
@@ -1339,7 +1411,7 @@ private fun SaleTicketCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (isCancelled) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (isCancelled) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         shape = MaterialTheme.shapes.medium
     ) {

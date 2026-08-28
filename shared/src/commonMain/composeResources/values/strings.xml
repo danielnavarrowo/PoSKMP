@@ -384,6 +384,9 @@
     <string name="kpi_average_ticket">Prom: $%1$s</string>
     <string name="title_top_sellers">Productos Más Vendidos</string>
     <string name="title_least_sellers">Productos Menos Vendidos</string>
+    <string name="title_sold_products">Productos Vendidos</string>
+    <string name="empty_sold_products">No hay productos vendidos en este período.</string>
+    <string name="header_sold_pieces">Piezas Vendidas</string>
     <string name="title_payment_methods">Ventas por Método de Pago</string>
     <string name="title_category_sales">Ventas por Categoría</string>
     <string name="empty_period_sales">No hay ventas registradas en este período.</string>
@@ -579,6 +582,16 @@
     <string name="store_name_label">Nombre de la tienda</string>
     <string name="store_address_label">Dirección</string>
     <string name="store_phone_label">Número de teléfono</string>
+
+    <!-- Transfer Settings -->
+    <string name="transfer_settings_section_title">Datos para Transferencias</string>
+    <string name="transfer_settings_section_subtitle">Configura la CLABE interbancaria y el beneficiario para cobros por transferencia.</string>
+    <string name="transfer_clabe_label">CLABE interbancaria / Tarjeta</string>
+    <string name="transfer_beneficiary_label">Nombre del beneficiario</string>
+    <string name="transfer_clabe_placeholder">1234 5678 9012 3456</string>
+    <string name="transfer_beneficiary_placeholder">Ej. Juan Pérez</string>
+    <string name="transfer_info_title">Datos para Transferencia</string>
+    <string name="transfer_no_data_configured">No se han configurado los datos de transferencia en Ajustes.</string>
     <string name="printer_section_title">Impresora y diseño del ticket</string>
     <string name="printer_section_subtitle">Configura el formato del papel y la apariencia de los tickets impresos.</string>
     <string name="printer_selection_label">Impresora</string>

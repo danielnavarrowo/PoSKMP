@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,8 @@ class ClientesViewModel(
     private val saveCustomerUseCase: SaveCustomerUseCase,
     private val recordCustomerPaymentUseCase: RecordCustomerPaymentUseCase,
     private val getCustomerAccountStatementUseCase: GetCustomerAccountStatementUseCase,
-    private val syncRepository: SyncRepository
+    private val syncRepository: SyncRepository,
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -56,12 +58,20 @@ class ClientesViewModel(
         Triple(customerList, filtered, Pair(totalDebt, debtorsCount))
     }
 
-    val uiState: StateFlow<ClientesUiState> = combine(
+    private val _baseFlow = combine(
         _filteredCustomersFlow,
         _searchQuery,
-        _internalState,
-        syncRepository.syncState
-    ) { (customerList, filtered, debtPair), query, internal, syncState ->
+        _internalState
+    ) { filteredData, query, internal ->
+        Triple(filteredData, query, internal)
+    }
+
+    val uiState: StateFlow<ClientesUiState> = combine(
+        _baseFlow,
+        syncRepository.syncState,
+        settingsRepository.receiptSettingsFlow
+    ) { (filteredData, query, internal), syncState, receiptSettings ->
+        val (customerList, filtered, debtPair) = filteredData
         val (totalDebt, debtorsCount) = debtPair
         val debtSummary = internal.debtSummary.copy(
             totalClientes = customerList.size.toLong(),
@@ -74,7 +84,8 @@ class ClientesViewModel(
             filteredClientes = filtered,
             searchQuery = query,
             debtSummary = debtSummary,
-            isSyncing = syncState == SyncStateEnum.SYNCING
+            isSyncing = syncState == SyncStateEnum.SYNCING,
+            receiptSettings = receiptSettings
         )
     }.stateIn(
         scope = viewModelScope,

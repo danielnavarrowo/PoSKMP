@@ -43,6 +43,7 @@ data class VentasUiState(
     val selectedShiftId: String? = null,
     val isLoading: Boolean = false,
     val summary: SalesSummary = SalesSummary(0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0.0),
+    val soldProducts: List<ProductSalesMetric> = emptyList(),
     val topSellers: List<ProductSalesMetric> = emptyList(),
     val leastSellers: List<ProductSalesMetric> = emptyList(),
     val paymentMethodMetrics: List<PaymentMethodMetric> = emptyList(),
@@ -350,6 +351,7 @@ class VentasViewModel(
             }
 
             val summary = getSalesSummaryUseCase.getSummary(startTime, endTime, effectiveShiftId)
+            val soldProducts = getSalesSummaryUseCase.getSoldProducts(startTime, endTime, shiftId = effectiveShiftId)
             val topSellers = getSalesSummaryUseCase.getTopSellers(startTime, endTime, limit = 10, shiftId = effectiveShiftId)
             val leastSellers = getSalesSummaryUseCase.getLeastSellers(startTime, endTime, limit = 10, shiftId = effectiveShiftId)
             val paymentMethodMetrics = getSalesSummaryUseCase.getPaymentMethodMetrics(startTime, endTime, summary.totalVentas, shiftId = effectiveShiftId)
@@ -363,6 +365,7 @@ class VentasViewModel(
                     shiftsForSelectedPeriod = shifts,
                     selectedShiftId = effectiveShiftId,
                     summary = summary,
+                    soldProducts = soldProducts,
                     topSellers = topSellers,
                     leastSellers = leastSellers,
                     paymentMethodMetrics = paymentMethodMetrics,

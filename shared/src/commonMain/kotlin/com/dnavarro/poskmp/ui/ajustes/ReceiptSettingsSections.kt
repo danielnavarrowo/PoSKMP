@@ -62,6 +62,12 @@ import poskmp.shared.generated.resources.store_info_section_subtitle
 import poskmp.shared.generated.resources.store_info_section_title
 import poskmp.shared.generated.resources.store_name_label
 import poskmp.shared.generated.resources.store_phone_label
+import poskmp.shared.generated.resources.transfer_settings_section_title
+import poskmp.shared.generated.resources.transfer_settings_section_subtitle
+import poskmp.shared.generated.resources.transfer_clabe_label
+import poskmp.shared.generated.resources.transfer_beneficiary_label
+import poskmp.shared.generated.resources.transfer_clabe_placeholder
+import poskmp.shared.generated.resources.transfer_beneficiary_placeholder
 
 @Composable
 fun StoreInfoSettingsSection(
@@ -168,6 +174,106 @@ fun StoreInfoSettingsSection(
                                     storeName = storeName,
                                     storeAddress = storeAddress,
                                     storePhone = storePhone
+                                )
+                            )
+                        }
+                    }
+            )
+        }
+    }
+}
+
+@Composable
+fun TransferSettingsSection(
+    settings: ReceiptSettings,
+    onSettingsChange: (ReceiptSettings) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var transferClabe by remember { mutableStateOf(settings.transferClabe) }
+    var transferBeneficiary by remember { mutableStateOf(settings.transferBeneficiary) }
+    var clabeFocused by remember { mutableStateOf(false) }
+    var beneficiaryFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(settings.transferClabe) {
+        if (!clabeFocused && settings.transferClabe != transferClabe) transferClabe = settings.transferClabe
+    }
+    LaunchedEffect(settings.transferBeneficiary) {
+        if (!beneficiaryFocused && settings.transferBeneficiary != transferBeneficiary) transferBeneficiary = settings.transferBeneficiary
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer),
+        shape = androidx.compose.material3.MaterialTheme.shapes.medium
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(Res.string.transfer_settings_section_title),
+                    fontWeight = FontWeight.Bold,
+                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+                )
+                SyncedSettingBadge()
+            }
+            Text(
+                text = stringResource(Res.string.transfer_settings_section_subtitle),
+                fontSize = 12.sp,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = transferClabe,
+                onValueChange = { input ->
+                    transferClabe = input.filter { it.isDigit() }.take(18)
+                },
+                label = { Text(stringResource(Res.string.transfer_clabe_label)) },
+                placeholder = { Text(stringResource(Res.string.transfer_clabe_placeholder)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                supportingText = {
+                    if (transferClabe.isNotEmpty()) {
+                        Text(
+                            text = "Formato: ${transferClabe.chunked(4).joinToString(" ")} (${transferClabe.length} dígitos)",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            clabeFocused = true
+                        } else if (clabeFocused) {
+                            clabeFocused = false
+                            onSettingsChange(
+                                settings.copy(
+                                    transferClabe = transferClabe,
+                                    transferBeneficiary = transferBeneficiary
+                                )
+                            )
+                        }
+                    }
+            )
+            OutlinedTextField(
+                value = transferBeneficiary,
+                onValueChange = { transferBeneficiary = it },
+                label = { Text(stringResource(Res.string.transfer_beneficiary_label)) },
+                placeholder = { Text(stringResource(Res.string.transfer_beneficiary_placeholder)) },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            beneficiaryFocused = true
+                        } else if (beneficiaryFocused) {
+                            beneficiaryFocused = false
+                            onSettingsChange(
+                                settings.copy(
+                                    transferClabe = transferClabe,
+                                    transferBeneficiary = transferBeneficiary
                                 )
                             )
                         }

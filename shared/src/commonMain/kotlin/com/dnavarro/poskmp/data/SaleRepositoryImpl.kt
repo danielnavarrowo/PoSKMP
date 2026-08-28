@@ -60,6 +60,13 @@ class SaleRepositoryImpl(
     override suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long, shiftId: String?): SalesSummary =
         localDataSource.getSalesSummaryBetween(startTime, endTime, shiftId)
 
+    override suspend fun getSoldProductsBetween(
+        startTime: Long,
+        endTime: Long,
+        shiftId: String?
+    ): List<ProductSalesMetric> =
+        localDataSource.getSoldProductsBetween(startTime, endTime, shiftId)
+
     override suspend fun getTopSellingProductsBetween(
         startTime: Long,
         endTime: Long,

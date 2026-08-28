@@ -19,5 +19,6 @@ data class ClientesUiState(
     val showDeleteConfirmFor: Customer? = null,
     val errorMessage: String? = null,
     val userMessage: String? = null,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    val receiptSettings: com.dnavarro.poskmp.domain.model.ReceiptSettings = com.dnavarro.poskmp.domain.model.ReceiptSettings()
 )

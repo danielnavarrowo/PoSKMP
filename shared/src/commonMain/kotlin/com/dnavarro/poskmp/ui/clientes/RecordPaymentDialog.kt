@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui.clientes
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.domain.model.PaymentMethod
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
@@ -64,14 +68,18 @@ import poskmp.shared.generated.resources.payment_method_efectivo
 import poskmp.shared.generated.resources.payment_method_tarjeta
 import poskmp.shared.generated.resources.payment_method_transferencia
 import poskmp.shared.generated.resources.record_payment_confirm
-import poskmp.shared.generated.resources.record_payment_subtitle_format
 import poskmp.shared.generated.resources.record_payment_title
+import poskmp.shared.generated.resources.transfer_beneficiary_label
+import poskmp.shared.generated.resources.transfer_clabe_label
+import poskmp.shared.generated.resources.transfer_info_title
+import poskmp.shared.generated.resources.transfer_no_data_configured
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RecordPaymentDialog(
     customer: Customer,
     onDismissRequest: () -> Unit,
+    receiptSettings: ReceiptSettings = ReceiptSettings(),
     onConfirm: (monto: Double, metodoPago: String, notas: String) -> Unit
 ) {
     var amountText by remember { mutableStateOf("") }
@@ -119,26 +127,14 @@ fun RecordPaymentDialog(
                     }
             } else Modifier
         ),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = MaterialTheme.shapes.large,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
-            Column {
-                Text(
-                    text = stringResource(Res.string.record_payment_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(
-                        Res.string.record_payment_subtitle_format,
-                        customer.nombre,
-                        customer.saldoDeudor.toString().formatPrice()
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = stringResource(Res.string.record_payment_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
         },
         text = {
             Column(
@@ -185,6 +181,104 @@ fun RecordPaymentDialog(
                                     text = label,
                                     fontSize = 11.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (selectedMethod == PaymentMethod.TRANSFERENCIA) {
+                    val clabe = receiptSettings.transferClabe.trim()
+                    val beneficiary = receiptSettings.transferBeneficiary.trim()
+
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.money_transfer),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = stringResource(Res.string.transfer_info_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            if (clabe.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceContainerLowest,
+                                            shape = MaterialTheme.shapes.small
+                                        )
+                                        .padding(12.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.transfer_clabe_label),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = clabe.chunked(4).joinToString("  "),
+                                        style = MaterialTheme.typography.headlineSmall.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            letterSpacing = 1.5.sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+
+                            if (beneficiary.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceContainerLowest,
+                                            shape = MaterialTheme.shapes.small
+                                        )
+                                        .padding(12.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.transfer_beneficiary_label),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = beneficiary,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+
+                            if (clabe.isEmpty() && beneficiary.isEmpty()) {
+                                Text(
+                                    text = stringResource(Res.string.transfer_no_data_configured),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }

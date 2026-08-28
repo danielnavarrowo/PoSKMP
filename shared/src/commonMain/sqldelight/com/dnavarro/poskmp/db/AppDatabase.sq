@@ -406,6 +406,22 @@ GROUP BY si.product_id, si.product_nombre
 ORDER BY total_unidades ASC
 LIMIT :limit;
 
+selectSoldProductsBetween:
+SELECT 
+    si.product_id,
+    si.product_nombre,
+    SUM(si.cantidad) AS total_unidades,
+    SUM(si.subtotal) AS total_recaudado,
+    SUM(si.ganancia) AS ganancia_generada
+FROM sale_items si
+INNER JOIN sales s ON si.sale_id = s.id
+WHERE s.estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
+)
+GROUP BY si.product_id, si.product_nombre
+ORDER BY total_unidades DESC;
+
 selectRecentSales:
 SELECT * FROM sales 
 ORDER BY created_at DESC 

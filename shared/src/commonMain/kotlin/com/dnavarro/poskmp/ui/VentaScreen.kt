@@ -140,6 +140,10 @@ import poskmp.shared.generated.resources.checkout_field_efectivo
 import poskmp.shared.generated.resources.checkout_field_tarjeta
 import poskmp.shared.generated.resources.checkout_field_transferencia
 import poskmp.shared.generated.resources.checkout_missing_to_cover_label
+import poskmp.shared.generated.resources.transfer_info_title
+import poskmp.shared.generated.resources.transfer_clabe_label
+import poskmp.shared.generated.resources.transfer_beneficiary_label
+import poskmp.shared.generated.resources.transfer_no_data_configured
 import poskmp.shared.generated.resources.checkout_pay_and_print_button
 import poskmp.shared.generated.resources.checkout_pay_without_print_button
 import poskmp.shared.generated.resources.checkout_sale_title
@@ -1676,7 +1680,101 @@ fun VentaScreen(
                         }
 
                         PaymentMethod.TRANSFERENCIA -> {
-                            // Exact payment for digital transactions
+                            val clabe = uiState.receiptSettings.transferClabe.trim()
+                            val beneficiary = uiState.receiptSettings.transferBeneficiary.trim()
+
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ),
+                                shape = MaterialTheme.shapes.medium,
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.money_transfer),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Text(
+                                            text = stringResource(Res.string.transfer_info_title),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+
+                                    if (clabe.isNotEmpty()) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(
+                                                    MaterialTheme.colorScheme.surfaceContainerLowest,
+                                                    shape = MaterialTheme.shapes.small
+                                                )
+                                                .padding(12.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(Res.string.transfer_clabe_label),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = clabe.chunked(4).joinToString("  "),
+                                                style = MaterialTheme.typography.headlineSmall.copy(
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    letterSpacing = 1.5.sp
+                                                ),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+
+                                    if (beneficiary.isNotEmpty()) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(
+                                                    MaterialTheme.colorScheme.surfaceContainerLowest,
+                                                    shape = MaterialTheme.shapes.small
+                                                )
+                                                .padding(12.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(Res.string.transfer_beneficiary_label),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = beneficiary,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+
+                                    if (clabe.isEmpty() && beneficiary.isEmpty()) {
+                                        Text(
+                                            text = stringResource(Res.string.transfer_no_data_configured),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

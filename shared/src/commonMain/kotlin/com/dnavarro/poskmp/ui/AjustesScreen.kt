@@ -91,6 +91,7 @@ import com.dnavarro.poskmp.ui.ajustes.BackupSettingsSection
 import com.dnavarro.poskmp.ui.components.SyncedSettingBadge
 import com.dnavarro.poskmp.ui.ajustes.PrinterSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.StoreInfoSettingsSection
+import com.dnavarro.poskmp.ui.ajustes.TransferSettingsSection
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.util.AppConstants
@@ -405,6 +406,13 @@ fun AjustesScreen(
 
             item {
                 StoreInfoSettingsSection(
+                    settings = receiptSettings,
+                    onSettingsChange = onReceiptSettingsChange
+                )
+            }
+
+            item {
+                TransferSettingsSection(
                     settings = receiptSettings,
                     onSettingsChange = onReceiptSettingsChange
                 )

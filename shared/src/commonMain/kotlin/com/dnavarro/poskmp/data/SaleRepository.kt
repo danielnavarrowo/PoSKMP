@@ -13,6 +13,7 @@ interface SaleRepository {
     suspend fun recordSale(sale: Sale, items: List<SaleItem>): Long
     suspend fun getNextFolio(): Long
     suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long, shiftId: String? = null): SalesSummary
+    suspend fun getSoldProductsBetween(startTime: Long, endTime: Long, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long = 10, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long = 10, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getRecentSales(limit: Long = 20, offset: Long = 0): List<Sale>

@@ -1,9 +1,8 @@
 package com.dnavarro.poskmp.domain.model
 
 enum class PrinterType(
-    val charactersPerLine: Int
 ) {
-    THERMAL_80MM(charactersPerLine = 48)
+    THERMAL_80MM
 }
 
 const val PRINTER_SYSTEM_DIALOG_ID = "system_dialog"
@@ -21,6 +20,8 @@ data class ReceiptSettings(
     val storeName: String = "",
     val storeAddress: String = "",
     val storePhone: String = "",
+    val transferClabe: String = "",
+    val transferBeneficiary: String = "",
     val paperWidthMm: Int = DEFAULT_PAPER_WIDTH_MM,
     val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
