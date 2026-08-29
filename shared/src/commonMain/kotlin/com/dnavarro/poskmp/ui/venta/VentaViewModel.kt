@@ -519,8 +519,15 @@ class VentaViewModel(
                 customerName = _selectedCustomer.value?.nombre,
                 settings = receiptSettings
             )
-            _printState.value = ReceiptPrintInternalState()
             _lastReceipt.value = receipt
+            viewModelScope.launch {
+                _printState.value = ReceiptPrintInternalState(isPrinting = true)
+                val result = printReceiptUseCase(receipt)
+                _printState.value = ReceiptPrintInternalState(
+                    hasError = result.isFailure,
+                    successful = result.isSuccess
+                )
+            }
         }
         clearCart()
         viewModelScope.launch(Dispatchers.IO) {

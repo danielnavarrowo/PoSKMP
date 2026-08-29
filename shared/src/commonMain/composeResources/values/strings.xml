@@ -348,9 +348,9 @@
     <string name="change_to_deliver_label">Cambio a entregar:</string>
     <string name="register_sale_button">Cobrar e Imprimir</string>
     <string name="checkout_pay_and_print_button">Cobrar e Imprimir</string>
-    <string name="checkout_pay_and_print_button_desktop">Cobrar e Imprimir (F12)</string>
+    <string name="checkout_pay_and_print_button_desktop">Cobrar e Imprimir (F1)</string>
     <string name="checkout_pay_without_print_button">Cobrar sin Imprimir</string>
-    <string name="checkout_pay_without_print_button_desktop">Cobrar sin Imprimir (F11)</string>
+    <string name="checkout_pay_without_print_button_desktop">Cobrar sin Imprimir (F2)</string>
     <string name="sale_success_title">¡Venta Exitosa!</string>
     <string name="sale_success_message">La venta se ha registrado correctamente.</string>
     <string name="total_charged_label">Total cobrado: $%1$s</string>

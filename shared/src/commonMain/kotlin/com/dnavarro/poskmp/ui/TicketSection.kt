@@ -380,7 +380,7 @@ fun TicketSection(
                 Text(
                     "$${total.toString().formatPrice()}",
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 20.sp,
+                   style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.ExtraBold
                 )
             }

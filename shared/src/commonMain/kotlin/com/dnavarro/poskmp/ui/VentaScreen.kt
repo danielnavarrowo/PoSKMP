@@ -220,11 +220,6 @@ fun VentaScreen(
         return
     }
 
-    LaunchedEffect(uiState.lastReceipt?.folio) {
-        if (uiState.lastReceipt != null) {
-            viewModel.printLastReceipt()
-        }
-    }
     val searchQuery = uiState.searchQuery
     val productsList = uiState.activeProducts
     val cartItems = uiState.cartItems
@@ -337,15 +332,13 @@ fun VentaScreen(
         showCheckoutDialog,
         showUnregisteredDialog,
         showProductDialogFor,
-        uiState.showCustomerDialog,
-        uiState.lastReceipt
+        uiState.showCustomerDialog
     ) {
         if (showWeightDialogForProduct == null &&
             !showCheckoutDialog &&
             !showUnregisteredDialog &&
             showProductDialogFor == null &&
-            !uiState.showCustomerDialog &&
-            uiState.lastReceipt == null
+            !uiState.showCustomerDialog
         ) {
             reclaimSearchBarFocus()
         }
@@ -1421,7 +1414,7 @@ fun VentaScreen(
                             "$${total.toString().formatPrice()}",
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp
+                            style = MaterialTheme.typography.displaySmall
                         )
                     }
 
