@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
@@ -77,7 +78,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -96,6 +99,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -904,7 +908,8 @@ fun VentaScreen(
     if (showWeightDialogForProduct != null) {
         val product = showWeightDialogForProduct!!
 
-        val focusRequester = remember { FocusRequester() }
+        val weightFocusRequester = remember { FocusRequester() }
+        val priceFocusRequester = remember { FocusRequester() }
 
         var weightInputValue by remember(product.id) {
             mutableStateOf(
@@ -916,13 +921,19 @@ fun VentaScreen(
         }
         var priceInputValue by remember(product.id) {
             val initialPrice = product.precio
-            mutableStateOf(if (initialPrice % 1.0 == 0.0) initialPrice.toInt().toString() else initialPrice.toString())
+            val text = if (initialPrice % 1.0 == 0.0) initialPrice.toInt().toString() else initialPrice.toString()
+            mutableStateOf(
+                TextFieldValue(
+                    text = text,
+                    selection = TextRange(0, text.length)
+                )
+            )
         }
 
         LaunchedEffect(product.id) {
             delay(50.milliseconds)
             try {
-                focusRequester.requestFocus()
+                weightFocusRequester.requestFocus()
             } catch (_: Exception) {}
         }
 
@@ -931,16 +942,18 @@ fun VentaScreen(
             val weight = newWeight.toDoubleOrNull()
             if (weight != null && weight >= 0.0) {
                 val calcPrice = weight * product.precio
-                priceInputValue = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
+                val priceText = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
                     .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
+                priceInputValue = TextFieldValue(text = priceText, selection = TextRange(0, priceText.length))
             } else if (newWeight.isEmpty()) {
-                priceInputValue = ""
+                priceInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
             }
         }
 
-        fun handlePriceChange(newPrice: String) {
+        fun handlePriceChange(newValue: TextFieldValue) {
+            val newPrice = newValue.text
             if (newPrice.isEmpty() || newPrice.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                priceInputValue = newPrice
+                priceInputValue = newValue
                 val price = newPrice.toDoubleOrNull()
                 if (price != null && price >= 0.0) {
                     val calcWeight = price / product.precio
@@ -948,6 +961,21 @@ fun VentaScreen(
                         .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
                     weightInputValue = TextFieldValue(text = weightStr, selection = TextRange(weightStr.length))
                 } else if (newPrice.isEmpty()) {
+                    weightInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+                }
+            }
+        }
+
+        fun handlePricePresetClick(cash: String) {
+            if (cash.isEmpty() || cash.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                priceInputValue = TextFieldValue(text = cash, selection = TextRange(0, cash.length))
+                val price = cash.toDoubleOrNull()
+                if (price != null && price >= 0.0) {
+                    val calcWeight = price / product.precio
+                    val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
+                        .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
+                    weightInputValue = TextFieldValue(text = weightStr, selection = TextRange(weightStr.length))
+                } else if (cash.isEmpty()) {
                     weightInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
                 }
             }
@@ -1001,6 +1029,7 @@ fun VentaScreen(
                                         "${if (qty % 1.0 == 0.0) qty.toInt().toString() else qty.toString()}$kgSuffix"
                                     Box(
                                         modifier = Modifier
+                                            .focusProperties { canFocus = false }
                                             .border(
                                                 1.dp,
                                                 MaterialTheme.colorScheme.outlineVariant,
@@ -1039,19 +1068,37 @@ fun VentaScreen(
                                         val weight = text.toDoubleOrNull()
                                         if (weight != null && weight >= 0.0) {
                                             val calcPrice = weight * product.precio
-                                            priceInputValue = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
+                                            val priceText = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
                                                 .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
+                                            priceInputValue = TextFieldValue(text = priceText, selection = TextRange(0, priceText.length))
                                         } else if (text.isEmpty()) {
-                                            priceInputValue = ""
+                                            priceInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
                                         }
                                     }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(MaterialTheme.colorScheme.surface)
-                                    .focusRequester(focusRequester),
+                                    .focusRequester(weightFocusRequester)
+                                    .focusProperties {
+                                        next = priceFocusRequester
+                                    }
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused && weightInputValue.text.isNotEmpty()) {
+                                            weightInputValue = weightInputValue.copy(
+                                                selection = TextRange(0, weightInputValue.text.length)
+                                            )
+                                        }
+                                    }
+                                    .onPreviewKeyEvent { keyEvent ->
+                                        if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.Tab && !keyEvent.isShiftPressed) {
+                                            priceFocusRequester.requestFocus()
+                                            true
+                                        } else false
+                                    },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { priceFocusRequester.requestFocus() }),
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -1076,6 +1123,7 @@ fun VentaScreen(
                                     val label = "$${cash}"
                                     Box(
                                         modifier = Modifier
+                                            .focusProperties { canFocus = false }
                                             .border(
                                                 1.dp,
                                                 MaterialTheme.colorScheme.outlineVariant,
@@ -1083,7 +1131,7 @@ fun VentaScreen(
                                             )
                                             .clip(MaterialTheme.shapes.small)
                                             .background(MaterialTheme.colorScheme.surface)
-                                            .clickable { handlePriceChange(cash.toString()) }
+                                            .clickable { handlePricePresetClick(cash.toString()) }
                                             .padding(horizontal = 10.dp, vertical = 6.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1108,10 +1156,34 @@ fun VentaScreen(
                             OutlinedTextField(
                                 value = priceInputValue,
                                 onValueChange = { handlePriceChange(it) },
-                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .focusRequester(priceFocusRequester)
+                                    .focusProperties {
+                                        previous = weightFocusRequester
+                                    }
+                                    .onFocusChanged { focusState ->
+                                        if (focusState.isFocused && priceInputValue.text.isNotEmpty()) {
+                                            priceInputValue = priceInputValue.copy(
+                                                selection = TextRange(0, priceInputValue.text.length)
+                                            )
+                                        }
+                                    }
+                                    .onPreviewKeyEvent { keyEvent ->
+                                        if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.Tab && keyEvent.isShiftPressed) {
+                                            weightFocusRequester.requestFocus()
+                                            true
+                                        } else false
+                                    },
                                 prefix = { Text("$", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = {
+                                    val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
+                                    addProductToCart(product, weight)
+                                    showWeightDialogForProduct = null
+                                }),
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
