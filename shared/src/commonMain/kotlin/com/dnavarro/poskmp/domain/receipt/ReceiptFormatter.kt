@@ -5,11 +5,43 @@ import com.dnavarro.poskmp.domain.model.ReceiptDocument
 import com.dnavarro.poskmp.domain.model.ReceiptItem
 import com.dnavarro.poskmp.domain.model.ReceiptLine
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.domain.model.Sale
+import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import kotlin.math.roundToInt
 
 object ReceiptFormatter {
+    fun createFromSale(
+        sale: Sale,
+        items: List<SaleItem>,
+        customerName: String? = null,
+        settings: ReceiptSettings
+    ): ReceiptDocument {
+        val receiptItems = items.map { item ->
+            ReceiptItem(
+                name = item.productNombre,
+                quantity = item.cantidad,
+                unitPrice = item.precioUnitario,
+                subtotal = item.subtotal,
+                isWeightBased = item.cantidad % 1.0 != 0.0,
+                originalUnitPrice = item.precioUnitario,
+                isWholesale = item.esMayoreo
+            )
+        }
+        return create(
+            folio = sale.folio,
+            createdAt = sale.createdAt,
+            items = receiptItems,
+            total = sale.total,
+            paid = sale.pagoCon,
+            change = sale.cambio,
+            paymentMethod = sale.metodoPago,
+            customerName = customerName,
+            settings = settings
+        )
+    }
+
     fun create(
         folio: Long,
         createdAt: Long,
@@ -77,23 +109,16 @@ object ReceiptFormatter {
                 item.name.trim().ifEmpty { "Producto" }
             }
 
-            wrap(displayName, width).forEach { nameLine ->
-                lines += ReceiptLine(nameLine)
-            }
-
             val quantity = formatQuantity(item.quantity, item.isWeightBased)
-            val unitPriceFormatted = "$${item.unitPrice.toString().formatPrice()}"
-            val detail = if (hasWholesale && item.originalUnitPrice > item.unitPrice + 0.001 && width >= 36) {
-                "$quantity x $unitPriceFormatted (Reg. $${item.originalUnitPrice.toString().formatPrice()})"
-            } else {
-                "$quantity x $unitPriceFormatted"
-            }
-            val subtotal = "$${item.subtotal.toString().formatPrice()}"
-            val detailWidth = (width - subtotal.length - 1).coerceAtLeast(1)
-            val truncatedDetail = detail.take(detailWidth)
-            val space = (width - truncatedDetail.length - subtotal.length).coerceAtLeast(1)
+            val fullLeftText = "$quantity $displayName"
+            val priceText = "$${item.subtotal.toString().formatPrice()}"
+
+            val maxLeftWidth = (width - priceText.length - 1).coerceAtLeast(1)
+            val leftText = fullLeftText.take(maxLeftWidth)
+            val space = (width - leftText.length - priceText.length).coerceAtLeast(1)
+
             lines += ReceiptLine(
-                truncatedDetail + " ".repeat(space) + subtotal,
+                leftText + " ".repeat(space) + priceText,
                 ReceiptAlignment.LEFT
             )
         }
@@ -129,9 +154,9 @@ object ReceiptFormatter {
         twoColumn("TOTAL", totalText(total), emphasized = true)
 
         // 7. Payment breakdown
-        keyValue("Pago", paymentMethod)
-        if (paid > 0.0) keyValue("Recibido", money(paid))
-        if (change > 0.0) keyValue("Cambio", money(change), emphasized = true)
+        twoColumn("Pago", paymentMethod)
+        if (paid > 0.0) twoColumn("Recibido", money(paid))
+        if (change > 0.0) twoColumn("Cambio", money(change), emphasized = true)
 
         // 8. Footer
         settings.footerMessage.trim().takeIf { it.isNotEmpty() }?.let {
@@ -149,7 +174,7 @@ object ReceiptFormatter {
             printerId = settings.printerId,
             fontSize = settings.fontSize.coerceIn(8, 32),
             feedLines = settings.feedLines.coerceIn(0, 10),
-            openCashDrawer = settings.openCashDrawerOnReceipt
+            openCashDrawer = settings.openCashDrawerOnCashSale
         )
     }
 
@@ -171,6 +196,48 @@ object ReceiptFormatter {
         val text = value.trim()
         if (text.isEmpty()) return listOf("")
         if (text.length <= width) return listOf(text)
-        return text.chunked(width)
+
+        val words = text.split(" ")
+        val lines = mutableListOf<String>()
+        var currentLine = StringBuilder()
+
+        for (word in words) {
+            if (word.isEmpty()) continue
+            if (currentLine.isEmpty()) {
+                if (word.length <= width) {
+                    currentLine.append(word)
+                } else {
+                    word.chunked(width).forEach { chunk ->
+                        if (currentLine.isEmpty()) {
+                            currentLine.append(chunk)
+                        } else {
+                            lines.add(currentLine.toString())
+                            currentLine = StringBuilder(chunk)
+                        }
+                    }
+                }
+            } else if (currentLine.length + 1 + word.length <= width) {
+                currentLine.append(" ").append(word)
+            } else {
+                lines.add(currentLine.toString())
+                if (word.length <= width) {
+                    currentLine = StringBuilder(word)
+                } else {
+                    currentLine = StringBuilder()
+                    word.chunked(width).forEach { chunk ->
+                        if (currentLine.isEmpty()) {
+                            currentLine.append(chunk)
+                        } else {
+                            lines.add(currentLine.toString())
+                            currentLine = StringBuilder(chunk)
+                        }
+                    }
+                }
+            }
+        }
+        if (currentLine.isNotEmpty()) {
+            lines.add(currentLine.toString())
+        }
+        return lines
     }
 }

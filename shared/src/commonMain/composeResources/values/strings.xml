@@ -607,13 +607,14 @@
     <string name="receipt_feed_lines_value">%1$d líneas al final del ticket</string>
     <string name="receipt_footer_label">Mensaje del pie de página</string>
     <string name="receipt_footer_placeholder">Gracias por tu compra</string>
-    <string name="open_drawer_on_receipt_title">Abrir cajón de dinero al imprimir</string>
-    <string name="open_drawer_on_receipt_subtitle">Enviar un pulso de apertura (ESC/POS) al cajón de dinero conectado a la impresora al finalizar el ticket.</string>
+    <string name="open_drawer_on_receipt_title">Abrir cajón de dinero en ventas en efectivo</string>
+    <string name="open_drawer_on_receipt_subtitle">Abrir automáticamente el cajón de dinero al registrar una venta que incluya pago en efectivo (con o sin impresión de ticket).</string>
     <string name="open_cash_drawer_button">Abrir cajón</string>
     <string name="receipt_preview_settings_title">Vista previa del ticket</string>
     <string name="receipt_preview_settings_subtitle">Esta vista usa exactamente las líneas, el tamaño, el estilo y la fuente seleccionados para imprimir.</string>
     <string name="receipt_preview_title">Ticket de compra</string>
     <string name="print_receipt_button">Imprimir ticket</string>
+    <string name="reprint_receipt_button">Reimprimir ticket</string>
     <string name="receipt_printed">Ticket enviado a la impresora.</string>
     <string name="receipt_print_error">No se pudo imprimir el ticket. Revisa la impresora e inténtalo de nuevo.</string>
 

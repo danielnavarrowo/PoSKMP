@@ -62,8 +62,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -146,6 +148,7 @@ fun VentasScreen(
         onRecordCashMovement = { type, amount, reason -> viewModel.recordCashMovement(type, amount, reason) },
         onCloseShift = { countedCash, notes -> viewModel.closeShift(countedCash, notes) },
         onClearShiftActionResult = { viewModel.clearShiftActionResult() },
+        onReprintSaleReceipt = { sale, items -> viewModel.reprintSaleReceipt(sale, items) },
         modifier = modifier
     )
 }
@@ -170,6 +173,7 @@ fun VentasScreen(
     onRecordCashMovement: (CashMovementType, Double, String) -> Unit = { _, _, _ -> },
     onCloseShift: (Double, String?) -> Unit = { _, _ -> },
     onClearShiftActionResult: () -> Unit = {},
+    onReprintSaleReceipt: (Sale, List<SaleItem>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(state.shiftActionSuccess) {
@@ -737,7 +741,8 @@ fun VentasScreen(
             sale = sale,
             items = items,
             onDismiss = { onSelectSaleForDetail(null) },
-            onCancelSale = { onOpenCancelSaleDialog(sale) }
+            onCancelSale = { onOpenCancelSaleDialog(sale) },
+            onReprintReceipt = { onReprintSaleReceipt(sale, items) }
         )
     }
 
@@ -1531,10 +1536,13 @@ private fun SaleDetailDialog(
     sale: Sale,
     items: List<SaleItem>,
     onDismiss: () -> Unit,
-    onCancelSale: () -> Unit
+    onCancelSale: () -> Unit,
+    onReprintReceipt: () -> Unit
 ) {
+    var isReprinting by remember { mutableStateOf(false) }
     val isCancelled = sale.isCancelled
     val closeButtonFocusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
@@ -1664,6 +1672,24 @@ private fun SaleDetailDialog(
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                     ) {
                         Text(stringResource(Res.string.cancel_sale_button))
+                    }
+                    androidx.compose.material3.FilledTonalButton(
+                        onClick = {
+                            if (!isReprinting) {
+                                isReprinting = true
+                                coroutineScope.launch {
+                                    try {
+                                        onReprintReceipt()
+                                    } finally {
+                                        delay(800.milliseconds)
+                                        isReprinting = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isReprinting
+                    ) {
+                        Text(stringResource(Res.string.reprint_receipt_button))
                     }
                 }
                 TextButton(

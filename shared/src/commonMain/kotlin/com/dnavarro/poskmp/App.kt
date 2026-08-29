@@ -149,10 +149,12 @@ import poskmp.shared.generated.resources.last_sale_total
 import poskmp.shared.generated.resources.nav_clientes
 import poskmp.shared.generated.resources.nav_clientes_desktop
 import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
+import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
 import poskmp.shared.generated.resources.open_cash_drawer_button
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.reprint_receipt_button
 import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.supabase_last_sync_format
 import poskmp.shared.generated.resources.supabase_last_sync_never
@@ -170,6 +172,7 @@ import poskmp.shared.generated.resources.tab_ventas_historial
 import poskmp.shared.generated.resources.tab_ventas_historial_desktop
 import poskmp.shared.generated.resources.warning
 import java.time.LocalDateTime
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal fun navigationSuiteTypeForWidth(width: Dp): NavigationSuiteType = when {
@@ -211,6 +214,7 @@ fun App(
     val settingsRepository = koinInject<SettingsRepository>()
     val shiftRepository = koinInject<com.dnavarro.poskmp.data.ShiftRepository>()
     val openCashDrawerUseCase = koinInject<OpenCashDrawerUseCase>()
+    val reprintSaleReceiptUseCase = koinInject<ReprintSaleReceiptUseCase>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
 
     val activeShift by shiftRepository.activeShiftFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -226,6 +230,8 @@ fun App(
     var exitStep by remember { mutableStateOf(ExitProgressStep.IDLE) }
     var exitErrorMessage by remember { mutableStateOf<String?>(null) }
 
+    var isOpeningDrawer by remember { mutableStateOf(false) }
+    var isReprintingLastSale by remember { mutableStateOf(false) }
     val syncState by syncRepository.syncState.collectAsStateWithLifecycle()
     val isSyncing = syncState == SyncStateEnum.SYNCING
     val coroutineScope = rememberCoroutineScope()
@@ -333,6 +339,29 @@ fun App(
             val currentScreen = selectedScreen ?: defaultScreen
             var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
 
+            val focusRequester = remember { FocusRequester() }
+            var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
+            var productosRefocusTrigger by remember { mutableIntStateOf(0) }
+            var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
+
+            fun reclaimCurrentScreenFocus() {
+                if (!isAndroid()) {
+                    when (currentScreen) {
+                        Screen.VENTA -> ventaRefocusTrigger++
+                        Screen.PRODUCTOS -> productosRefocusTrigger++
+                        Screen.CLIENTES -> clientesRefocusTrigger++
+                        else -> {
+                            coroutineScope.launch {
+                                delay(50.milliseconds)
+                                try {
+                                    focusRequester.requestFocus()
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                }
+            }
+
             var currentDateText by remember { mutableStateOf(formatCurrentDate()) }
             var currentTimeText by remember { mutableStateOf(formatCurrentTime()) }
             val currentDateTimeText = remember(currentDateText, currentTimeText) { "$currentDateText\n$currentTimeText" }
@@ -377,7 +406,12 @@ fun App(
                         label = tabVentaLabel,
                         icon = Res.drawable.point_of_sale,
                         isSelected = currentScreen == Screen.VENTA,
-                        onCheckedChange = { if (it) selectedScreen = Screen.VENTA }
+                        onCheckedChange = {
+                            if (it) {
+                                selectedScreen = Screen.VENTA
+                                reclaimCurrentScreenFocus()
+                            }
+                        }
                     ),
                     ToolbarItem(
                         label = tabChecadorLabel,
@@ -389,31 +423,52 @@ fun App(
                             } else if (it) {
                                 selectedScreen = Screen.CHECADOR
                             }
+                            reclaimCurrentScreenFocus()
                         }
                     ),
                     ToolbarItem(
                         label = tabProductosLabel,
                         icon = Res.drawable.products,
                         isSelected = currentScreen == Screen.PRODUCTOS,
-                        onCheckedChange = { if (it) selectedScreen = Screen.PRODUCTOS }
+                        onCheckedChange = {
+                            if (it) {
+                                selectedScreen = Screen.PRODUCTOS
+                                reclaimCurrentScreenFocus()
+                            }
+                        }
                     ),
                     ToolbarItem(
                         label = tabVentasLabel,
                         icon = Res.drawable.analytics,
                         isSelected = currentScreen == Screen.VENTAS,
-                        onCheckedChange = { if (it) selectedScreen = Screen.VENTAS }
+                        onCheckedChange = {
+                            if (it) {
+                                selectedScreen = Screen.VENTAS
+                                reclaimCurrentScreenFocus()
+                            }
+                        }
                     ),
                     ToolbarItem(
                         label = tabClientesLabel,
                         icon = Res.drawable.person,
                         isSelected = currentScreen == Screen.CLIENTES,
-                        onCheckedChange = { if (it) selectedScreen = Screen.CLIENTES }
+                        onCheckedChange = {
+                            if (it) {
+                                selectedScreen = Screen.CLIENTES
+                                reclaimCurrentScreenFocus()
+                            }
+                        }
                     ),
                     ToolbarItem(
                         label = tabAjustesLabel,
                         icon = Res.drawable.settings,
                         isSelected = currentScreen == Screen.AJUSTES,
-                        onCheckedChange = { if (it) selectedScreen = Screen.AJUSTES }
+                        onCheckedChange = {
+                            if (it) {
+                                selectedScreen = Screen.AJUSTES
+                                reclaimCurrentScreenFocus()
+                            }
+                        }
                     )
                 )
             }
@@ -452,26 +507,64 @@ fun App(
                     paletteStyle = paletteStyle,
                     darkTheme = darkTheme
                 ) {
-                    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+                    BoxWithConstraints(
+                        modifier = modifier
+                            .fillMaxSize()
+                            .then(
+                                if (!isAndroid()) {
+                                    Modifier
+                                        .focusRequester(focusRequester)
+                                        .focusable()
+                                        .onPreviewKeyEvent { keyEvent ->
+                                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                                Key.F1 -> {
+                                                    selectedScreen = Screen.VENTA
+                                                    ventaRefocusTrigger++
+                                                    true
+                                                }
+
+                                                Key.F2 -> {
+                                                    if (isChecadorDialog) {
+                                                        showPriceCheckerDialog = true
+                                                    } else {
+                                                        selectedScreen = Screen.CHECADOR
+                                                    }
+                                                    true
+                                                }
+
+                                                Key.F3 -> {
+                                                    selectedScreen = Screen.PRODUCTOS
+                                                    productosRefocusTrigger++
+                                                    true
+                                                }
+
+                                                Key.F4 -> {
+                                                    selectedScreen = Screen.VENTAS
+                                                    true
+                                                }
+
+                                                Key.F5 -> {
+                                                    selectedScreen = Screen.CLIENTES
+                                                    clientesRefocusTrigger++
+                                                    true
+                                                }
+
+                                                else -> false
+                                            }
+                                        }
+                                } else Modifier
+                            )
+                    ) {
                     val appMaxWidth = maxWidth
                     val isCompact = appMaxWidth < 600.dp
                     val showNavLayout = !(currentScreen == Screen.CHECADOR && !isChecadorDialog)
                     val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(appMaxWidth) else NavigationSuiteType.None
 
-                    val focusRequester = remember { FocusRequester() }
-                    var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
-                    var productosRefocusTrigger by remember { mutableIntStateOf(0) }
-                    var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
                     LaunchedEffect(currentScreen, isChecadorDialog) {
                         if (currentScreen == Screen.CHECADOR && isChecadorDialog) {
                             showPriceCheckerDialog = true
                         }
-                        if (!isAndroid() && currentScreen != Screen.VENTA && currentScreen != Screen.PRODUCTOS && currentScreen != Screen.CLIENTES) {
-                            try {
-                                focusRequester.requestFocus()
-                            } catch (_: Exception) {
-                            }
-                        }
+                        reclaimCurrentScreenFocus()
                     }
 
                     NavigationSuiteScaffoldLayout(
@@ -502,7 +595,10 @@ fun App(
                                                 if (isExpanded) {
                                                     NavigationDrawerItem(
                                                         selected = navItem.isSelected,
-                                                        onClick = { navItem.onCheckedChange(true) },
+                                                        onClick = {
+                                                            navItem.onCheckedChange(true)
+                                                            reclaimCurrentScreenFocus()
+                                                        },
                                                         icon = {
                                                             Icon(
                                                                 painter = painterResource(navItem.icon),
@@ -515,7 +611,10 @@ fun App(
                                                 } else {
                                                     NavigationRailItem(
                                                         selected = navItem.isSelected,
-                                                        onClick = { navItem.onCheckedChange(true) },
+                                                        onClick = {
+                                                            navItem.onCheckedChange(true)
+                                                            reclaimCurrentScreenFocus()
+                                                        },
                                                         icon = {
                                                             Icon(
                                                                 painter = painterResource(navItem.icon),
@@ -542,6 +641,7 @@ fun App(
                                                                 syncRepository.syncAll(isManual = true)
                                                             }
                                                         }
+                                                        reclaimCurrentScreenFocus()
                                                     },
                                                     enabled = !isSyncing,
                                                     modifier = Modifier.fillMaxWidth(),
@@ -589,6 +689,7 @@ fun App(
                                                                 syncRepository.syncAll(isManual = true)
                                                             }
                                                         }
+                                                        reclaimCurrentScreenFocus()
                                                     },
                                                     enabled = !isSyncing,
                                                     shape = MaterialTheme.shapes.medium
@@ -623,10 +724,20 @@ fun App(
                                             if (isExpanded) {
                                                 FilledTonalButton(
                                                     onClick = {
-                                                        coroutineScope.launch {
-                                                            openCashDrawerUseCase()
+                                                        if (!isOpeningDrawer) {
+                                                            isOpeningDrawer = true
+                                                            coroutineScope.launch {
+                                                                try {
+                                                                  openCashDrawerUseCase()
+                                                                } finally {
+                                                                    delay(600.milliseconds)
+                                                                    isOpeningDrawer = false
+                                                                }
+                                                            }
                                                         }
+                                                        reclaimCurrentScreenFocus()
                                                     },
+                                                    enabled = !isOpeningDrawer,
                                                     modifier = Modifier.fillMaxWidth(),
                                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                                     shape = MaterialTheme.shapes.medium
@@ -647,10 +758,20 @@ fun App(
                                             } else {
                                                 FilledTonalIconButton(
                                                     onClick = {
-                                                        coroutineScope.launch {
-                                                            openCashDrawerUseCase()
+                                                        if (!isOpeningDrawer) {
+                                                            isOpeningDrawer = true
+                                                            coroutineScope.launch {
+                                                                try {
+                                                                    openCashDrawerUseCase()
+                                                                } finally {
+                                                                    delay(600.milliseconds)
+                                                                    isOpeningDrawer = false
+                                                                }
+                                                            }
                                                         }
+                                                        reclaimCurrentScreenFocus()
                                                     },
+                                                    enabled = !isOpeningDrawer,
                                                     shape = MaterialTheme.shapes.medium
                                                 ) {
                                                     Icon(
@@ -704,6 +825,65 @@ fun App(
                                                             style = MaterialTheme.typography.labelMedium,
                                                             textAlign = TextAlign.Center
                                                         )
+
+                                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                                        // Botón de reimpresión del último ticket
+                                                        if (isExpanded) {
+                                                            FilledTonalButton(
+                                                                onClick = {
+                                                                    if (!isReprintingLastSale) {
+                                                                        isReprintingLastSale = true
+                                                                        coroutineScope.launch {
+                                                                            try {
+                                                                                reprintSaleReceiptUseCase(sale)
+                                                                            } finally {
+                                                                                delay(800.milliseconds)
+                                                                                isReprintingLastSale = false
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    reclaimCurrentScreenFocus()
+                                                                },
+                                                                enabled = !isReprintingLastSale,
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                                                                shape = MaterialTheme.shapes.small
+                                                            ) {
+                                                                Text(
+                                                                    text = stringResource(Res.string.reprint_receipt_button),
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
+                                                        } else {
+                                                            FilledTonalIconButton(
+                                                                onClick = {
+                                                                    if (!isReprintingLastSale) {
+                                                                        isReprintingLastSale = true
+                                                                        coroutineScope.launch {
+                                                                            try {
+                                                                                reprintSaleReceiptUseCase(sale)
+                                                                            } finally {
+                                                                                delay(800.milliseconds)
+                                                                                isReprintingLastSale = false
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    reclaimCurrentScreenFocus()
+                                                                },
+                                                                enabled = !isReprintingLastSale,
+                                                                modifier = Modifier.size(32.dp),
+                                                                shape = MaterialTheme.shapes.small
+                                                             ) {
+                                                                Icon(
+                                                                    painter = painterResource(Res.drawable.point_of_sale),
+                                                                    contentDescription = stringResource(Res.string.reprint_receipt_button),
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                                 Spacer(modifier = Modifier.height(6.dp))
@@ -737,7 +917,10 @@ fun App(
                                     toolbarItems.fastForEach { navItem ->
                                         item(
                                             selected = navItem.isSelected,
-                                            onClick = { navItem.onCheckedChange(true) },
+                                            onClick = {
+                                                navItem.onCheckedChange(true)
+                                                reclaimCurrentScreenFocus()
+                                            },
                                             icon = {
                                                 Icon(
                                                     painter = painterResource(navItem.icon),
@@ -755,50 +938,7 @@ fun App(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(MaterialTheme.colorScheme.background)
-                                .then(
-                                    if (!isAndroid()) {
-                                        Modifier
-                                            .focusRequester(focusRequester)
-                                            .focusable()
-                                            .onPreviewKeyEvent { keyEvent ->
-                                                keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-                                                    Key.F1 -> {
-                                                        selectedScreen = Screen.VENTA
-                                                        ventaRefocusTrigger++
-                                                        true
-                                                    }
-
-                                                    Key.F2 -> {
-                                                        if (isChecadorDialog) {
-                                                            showPriceCheckerDialog = true
-                                                        } else {
-                                                            selectedScreen = Screen.CHECADOR
-                                                        }
-                                                        true
-                                                    }
-
-                                                    Key.F3 -> {
-                                                        selectedScreen = Screen.PRODUCTOS
-                                                        productosRefocusTrigger++
-                                                        true
-                                                    }
-
-                                                    Key.F4 -> {
-                                                        selectedScreen = Screen.VENTAS
-                                                        true
-                                                    }
-
-                                                    Key.F5 -> {
-                                                        selectedScreen = Screen.CLIENTES
-                                                        clientesRefocusTrigger++
-                                                        true
-                                                    }
-
-                                                    else -> false
-                                                }
-                                            }
-                                    } else Modifier.statusBarsPadding()
-                                ),
+                                .then(if (isAndroid()) Modifier.statusBarsPadding() else Modifier),
                             containerColor = MaterialTheme.colorScheme.background,
                             bottomBar = {
                                 if (showNavLayout && navigationLayoutType == NavigationSuiteType.None) {

@@ -330,6 +330,15 @@ fun ProductosScreen(
 
     val handleKeyNavigation: (KeyEvent) -> Boolean = { keyEvent ->
         keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+            Key.Escape -> {
+                if (searchQuery.isNotEmpty()) {
+                    viewModel.onSearchQueryChanged("")
+                    selectedProductIndex = -1
+                    selectionAnchorIndex = -1
+                    true
+                } else false
+            }
+
             Key.F3 -> {
                 reclaimSearchBarFocus()
                 true
@@ -847,6 +856,9 @@ fun ProductosScreen(
                                                 .size(32.dp),
                                             onClick = {
                                                 viewModel.onSearchQueryChanged("")
+                                                selectedProductIndex = -1
+                                                selectionAnchorIndex = -1
+                                                reclaimSearchBarFocus()
                                             }
                                         ) {
                                             Icon(

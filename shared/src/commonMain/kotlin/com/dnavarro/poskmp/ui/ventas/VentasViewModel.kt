@@ -20,6 +20,7 @@ import com.dnavarro.poskmp.domain.usecase.GetActiveShiftUseCase
 import com.dnavarro.poskmp.domain.usecase.GetSalesSummaryUseCase
 import com.dnavarro.poskmp.domain.usecase.GetShiftSummaryUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
+import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,7 +74,8 @@ class VentasViewModel(
     private val recordCashMovementUseCase: RecordCashMovementUseCase,
     private val getShiftSummaryUseCase: GetShiftSummaryUseCase,
     private val closeShiftUseCase: CloseShiftUseCase,
-    private val cancelSaleUseCase: CancelSaleUseCase
+    private val cancelSaleUseCase: CancelSaleUseCase,
+    private val reprintSaleReceiptUseCase: ReprintSaleReceiptUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
@@ -406,6 +408,12 @@ class VentasViewModel(
                 val end = _uiState.value.customEndDate ?: endOfToday
                 Pair(start, end)
             }
+        }
+    }
+
+    fun reprintSaleReceipt(sale: Sale, items: List<SaleItem>? = null) {
+        viewModelScope.launch {
+            reprintSaleReceiptUseCase(sale, items)
         }
     }
 }

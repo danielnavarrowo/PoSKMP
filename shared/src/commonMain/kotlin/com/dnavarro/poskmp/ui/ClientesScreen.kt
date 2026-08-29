@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -66,6 +67,7 @@ import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -164,12 +166,16 @@ fun ClientesContent(
     modifier: Modifier = Modifier
 ) {
     val searchBarFocusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
-            try {
-                searchBarFocusRequester.requestFocus()
-            } catch (_: Exception) {}
+            coroutineScope.launch {
+                delay(50.milliseconds)
+                try {
+                    searchBarFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
         }
     }
 
@@ -206,6 +212,13 @@ fun ClientesContent(
 
     fun handleKeyNavigation(keyEvent: androidx.compose.ui.input.key.KeyEvent): Boolean {
         return keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+            Key.Escape -> {
+                if (state.searchQuery.isNotEmpty()) {
+                    onSearchQueryChange("")
+                    true
+                } else false
+            }
+
             Key.F5 -> {
                 reclaimSearchBarFocus()
                 true
@@ -324,7 +337,10 @@ fun ClientesContent(
                     },
                     trailingIcon = {
                         if (state.searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { onSearchQueryChange("") }) {
+                            IconButton(onClick = {
+                                onSearchQueryChange("")
+                                reclaimSearchBarFocus()
+                            }) {
                                 Icon(
                                     painter = painterResource(Res.drawable.close),
                                     contentDescription = stringResource(Res.string.close_button),

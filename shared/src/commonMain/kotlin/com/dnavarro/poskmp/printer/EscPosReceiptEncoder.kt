@@ -21,8 +21,7 @@ object EscPosReceiptEncoder {
     private val CMD_RESET_SCALE = byteArrayOf(0x1D, 0x21, 0x00) // GS ! 0 (1x1 normal scale)
     private val CMD_CUT_PAPER = byteArrayOf(0x1D, 0x56, 0x41, 0x00) // GS V A 0 (Feed and Cut)
     private val CMD_DRAWER_KICK = byteArrayOf(
-        0x1B, 0x70, 0x00, 0x19, 0xFA.toByte(), // ESC p 0 25 250 (Pin 2)
-        0x1B, 0x70, 0x01, 0x19, 0xFA.toByte()  // ESC p 1 25 250 (Pin 5)
+        0x1B, 0x70, 0x00, 0x19, 0xFA.toByte() // ESC p 0 25 250 (Pin 2 standard drawer kick)
     )
 
     /**

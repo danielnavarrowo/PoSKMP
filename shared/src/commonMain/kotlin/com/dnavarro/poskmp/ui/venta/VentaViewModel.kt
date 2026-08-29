@@ -12,6 +12,7 @@ import com.dnavarro.poskmp.domain.receipt.ReceiptFormatter
 import com.dnavarro.poskmp.domain.usecase.FindProductByBarcodeUseCase
 import com.dnavarro.poskmp.domain.usecase.GetCustomersUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
+import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
 import com.dnavarro.poskmp.domain.usecase.PrintReceiptUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
@@ -45,6 +46,7 @@ class VentaViewModel(
     private val recordSaleUseCase: RecordSaleUseCase,
     private val syncRepository: SyncRepository,
     private val printReceiptUseCase: PrintReceiptUseCase,
+    private val openCashDrawerUseCase: OpenCashDrawerUseCase,
     getActiveShiftUseCase: com.dnavarro.poskmp.domain.usecase.GetActiveShiftUseCase,
     getCashiersUseCase: com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase,
     private val openShiftUseCase: com.dnavarro.poskmp.domain.usecase.OpenShiftUseCase
@@ -494,6 +496,9 @@ class VentaViewModel(
             customerId = effectiveCustomerId,
             roundTicketTotal = uiState.value.roundTicketTotal
         )
+        val isCashPayment = metodoPago == "EFECTIVO" || (metodoPago == "MIXTO" && pagoCon > 0.0)
+        val shouldOpenDrawer = uiState.value.receiptSettings.openCashDrawerOnCashSale && isCashPayment
+
         if (printReceipt) {
             val receiptSettings = uiState.value.receiptSettings
             val receipt = ReceiptFormatter.create(
@@ -517,7 +522,7 @@ class VentaViewModel(
                 change = cambio,
                 paymentMethod = metodoPago,
                 customerName = _selectedCustomer.value?.nombre,
-                settings = receiptSettings
+                settings = receiptSettings.copy(openCashDrawerOnCashSale = shouldOpenDrawer)
             )
             _lastReceipt.value = receipt
             viewModelScope.launch {
@@ -528,6 +533,10 @@ class VentaViewModel(
                     successful = result.isSuccess
                 )
             }
+        } else if (shouldOpenDrawer) {
+            viewModelScope.launch {
+                openCashDrawerUseCase()
+            }
         }
         clearCart()
         viewModelScope.launch(Dispatchers.IO) {
@@ -536,21 +545,4 @@ class VentaViewModel(
         return folio
     }
 
-    fun printLastReceipt() {
-        val receipt = _lastReceipt.value ?: return
-        if (_printState.value.isPrinting) return
-        viewModelScope.launch {
-            _printState.value = ReceiptPrintInternalState(isPrinting = true)
-            val result = printReceiptUseCase(receipt)
-            _printState.value = ReceiptPrintInternalState(
-                hasError = result.isFailure,
-                successful = result.isSuccess
-            )
-        }
-    }
-
-    fun dismissLastReceipt() {
-        _lastReceipt.value = null
-        _printState.value = ReceiptPrintInternalState()
-    }
 }

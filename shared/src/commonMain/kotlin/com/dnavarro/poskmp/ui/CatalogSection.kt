@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +75,7 @@ import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -134,6 +136,7 @@ fun CatalogSection(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val coroutineScope = rememberCoroutineScope()
     val latestSearchQuery = remember { mutableStateOf(searchQuery) }
 
     LaunchedEffect(searchQuery) {
@@ -221,9 +224,13 @@ fun CatalogSection(
                                 if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(searchFocusRequester) else mod
                             }
                             .onPreviewKeyEvent { keyEvent ->
-                                onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent) || if (keyEvent.type == KeyEventType.KeyDown &&
-                                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                                ) {
+                                keyEvent.type == KeyEventType.KeyDown && if (keyEvent.key == Key.Escape && latestSearchQuery.value.isNotEmpty()) {
+                                    latestSearchQuery.value = ""
+                                    onSearchQueryChange("")
+                                    true
+                                } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent)) {
+                                    true
+                                } else if (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) {
                                     val scannedText = latestSearchQuery.value
                                     latestSearchQuery.value = ""
                                     onSearchQueryChange("")
@@ -271,6 +278,14 @@ fun CatalogSection(
                         onClick = {
                             latestSearchQuery.value = ""
                             onSearchQueryChange("")
+                            if (!isAndroid()) {
+                                coroutineScope.launch {
+                                    delay(50.milliseconds)
+                                    try {
+                                        searchFocusRequester?.requestFocus()
+                                    } catch (_: Exception) {}
+                                }
+                            }
                         }
                     ) {
                         Icon(

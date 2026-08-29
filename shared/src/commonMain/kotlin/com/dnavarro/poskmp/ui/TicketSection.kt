@@ -333,13 +333,12 @@ fun TicketSection(
             ) {
                 Text(
                     text = stringResource(Res.string.items_count_label, productCount),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = stringResource(Res.string.pieces_count_label, formattedPieces),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

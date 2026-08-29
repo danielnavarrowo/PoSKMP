@@ -466,9 +466,9 @@ fun PrinterSettingsSection(
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Switch(
-                    checked = settings.openCashDrawerOnReceipt,
+                    checked = settings.openCashDrawerOnCashSale,
                     onCheckedChange = { checked ->
-                        onSettingsChange(settings.copy(openCashDrawerOnReceipt = checked))
+                        onSettingsChange(settings.copy(openCashDrawerOnCashSale = checked))
                     }
                 )
             }

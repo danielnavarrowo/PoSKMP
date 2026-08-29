@@ -25,7 +25,7 @@ fun ReceiptDocumentPreview(
     receipt: ReceiptDocument,
     modifier: Modifier = Modifier
 ) {
-    val paperWidth = (receipt.paperWidthMm / 25.4f * 96f).dp
+    val paperWidth = (receipt.paperWidthMm * 5.2).dp
     Box(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.TopCenter
