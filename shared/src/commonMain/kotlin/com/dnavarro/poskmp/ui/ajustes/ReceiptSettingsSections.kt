@@ -62,6 +62,10 @@ import poskmp.shared.generated.resources.store_info_section_subtitle
 import poskmp.shared.generated.resources.store_info_section_title
 import poskmp.shared.generated.resources.store_name_label
 import poskmp.shared.generated.resources.store_phone_label
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Switch
+import poskmp.shared.generated.resources.open_drawer_on_receipt_title
+import poskmp.shared.generated.resources.open_drawer_on_receipt_subtitle
 import poskmp.shared.generated.resources.transfer_settings_section_title
 import poskmp.shared.generated.resources.transfer_settings_section_subtitle
 import poskmp.shared.generated.resources.transfer_clabe_label
@@ -442,6 +446,33 @@ fun PrinterSettingsSection(
                 minLines = 2,
                 maxLines = 3
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(Res.string.open_drawer_on_receipt_title),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(Res.string.open_drawer_on_receipt_subtitle),
+                        fontSize = 12.sp,
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Switch(
+                    checked = settings.openCashDrawerOnReceipt,
+                    onCheckedChange = { checked ->
+                        onSettingsChange(settings.copy(openCashDrawerOnReceipt = checked))
+                    }
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = stringResource(Res.string.receipt_preview_settings_title),
                 fontWeight = FontWeight.SemiBold,

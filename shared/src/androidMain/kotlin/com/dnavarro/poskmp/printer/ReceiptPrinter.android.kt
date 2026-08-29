@@ -45,6 +45,30 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
         return printViaAndroidManager(document)
     }
 
+    override suspend fun openCashDrawer(printerId: String?): Result<Unit> {
+        val target = printerId?.trim()
+        if (target?.startsWith("tcp://") == true || isIpPort(target)) {
+            return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val hostPort = if (target?.startsWith("tcp://") == true) target.removePrefix("tcp://") else target ?: ""
+                    val parts = hostPort.split(":")
+                    val host = parts[0].trim()
+                    val port = parts.getOrNull(1)?.toIntOrNull() ?: 9100
+
+                    val kickBytes = EscPosReceiptEncoder.encodeDrawerKick()
+                    java.net.Socket().use { socket ->
+                        socket.connect(java.net.InetSocketAddress(host, port), 4000)
+                        socket.getOutputStream().use { out ->
+                            out.write(kickBytes)
+                            out.flush()
+                        }
+                    }
+                }
+            }
+        }
+        return Result.failure(UnsupportedOperationException("La apertura directa de cajón en Android requiere una impresora conectada por TCP/Red."))
+    }
+
     private suspend fun printViaAndroidManager(document: ReceiptDocument): Result<Unit> = suspendCancellableCoroutine { continuation ->
         val context = DatabaseDriverFactory.appContext
         if (context == null) {

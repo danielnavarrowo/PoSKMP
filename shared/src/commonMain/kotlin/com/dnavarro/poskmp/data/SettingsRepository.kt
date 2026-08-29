@@ -141,6 +141,7 @@ class SettingsRepositoryImpl(
         val RECEIPT_FONT_SIZE = intPreferencesKey("receipt_font_size")
         val RECEIPT_FEED_LINES = intPreferencesKey("receipt_feed_lines")
         val RECEIPT_FOOTER = stringPreferencesKey("receipt_footer")
+        val OPEN_CASH_DRAWER_ON_RECEIPT = booleanPreferencesKey("open_cash_drawer_on_receipt")
     }
 
     override val businessSettingsUpdatedAtFlow: Flow<Long> = dataStore.data.map { preferences ->
@@ -276,13 +277,15 @@ class SettingsRepositoryImpl(
             },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FONT_SIZE] ?: 12 },
             dataStore.data.map { it[PreferenceKeys.RECEIPT_FEED_LINES] ?: 3 },
-            dataStore.data.map { it[PreferenceKeys.RECEIPT_FOOTER] ?: "" }
-        ) { paperWidthMm, fontSize, feedLines, footerMessage ->
+            dataStore.data.map { it[PreferenceKeys.RECEIPT_FOOTER] ?: "" },
+            dataStore.data.map { it[PreferenceKeys.OPEN_CASH_DRAWER_ON_RECEIPT] ?: false }
+        ) { paperWidthMm, fontSize, feedLines, footerMessage, openCashDrawerOnReceipt ->
             ReceiptSettings(
                 paperWidthMm = paperWidthMm.coerceIn(MIN_PAPER_WIDTH_MM, MAX_PAPER_WIDTH_MM),
                 fontSize = fontSize,
                 feedLines = feedLines,
-                footerMessage = footerMessage
+                footerMessage = footerMessage,
+                openCashDrawerOnReceipt = openCashDrawerOnReceipt
             )
         },
         dataStore.data.map { it[PreferenceKeys.PRINTER_ID] }
@@ -496,6 +499,7 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.RECEIPT_FONT_SIZE] = settings.fontSize.coerceIn(8, 32)
             preferences[PreferenceKeys.RECEIPT_FEED_LINES] = settings.feedLines.coerceIn(0, 10)
             preferences[PreferenceKeys.RECEIPT_FOOTER] = settings.footerMessage
+            preferences[PreferenceKeys.OPEN_CASH_DRAWER_ON_RECEIPT] = settings.openCashDrawerOnReceipt
             preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }

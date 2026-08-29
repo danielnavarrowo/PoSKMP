@@ -148,7 +148,8 @@ object ReceiptFormatter {
             printerType = settings.printerType,
             printerId = settings.printerId,
             fontSize = settings.fontSize.coerceIn(8, 32),
-            feedLines = settings.feedLines.coerceIn(0, 10)
+            feedLines = settings.feedLines.coerceIn(0, 10),
+            openCashDrawer = settings.openCashDrawerOnReceipt
         )
     }
 

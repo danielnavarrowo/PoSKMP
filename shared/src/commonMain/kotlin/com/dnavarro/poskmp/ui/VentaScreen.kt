@@ -145,7 +145,9 @@ import poskmp.shared.generated.resources.transfer_clabe_label
 import poskmp.shared.generated.resources.transfer_beneficiary_label
 import poskmp.shared.generated.resources.transfer_no_data_configured
 import poskmp.shared.generated.resources.checkout_pay_and_print_button
+import poskmp.shared.generated.resources.checkout_pay_and_print_button_desktop
 import poskmp.shared.generated.resources.checkout_pay_without_print_button
+import poskmp.shared.generated.resources.checkout_pay_without_print_button_desktop
 import poskmp.shared.generated.resources.checkout_sale_title
 import poskmp.shared.generated.resources.checkout_total_received_label
 import poskmp.shared.generated.resources.close
@@ -1238,13 +1240,37 @@ fun VentaScreen(
 
         AlertDialog(
             onDismissRequest = { showCheckoutDialog = false },
-            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                keyEvent.type == KeyEventType.KeyDown &&
-                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (isCheckoutValid) {
-                    performCheckout(true)
-                    true
-                } else false
-            },
+            modifier = Modifier.then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.F1 -> {
+                                    if (isCheckoutValid) {
+                                        performCheckout(true)
+                                        true
+                                    } else false
+                                }
+
+                                Key.F2 -> {
+                                    if (isCheckoutValid) {
+                                        performCheckout(false)
+                                        true
+                                    } else false
+                                }
+
+                                Key.Enter, Key.NumPadEnter -> {
+                                    if (isCheckoutValid) {
+                                        performCheckout(true)
+                                        true
+                                    } else false
+                                }
+                                else -> false
+                            }
+                        }
+                } else Modifier
+            ),
             shape = MaterialTheme.shapes.large,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = { Text(stringResource(Res.string.checkout_sale_title), fontWeight = FontWeight.Bold) },
@@ -1790,7 +1816,10 @@ fun VentaScreen(
                         enabled = isCheckoutValid,
                         shape = MaterialTheme.shapes.small
                     ) {
-                        Text(stringResource(Res.string.checkout_pay_without_print_button))
+                        Text(
+                            if (isAndroid()) stringResource(Res.string.checkout_pay_without_print_button)
+                            else stringResource(Res.string.checkout_pay_without_print_button_desktop)
+                        )
                     }
                     Button(
                         onClick = { performCheckout(true) },
@@ -1798,7 +1827,10 @@ fun VentaScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = MaterialTheme.shapes.small
                     ) {
-                        Text(stringResource(Res.string.checkout_pay_and_print_button))
+                        Text(
+                            if (isAndroid()) stringResource(Res.string.checkout_pay_and_print_button)
+                            else stringResource(Res.string.checkout_pay_and_print_button_desktop)
+                        )
                     }
                 }
             },

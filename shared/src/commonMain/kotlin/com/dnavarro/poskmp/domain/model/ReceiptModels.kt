@@ -27,7 +27,8 @@ data class ReceiptSettings(
     val printerId: String? = null,
     val fontSize: Int = 12,
     val feedLines: Int = 3,
-    val footerMessage: String = ""
+    val footerMessage: String = "",
+    val openCashDrawerOnReceipt: Boolean = false
 )
 
 data class ReceiptItem(
@@ -60,5 +61,6 @@ data class ReceiptDocument(
     val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
     val fontSize: Int,
-    val feedLines: Int
+    val feedLines: Int,
+    val openCashDrawer: Boolean = false
 )

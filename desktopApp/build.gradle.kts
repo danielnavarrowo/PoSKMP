@@ -25,10 +25,10 @@ compose.desktop {
             "-Dapp.version=$appVersion",
             "-XX:+TieredCompilation"
         )
-
-        buildTypes.release.proguard {
-            configurationFiles.from(project.file("proguard-rules.pro"))
-        }
+//
+//        buildTypes.release.proguard {
+//            configurationFiles.from(project.file("proguard-rules.pro"))
+//        }
 
         nativeDistributions {
             modules("java.desktop", "java.instrument", "java.sql", "jdk.unsupported")

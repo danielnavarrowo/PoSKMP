@@ -20,18 +20,26 @@ object EscPosReceiptEncoder {
     private val CMD_EMPHASIS_OFF = byteArrayOf(0x1B, 0x45, 0x00) // ESC E 0
     private val CMD_RESET_SCALE = byteArrayOf(0x1D, 0x21, 0x00) // GS ! 0 (1x1 normal scale)
     private val CMD_CUT_PAPER = byteArrayOf(0x1D, 0x56, 0x41, 0x00) // GS V A 0 (Feed and Cut)
-    private val CMD_DRAWER_KICK = byteArrayOf(0x1B, 0x70, 0x00, 0x19, 0xFA.toByte()) // ESC p 0 25 250
+    private val CMD_DRAWER_KICK = byteArrayOf(
+        0x1B, 0x70, 0x00, 0x19, 0xFA.toByte(), // ESC p 0 25 250 (Pin 2)
+        0x1B, 0x70, 0x01, 0x19, 0xFA.toByte()  // ESC p 1 25 250 (Pin 5)
+    )
+
+    /**
+     * Returns raw ESC/POS byte commands to kick open the cash drawer.
+     */
+    fun encodeDrawerKick(): ByteArray = CMD_DRAWER_KICK.copyOf()
 
     /**
      * Converts a [ReceiptDocument] into a raw ESC/POS [ByteArray].
      *
      * @param document The receipt document containing formatted lines and settings.
-     * @param openDrawer If true, prepends a cash drawer kick pulse command.
+     * @param openDrawer If true, prepends a cash drawer kick pulse command. Defaults to document.openCashDrawer.
      * @param cutPaper If true, appends feed and cut commands at the end.
      */
     fun encode(
         document: ReceiptDocument,
-        openDrawer: Boolean = false,
+        openDrawer: Boolean = document.openCashDrawer,
         cutPaper: Boolean = true
     ): ByteArray {
         val output = mutableListOf<Byte>()

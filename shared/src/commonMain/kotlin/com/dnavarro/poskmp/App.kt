@@ -148,6 +148,8 @@ import poskmp.shared.generated.resources.last_sale_title
 import poskmp.shared.generated.resources.last_sale_total
 import poskmp.shared.generated.resources.nav_clientes
 import poskmp.shared.generated.resources.nav_clientes_desktop
+import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
+import poskmp.shared.generated.resources.open_cash_drawer_button
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
@@ -208,6 +210,7 @@ fun App(
     val backupRepository = koinInject<BackupRepository>()
     val settingsRepository = koinInject<SettingsRepository>()
     val shiftRepository = koinInject<com.dnavarro.poskmp.data.ShiftRepository>()
+    val openCashDrawerUseCase = koinInject<OpenCashDrawerUseCase>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
 
     val activeShift by shiftRepository.activeShiftFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -612,6 +615,50 @@ fun App(
                                                     textAlign = TextAlign.Center,
                                                     maxLines = 1
                                                 )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // Botón para abrir cajón de dinero
+                                            if (isExpanded) {
+                                                FilledTonalButton(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            openCashDrawerUseCase()
+                                                        }
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                    shape = MaterialTheme.shapes.medium
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.point_of_sale),
+                                                        contentDescription = stringResource(Res.string.open_cash_drawer_button),
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = stringResource(Res.string.open_cash_drawer_button),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            } else {
+                                                FilledTonalIconButton(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            openCashDrawerUseCase()
+                                                        }
+                                                    },
+                                                    shape = MaterialTheme.shapes.medium
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.point_of_sale),
+                                                        contentDescription = stringResource(Res.string.open_cash_drawer_button),
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
                                             }
 
                                             Spacer(modifier = Modifier.height(6.dp))

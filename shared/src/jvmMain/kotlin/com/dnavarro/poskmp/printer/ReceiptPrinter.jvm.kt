@@ -61,6 +61,81 @@ private class JvmReceiptPrinter : ReceiptPrinter {
         }
     }
 
+    override suspend fun openCashDrawer(printerId: String?): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val target = printerId?.trim()
+                val kickBytes = EscPosReceiptEncoder.encodeDrawerKick()
+
+                when {
+                    // 1. Direct Character Device (e.g. direct:/dev/usb/lp0 or /dev/usb/lp0)
+                    target?.startsWith("direct:") == true || target?.startsWith("/dev/") == true -> {
+                        val devicePath = if (target.startsWith("direct:")) target.removePrefix("direct:") else target
+                        val file = File(devicePath)
+                        if (!file.exists()) {
+                            throw IllegalStateException("El dispositivo $devicePath no está disponible.")
+                        }
+                        FileOutputStream(file).use { stream ->
+                            stream.write(kickBytes)
+                            stream.flush()
+                        }
+                    }
+
+                    // 2. Direct Network Printer (e.g. tcp://192.168.1.100:9100 or 192.168.1.100:9100)
+                    target?.startsWith("tcp://") == true || isIpPort(target) -> {
+                        val hostPort = if (target?.startsWith("tcp://") == true) target.removePrefix("tcp://") else target ?: ""
+                        val parts = hostPort.split(":")
+                        val host = parts[0].trim()
+                        val port = parts.getOrNull(1)?.toIntOrNull() ?: 9100
+                        Socket().use { socket ->
+                            socket.connect(InetSocketAddress(host, port), 4000)
+                            socket.getOutputStream().use { out ->
+                                out.write(kickBytes)
+                                out.flush()
+                            }
+                        }
+                    }
+
+                    // 3. Named System Print Service or System Dialog
+                    else -> {
+                        val isSystemDialog = target.isNullOrBlank() ||
+                                target == PRINTER_SYSTEM_DIALOG_ID ||
+                                target == "android-system"
+
+                        if (!isSystemDialog) {
+                            val service = PrinterJob.lookupPrintServices()
+                                .firstOrNull { it.name.equals(target, ignoreCase = true) }
+                                ?: throw IllegalStateException("Impresora no encontrada")
+
+                            val flavor = DocFlavor.BYTE_ARRAY.AUTOSENSE
+                            if (service.isDocFlavorSupported(flavor)) {
+                                val doc = SimpleDoc(kickBytes, flavor, null)
+                                val job = service.createPrintJob()
+                                job.print(doc, null)
+                            } else {
+                                throw UnsupportedOperationException("AUTOSENSE no soportado en la impresora")
+                            }
+                        } else {
+                            val defaultService = PrinterJob.lookupPrintServices()
+                                .firstOrNull { it.name.equals(PrinterJob.getPrinterJob().printService?.name, ignoreCase = true) }
+                                ?: PrinterJob.lookupPrintServices().firstOrNull()
+                                ?: throw IllegalStateException("No hay impresoras disponibles para abrir el cajón")
+
+                            val flavor = DocFlavor.BYTE_ARRAY.AUTOSENSE
+                            if (defaultService.isDocFlavorSupported(flavor)) {
+                                val doc = SimpleDoc(kickBytes, flavor, null)
+                                val job = defaultService.createPrintJob()
+                                job.print(doc, null)
+                            } else {
+                                throw UnsupportedOperationException("La impresora no admite comandos directos ESC/POS")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private fun printDirectToDevice(devicePath: String, document: ReceiptDocument) {
         val file = File(devicePath)
         if (!file.exists()) {

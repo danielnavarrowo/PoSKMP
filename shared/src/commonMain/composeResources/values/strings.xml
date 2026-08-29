@@ -348,7 +348,9 @@
     <string name="change_to_deliver_label">Cambio a entregar:</string>
     <string name="register_sale_button">Cobrar e Imprimir</string>
     <string name="checkout_pay_and_print_button">Cobrar e Imprimir</string>
+    <string name="checkout_pay_and_print_button_desktop">Cobrar e Imprimir (F12)</string>
     <string name="checkout_pay_without_print_button">Cobrar sin Imprimir</string>
+    <string name="checkout_pay_without_print_button_desktop">Cobrar sin Imprimir (F11)</string>
     <string name="sale_success_title">¡Venta Exitosa!</string>
     <string name="sale_success_message">La venta se ha registrado correctamente.</string>
     <string name="total_charged_label">Total cobrado: $%1$s</string>
@@ -605,6 +607,9 @@
     <string name="receipt_feed_lines_value">%1$d líneas al final del ticket</string>
     <string name="receipt_footer_label">Mensaje del pie de página</string>
     <string name="receipt_footer_placeholder">Gracias por tu compra</string>
+    <string name="open_drawer_on_receipt_title">Abrir cajón de dinero al imprimir</string>
+    <string name="open_drawer_on_receipt_subtitle">Enviar un pulso de apertura (ESC/POS) al cajón de dinero conectado a la impresora al finalizar el ticket.</string>
+    <string name="open_cash_drawer_button">Abrir cajón</string>
     <string name="receipt_preview_settings_title">Vista previa del ticket</string>
     <string name="receipt_preview_settings_subtitle">Esta vista usa exactamente las líneas, el tamaño, el estilo y la fuente seleccionados para imprimir.</string>
     <string name="receipt_preview_title">Ticket de compra</string>
