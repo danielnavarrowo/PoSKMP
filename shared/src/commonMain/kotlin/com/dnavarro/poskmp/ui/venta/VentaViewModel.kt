@@ -49,7 +49,9 @@ class VentaViewModel(
     private val openCashDrawerUseCase: OpenCashDrawerUseCase,
     getActiveShiftUseCase: com.dnavarro.poskmp.domain.usecase.GetActiveShiftUseCase,
     getCashiersUseCase: com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase,
-    private val openShiftUseCase: com.dnavarro.poskmp.domain.usecase.OpenShiftUseCase
+    private val openShiftUseCase: com.dnavarro.poskmp.domain.usecase.OpenShiftUseCase,
+    private val recordCashMovementUseCase: com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase,
+    private val shiftRepository: com.dnavarro.poskmp.data.ShiftRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -67,6 +69,11 @@ class VentaViewModel(
 
     private val _isOpeningShift = MutableStateFlow(false)
     private val _openShiftError = MutableStateFlow<String?>(null)
+    private val _showInflowDialog = MutableStateFlow(false)
+    private val _showOutflowDialog = MutableStateFlow(false)
+    private val _isRecordingMovement = MutableStateFlow(false)
+    private val _shiftActionError = MutableStateFlow<String?>(null)
+    private val _shiftActionSuccess = MutableStateFlow<String?>(null)
 
     private data class ReceiptDialogState(
         val customerSearchQuery: String,
@@ -79,7 +86,13 @@ class VentaViewModel(
         val activeShift: com.dnavarro.poskmp.domain.model.CashierShift?,
         val cashiers: List<com.dnavarro.poskmp.domain.model.Cashier>,
         val isOpeningShift: Boolean,
-        val openShiftError: String?
+        val openShiftError: String?,
+        val showInflowDialog: Boolean,
+        val showOutflowDialog: Boolean,
+        val isRecordingMovement: Boolean,
+        val shiftActionError: String?,
+        val shiftActionSuccess: String?,
+        val activeShiftMovements: List<com.dnavarro.poskmp.domain.model.CashMovement>
     )
 
     private data class ReceiptPrintInternalState(
@@ -92,13 +105,48 @@ class VentaViewModel(
         getProductsUseCase(query = query, activeOnly = true)
     }
 
+    private val _activeShiftFlow = getActiveShiftUseCase()
+
+    private val _activeShiftMovementsFlow = _activeShiftFlow.flatMapLatest { shift ->
+        if (shift != null) {
+            shiftRepository.getMovementsForShiftFlow(shift.id)
+        } else {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        }
+    }
+
     private val _shiftFlow = combine(
-        getActiveShiftUseCase(),
-        getCashiersUseCase(),
-        _isOpeningShift,
-        _openShiftError
-    ) { activeShift, cashiers, isOpening, error ->
-        ShiftState(activeShift, cashiers, isOpening, error)
+        combine(
+            _activeShiftFlow,
+            getCashiersUseCase(),
+            _isOpeningShift,
+            _openShiftError
+        ) { activeShift, cashiers, isOpening, error ->
+            Tuple4(activeShift, cashiers, isOpening, error)
+        },
+        combine(
+            _showInflowDialog,
+            _showOutflowDialog,
+            _isRecordingMovement,
+            _shiftActionError,
+            _shiftActionSuccess
+        ) { inDialog, outDialog, recording, actError, actSuccess ->
+            Tuple5(inDialog, outDialog, recording, actError, actSuccess)
+        },
+        _activeShiftMovementsFlow
+    ) { (activeShift, cashiers, isOpening, error), (inDialog, outDialog, recording, actError, actSuccess), movements ->
+        ShiftState(
+            activeShift = activeShift,
+            cashiers = cashiers,
+            isOpeningShift = isOpening,
+            openShiftError = error,
+            showInflowDialog = inDialog,
+            showOutflowDialog = outDialog,
+            isRecordingMovement = recording,
+            shiftActionError = actError,
+            shiftActionSuccess = actSuccess,
+            activeShiftMovements = movements
+        )
     }
 
     val uiState: StateFlow<VentaUiState> = combine(
@@ -190,7 +238,13 @@ class VentaViewModel(
             activeShift = shiftState.activeShift,
             cashiers = shiftState.cashiers,
             isOpeningShift = shiftState.isOpeningShift,
-            openShiftError = shiftState.openShiftError
+            openShiftError = shiftState.openShiftError,
+            showInflowDialog = shiftState.showInflowDialog,
+            showOutflowDialog = shiftState.showOutflowDialog,
+            isRecordingMovement = shiftState.isRecordingMovement,
+            shiftActionError = shiftState.shiftActionError,
+            shiftActionSuccess = shiftState.shiftActionSuccess,
+            activeShiftMovements = shiftState.activeShiftMovements
         )
     }.stateIn(
         scope = viewModelScope,
@@ -215,6 +269,70 @@ class VentaViewModel(
     fun clearOpenShiftError() {
         _openShiftError.value = null
     }
+
+    fun openInflowDialog() {
+        if (uiState.value.activeShift == null) {
+            _shiftActionError.value = "No hay ningún turno activo para registrar movimientos."
+            return
+        }
+        _shiftActionError.value = null
+        _showInflowDialog.value = true
+        _showOutflowDialog.value = false
+    }
+
+    fun openOutflowDialog() {
+        if (uiState.value.activeShift == null) {
+            _shiftActionError.value = "No hay ningún turno activo para registrar movimientos."
+            return
+        }
+        _shiftActionError.value = null
+        _showInflowDialog.value = false
+        _showOutflowDialog.value = true
+    }
+
+    fun dismissShiftDialogs() {
+        _showInflowDialog.value = false
+        _showOutflowDialog.value = false
+        _shiftActionError.value = null
+    }
+
+    fun recordCashMovement(type: com.dnavarro.poskmp.domain.model.CashMovementType, amount: Double, reason: String) {
+        val activeShift = uiState.value.activeShift
+        if (activeShift == null) {
+            _shiftActionError.value = "No hay ningún turno activo para registrar movimientos."
+            return
+        }
+        viewModelScope.launch {
+            _isRecordingMovement.value = true
+            _shiftActionError.value = null
+            val result = recordCashMovementUseCase(
+                shiftId = activeShift.id,
+                cashierId = activeShift.cashierId,
+                type = type,
+                amount = amount,
+                reason = reason
+            )
+            _isRecordingMovement.value = false
+            if (result.isSuccess) {
+                _showInflowDialog.value = false
+                _showOutflowDialog.value = false
+                _shiftActionSuccess.value = if (type == com.dnavarro.poskmp.domain.model.CashMovementType.ENTRADA) {
+                    "Entrada de efectivo registrada"
+                } else {
+                    "Salida de efectivo registrada"
+                }
+            } else {
+                _shiftActionError.value = result.exceptionOrNull()?.message ?: "Error al registrar movimiento"
+            }
+        }
+    }
+
+    private data class Tuple4<A, B, C, D>(
+        val a: A,
+        val b: B,
+        val c: C,
+        val d: D
+    )
 
     private data class Tuple5<A, B, C, D, E>(
         val a: A,

@@ -52,7 +52,13 @@ data class VentaUiState(
     val activeShift: com.dnavarro.poskmp.domain.model.CashierShift? = null,
     val cashiers: List<com.dnavarro.poskmp.domain.model.Cashier> = emptyList(),
     val isOpeningShift: Boolean = false,
-    val openShiftError: String? = null
+    val openShiftError: String? = null,
+    val showInflowDialog: Boolean = false,
+    val showOutflowDialog: Boolean = false,
+    val isRecordingMovement: Boolean = false,
+    val shiftActionError: String? = null,
+    val shiftActionSuccess: String? = null,
+    val activeShiftMovements: List<com.dnavarro.poskmp.domain.model.CashMovement> = emptyList()
 ) {
     val rawTotal: Double
         get() = cartItems.sumOf { it.product.precio * it.quantity }

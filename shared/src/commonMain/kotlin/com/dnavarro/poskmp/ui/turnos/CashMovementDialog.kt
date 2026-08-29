@@ -322,3 +322,41 @@ fun CashMovementDialog(
         }
     )
 }
+
+@Composable
+fun CashMovementDialogs(
+    showInflowDialog: Boolean,
+    showOutflowDialog: Boolean,
+    isLoading: Boolean,
+    errorMessage: String?,
+    movements: List<CashMovement> = emptyList(),
+    onRecordMovement: (type: CashMovementType, amount: Double, reason: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (showInflowDialog) {
+        CashMovementDialog(
+            type = CashMovementType.ENTRADA,
+            isLoading = isLoading,
+            errorMessage = errorMessage,
+            movements = movements,
+            onConfirm = { amount, reason ->
+                onRecordMovement(CashMovementType.ENTRADA, amount, reason)
+            },
+            onDismiss = onDismiss
+        )
+    }
+
+    if (showOutflowDialog) {
+        CashMovementDialog(
+            type = CashMovementType.SALIDA,
+            isLoading = isLoading,
+            errorMessage = errorMessage,
+            movements = movements,
+            onConfirm = { amount, reason ->
+                onRecordMovement(CashMovementType.SALIDA, amount, reason)
+            },
+            onDismiss = onDismiss
+        )
+    }
+}
+

@@ -80,8 +80,10 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.barcode_scanner
-import poskmp.shared.generated.resources.checkout_button
-import poskmp.shared.generated.resources.checkout_hotkey
+import poskmp.shared.generated.resources.btn_cash_inflow
+import poskmp.shared.generated.resources.btn_cash_outflow
+import poskmp.shared.generated.resources.cash_inflow_hotkey
+import poskmp.shared.generated.resources.cash_outflow_hotkey
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_scanner_desc
@@ -127,9 +129,10 @@ fun CatalogSection(
     cartCount: Int = 0,
     cartTotal: Double = 0.0,
     onSellUnregisteredClick: () -> Unit,
+    onCashInflowClick: () -> Unit = {},
+    onCashOutflowClick: () -> Unit = {},
     onApplyItemWholesaleClick: () -> Unit = {},
     onApplyWholesaleClick: () -> Unit = {},
-    onCheckoutClick: () -> Unit = {},
     searchFocusRequester: FocusRequester? = null,
     onBarcodeScan: ((String) -> Unit)? = null,
     onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null
@@ -531,6 +534,25 @@ fun CatalogSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
+            item {
+                SuggestionChip(
+                    onClick = onCashInflowClick,
+                    label = { Text(if (isAndroid()) stringResource(Res.string.btn_cash_inflow) else stringResource(Res.string.cash_inflow_hotkey), fontWeight = FontWeight.Bold) },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                )
+            }
+            item {
+                SuggestionChip(
+                    onClick = onCashOutflowClick,
+                    label = { Text(if (isAndroid()) stringResource(Res.string.btn_cash_outflow) else stringResource(Res.string.cash_outflow_hotkey), fontWeight = FontWeight.Bold) },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                )
+            }
             item {
                 SuggestionChip(
                     onClick = onSellUnregisteredClick,
@@ -563,16 +585,6 @@ fun CatalogSection(
                             fontWeight = FontWeight.Bold
                         )
                     },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                )
-            }
-
-            item {
-                SuggestionChip(
-                    onClick = onCheckoutClick,
-                    label = { Text(if (isAndroid()) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey), fontWeight = FontWeight.Bold) },
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )

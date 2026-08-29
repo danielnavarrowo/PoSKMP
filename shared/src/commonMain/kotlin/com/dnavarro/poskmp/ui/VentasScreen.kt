@@ -820,33 +820,16 @@ fun VentasScreen(
         )
     }
 
-    // Cash Inflow Dialog
-    if (state.showInflowDialog) {
-        com.dnavarro.poskmp.ui.turnos.CashMovementDialog(
-            type = CashMovementType.ENTRADA,
-            isLoading = state.isRecordingMovement,
-            errorMessage = state.shiftActionError,
-            movements = state.activeShiftMovements,
-            onConfirm = { amount, reason ->
-                onRecordCashMovement(CashMovementType.ENTRADA, amount, reason)
-            },
-            onDismiss = onDismissShiftDialogs
-        )
-    }
-
-    // Cash Outflow Dialog
-    if (state.showOutflowDialog) {
-        com.dnavarro.poskmp.ui.turnos.CashMovementDialog(
-            type = CashMovementType.SALIDA,
-            isLoading = state.isRecordingMovement,
-            errorMessage = state.shiftActionError,
-            movements = state.activeShiftMovements,
-            onConfirm = { amount, reason ->
-                onRecordCashMovement(CashMovementType.SALIDA, amount, reason)
-            },
-            onDismiss = onDismissShiftDialogs
-        )
-    }
+    // Cash Movement Dialogs (Entrada / Salida)
+    com.dnavarro.poskmp.ui.turnos.CashMovementDialogs(
+        showInflowDialog = state.showInflowDialog,
+        showOutflowDialog = state.showOutflowDialog,
+        isLoading = state.isRecordingMovement,
+        errorMessage = state.shiftActionError,
+        movements = state.activeShiftMovements,
+        onRecordMovement = onRecordCashMovement,
+        onDismiss = onDismissShiftDialogs
+    )
 
     // Close Shift Dialog
     if (state.showCloseShiftDialog && state.shiftSummary != null) {

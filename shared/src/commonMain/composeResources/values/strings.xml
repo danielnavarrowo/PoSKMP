@@ -190,7 +190,9 @@
     <string name="modify">Modificar</string>
     <string name="view_ticket_fab">Ver Ticket (%1$d) • $%2$s</string>
     <string name="not_registered">No Registrado</string>
-    <string name="not_registered_hotkey">F7: No Registrado</string>
+    <string name="not_registered_hotkey">F9: No Registrado</string>
+    <string name="cash_inflow_hotkey">F7: Entrada de efectivo</string>
+    <string name="cash_outflow_hotkey">F8: Salida de efectivo</string>
     <string name="wholesale_item">Mayoreo a Producto</string>
     <string name="wholesale_item_hotkey">F11: Mayoreo a Producto</string>
     <string name="wholesale_ticket">Mayoreo a Ticket</string>

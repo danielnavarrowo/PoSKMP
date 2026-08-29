@@ -108,6 +108,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.PaymentMethod
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
 import com.dnavarro.poskmp.ui.venta.CustomerSelectionDialog
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.util.PlatformBackHandler
@@ -551,6 +552,16 @@ fun VentaScreen(
                                 }
 
                                 Key.F7 -> {
+                                    viewModel.openInflowDialog()
+                                    true
+                                }
+
+                                Key.F8 -> {
+                                    viewModel.openOutflowDialog()
+                                    true
+                                }
+
+                                Key.F9 -> {
                                     openUnregisteredDialog()
                                     true
                                 }
@@ -629,6 +640,8 @@ fun VentaScreen(
                             cartCount = cartItems.size,
                             cartTotal = total,
                             onSellUnregisteredClick = { openUnregisteredDialog() },
+                            onCashInflowClick = { viewModel.openInflowDialog() },
+                            onCashOutflowClick = { viewModel.openOutflowDialog() },
                             onApplyItemWholesaleClick = {
                                 if (cartItems.isNotEmpty()) {
                                     val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
@@ -638,10 +651,6 @@ fun VentaScreen(
                                 }
                             },
                             onApplyWholesaleClick = { toggleWholesalePrice() },
-                            onCheckoutClick = {
-                                paymentAmountInput = TextFieldValue("")
-                                showCheckoutDialog = true
-                            },
                             searchFocusRequester = searchBarFocusRequester,
                             onBarcodeScan = barcodeScanCallback,
                             onSearchKeyIntercept = handleSearchKeyIntercept
@@ -748,6 +757,8 @@ fun VentaScreen(
                                 cartCount = cartItems.size,
                                 cartTotal = total,
                                 onSellUnregisteredClick = { openUnregisteredDialog() },
+                                onCashInflowClick = { viewModel.openInflowDialog() },
+                                onCashOutflowClick = { viewModel.openOutflowDialog() },
                                 onApplyItemWholesaleClick = {
                                     if (cartItems.isNotEmpty()) {
                                         val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
@@ -757,10 +768,6 @@ fun VentaScreen(
                                     }
                                 },
                                 onApplyWholesaleClick = { toggleWholesalePrice() },
-                                onCheckoutClick = {
-                                    paymentAmountInput = TextFieldValue("")
-                                    showCheckoutDialog = true
-                                },
                                 searchFocusRequester = searchBarFocusRequester,
                                 onBarcodeScan = barcodeScanCallback,
                                 onSearchKeyIntercept = handleSearchKeyIntercept
@@ -2062,6 +2069,19 @@ fun VentaScreen(
             onQuantityChange = handleQuantityChange
         )
     }
+
+    // Cash Movement Dialogs (Entrada / Salida)
+    CashMovementDialogs(
+        showInflowDialog = uiState.showInflowDialog,
+        showOutflowDialog = uiState.showOutflowDialog,
+        isLoading = uiState.isRecordingMovement,
+        errorMessage = uiState.shiftActionError,
+        movements = uiState.activeShiftMovements,
+        onRecordMovement = { type, amount, reason ->
+            viewModel.recordCashMovement(type, amount, reason)
+        },
+        onDismiss = { viewModel.dismissShiftDialogs() }
+    )
 }
 
 @Composable
