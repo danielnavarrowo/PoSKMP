@@ -380,12 +380,20 @@ fun VentaScreen(
 
     // Helper: Add/Update product quantity in cart
     fun addProductToCart(product: Products, qty: Double) {
+        val existingIndex = cartItems.indexOfFirst { it.product.id == product.id }
         viewModel.addProductToCart(product, qty)
+        if (existingIndex != -1) {
+            selectedIndex = existingIndex
+        }
         reclaimSearchBarFocus()
     }
 
     fun setProductQuantityInCart(product: Products, qty: Double) {
+        val existingIndex = cartItems.indexOfFirst { it.product.id == product.id }
         viewModel.setProductQuantityInCart(product, qty)
+        if (existingIndex != -1) {
+            selectedIndex = existingIndex
+        }
         reclaimSearchBarFocus()
     }
 
@@ -480,55 +488,60 @@ fun VentaScreen(
     }
 
     val handleSearchKeyIntercept: (KeyEvent) -> Boolean = { keyEvent ->
-        if (cartItems.isNotEmpty()) {
-            val key = keyEvent.key
-            val codePoint = keyEvent.utf16CodePoint
-            val isPlus = key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
-            val isMinus = key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
-            val isUp = key == Key.DirectionUp
-            val isDown = key == Key.DirectionDown
-            val isDelete = key == Key.Delete
+        val key = keyEvent.key
+        val codePoint = keyEvent.utf16CodePoint
+        val isPlus = key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
+        val isMinus = key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
+        val isUp = key == Key.DirectionUp
+        val isDown = key == Key.DirectionDown
+        val isDelete = key == Key.Delete
 
-            val shouldIntercept = isUp || isDown || isDelete || isPlus || isMinus
+        val shouldIntercept = isUp || isDown || isDelete || isPlus || isMinus
 
-            if (shouldIntercept) {
-                if (keyEvent.type == KeyEventType.KeyDown) {
-                    val currentIndex = if (selectedIndex in cartItems.indices) selectedIndex else cartItems.lastIndex
-                    val currentItem = cartItems[currentIndex]
-                    when {
-                        isUp -> {
-                            selectedIndex = if (currentIndex > 0) {
-                                currentIndex - 1
-                            } else {
-                                0
-                            }
+        if (shouldIntercept) {
+            if (keyEvent.type == KeyEventType.KeyDown && cartItems.isNotEmpty()) {
+                val currentIndex = if (selectedIndex in cartItems.indices) selectedIndex else cartItems.lastIndex
+                val currentItem = cartItems[currentIndex]
+                when {
+                    isUp -> {
+                        selectedIndex = if (currentIndex > 0) {
+                            currentIndex - 1
+                        } else {
+                            0
                         }
-                        isDown -> {
-                            selectedIndex = if (currentIndex < cartItems.lastIndex) {
-                                currentIndex + 1
-                            } else {
-                                cartItems.lastIndex
-                            }
+                    }
+                    isDown -> {
+                        selectedIndex = if (currentIndex < cartItems.lastIndex) {
+                            currentIndex + 1
+                        } else {
+                            cartItems.lastIndex
                         }
-                        isPlus -> {
-                            val increment = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
-                            addProductToCart(currentItem.product, increment)
-                        }
-                        isMinus -> {
-                            val decrement = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
-                            addProductToCart(currentItem.product, -decrement)
-                        }
-
-                        else -> {
+                    }
+                    isPlus -> {
+                        val increment = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
+                        addProductToCart(currentItem.product, increment)
+                    }
+                    isMinus -> {
+                        val decrement = if (currentItem.product.por_peso == 1L) 0.1 else 1.0
+                        if (currentItem.quantity - decrement <= 0.0) {
                             removeCartItem(currentItem)
                             if (selectedIndex >= cartItems.size) {
                                 selectedIndex = (cartItems.size - 1).coerceAtLeast(0)
                             }
+                        } else {
+                            addProductToCart(currentItem.product, -decrement)
+                        }
+                    }
+
+                    else -> {
+                        removeCartItem(currentItem)
+                        if (selectedIndex >= cartItems.size) {
+                            selectedIndex = (cartItems.size - 1).coerceAtLeast(0)
                         }
                     }
                 }
-                true
-            } else false
+            }
+            true
         } else false
     }
 
@@ -639,6 +652,7 @@ fun VentaScreen(
                             onToggleFavorite = { product -> toggleProductFavorite(product) },
                             onModifyProduct = { product -> showProductDialogFor = product },
                             isCompact = false,
+                            useProductTable = uiState.useProductTableInCatalog,
                             onViewCartClick = null,
                             onOpenScanner = { showCameraScanner = true },
                             cartCount = cartItems.size,
@@ -748,6 +762,7 @@ fun VentaScreen(
                                 onToggleFavorite = { product -> toggleProductFavorite(product) },
                                 onModifyProduct = { product -> showProductDialogFor = product },
                                 isCompact = isCompact,
+                                useProductTable = uiState.useProductTableInCatalog,
                                 onViewCartClick = {
                                     if (isAndroid()) {
                                         focusManager.clearFocus(force = true)

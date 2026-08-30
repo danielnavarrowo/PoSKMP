@@ -42,6 +42,7 @@ private data class UpdateInternalState(
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
+private data class Tuple6<A, B, C, D, E, F>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F)
 private data class Tuple7<A, B, C, D, E, F, G>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F, val g: G)
 
 /**
@@ -87,13 +88,22 @@ class AjustesViewModel(
 
     private val _behaviorFlow = combine(
         combine(
-            repository.defaultScreenFlow,
-            repository.isChecadorDialogFlow,
-            repository.showExtraPricesChecadorFlow,
-            repository.defaultRetailMarginFlow,
-            repository.defaultWholesaleMarginFlow
-        ) { defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin ->
-            Tuple5(defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin)
+            combine(
+                repository.defaultScreenFlow,
+                repository.isChecadorDialogFlow,
+                repository.showExtraPricesChecadorFlow
+            ) { defaultScreen, isChecadorDialog, showExtraPricesChecador ->
+                Triple(defaultScreen, isChecadorDialog, showExtraPricesChecador)
+            },
+            combine(
+                repository.useProductTableInCatalogFlow,
+                repository.defaultRetailMarginFlow,
+                repository.defaultWholesaleMarginFlow
+            ) { useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin ->
+                Triple(useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin)
+            }
+        ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador), (useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin) ->
+            Tuple6(defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin)
         },
         combine(
             repository.isRoundingEnabledFlow,
@@ -123,13 +133,14 @@ class AjustesViewModel(
         ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
             Tuple7(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
         }
-    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, defaultRetailMargin, defaultWholesaleMargin),
+    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin),
         (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale),
         (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
         AjustesUiState(
             defaultScreen = defaultScreen,
             isChecadorDialog = isChecadorDialog,
             showExtraPricesChecador = showExtraPricesChecador,
+            useProductTableInCatalog = useProductTableInCatalog,
             defaultRetailMargin = defaultRetailMargin,
             defaultWholesaleMargin = defaultWholesaleMargin,
             isRoundingEnabled = isRoundingEnabled,
@@ -158,6 +169,7 @@ class AjustesViewModel(
             defaultScreen = behaviorState.defaultScreen,
             isChecadorDialog = behaviorState.isChecadorDialog,
             showExtraPricesChecador = behaviorState.showExtraPricesChecador,
+            useProductTableInCatalog = behaviorState.useProductTableInCatalog,
             defaultRetailMargin = behaviorState.defaultRetailMargin,
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
             isRoundingEnabled = behaviorState.isRoundingEnabled,
@@ -259,6 +271,12 @@ class AjustesViewModel(
     fun setShowExtraPricesChecador(show: Boolean) {
         viewModelScope.launch {
             repository.setShowExtraPricesChecador(show)
+        }
+    }
+
+    fun setUseProductTableInCatalog(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setUseProductTableInCatalog(enabled)
         }
     }
 

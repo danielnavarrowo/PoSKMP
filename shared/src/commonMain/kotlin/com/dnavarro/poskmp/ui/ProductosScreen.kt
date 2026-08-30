@@ -8,10 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,7 +15,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,7 +32,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -77,7 +71,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
@@ -88,7 +81,6 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -102,16 +94,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.components.ProductSimpleCard
+import com.dnavarro.poskmp.ui.components.ProductTableHeaderRow
+import com.dnavarro.poskmp.ui.components.ProductTableRow
 import com.dnavarro.poskmp.ui.productos.DEFAULT_PRODUCT_TABLE_COLUMNS
 import com.dnavarro.poskmp.ui.productos.FavoriteFilterOption
 import com.dnavarro.poskmp.ui.productos.ProductTableColumn
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
-import com.dnavarro.poskmp.util.formatBarcodesForDisplay
-import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
-import com.dnavarro.poskmp.util.formatPrice
-import com.dnavarro.poskmp.util.formatQuantity
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -120,7 +111,6 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.apply_filters_button
-import poskmp.shared.generated.resources.arrow_up
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.bulk_op_change_category_title
 import poskmp.shared.generated.resources.bulk_op_change_prices_title
@@ -132,11 +122,8 @@ import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.columns_section_title
-import poskmp.shared.generated.resources.cost_display_label
 import poskmp.shared.generated.resources.delete
-import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.edit
-import poskmp.shared.generated.resources.favorite_desc
 import poskmp.shared.generated.resources.filter
 import poskmp.shared.generated.resources.filter_and_sort_title
 import poskmp.shared.generated.resources.filter_category_all
@@ -165,7 +152,6 @@ import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.new_product_button_desktop
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
-import poskmp.shared.generated.resources.price_display_label
 import poskmp.shared.generated.resources.product_admin_title
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.remove
@@ -180,10 +166,7 @@ import poskmp.shared.generated.resources.sort_order_desc
 import poskmp.shared.generated.resources.sort_order_section_title
 import poskmp.shared.generated.resources.sort_section_title
 import poskmp.shared.generated.resources.star
-import poskmp.shared.generated.resources.star_filled
-import poskmp.shared.generated.resources.status_inactive
 import poskmp.shared.generated.resources.wholesale
-import poskmp.shared.generated.resources.wholesale_display_label
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class ProductSortField {
@@ -192,70 +175,6 @@ enum class ProductSortField {
 
 enum class ProductSortOrder {
     ASC, DESC
-}
-
-@Composable
-fun RowScope.TableHeader(
-    text: String,
-    weight: Float,
-    field: ProductSortField,
-    currentField: ProductSortField,
-    currentOrder: ProductSortOrder,
-    onHeaderClick: (ProductSortField) -> Unit,
-    onResize: ((Float) -> Unit)? = null
-) {
-    Box(
-        modifier = Modifier.weight(weight)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onHeaderClick(field) }
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    color = if (field == currentField) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (field == currentField) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    painter = painterResource(Res.drawable.arrow_up),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.rotate(if (currentOrder == ProductSortOrder.ASC) 0f else 180f)
-                )
-            }
-        }
-        if (onResize != null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(12.dp)
-                    .height(32.dp)
-                    .pointerInput(onResize) {
-                        detectHorizontalDragGestures { change, dragAmount ->
-                            change.consume()
-                            onResize(dragAmount)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(24.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                )
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -954,142 +873,22 @@ fun ProductosScreen(
                                                 ShapeDefaults.middleListItemShape
                                             }
                                             val isSelected = product.id in selectedProductIds
-                                            Card(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .combinedClickable(
-                                                        onClick = {
-                                                            if (selectedProductIds.isNotEmpty()) {
-                                                                viewModel.onToggleSelectProduct(
-                                                                    product.id
-                                                                )
-                                                            } else {
-                                                                viewModel.onShowProductDialog(
-                                                                    product
-                                                                )
-                                                            }
-                                                        },
-                                                        onLongClick = {
-                                                            viewModel.onToggleSelectProduct(product.id)
-                                                        }
-                                                    ),
+                                            ProductSimpleCard(
+                                                product = product,
                                                 shape = shape,
-                                                colors = CardDefaults.cardColors(
-                                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
-                                                ),
-                                            ) {
-                                                Column(modifier = Modifier.padding(12.dp)) {
-
-                                                    Row {
-                                                        Text(
-                                                            modifier = Modifier.weight(.9f),
-                                                            text = product.nombre,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                            style = MaterialTheme.typography.titleMedium
-
-                                                        )
-                                                        Row(
-                                                            horizontalArrangement = Arrangement.spacedBy(
-                                                                6.dp
-                                                            )
-                                                        ) {
-                                                            if (product.es_favorito == 1L) {
-                                                                Badge(
-                                                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                                    modifier = Modifier.clip(
-                                                                        MaterialShapes.Cookie12Sided.toShape()
-                                                                    )
-                                                                        .size(28.dp)
-                                                                ) {
-                                                                    Icon(
-                                                                        painter = painterResource(
-                                                                            Res.drawable.star_filled
-                                                                        ),
-                                                                        contentDescription = stringResource(
-                                                                            Res.string.favorite_desc
-                                                                        ),
-                                                                        modifier = Modifier.size(18.dp)
-                                                                    )
-                                                                }
-                                                            }
-                                                            if (product.activo == 0L) {
-                                                                Badge(
-                                                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                                                    modifier = Modifier.clip(
-                                                                        MaterialShapes.Sunny.toShape()
-                                                                    )
-                                                                        .size(28.dp)
-                                                                ) {
-                                                                    Icon(
-                                                                        painter = painterResource(
-                                                                            Res.drawable.disabled
-                                                                        ),
-                                                                        contentDescription = stringResource(
-                                                                            Res.string.status_inactive
-                                                                        ),
-                                                                        modifier = Modifier.size(18.dp)
-                                                                    )
-                                                                }
-                                                            }
-                                                        }
-
+                                                isSelected = isSelected,
+                                                showCheckbox = false,
+                                                onClick = {
+                                                    if (selectedProductIds.isNotEmpty()) {
+                                                        viewModel.onToggleSelectProduct(product.id)
+                                                    } else {
+                                                        viewModel.onShowProductDialog(product)
                                                     }
-
-                                                    Spacer(modifier = Modifier.height(10.dp))
-
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                                    ) {
-                                                        if (product.costo > 0.0) {
-                                                            Text(
-                                                                stringResource(
-                                                                    Res.string.cost_display_label,
-                                                                    product.costo.toString()
-                                                                        .formatPrice()
-                                                                ),
-                                                                style = MaterialTheme.typography.bodyMedium,
-                                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(
-                                                                    alpha = 0.7f
-                                                                ) else MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
-                                                        }
-                                                        if (product.precio > 0.0) {
-                                                            Text(
-                                                                text = stringResource(
-                                                                    Res.string.price_display_label,
-                                                                    product.precio.toString()
-                                                                        .formatPrice()
-                                                                ),
-                                                                style = MaterialTheme.typography.bodyMedium,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-                                                            )
-                                                        }
-                                                        if (product.precio_mayoreo > 0.0) {
-                                                            Text(
-                                                                stringResource(
-                                                                    Res.string.wholesale_display_label,
-                                                                    product.precio_mayoreo.toString()
-                                                                        .formatPrice()
-                                                                ),
-                                                                style = MaterialTheme.typography.bodyMedium,
-                                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(
-                                                                    alpha = 0.7f
-                                                                ) else MaterialTheme.colorScheme.onSurfaceVariant
-                                                            )
-                                                        }
-
-
-                                                    }
-
+                                                },
+                                                onLongClick = {
+                                                    viewModel.onToggleSelectProduct(product.id)
                                                 }
-                                            }
+                                            )
                                         }
                                     }
                                 } else {
@@ -1134,34 +933,20 @@ fun ProductosScreen(
                                             }
                                         }
 
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(MaterialTheme.colorScheme.surfaceContainer)
-                                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                                             verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            TriStateCheckbox(
-                                                state = selectAllState,
-                                                onClick = {
-                                                    viewModel.onSelectAllProducts(sortedProducts.map { it.id })
-                                                },
-                                                modifier = Modifier.weight(0.05f)
-                                            )
-                                            activeColumns.forEachIndexed { index, col ->
-                                                TableHeader(
-                                                    stringResource(col.titleRes),
-                                                    columnWeights.getOrElse(index) { (col.defaultWeight / totalDefaultWeight) * 0.95f },
-                                                    col.sortField,
-                                                    sortField,
-                                                    sortOrder,
-                                                    onHeaderClick,
-                                                    onResize = if (index < activeColumns.lastIndex) {
-                                                        { resizeColumn(index, it) }
-                                                    } else null
-                                                )
-                                            }
-                                        }
+                                        ProductTableHeaderRow(
+                                            visibleColumns = activeColumns,
+                                            columnWeights = columnWeights,
+                                            totalDefaultWeight = totalDefaultWeight,
+                                            showSelectAll = true,
+                                            selectAllState = selectAllState,
+                                            onSelectAllClick = {
+                                                viewModel.onSelectAllProducts(sortedProducts.map { it.id })
+                                            },
+                                            sortField = sortField,
+                                            sortOrder = sortOrder,
+                                            onHeaderClick = onHeaderClick,
+                                            onResizeColumn = resizeColumn
+                                        )
 
                                         LazyColumn(
                                             state = listState,
@@ -1175,209 +960,29 @@ fun ProductosScreen(
                                                     else ShapeDefaults.middleListItemShape
                                                 val isHighlighted = selectedProductIndex == index
 
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clip(shape)
-                                                        .background(
-                                                            if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(
-                                                                alpha = 0.45f
-                                                            )
-                                                            else MaterialTheme.colorScheme.surfaceContainerLowest
-                                                        )
-                                                        .then(
-                                                            if (isHighlighted) Modifier.border(
-                                                                2.dp,
-                                                                MaterialTheme.colorScheme.primary,
-                                                                shape
-                                                            )
-                                                            else Modifier
-                                                        )
-                                                        .clickable {
-                                                            selectedProductIndex = index
-                                                            selectionAnchorIndex = index
-                                                            viewModel.onShowProductDialog(product)
-                                                        }
-                                                        .padding(
-                                                            horizontal = 16.dp,
-                                                            vertical = 10.dp
-                                                        ),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Checkbox(
-                                                        checked = product.id in selectedProductIds,
-                                                        onCheckedChange = {
-                                                            selectedProductIndex = index
-                                                            selectionAnchorIndex = index
-                                                            viewModel.onToggleSelectProduct(
-                                                                product.id
-                                                            )
-                                                        },
-                                                        modifier = Modifier.weight(0.05f)
-                                                    )
-                                                    activeColumns.forEachIndexed { colIndex, col ->
-                                                        val weight = columnWeights.getOrElse(colIndex) { (col.defaultWeight / totalDefaultWeight) * 0.95f }
-                                                        when (col) {
-                                                            ProductTableColumn.CODIGO -> {
-                                                                val codesDisplay = product.formatBarcodesForDisplay()
-                                                                Text(
-                                                                    text = codesDisplay,
-                                                                    modifier = Modifier.weight(weight),
-                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                    maxLines = 1,
-                                                                    overflow = TextOverflow.Ellipsis
-                                                                )
-                                                            }
-                                                            ProductTableColumn.NOMBRE -> {
-                                                                Row(
-                                                                    modifier = Modifier.weight(weight),
-                                                                    verticalAlignment = Alignment.CenterVertically
-                                                                ) {
-                                                                    Text(
-                                                                        text = product.nombre,
-                                                                        style = MaterialTheme.typography.bodyMedium,
-                                                                        fontWeight = FontWeight.Bold,
-                                                                        maxLines = 1,
-                                                                        overflow = TextOverflow.Ellipsis
-                                                                    )
-                                                                    if (product.es_favorito == 1L) {
-                                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                                        Badge(
-                                                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                                            modifier = Modifier.clip(
-                                                                                MaterialShapes.Cookie12Sided.toShape()
-                                                                            ).size(28.dp)
-                                                                        ) {
-                                                                            Icon(
-                                                                                painter = painterResource(Res.drawable.star_filled),
-                                                                                contentDescription = stringResource(
-                                                                                    Res.string.favorite_desc
-                                                                                ),
-                                                                                modifier = Modifier.size(18.dp)
-                                                                            )
-                                                                        }
-                                                                    }
-                                                                    if (product.activo == 0L) {
-                                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                                        Badge(
-                                                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                                                                            modifier = Modifier.clip(
-                                                                                MaterialShapes.Sunny.toShape()
-                                                                            ).size(28.dp)
-                                                                        ) {
-                                                                            Icon(
-                                                                                painter = painterResource(Res.drawable.disabled),
-                                                                                contentDescription = stringResource(
-                                                                                    Res.string.status_inactive
-                                                                                ),
-                                                                                modifier = Modifier.size(18.dp)
-                                                                            )
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                            ProductTableColumn.CATEGORIA -> {
-                                                                Text(
-                                                                    text = product.categoria ?: stringResource(Res.string.no_category),
-                                                                    modifier = Modifier.weight(weight),
-                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                    maxLines = 1,
-                                                                    overflow = TextOverflow.Ellipsis
-                                                                )
-                                                            }
-                                                            ProductTableColumn.PRECIO -> {
-                                                                Text(
-                                                                    text = "$${product.precio.toString().formatPrice()}",
-                                                                    modifier = Modifier.weight(weight),
-                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                    fontWeight = FontWeight.Bold
-                                                                )
-                                                            }
-                                                            ProductTableColumn.COSTO -> {
-                                                                Text(
-                                                                    text = "$${product.costo.toString().formatPrice()}",
-                                                                    modifier = Modifier.weight(weight),
-                                                                    style = MaterialTheme.typography.bodyMedium
-                                                                )
-                                                            }
-                                                            ProductTableColumn.MAYOREO -> {
-                                                                Text(
-                                                                    text = "$${product.precio_mayoreo.toString().formatPrice()}",
-                                                                    modifier = Modifier.weight(weight),
-                                                                    style = MaterialTheme.typography.bodyMedium
-                                                                )
-                                                            }
-                                                            ProductTableColumn.MARGEN_VENTA -> {
-                                                                if (product.costo > 0.0 && product.precio > 0.0) {
-                                                                    val margin = ((product.precio - product.costo) / product.costo) * 100.0
-                                                                    val isBelowDefault = (uiState.defaultRetailMargin > 0.0 && margin < uiState.defaultRetailMargin) || margin < 0.0
-                                                                    Text(
-                                                                        text = "${margin.toString().formatPrice()}%",
-                                                                        modifier = Modifier.weight(weight),
-                                                                        style = MaterialTheme.typography.bodyMedium,
-                                                                        color = if (isBelowDefault) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                                                                        fontWeight = if (isBelowDefault) FontWeight.Bold else FontWeight.Normal
-                                                                    )
-                                                                } else {
-                                                                    Text(
-                                                                        text = "-",
-                                                                        modifier = Modifier.weight(weight),
-                                                                        style = MaterialTheme.typography.bodyMedium,
-                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                                    )
-                                                                }
-                                                            }
-                                                            ProductTableColumn.MARGEN_MAYOREO -> {
-                                                                if (product.costo > 0.0 && product.precio_mayoreo > 0.0) {
-                                                                    val margin = ((product.precio_mayoreo - product.costo) / product.costo) * 100.0
-                                                                    val isBelowDefault = (uiState.defaultWholesaleMargin > 0.0 && margin < uiState.defaultWholesaleMargin) || margin < 0.0
-                                                                    Text(
-                                                                        text = "${margin.toString().formatPrice()}%",
-                                                                        modifier = Modifier.weight(weight),
-                                                                        style = MaterialTheme.typography.bodyMedium,
-                                                                        color = if (isBelowDefault) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                                                                        fontWeight = if (isBelowDefault) FontWeight.Bold else FontWeight.Normal
-                                                                    )
-                                                                } else {
-                                                                    Text(
-                                                                        text = "-",
-                                                                        modifier = Modifier.weight(weight),
-                                                                        style = MaterialTheme.typography.bodyMedium,
-                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                                    )
-                                                                }
-                                                            }
-                                                            ProductTableColumn.VENTAS_TOTALES -> {
-                                                                val stats = uiState.salesStats[product.id]
-                                                                val total = stats?.totalVentas ?: 0.0
-                                                                val text = if (total == 0.0) {
-                                                                    "0"
-                                                                } else if (product.por_peso == 1L) {
-                                                                    total.formatQuantity(isWeight = true)
-                                                                } else {
-                                                                    if (total % 1.0 == 0.0) total.toLong().toString() else total.toString().formatPrice()
-                                                                }
-                                                                Text(
-                                                                    text = text,
-                                                                    modifier = Modifier.weight(weight),
-                                                                    style = MaterialTheme.typography.bodyMedium
-                                                                )
-                                                            }
-                                                            ProductTableColumn.ULTIMA_VENTA -> {
-                                                                val stats = uiState.salesStats[product.id]
-                                                                val text = stats?.ultimaVenta?.let { formatEpochMillisToDateTime(it) } ?: "-"
-                                                                Text(
-                                                                    text = text,
-                                                                    modifier = Modifier.weight(weight),
-                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                    color = if (stats?.ultimaVenta != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                                                                )
-                                                            }
-                                                        }
+                                                ProductTableRow(
+                                                    product = product,
+                                                    visibleColumns = activeColumns,
+                                                    columnWeights = columnWeights,
+                                                    totalDefaultWeight = totalDefaultWeight,
+                                                    shape = shape,
+                                                    isHighlighted = isHighlighted,
+                                                    showCheckbox = true,
+                                                    isChecked = product.id in selectedProductIds,
+                                                    onCheckedChange = {
+                                                        selectedProductIndex = index
+                                                        selectionAnchorIndex = index
+                                                        viewModel.onToggleSelectProduct(product.id)
+                                                    },
+                                                    salesStats = uiState.salesStats,
+                                                    defaultRetailMargin = uiState.defaultRetailMargin,
+                                                    defaultWholesaleMargin = uiState.defaultWholesaleMargin,
+                                                    onClick = {
+                                                        selectedProductIndex = index
+                                                        selectionAnchorIndex = index
+                                                        viewModel.onShowProductDialog(product)
                                                     }
-                                                }
+                                                )
                                             }
                                         }
                                     }

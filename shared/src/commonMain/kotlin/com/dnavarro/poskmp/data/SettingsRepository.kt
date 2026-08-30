@@ -38,6 +38,7 @@ interface SettingsRepository {
     val defaultScreenFlow: Flow<Screen>
     val isChecadorDialogFlow: Flow<Boolean>
     val showExtraPricesChecadorFlow: Flow<Boolean>
+    val useProductTableInCatalogFlow: Flow<Boolean>
     val defaultRetailMarginFlow: Flow<Double>
     val defaultWholesaleMarginFlow: Flow<Double>
     val isRoundingEnabledFlow: Flow<Boolean>
@@ -64,6 +65,7 @@ interface SettingsRepository {
     suspend fun setDefaultScreen(screen: Screen)
     suspend fun setIsChecadorDialog(isDialog: Boolean)
     suspend fun setShowExtraPricesChecador(show: Boolean)
+    suspend fun setUseProductTableInCatalog(enabled: Boolean)
     suspend fun setDefaultRetailMargin(margin: Double)
     suspend fun setDefaultWholesaleMargin(margin: Double)
     suspend fun setIsRoundingEnabled(enabled: Boolean)
@@ -115,6 +117,7 @@ class SettingsRepositoryImpl(
         val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
         val IS_CHECADOR_DIALOG = booleanPreferencesKey("is_checador_dialog")
         val SHOW_EXTRA_PRICES_CHECADOR = booleanPreferencesKey("show_extra_prices_checador")
+        val USE_PRODUCT_TABLE_IN_CATALOG = booleanPreferencesKey("use_product_table_in_catalog")
         val DEFAULT_RETAIL_MARGIN = doublePreferencesKey("default_retail_margin_percentage")
         val DEFAULT_WHOLESALE_MARGIN = doublePreferencesKey("default_wholesale_margin_percentage")
         val IS_ROUNDING_ENABLED = booleanPreferencesKey("is_rounding_enabled")
@@ -200,6 +203,10 @@ class SettingsRepositoryImpl(
 
     override val showExtraPricesChecadorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] ?: false
+    }
+
+    override val useProductTableInCatalogFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.USE_PRODUCT_TABLE_IN_CATALOG] ?: false
     }
 
     override val defaultRetailMarginFlow: Flow<Double> = dataStore.data.map { preferences ->
@@ -356,6 +363,12 @@ class SettingsRepositoryImpl(
     override suspend fun setShowExtraPricesChecador(show: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] = show
+        }
+    }
+
+    override suspend fun setUseProductTableInCatalog(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.USE_PRODUCT_TABLE_IN_CATALOG] = enabled
         }
     }
 

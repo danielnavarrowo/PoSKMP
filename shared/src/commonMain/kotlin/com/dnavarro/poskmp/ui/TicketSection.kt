@@ -117,7 +117,7 @@ fun TicketSection(
     var previousSize by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(selectedIndex) {
+    LaunchedEffect(selectedIndex, cartItems) {
         if (selectedIndex in cartItems.indices) {
             try {
                 listState.animateScrollToItem(selectedIndex)
@@ -567,7 +567,11 @@ private fun TicketItemRow(
 
                                 Key.Minus, Key.NumPadSubtract -> {
                                     val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
-                                    onUpdateQuantity(item, -decrement)
+                                    if (item.quantity - decrement <= 0.0) {
+                                        onRemoveItem(item)
+                                    } else {
+                                        onUpdateQuantity(item, -decrement)
+                                    }
                                     true
                                 }
 
@@ -726,7 +730,11 @@ private fun ItemQuantityControls(
         IconButton(
             onClick = {
                 val decrement = if (item.product.por_peso == 1L) 0.1 else 1.0
-                onUpdateQuantity(item, -decrement)
+                if (item.quantity - decrement <= 0.0) {
+                    onRemoveItem(item)
+                } else {
+                    onUpdateQuantity(item, -decrement)
+                }
             },
             modifier = Modifier.size(24.dp)
         ) {
@@ -767,7 +775,7 @@ private fun ItemQuantityControls(
                     val parsed = textValue.toDoubleOrNull()
                     if (parsed != null && parsed > 0.0) {
                         onSetQuantity(item, parsed)
-                    } else if (parsed == 0.0) {
+                    } else if (parsed != null && parsed <= 0.0) {
                         onRemoveItem(item)
                     } else {
                         textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
@@ -795,7 +803,7 @@ private fun ItemQuantityControls(
                             if (parsed != item.quantity) {
                                 onSetQuantity(item, parsed)
                             }
-                        } else if (parsed == 0.0) {
+                        } else if (parsed != null && parsed <= 0.0) {
                             onRemoveItem(item)
                         } else {
                             textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)

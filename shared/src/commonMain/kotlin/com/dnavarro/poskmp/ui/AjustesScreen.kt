@@ -174,6 +174,8 @@ fun AjustesScreen(
         onIsChecadorDialogChange = { viewModel.setIsChecadorDialog(it) },
         showExtraPricesChecador = uiState.showExtraPricesChecador,
         onShowExtraPricesChecadorChange = { viewModel.setShowExtraPricesChecador(it) },
+        useProductTableInCatalog = uiState.useProductTableInCatalog,
+        onUseProductTableInCatalogChange = { viewModel.setUseProductTableInCatalog(it) },
         defaultRetailMargin = uiState.defaultRetailMargin,
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
@@ -251,6 +253,8 @@ fun AjustesScreen(
     onIsChecadorDialogChange: (Boolean) -> Unit = {},
     showExtraPricesChecador: Boolean = false,
     onShowExtraPricesChecadorChange: (Boolean) -> Unit = {},
+    useProductTableInCatalog: Boolean = false,
+    onUseProductTableInCatalogChange: (Boolean) -> Unit = {},
     defaultRetailMargin: Double = 0.0,
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
@@ -633,6 +637,88 @@ fun AjustesScreen(
                                 checked = showExtraPricesChecador,
                                 onCheckedChange = onShowExtraPricesChecadorChange
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Catalog Layout in Sale Screen Toggle (Tarjetas vs Lista/Tabla)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = stringResource(Res.string.catalog_layout_title),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(Res.string.catalog_layout_subtitle),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                val catalogLayoutOptions = listOf(
+                                    Triple(
+                                        false,
+                                        stringResource(Res.string.catalog_layout_grid),
+                                        Res.drawable.card
+                                    ),
+                                    Triple(
+                                        true,
+                                        stringResource(Res.string.catalog_layout_table),
+                                        Res.drawable.products
+                                    )
+                                )
+                                catalogLayoutOptions.forEachIndexed { index, (useTableOption, label, icon) ->
+                                    val isSelected = useProductTableInCatalog == useTableOption
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onUseProductTableInCatalogChange(useTableOption) },
+                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            catalogLayoutOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                        }
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(icon),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = label,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

@@ -89,6 +89,10 @@
     <string name="checador_layout_fullscreen">Pantalla Completa</string>
     <string name="show_extra_prices_checador_title">Mostrar Costo y Mayoreo en Checador</string>
     <string name="show_extra_prices_checador_subtitle">Muestra el precio de costo y precio de mayoreo al consultar productos en el checador</string>
+    <string name="catalog_layout_title">Diseño de Productos en Venta</string>
+    <string name="catalog_layout_subtitle">Usa el formato de lista/tabla de productos en la pantalla de cobro en lugar de tarjetas en cuadrícula</string>
+    <string name="catalog_layout_grid">Tarjetas</string>
+    <string name="catalog_layout_table">Lista / Tabla</string>
     <string name="default_margins_section_title">Márgenes de Ganancia Predeterminados</string>
     <string name="default_margins_section_subtitle">Define los porcentajes de ganancia automáticos para calcular el precio de venta y mayoreo a partir del costo</string>
     <string name="retail_margin_label">% Venta</string>

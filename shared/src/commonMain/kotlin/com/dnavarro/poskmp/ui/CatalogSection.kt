@@ -1,10 +1,12 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,10 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -42,6 +48,7 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,9 +66,11 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +81,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.components.ProductSimpleCard
+import com.dnavarro.poskmp.ui.components.ProductTableHeaderRow
+import com.dnavarro.poskmp.ui.components.ProductTableRow
+import com.dnavarro.poskmp.ui.productos.ProductTableColumn
+import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
@@ -124,6 +138,7 @@ fun CatalogSection(
     onToggleFavorite: (Products) -> Unit,
     onModifyProduct: (Products) -> Unit,
     isCompact: Boolean,
+    useProductTable: Boolean = false,
     onViewCartClick: (() -> Unit)? = null,
     onOpenScanner: (() -> Unit)? = null,
     cartCount: Int = 0,
@@ -141,6 +156,41 @@ fun CatalogSection(
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val latestSearchQuery = remember { mutableStateOf(searchQuery) }
+    var sortField by remember { mutableStateOf(ProductSortField.NOMBRE) }
+    var sortOrder by remember { mutableStateOf(ProductSortOrder.ASC) }
+    var selectedCatalogIndex by remember { mutableIntStateOf(-1) }
+
+    val compactListState = rememberLazyListState()
+    val tableListState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+
+    val sortedProducts = remember(productsList, sortField, sortOrder) {
+        productsList.sortedWith { p1, p2 ->
+            val f1 = p1.es_favorito == 1L
+            val f2 = p2.es_favorito == 1L
+            if (f1 != f2) return@sortedWith if (f1) -1 else 1
+
+            val primaryComp = when (sortField) {
+                ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
+                ProductSortField.CODIGO -> {
+                    val c1 = p1.formatBarcodesForDisplay(emptyFallback = "")
+                    val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
+                    c1.lowercase().compareTo(c2.lowercase())
+                }
+                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
+                ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
+                ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
+                ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
+                else -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
+            }
+
+            if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
+        }
+    }
+
+    val displayedProducts = remember(sortedProducts) {
+        sortedProducts.take(50)
+    }
 
     LaunchedEffect(searchQuery) {
         if (latestSearchQuery.value != searchQuery) {
@@ -149,8 +199,25 @@ fun CatalogSection(
     }
 
     LaunchedEffect(latestSearchQuery.value) {
+        selectedCatalogIndex = -1
         delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
         onSearchQueryChange(latestSearchQuery.value)
+    }
+
+    LaunchedEffect(selectedCatalogIndex) {
+        if (selectedCatalogIndex in displayedProducts.indices) {
+            try {
+                if (useProductTable) {
+                    if (isCompact) {
+                        compactListState.animateScrollToItem(selectedCatalogIndex)
+                    } else {
+                        tableListState.animateScrollToItem(selectedCatalogIndex)
+                    }
+                } else {
+                    gridState.animateScrollToItem(selectedCatalogIndex)
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -219,7 +286,8 @@ fun CatalogSection(
                     BasicTextField(
                         value = latestSearchQuery.value,
                         onValueChange = { query ->
-                            latestSearchQuery.value = query
+                            val sanitized = query.filter { it != '+' && it != '-' }
+                            latestSearchQuery.value = sanitized
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -227,16 +295,56 @@ fun CatalogSection(
                                 if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(searchFocusRequester) else mod
                             }
                             .onPreviewKeyEvent { keyEvent ->
-                                keyEvent.type == KeyEventType.KeyDown && if (keyEvent.key == Key.Escape && latestSearchQuery.value.isNotEmpty()) {
-                                    latestSearchQuery.value = ""
-                                    onSearchQueryChange("")
+                                val key = keyEvent.key
+                                val codePoint = keyEvent.utf16CodePoint
+                                val isPlus = key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
+                                val isMinus = key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
+                                val isUp = key == Key.DirectionUp
+                                val isDown = key == Key.DirectionDown
+                                val isEnter = key == Key.Enter || key == Key.NumPadEnter
+
+                                if (keyEvent.key == Key.Escape && latestSearchQuery.value.isNotEmpty()) {
+                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                        latestSearchQuery.value = ""
+                                        onSearchQueryChange("")
+                                        selectedCatalogIndex = -1
+                                    }
+                                    true
+                                } else if (latestSearchQuery.value.isNotEmpty() && (isUp || isDown)) {
+                                    if (keyEvent.type == KeyEventType.KeyDown && displayedProducts.isNotEmpty()) {
+                                        selectedCatalogIndex = if (isDown) {
+                                            if (selectedCatalogIndex < displayedProducts.lastIndex) {
+                                                selectedCatalogIndex + 1
+                                            } else {
+                                                displayedProducts.lastIndex
+                                            }
+                                        } else {
+                                            if (selectedCatalogIndex > 0) {
+                                                selectedCatalogIndex - 1
+                                            } else {
+                                                -1
+                                            }
+                                        }
+                                    }
+                                    true
+                                } else if (latestSearchQuery.value.isNotEmpty() && isEnter && selectedCatalogIndex in displayedProducts.indices) {
+                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                        val selectedProduct = displayedProducts[selectedCatalogIndex]
+                                        onProductClick(selectedProduct)
+                                        latestSearchQuery.value = ""
+                                        onSearchQueryChange("")
+                                        selectedCatalogIndex = -1
+                                    }
                                     true
                                 } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent)) {
                                     true
-                                } else if (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) {
+                                } else if (isPlus || isMinus) {
+                                    true
+                                } else if (keyEvent.type == KeyEventType.KeyDown && isEnter) {
                                     val scannedText = latestSearchQuery.value
                                     latestSearchQuery.value = ""
                                     onSearchQueryChange("")
+                                    selectedCatalogIndex = -1
                                     if (scannedText.isNotBlank() && onBarcodeScan != null) {
                                         onBarcodeScan(scannedText)
                                     }
@@ -250,19 +358,37 @@ fun CatalogSection(
                         ),
                         keyboardActions = KeyboardActions(
                             onSearch = {
-                                val scannedText = latestSearchQuery.value
-                                latestSearchQuery.value = ""
-                                onSearchQueryChange("")
-                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                    onBarcodeScan(scannedText)
+                                if (latestSearchQuery.value.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
+                                    val selectedProduct = displayedProducts[selectedCatalogIndex]
+                                    onProductClick(selectedProduct)
+                                    latestSearchQuery.value = ""
+                                    onSearchQueryChange("")
+                                    selectedCatalogIndex = -1
+                                } else {
+                                    val scannedText = latestSearchQuery.value
+                                    latestSearchQuery.value = ""
+                                    onSearchQueryChange("")
+                                    selectedCatalogIndex = -1
+                                    if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                        onBarcodeScan(scannedText)
+                                    }
                                 }
                             },
                             onDone = {
-                                val scannedText = latestSearchQuery.value
-                                latestSearchQuery.value = ""
-                                onSearchQueryChange("")
-                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                    onBarcodeScan(scannedText)
+                                if (latestSearchQuery.value.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
+                                    val selectedProduct = displayedProducts[selectedCatalogIndex]
+                                    onProductClick(selectedProduct)
+                                    latestSearchQuery.value = ""
+                                    onSearchQueryChange("")
+                                    selectedCatalogIndex = -1
+                                } else {
+                                    val scannedText = latestSearchQuery.value
+                                    latestSearchQuery.value = ""
+                                    onSearchQueryChange("")
+                                    selectedCatalogIndex = -1
+                                    if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                        onBarcodeScan(scannedText)
+                                    }
                                 }
                             }
                         ),
@@ -281,6 +407,7 @@ fun CatalogSection(
                         onClick = {
                             latestSearchQuery.value = ""
                             onSearchQueryChange("")
+                            selectedCatalogIndex = -1
                             if (!isAndroid()) {
                                 coroutineScope.launch {
                                     delay(50.milliseconds)
@@ -324,154 +451,363 @@ fun CatalogSection(
                 }
             }
         } else {
-            val sortedProducts = remember(productsList) {
-                productsList.sortedWith(
-                    compareByDescending<Products> { it.es_favorito == 1L }
-                        .thenBy { it.nombre.lowercase() }
-                )
-            }
             Box(modifier = Modifier.weight(1f)) {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 160.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 220.dp)
-                ) {
-                    items(sortedProducts.take(50)) { product ->
-                        var showContextMenu by remember { mutableStateOf(false) }
+                if (useProductTable) {
+                    if (isCompact) {
+                        LazyColumn(
+                            state = compactListState,
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            contentPadding = PaddingValues(bottom = 220.dp)
+                        ) {
+                            itemsIndexed(displayedProducts) { index, product ->
+                                val shape = if (displayedProducts.size == 1) {
+                                    ShapeDefaults.cardShape
+                                } else if (index == 0) {
+                                    ShapeDefaults.topListItemShape
+                                } else if (index == displayedProducts.lastIndex) {
+                                    ShapeDefaults.bottomListItemShape
+                                } else {
+                                    ShapeDefaults.middleListItemShape
+                                }
+                                var showContextMenu by remember { mutableStateOf(false) }
 
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                            shape = ShapeDefaults.cardShape,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .combinedClickable(
+                                ProductSimpleCard(
+                                    product = product,
+                                    shape = shape,
+                                    isSelected = selectedCatalogIndex == index,
+                                    showCheckbox = false,
                                     onClick = {
                                         onProductClick(product)
                                         if (latestSearchQuery.value.isNotEmpty()) {
                                             latestSearchQuery.value = ""
                                             onSearchQueryChange("")
                                         }
+                                        selectedCatalogIndex = -1
                                     },
-                                    onLongClick = { showContextMenu = true }
+                                    onLongClick = { showContextMenu = true },
+                                    onSecondaryClick = { showContextMenu = true },
+                                    contextMenu = {
+                                        DropdownMenu(
+                                            expanded = showContextMenu,
+                                            shape = MaterialTheme.shapes.medium,
+                                            onDismissRequest = { showContextMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
+                                                },
+                                                onClick = {
+                                                    showContextMenu = false
+                                                    onToggleFavorite(product)
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
+                                                        contentDescription = stringResource(Res.string.favorite_desc),
+                                                        tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(Res.string.modify)) },
+                                                onClick = {
+                                                    showContextMenu = false
+                                                    onModifyProduct(product)
+                                                },
+                                                leadingIcon = {
+                                                    Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
+                                                }
+                                            )
+                                        }
+                                    }
                                 )
-                                .pointerInput(product) {
-                                    awaitPointerEventScope {
-                                        while (true) {
-                                            val event = awaitPointerEvent()
-                                            if (event.type == PointerEventType.Press) {
-                                                val isRightClick = event.buttons.isSecondaryPressed
-                                                if (isRightClick) {
-                                                    event.changes.forEach { it.consume() }
-                                                    showContextMenu = true
+                            }
+                        }
+                    } else {
+                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                            val availableWidth = maxWidth
+                            val activeColumns = remember {
+                                listOf(
+                                    ProductTableColumn.NOMBRE,
+                                    ProductTableColumn.CATEGORIA,
+                                    ProductTableColumn.PRECIO
+                                )
+                            }
+                            val totalDefaultWeight = remember(activeColumns) {
+                                activeColumns.sumOf { it.defaultWeight.toDouble() }.toFloat().coerceAtLeast(0.01f)
+                            }
+                            var columnWeights by remember(activeColumns) {
+                                mutableStateOf(activeColumns.map { (it.defaultWeight / totalDefaultWeight) * 1.0f })
+                            }
+                            val tableWidthPx = with(LocalDensity.current) { availableWidth.toPx() }
+                            val resizeColumn = { index: Int, dragAmount: Float ->
+                                if (index in 0 until activeColumns.lastIndex) {
+                                    val weightDelta = dragAmount / tableWidthPx
+                                    val current = columnWeights[index]
+                                    val next = columnWeights[index + 1]
+                                    val minimumWeight = 0.05f
+                                    val constrainedDelta = weightDelta.coerceIn(
+                                        minimumWeight - current,
+                                        next - minimumWeight
+                                    )
+                                    columnWeights = columnWeights.toMutableList().also { weights ->
+                                        weights[index] = current + constrainedDelta
+                                        weights[index + 1] = next - constrainedDelta
+                                    }
+                                }
+                            }
+                            val onHeaderClick = { field: ProductSortField ->
+                                if (sortField == field) {
+                                    sortOrder = if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
+                                } else {
+                                    sortField = field
+                                    sortOrder = ProductSortOrder.ASC
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.fillMaxSize(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                shape = ShapeDefaults.cardShape
+                            ) {
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    ProductTableHeaderRow(
+                                        visibleColumns = activeColumns,
+                                        columnWeights = columnWeights,
+                                        totalDefaultWeight = totalDefaultWeight,
+                                        showSelectAll = false,
+                                        sortField = sortField,
+                                        sortOrder = sortOrder,
+                                        onHeaderClick = onHeaderClick,
+                                        onResizeColumn = resizeColumn
+                                    )
+
+                                    LazyColumn(
+                                        state = tableListState,
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                        contentPadding = PaddingValues(bottom = 220.dp)
+                                    ) {
+                                        itemsIndexed(displayedProducts) { index, product ->
+                                            val shape =
+                                                if (displayedProducts.size == 1 || index == displayedProducts.lastIndex) ShapeDefaults.bottomListItemShape
+                                                else ShapeDefaults.middleListItemShape
+                                            var showContextMenu by remember { mutableStateOf(false) }
+
+                                             ProductTableRow(
+                                                product = product,
+                                                visibleColumns = activeColumns,
+                                                columnWeights = columnWeights,
+                                                totalDefaultWeight = totalDefaultWeight,
+                                                shape = shape,
+                                                isHighlighted = selectedCatalogIndex == index,
+                                                showCheckbox = false,
+                                                onClick = {
+                                                    onProductClick(product)
+                                                    if (latestSearchQuery.value.isNotEmpty()) {
+                                                        latestSearchQuery.value = ""
+                                                        onSearchQueryChange("")
+                                                    }
+                                                    selectedCatalogIndex = -1
+                                                },
+                                                onLongClick = { showContextMenu = true },
+                                                onSecondaryClick = { showContextMenu = true },
+                                                contextMenu = {
+                                                    DropdownMenu(
+                                                        expanded = showContextMenu,
+                                                        shape = MaterialTheme.shapes.medium,
+                                                        onDismissRequest = { showContextMenu = false }
+                                                    ) {
+                                                        DropdownMenuItem(
+                                                            text = {
+                                                                Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
+                                                            },
+                                                            onClick = {
+                                                                showContextMenu = false
+                                                                onToggleFavorite(product)
+                                                            },
+                                                            leadingIcon = {
+                                                                Icon(
+                                                                    painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
+                                                                    contentDescription = stringResource(Res.string.favorite_desc),
+                                                                    tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
+                                                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
+                                                        )
+                                                        DropdownMenuItem(
+                                                            text = { Text(stringResource(Res.string.modify)) },
+                                                            onClick = {
+                                                                showContextMenu = false
+                                                                onModifyProduct(product)
+                                                            },
+                                                            leadingIcon = {
+                                                                Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Adaptive(minSize = 192.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 220.dp)
+                    ) {
+                        itemsIndexed(displayedProducts) { index, product ->
+                            var showContextMenu by remember { mutableStateOf(false) }
+                            val isHighlighted = selectedCatalogIndex == index
+
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                    else MaterialTheme.colorScheme.surfaceContainerLow
+                                ),
+                                shape = ShapeDefaults.cardShape,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .then(
+                                        if (isHighlighted) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, ShapeDefaults.cardShape)
+                                        else Modifier
+                                    )
+                                    .combinedClickable(
+                                        onClick = {
+                                            onProductClick(product)
+                                            if (latestSearchQuery.value.isNotEmpty()) {
+                                                latestSearchQuery.value = ""
+                                                onSearchQueryChange("")
+                                            }
+                                            selectedCatalogIndex = -1
+                                        },
+                                        onLongClick = { showContextMenu = true }
+                                    )
+                                    .pointerInput(product) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                if (event.type == PointerEventType.Press) {
+                                                    val isRightClick = event.buttons.isSecondaryPressed
+                                                    if (isRightClick) {
+                                                        event.changes.forEach { it.consume() }
+                                                        showContextMenu = true
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp).fillMaxSize(),
-                                    verticalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = product.categoria ?: stringResource(Res.string.no_category),
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = product.nombre,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.Bottom
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp).fillMaxSize(),
+                                        verticalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        if (product.por_peso == 1L) {
+                                        Column {
                                             Text(
-                                                text = "$${
-                                                    product.precio.toString().formatPrice()
-                                                } / Kg",
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = MaterialTheme.colorScheme.primary
+                                                text = product.categoria ?: stringResource(Res.string.no_category),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
-                                        } else {
+                                            Spacer(modifier = Modifier.height(4.dp))
                                             Text(
-                                                text = "$${
-                                                    product.precio.toString().formatPrice()
-                                                }",
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = MaterialTheme.colorScheme.primary
+                                                text = product.nombre,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.Bottom
+                                        ) {
+                                            if (product.por_peso == 1L) {
+                                                Text(
+                                                    text = "$${
+                                                        product.precio.toString().formatPrice()
+                                                    } / Kg",
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = "$${
+                                                        product.precio.toString().formatPrice()
+                                                    }",
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
                                     }
-                                }
 
-                                if (product.es_favorito == 1L) {
-                                    Badge(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(8.dp).clip(MaterialShapes.Cookie12Sided.toShape()).size(28.dp)
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.star_filled),
-                                            contentDescription = stringResource(Res.string.favorite_desc),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-
-                                DropdownMenu(
-
-                                    expanded = showContextMenu,
-                                    shape = MaterialTheme.shapes.medium,
-                                    onDismissRequest = { showContextMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
-                                        },
-                                        onClick = {
-                                            showContextMenu = false
-                                            onToggleFavorite(product)
-                                        },
-                                        leadingIcon = {
+                                    if (product.es_favorito == 1L) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(8.dp).clip(MaterialShapes.Cookie12Sided.toShape()).size(28.dp)
+                                        ) {
                                             Icon(
-                                                painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
+                                                painter = painterResource(Res.drawable.star_filled),
                                                 contentDescription = stringResource(Res.string.favorite_desc),
-                                                tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
-                                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                                modifier = Modifier.size(18.dp)
                                             )
                                         }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(Res.string.modify)) },
-                                        onClick = {
-                                            showContextMenu = false
-                                            onModifyProduct(product)
-                                        },
-                                        leadingIcon = {
-                                            Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
-                                        }
-                                    )
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = showContextMenu,
+                                        shape = MaterialTheme.shapes.medium,
+                                        onDismissRequest = { showContextMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
+                                            },
+                                            onClick = {
+                                                showContextMenu = false
+                                                onToggleFavorite(product)
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
+                                                    contentDescription = stringResource(Res.string.favorite_desc),
+                                                    tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(Res.string.modify)) },
+                                            onClick = {
+                                                showContextMenu = false
+                                                onModifyProduct(product)
+                                            },
+                                            leadingIcon = {
+                                                Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

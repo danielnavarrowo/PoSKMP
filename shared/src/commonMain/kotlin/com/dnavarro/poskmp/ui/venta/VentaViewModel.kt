@@ -160,13 +160,22 @@ class VentaViewModel(
             Tuple5(q, products, cat, cart, held)
         },
         combine(
-            _canUndo,
-            settingsRepository.defaultRetailMarginFlow,
-            settingsRepository.defaultWholesaleMarginFlow,
-            getCustomersUseCase(),
-            _selectedCustomer
-        ) { canUndo, retailMargin, wholesaleMargin, customers, selectedCustomer ->
-            Tuple5(canUndo, retailMargin, wholesaleMargin, customers, selectedCustomer)
+            combine(
+                _canUndo,
+                settingsRepository.defaultRetailMarginFlow,
+                settingsRepository.defaultWholesaleMarginFlow
+            ) { canUndo, retailMargin, wholesaleMargin ->
+                Triple(canUndo, retailMargin, wholesaleMargin)
+            },
+            combine(
+                settingsRepository.useProductTableInCatalogFlow,
+                getCustomersUseCase(),
+                _selectedCustomer
+            ) { useProductTableInCatalog, customers, selectedCustomer ->
+                Triple(useProductTableInCatalog, customers, selectedCustomer)
+            }
+        ) { (canUndo, retailMargin, wholesaleMargin), (useProductTableInCatalog, customers, selectedCustomer) ->
+            Tuple6(canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCustomer)
         },
         combine(
             _customerSearchQuery,
@@ -193,7 +202,7 @@ class VentaViewModel(
         },
         syncRepository.syncState
     ) { (q, products, cat, cart, held),
-        (canUndo, retailMargin, wholesaleMargin, customers, selectedCust),
+        (canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCust),
         receiptDialogState,
         (roundingSettings, receiptSettings, shiftState),
         syncState ->
@@ -224,6 +233,7 @@ class VentaViewModel(
             roundWholesalePrice = isRoundingEnabled && roundWholesalePrice,
             roundTicketTotal = isRoundingEnabled && roundTicketTotal,
             disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
+            useProductTableInCatalog = useProductTableInCatalog,
             customers = customers,
             filteredCustomers = filteredCust,
             selectedCustomer = selectedCust,
@@ -342,6 +352,15 @@ class VentaViewModel(
         val e: E
     )
 
+    private data class Tuple6<A, B, C, D, E, F>(
+        val a: A,
+        val b: B,
+        val c: C,
+        val d: D,
+        val e: E,
+        val f: F
+    )
+
     private fun pushCartHistory() {
         val current = _cartItems.value
         if (_cartHistory.isNotEmpty() && _cartHistory.last() == current) {
@@ -419,14 +438,18 @@ class VentaViewModel(
         if (existingIndex != -1) {
             val currentItem = currentList[existingIndex]
             val newQty = (currentItem.quantity + quantity)
-            val roundedQty = (newQty * 100.0).roundToInt() / 100.0
+            val roundedQty = (newQty * 1000.0).roundToInt() / 1000.0
             pushCartHistory()
-            currentList[existingIndex] = currentItem.copy(
-                quantity = roundedQty
-            )
+            if (roundedQty <= 0.0) {
+                currentList.removeAt(existingIndex)
+            } else {
+                currentList[existingIndex] = currentItem.copy(
+                    quantity = roundedQty
+                )
+            }
         } else if (quantity > 0.0) {
             pushCartHistory()
-            val roundedQty = (quantity * 100.0).roundToInt() / 100.0
+            val roundedQty = (quantity * 1000.0).roundToInt() / 1000.0
             val isWholesaleCustomer = _selectedCustomer.value?.siempreMayoreo == true
             val effectivePrice = if (isWholesaleCustomer && product.precio_mayoreo > 0.0) {
                 product.precio_mayoreo
@@ -452,18 +475,17 @@ class VentaViewModel(
     fun setProductQuantityInCart(product: Products, qty: Double) {
         val currentList = _cartItems.value.toMutableList()
         val existingIndex = currentList.indexOfFirst { it.product.id == product.id }
+        val roundedQty = (qty * 1000.0).roundToInt() / 1000.0
         if (existingIndex != -1) {
-            val roundedQty = (qty * 100.0).roundToInt() / 100.0
             if (currentList[existingIndex].quantity == roundedQty) return
             pushCartHistory()
-            if (qty <= 0.0) {
+            if (roundedQty <= 0.0) {
                 currentList.removeAt(existingIndex)
             } else {
                 currentList[existingIndex] = currentList[existingIndex].copy(quantity = roundedQty)
             }
-        } else if (qty > 0.0) {
+        } else if (roundedQty > 0.0) {
             pushCartHistory()
-            val roundedQty = (qty * 100.0).roundToInt() / 100.0
             val isWholesaleCustomer = _selectedCustomer.value?.siempreMayoreo == true
             val effectivePrice = if (isWholesaleCustomer && product.precio_mayoreo > 0.0) {
                 product.precio_mayoreo

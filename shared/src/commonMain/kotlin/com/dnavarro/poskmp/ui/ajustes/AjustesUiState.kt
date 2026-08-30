@@ -26,6 +26,7 @@ data class AjustesUiState(
     val defaultScreen: Screen = Screen.VENTA,
     val isChecadorDialog: Boolean = true,
     val showExtraPricesChecador: Boolean = false,
+    val useProductTableInCatalog: Boolean = false,
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
     val isRoundingEnabled: Boolean = false,
