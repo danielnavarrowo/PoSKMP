@@ -121,6 +121,10 @@
     <string name="excel_parse_error">Error al analizar la estructura del archivo Excel: %1$s</string>
     <string name="excel_empty_rows_error">El archivo Excel no contiene filas.</string>
     <string name="excel_invalid_headers_error">Encabezados inválidos en la primera fila. Se requiere al menos las columnas \'nombre\' y \'precio\'.</string>
+    <string name="json_empty_error">El archivo JSON está vacío.</string>
+    <string name="json_parse_error">Error al analizar el archivo JSON: %1$s</string>
+    <string name="json_invalid_structure_error">Estructura JSON inválida. Se espera un arreglo de productos o un objeto con la propiedad \'products\' o \'productos\'.</string>
+    <string name="json_no_valid_products_error">No se encontraron productos válidos en el archivo JSON. Se requiere al menos las propiedades \'nombre\' y \'precio\'.</string>
 
     <!-- ChecadorDialog -->
     <string name="price_checker_title">Checador de Precios</string>
@@ -296,13 +300,13 @@
 
     <string name="import_products_title">Importar Productos</string>
     <string name="import_step_format">Paso %1$d de 3</string>
-    <string name="import_required_columns_title">Columnas requeridas en su archivo (.csv o .xlsx):</string>
+    <string name="import_required_columns_title">Columnas o propiedades requeridas en su archivo (.csv, .xlsx o .json):</string>
     <string name="import_col_name_req">• nombre (Texto - Obligatorio)</string>
     <string name="import_col_price_req">• precio (Número - Obligatorio)</string>
     <string name="import_optional_columns_hint">Columnas opcionales: id, codigos, costo, categoria, activo (1/0), por_peso (1/0), precio_mayoreo, es_favorito (1/0)</string>
     <string name="import_no_valid_products_error">El archivo no contiene productos válidos.</string>
     <string name="import_parse_error">Error al analizar el archivo.</string>
-    <string name="import_select_file_title">Seleccionar archivo .csv o .xlsx para importar</string>
+    <string name="import_select_file_title">Seleccionar archivo .csv, .xlsx o .json para importar</string>
     <string name="import_select_file_hint">Haz clic aquí para abrir el explorador de archivos</string>
     <string name="import_file_label">Archivo: %1$s</string>
     <string name="import_detected_products">Se detectaron %1$d productos en total. A continuación se muestran los primeros 20 productos:</string>

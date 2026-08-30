@@ -1,9 +1,38 @@
 package com.dnavarro.poskmp.util
 
+import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.Products
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
 import org.jetbrains.compose.resources.getString
-import poskmp.shared.generated.resources.*
+import org.w3c.dom.Element
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.change_backup_path_dialog_title
+import poskmp.shared.generated.resources.csv_empty_error
+import poskmp.shared.generated.resources.csv_invalid_headers_error
+import poskmp.shared.generated.resources.csv_no_header_error
+import poskmp.shared.generated.resources.excel_empty_rows_error
+import poskmp.shared.generated.resources.excel_invalid_headers_error
+import poskmp.shared.generated.resources.excel_no_sheet_error
+import poskmp.shared.generated.resources.excel_parse_error
+import poskmp.shared.generated.resources.excel_read_error
+import poskmp.shared.generated.resources.file_explorer_open_error
+import poskmp.shared.generated.resources.json_empty_error
+import poskmp.shared.generated.resources.json_invalid_structure_error
+import poskmp.shared.generated.resources.json_no_valid_products_error
+import poskmp.shared.generated.resources.json_parse_error
+import poskmp.shared.generated.resources.save_file_dialog_title
+import poskmp.shared.generated.resources.save_file_error
+import poskmp.shared.generated.resources.select_file_dialog_title
+import poskmp.shared.generated.resources.unsupported_file_format
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.ByteArrayInputStream
@@ -12,9 +41,6 @@ import java.util.UUID
 import java.util.zip.ZipInputStream
 import javax.swing.SwingUtilities
 import javax.xml.parsers.DocumentBuilderFactory
-import org.w3c.dom.Element
-
-import androidx.compose.runtime.Composable
 
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
@@ -129,6 +155,7 @@ actual fun parseImportFile(
     return when (val extension = fileName.substringAfterLast(".", "").lowercase()) {
         "csv" -> parseCsvContent(content)
         "xlsx" -> parseXlsxContent(content)
+        "json" -> parseJsonContent(content)
         else -> {
             val err = runBlocking { getString(Res.string.unsupported_file_format, extension) }
             throw IllegalArgumentException(err)
@@ -405,4 +432,164 @@ private fun excelColLetterToIndex(colLetter: String): Int {
         index = index * 26 + (char - 'A' + 1)
     }
     return index - 1
+}
+
+private val importJsonParser = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+    coerceInputValues = true
+    allowTrailingComma = true
+}
+
+private fun parseJsonContent(content: ByteArray): List<Products> {
+    val text = String(content, Charsets.UTF_8).trim()
+    if (text.isEmpty()) {
+        val err = runBlocking { getString(Res.string.json_empty_error) }
+        throw Exception(err)
+    }
+
+    val rootElement = try {
+        importJsonParser.parseToJsonElement(text)
+    } catch (e: Exception) {
+        val err = runBlocking { getString(Res.string.json_parse_error, e.message ?: "") }
+        throw Exception(err)
+    }
+
+    val productObjects: List<JsonObject> = when (rootElement) {
+        is JsonArray -> {
+            rootElement.filterIsInstance<JsonObject>()
+        }
+        is JsonObject -> {
+            val candidateKeys = listOf("products", "productos", "items", "data", "catalogo", "catalog")
+            val arrayKey = candidateKeys.firstOrNull { rootElement[it] is JsonArray }
+            if (arrayKey != null) {
+                (rootElement[arrayKey] as JsonArray).filterIsInstance<JsonObject>()
+            } else if (rootElement.findJsonString("nombre", "name", "title", "descripcion", "description") != null) {
+                listOf(rootElement)
+            } else {
+                emptyList()
+            }
+        }
+        else -> {
+            val err = runBlocking { getString(Res.string.json_invalid_structure_error) }
+            throw Exception(err)
+        }
+    }
+
+    if (productObjects.isEmpty()) {
+        val err = runBlocking { getString(Res.string.json_no_valid_products_error) }
+        throw Exception(err)
+    }
+
+    val products = mutableListOf<Products>()
+    for (obj in productObjects) {
+        val nombre = obj.findJsonString("nombre", "name", "title", "descripcion", "description")?.trim() ?: continue
+        if (nombre.isEmpty()) continue
+
+        val precio = obj.findJsonDouble("precio", "price", "precio_venta", "precioVenta", "sale_price", "salePrice") ?: 0.0
+        val id = obj.findJsonString("id", "uuid", "productId", "product_id")?.trim()?.ifEmpty { generateUUID() } ?: generateUUID()
+        val codigos = parseJsonBarcodes(obj)
+        val costo = obj.findJsonDouble("costo", "cost", "cost_price", "costPrice", "purchase_price", "purchasePrice") ?: 0.0
+        val categoria = obj.findJsonString("categoria", "category", "department", "departamento", "grupo")?.trim() ?: ""
+        val activo = obj.findJsonBooleanAsLong("activo", "active", "enabled", "is_active", "isActive", default = 1L)
+        val porPeso = obj.findJsonBooleanAsLong("por_peso", "porPeso", "by_weight", "byWeight", "is_weighted", "isWeighted", "weighted", default = 0L)
+        val precioMayoreo = obj.findJsonDouble("precio_mayoreo", "precioMayoreo", "wholesale_price", "wholesalePrice", "wholesale") ?: 0.0
+        val esFavorito = obj.findJsonBooleanAsLong("es_favorito", "esFavorito", "favorite", "is_favorite", "isFavorite", default = 0L)
+        val piezas = obj.findJsonDouble("piezas", "pieces", "piezas_paquete", "piezasPorPaquete", "units") ?: 1.0
+
+        products.add(
+            Products(
+                id = id,
+                codigos = codigos,
+                nombre = nombre,
+                precio = precio,
+                costo = costo,
+                categoria = categoria,
+                activo = activo,
+                por_peso = porPeso,
+                precio_mayoreo = precioMayoreo,
+                es_favorito = esFavorito,
+                piezas = piezas,
+                updated_at = currentTimeMillis(),
+                sync_state = "PENDING_INSERT"
+            )
+        )
+    }
+
+    if (products.isEmpty()) {
+        val err = runBlocking { getString(Res.string.json_no_valid_products_error) }
+        throw Exception(err)
+    }
+
+    return products
+}
+
+private fun parseJsonBarcodes(obj: JsonObject): String {
+    val element = obj.findJsonElement("codigos", "codigo", "barcodes", "barcode", "upc", "ean", "sku") ?: return "[]"
+    return when (element) {
+        is JsonArray -> {
+            val list = element.mapNotNull { item ->
+                when (item) {
+                    is JsonPrimitive -> item.content.trim().ifEmpty { null }
+                    else -> null
+                }
+            }
+            if (list.isEmpty()) "[]" else "[${list.joinToString(",") { "\"$it\"" }}]"
+        }
+        is JsonPrimitive -> {
+            val raw = element.content.trim()
+            if (raw.isEmpty()) {
+                "[]"
+            } else if (raw.startsWith("[") && raw.endsWith("]")) {
+                raw
+            } else if (raw.contains(",") || raw.contains(";") || raw.contains("|")) {
+                val parts = raw.split(Regex("[,;|]")).map { it.trim() }.filter { it.isNotEmpty() }
+                if (parts.isEmpty()) "[]" else "[${parts.joinToString(",") { "\"$it\"" }}]"
+            } else {
+                "[\"$raw\"]"
+            }
+        }
+        else -> "[]"
+    }
+}
+
+private fun JsonObject.findJsonElement(vararg keys: String): JsonElement? {
+    for (key in keys) {
+        if (this.containsKey(key)) return this[key]
+        val matchingKey = this.keys.firstOrNull { it.equals(key, ignoreCase = true) }
+        if (matchingKey != null) return this[matchingKey]
+    }
+    return null
+}
+
+private fun JsonObject.findJsonString(vararg keys: String): String? {
+    val el = findJsonElement(*keys) ?: return null
+    return when (el) {
+        is JsonPrimitive -> el.contentOrNull
+        else -> null
+    }
+}
+
+private fun JsonObject.findJsonDouble(vararg keys: String): Double? {
+    val el = findJsonElement(*keys) ?: return null
+    return when (el) {
+        is JsonPrimitive -> el.doubleOrNull ?: el.content.toDoubleOrNull()
+        else -> null
+    }
+}
+
+private fun JsonObject.findJsonBooleanAsLong(vararg keys: String, default: Long): Long {
+    val el = findJsonElement(*keys) ?: return default
+    return when (el) {
+        is JsonPrimitive -> {
+            el.booleanOrNull?.let { if (it) 1L else 0L }
+                ?: el.longOrNull
+                ?: when (el.content.lowercase().trim()) {
+                    "true", "1", "1.0", "si", "yes", "activo" -> 1L
+                    "false", "0", "0.0", "no", "inactivo" -> 0L
+                    else -> default
+                }
+        }
+        else -> default
+    }
 }
