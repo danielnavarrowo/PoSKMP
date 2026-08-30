@@ -34,7 +34,7 @@ compose.desktop {
         nativeDistributions {
             modules("java.desktop", "java.instrument", "java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
-            packageName = "PoSKMP"
+            packageName = "Punto de Venta"
             packageVersion = appVersion
             jvmArgs += listOf(
                 "-Dapp.version=$appVersion"

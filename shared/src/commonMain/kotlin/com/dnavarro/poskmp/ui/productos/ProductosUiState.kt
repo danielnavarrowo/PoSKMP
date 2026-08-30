@@ -12,6 +12,7 @@ import poskmp.shared.generated.resources.header_category
 import poskmp.shared.generated.resources.header_codes
 import poskmp.shared.generated.resources.header_cost
 import poskmp.shared.generated.resources.header_last_sale
+import poskmp.shared.generated.resources.header_pieces
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.header_retail_margin
 import poskmp.shared.generated.resources.header_retail_price
@@ -27,6 +28,7 @@ enum class ProductTableColumn(
     CODIGO(Res.string.header_codes, ProductSortField.CODIGO, 0.12f),
     NOMBRE(Res.string.header_product_name, ProductSortField.NOMBRE, 0.28f),
     CATEGORIA(Res.string.header_category, ProductSortField.CATEGORIA, 0.16f),
+    PIEZAS(Res.string.header_pieces, ProductSortField.PIEZAS, 0.10f),
     PRECIO(Res.string.header_retail_price, ProductSortField.PRECIO, 0.12f),
     COSTO(Res.string.header_cost, ProductSortField.COSTO, 0.12f),
     MAYOREO(Res.string.wholesale, ProductSortField.MAYOREO, 0.12f),
@@ -115,6 +117,7 @@ data class ProductosUiState(
                             c1.lowercase().compareTo(c2.lowercase())
                         }
                         ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
+                        ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
                         ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                         ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
                         ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)

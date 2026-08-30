@@ -142,6 +142,7 @@ import poskmp.shared.generated.resources.header_category
 import poskmp.shared.generated.resources.header_codes
 import poskmp.shared.generated.resources.header_cost
 import poskmp.shared.generated.resources.header_last_sale
+import poskmp.shared.generated.resources.header_pieces
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.header_retail_margin
 import poskmp.shared.generated.resources.header_retail_price
@@ -170,7 +171,7 @@ import poskmp.shared.generated.resources.wholesale
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class ProductSortField {
-    CODIGO, NOMBRE, CATEGORIA, PRECIO, COSTO, MAYOREO, MARGEN_VENTA, MARGEN_MAYOREO, VENTAS_TOTALES, ULTIMA_VENTA
+    CODIGO, NOMBRE, CATEGORIA, PIEZAS, PRECIO, COSTO, MAYOREO, MARGEN_VENTA, MARGEN_MAYOREO, VENTAS_TOTALES, ULTIMA_VENTA
 }
 
 enum class ProductSortOrder {
@@ -1160,6 +1161,7 @@ fun ProductFilterAndSortBottomSheet(
                                 ProductSortField.CODIGO to stringResource(Res.string.header_codes),
                                 ProductSortField.NOMBRE to stringResource(Res.string.header_product_name),
                                 ProductSortField.CATEGORIA to stringResource(Res.string.header_category),
+                                ProductSortField.PIEZAS to stringResource(Res.string.header_pieces),
                                 ProductSortField.PRECIO to stringResource(Res.string.header_retail_price),
                                 ProductSortField.COSTO to stringResource(Res.string.header_cost),
                                 ProductSortField.MAYOREO to stringResource(Res.string.wholesale),

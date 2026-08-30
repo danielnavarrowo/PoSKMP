@@ -41,7 +41,7 @@ fun main() {
                 isClosing = true
             },
             state = windowState,
-            title = "Antigravity POS"
+            title = "Punto de Venta"
         ) {
             App(
                 isExiting = isClosing,

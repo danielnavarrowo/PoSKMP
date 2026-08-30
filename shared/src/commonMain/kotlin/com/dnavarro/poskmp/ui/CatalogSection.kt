@@ -178,6 +178,7 @@ fun CatalogSection(
                     c1.lowercase().compareTo(c2.lowercase())
                 }
                 ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
+                ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
                 ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                 ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
                 ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
@@ -532,6 +533,7 @@ fun CatalogSection(
                                 listOf(
                                     ProductTableColumn.NOMBRE,
                                     ProductTableColumn.CATEGORIA,
+                                    ProductTableColumn.PIEZAS,
                                     ProductTableColumn.PRECIO
                                 )
                             }

@@ -313,6 +313,18 @@ fun ProductTableRow(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    ProductTableColumn.PIEZAS -> {
+                        val piecesText = if (product.piezas % 1.0 == 0.0) {
+                            product.piezas.toLong().toString()
+                        } else {
+                            product.piezas.toString()
+                        }
+                        Text(
+                            text = piecesText,
+                            modifier = Modifier.weight(weight),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                     ProductTableColumn.PRECIO -> {
                         val priceText = if (product.por_peso == 1L) {
                             "$${product.precio.toString().formatPrice()} / Kg"
