@@ -40,12 +40,18 @@ compose.desktop {
                 "-Dapp.version=$appVersion"
             )
             windows {
+                iconFile.set(project.file("src/main/resources/icons/icon.ico"))
                 perUserInstall = true
                 menu = true
                 shortcut = true
                 dirChooser = true
                 menuGroup = "PoSKMP"
                 upgradeUuid = "d7b2a9e1-6c3f-4b8a-9e12-3456789abcde"
+            }
+            linux {
+                iconFile.set(project.file("src/main/resources/icons/icon.png"))
+                shortcut = true
+                menuGroup = "Office"
             }
         }
     }
