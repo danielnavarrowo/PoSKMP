@@ -14,6 +14,7 @@ import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
 import com.dnavarro.poskmp.domain.usecase.DeleteCashierUseCase
+import com.dnavarro.poskmp.domain.usecase.ResetAppToFactoryDefaultsUseCase
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.materialkolor.PaletteStyle
@@ -37,7 +38,10 @@ private data class UpdateInternalState(
     val isSavingCashier: Boolean = false,
     val isDeletingCashier: Boolean = false,
     val cashierActionError: String? = null,
-    val cashierActionSuccess: String? = null
+    val cashierActionSuccess: String? = null,
+    val isResettingApp: Boolean = false,
+    val resetAppError: String? = null,
+    val resetAppSuccess: String? = null
 )
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
@@ -55,7 +59,8 @@ class AjustesViewModel(
     private val backupRepository: BackupRepository,
     getCashiersUseCase: GetCashiersUseCase,
     private val saveCashierUseCase: SaveCashierUseCase,
-    private val deleteCashierUseCase: DeleteCashierUseCase
+    private val deleteCashierUseCase: DeleteCashierUseCase,
+    private val resetAppToFactoryDefaultsUseCase: ResetAppToFactoryDefaultsUseCase
 ) : ViewModel() {
 
     private val _updateState = MutableStateFlow(UpdateInternalState())
@@ -209,7 +214,10 @@ class AjustesViewModel(
             isSavingCashier = updateState.isSavingCashier,
             isDeletingCashier = updateState.isDeletingCashier,
             cashierActionError = updateState.cashierActionError,
-            cashierActionSuccess = updateState.cashierActionSuccess
+            cashierActionSuccess = updateState.cashierActionSuccess,
+            isResettingApp = updateState.isResettingApp,
+            resetAppError = updateState.resetAppError,
+            resetAppSuccess = updateState.resetAppSuccess
         )
     }.stateIn(
         scope = viewModelScope,
@@ -567,6 +575,35 @@ class AjustesViewModel(
         _updateState.value = _updateState.value.copy(
             cashierActionError = null,
             cashierActionSuccess = null
+        )
+    }
+
+    fun resetAppToFactoryDefaults() {
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(
+                isResettingApp = true,
+                resetAppError = null,
+                resetAppSuccess = null
+            )
+            val result = resetAppToFactoryDefaultsUseCase()
+            if (result.isSuccess) {
+                _updateState.value = _updateState.value.copy(
+                    isResettingApp = false,
+                    resetAppSuccess = "La aplicación se ha restablecido a los valores de fábrica exitosamente."
+                )
+            } else {
+                _updateState.value = _updateState.value.copy(
+                    isResettingApp = false,
+                    resetAppError = result.exceptionOrNull()?.message ?: "Error al restablecer la aplicación"
+                )
+            }
+        }
+    }
+
+    fun clearResetAppMessage() {
+        _updateState.value = _updateState.value.copy(
+            resetAppError = null,
+            resetAppSuccess = null
         )
     }
 }

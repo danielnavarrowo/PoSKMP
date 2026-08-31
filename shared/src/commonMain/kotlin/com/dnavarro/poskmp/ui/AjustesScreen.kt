@@ -45,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -88,6 +89,7 @@ import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.ui.ajustes.BackupSettingsSection
+import com.dnavarro.poskmp.ui.ajustes.FactoryResetSettingsSection
 import com.dnavarro.poskmp.ui.components.SyncedSettingBadge
 import com.dnavarro.poskmp.ui.ajustes.PrinterSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.StoreInfoSettingsSection
@@ -213,6 +215,7 @@ fun AjustesScreen(
         syncMessage = uiState.syncMessage,
         onTestAndSaveSupabaseConnection = { url, key -> viewModel.testAndSaveConnection(url, key) },
         onSyncNow = { viewModel.syncNow() },
+        onForceFullSync = { viewModel.syncNow(forceFullSync = true) },
         currentVersion = uiState.currentVersion,
         isCheckingUpdates = uiState.isCheckingUpdates,
         updateCheckResult = uiState.updateCheckResult,
@@ -227,7 +230,12 @@ fun AjustesScreen(
         cashierActionSuccess = uiState.cashierActionSuccess,
         onSaveCashier = { id, name, pin -> viewModel.saveCashier(id, name, pin) },
         onDeleteCashier = { id -> viewModel.deleteCashier(id) },
-        onClearCashierActionMessage = { viewModel.clearCashierActionMessage() }
+        onClearCashierActionMessage = { viewModel.clearCashierActionMessage() },
+        isResettingApp = uiState.isResettingApp,
+        resetAppError = uiState.resetAppError,
+        resetAppSuccess = uiState.resetAppSuccess,
+        onResetApp = { viewModel.resetAppToFactoryDefaults() },
+        onDismissResetAppMessage = { viewModel.clearResetAppMessage() }
     )
 }
 
@@ -292,6 +300,7 @@ fun AjustesScreen(
     syncMessage: String? = null,
     onTestAndSaveSupabaseConnection: (url: String, key: String) -> Unit = { _, _ -> },
     onSyncNow: () -> Unit = {},
+    onForceFullSync: () -> Unit = {},
     currentVersion: String = AppConstants.APP_VERSION,
     isCheckingUpdates: Boolean = false,
     updateCheckResult: UpdateCheckResult? = null,
@@ -307,6 +316,11 @@ fun AjustesScreen(
     onSaveCashier: (id: String?, nombre: String, pin: String) -> Unit = { _, _, _ -> },
     onDeleteCashier: (id: String) -> Unit = {},
     onClearCashierActionMessage: () -> Unit = {},
+    isResettingApp: Boolean = false,
+    resetAppError: String? = null,
+    resetAppSuccess: String? = null,
+    onResetApp: () -> Unit = {},
+    onDismissResetAppMessage: () -> Unit = {},
     repository: ProductRepository = koinInject()
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
@@ -1458,33 +1472,56 @@ fun AjustesScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Sync Now Button
-                        Button(
-                            onClick = onSyncNow,
-                            enabled = isConfigured && syncState != SyncStateEnum.SYNCING,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier.fillMaxWidth()
+                        // Sync Now & Full Sync Buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (syncState == SyncStateEnum.SYNCING) {
-                                ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                            } else {
+                            Button(
+                                onClick = onSyncNow,
+                                enabled = isConfigured && syncState != SyncStateEnum.SYNCING,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (syncState == SyncStateEnum.SYNCING) {
+                                    ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                } else {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.sync),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text(
+                                    text = stringResource(Res.string.sync_now_button),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = onForceFullSync,
+                                enabled = isConfigured && syncState != SyncStateEnum.SYNCING,
+                                shape = MaterialTheme.shapes.small
+                            ) {
                                 Icon(
-                                    painter = painterResource(Res.drawable.sync),
+                                    painter = painterResource(Res.drawable.restore),
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(Res.string.supabase_force_full_sync_button),
+                                    fontSize = 13.sp
+                                )
                             }
-                            Text(
-                                text = stringResource(Res.string.sync_now_button),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -2077,6 +2114,17 @@ fun AjustesScreen(
                         }
                     }
                 }
+            }
+
+            // Restablecer de Fábrica Card (Zona de Peligro)
+            item {
+                FactoryResetSettingsSection(
+                    isResettingApp = isResettingApp,
+                    resetAppError = resetAppError,
+                    resetAppSuccess = resetAppSuccess,
+                    onResetApp = onResetApp,
+                    onDismissMessage = onDismissResetAppMessage
+                )
             }
         }
     }

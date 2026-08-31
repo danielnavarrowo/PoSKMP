@@ -49,6 +49,7 @@ import com.dnavarro.poskmp.domain.usecase.RecordCustomerPaymentUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
 import com.dnavarro.poskmp.domain.usecase.DeleteCashierUseCase
+import com.dnavarro.poskmp.domain.usecase.ResetAppToFactoryDefaultsUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCustomerUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.printer.ReceiptPrinter
@@ -107,6 +108,7 @@ val domainModule = module {
     factoryOf(::GetShiftSummaryUseCase)
     factoryOf(::SaveCashierUseCase)
     factoryOf(::DeleteCashierUseCase)
+    factoryOf(::ResetAppToFactoryDefaultsUseCase)
     factoryOf(::CancelSaleUseCase)
 }
 

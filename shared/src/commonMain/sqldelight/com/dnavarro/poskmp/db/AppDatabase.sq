@@ -222,6 +222,12 @@ ORDER BY created_at DESC;
 deleteCustomerPayment:
 DELETE FROM customer_payments WHERE id = ?;
 
+deleteAllCustomers:
+DELETE FROM customers;
+
+deleteAllCustomerPayments:
+DELETE FROM customer_payments;
+
 selectUnsyncedCustomerPayments:
 SELECT * FROM customer_payments WHERE sync_state != 'SYNCED';
 
@@ -353,6 +359,12 @@ INSERT OR REPLACE INTO sale_items (
 
 getNextFolio:
 SELECT COALESCE(MAX(folio), 0) + 1 AS next_folio FROM sales;
+
+deleteAllSales:
+DELETE FROM sales;
+
+deleteAllSaleItems:
+DELETE FROM sale_items;
 
 selectSalesSummaryBetween:
 SELECT 
@@ -515,6 +527,9 @@ SELECT * FROM deleted_sync_records;
 deleteDeletedSyncRecord:
 DELETE FROM deleted_sync_records WHERE id = ?;
 
+deleteAllDeletedSyncRecords:
+DELETE FROM deleted_sync_records;
+
 -- ============================================
 -- CASHIERS, SHIFTS & CASH MOVEMENTS TABLES & QUERIES
 -- ============================================
@@ -596,6 +611,9 @@ UPDATE cashiers
 SET activo = 0, updated_at = ?, sync_state = 'PENDING_UPDATE'
 WHERE id = ?;
 
+deleteAllCashiers:
+DELETE FROM cashiers;
+
 -- Shift Queries
 selectActiveShift:
 SELECT * FROM shifts WHERE is_closed = 0 ORDER BY start_time DESC LIMIT 1;
@@ -623,6 +641,9 @@ UPDATE shifts
 SET end_time = ?, final_cash_expected = ?, final_cash_counted = ?, difference = ?, notes = ?, is_closed = 1, sync_state = 'PENDING_UPDATE'
 WHERE id = ?;
 
+deleteAllShifts:
+DELETE FROM shifts;
+
 -- Cash Movements Queries
 selectMovementsByShiftId:
 SELECT * FROM cash_movements WHERE shift_id = ? ORDER BY created_at ASC;
@@ -634,6 +655,9 @@ INSERT INTO cash_movements (
 
 sumMovementsByShiftAndType:
 SELECT COALESCE(SUM(monto), 0.0) AS total FROM cash_movements WHERE shift_id = ? AND tipo = ?;
+
+deleteAllCashMovements:
+DELETE FROM cash_movements;
 
 -- Shift Sales Summary Queries
 selectSalesSummaryByShift:

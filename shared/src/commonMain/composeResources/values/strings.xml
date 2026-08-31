@@ -588,6 +588,7 @@
     <string name="supabase_sync_failed">Fallo en la sincronización: %1$s</string>
     <string name="supabase_show_key">Mostrar token</string>
     <string name="supabase_hide_key">Ocultar token</string>
+    <string name="supabase_force_full_sync_button">Descarga Completa</string>
 
     <!-- Receipt and Printer Settings -->
     <string name="store_info_section_title">Información de la tienda</string>
@@ -747,4 +748,17 @@
     <string name="shift_status_open">Abierto</string>
     <string name="shift_dropdown_item_format">%1$s • %2$s (%3$s - %4$s)</string>
     <string name="shift_dropdown_item_open_format">%1$s • %2$s (%3$s - Abierto)</string>
+
+    <!-- Restablecimiento de Fábrica en Ajustes -->
+    <string name="danger_zone_section_title">Zona de Peligro</string>
+    <string name="danger_zone_section_subtitle">Acciones destructivas e irreversibles para los datos del sistema.</string>
+    <string name="factory_reset_title">Restablecer a valores de fábrica</string>
+    <string name="factory_reset_desc">Elimina todas las preferencias del usuario, la base de datos (productos, ventas, clientes, turnos, cajeros) y restablece toda la configuración por defecto.</string>
+    <string name="factory_reset_button">Restablecer Todo</string>
+    <string name="factory_reset_dialog_title">¿Restablecer todos los datos y preferencias?</string>
+    <string name="factory_reset_dialog_message">Esta acción es irreversible. Se eliminarán permanentemente todos los productos, ventas, clientes, cajeros, turnos y configuraciones guardadas, restableciendo la aplicación a su estado original de fábrica.</string>
+    <string name="factory_reset_confirm_button">Sí, restablecer todo</string>
+    <string name="factory_reset_in_progress">Restableciendo aplicación...</string>
+    <string name="factory_reset_success">La aplicación se ha restablecido a los valores de fábrica exitosamente.</string>
+    <string name="factory_reset_error">Error al restablecer la aplicación: %1$s</string>
 </resources>

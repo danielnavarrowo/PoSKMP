@@ -69,6 +69,61 @@ class SupabaseRemoteDataSourceImpl(
         return url.trim().trimEnd('/')
     }
 
+    private suspend inline fun <reified T> fetchAllPaged(
+        cleanUrl: String,
+        key: String,
+        table: String,
+        queryString: String,
+        pageSize: Int = 1000
+    ): List<T> {
+        val allResults = mutableListOf<T>()
+        var offset = 0
+
+        while (true) {
+            val endpoint = if (queryString.isNotBlank()) {
+                "$cleanUrl/rest/v1/$table?$queryString&limit=$pageSize&offset=$offset"
+            } else {
+                "$cleanUrl/rest/v1/$table?limit=$pageSize&offset=$offset"
+            }
+            val response: HttpResponse = httpClient.get(endpoint) {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+                header("Accept", "application/json")
+            }
+            if (response.status.value !in 200..299) {
+                throw Exception("Error HTTP ${response.status.value} al descargar $table: ${response.status.description}")
+            }
+            val page: List<T> = response.body()
+            allResults.addAll(page)
+            if (page.size < pageSize) {
+                break
+            }
+            offset += page.size
+        }
+        return allResults
+    }
+
+    private suspend inline fun <reified T> pushInChunks(
+        cleanUrl: String,
+        key: String,
+        table: String,
+        items: List<T>,
+        chunkSize: Int = 500
+    ) {
+        for (chunk in items.chunked(chunkSize)) {
+            val response = httpClient.post("$cleanUrl/rest/v1/$table") {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+                header("Prefer", "resolution=merge-duplicates")
+                contentType(ContentType.Application.Json)
+                setBody(chunk)
+            }
+            if (response.status.value !in 200..299) {
+                throw Exception("Error HTTP ${response.status.value} al subir datos a $table: ${response.status.description}")
+            }
+        }
+    }
+
     override suspend fun testConnection(url: String, key: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
@@ -98,18 +153,8 @@ class SupabaseRemoteDataSourceImpl(
         if (products.isEmpty()) return@withContext Result.success(Unit)
         try {
             val cleanUrl = normalizeUrl(url)
-            val response = httpClient.post("$cleanUrl/rest/v1/products") {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Prefer", "resolution=merge-duplicates")
-                contentType(ContentType.Application.Json)
-                setBody(products)
-            }
-            if (response.status.value in 200..299) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Fallo al sincronizar productos: HTTP ${response.status.value}"))
-            }
+            pushInChunks(cleanUrl, key, "products", products)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -122,22 +167,13 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<ProductDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val endpoint = if (sinceTimestamp > 0) {
-                "$cleanUrl/rest/v1/products?updated_at=gt.$sinceTimestamp&order=updated_at.asc"
+            val query = if (sinceTimestamp > 0) {
+                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
             } else {
-                "$cleanUrl/rest/v1/products?order=updated_at.asc"
+                "order=updated_at.asc"
             }
-            val response = httpClient.get(endpoint) {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Accept", "application/json")
-            }
-            if (response.status.value in 200..299) {
-                val list: List<ProductDto> = response.body()
-                Result.success(list)
-            } else {
-                Result.failure(Exception("Fallo al descargar productos: HTTP ${response.status.value}"))
-            }
+            val list: List<ProductDto> = fetchAllPaged(cleanUrl, key, "products", query)
+            Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -151,18 +187,8 @@ class SupabaseRemoteDataSourceImpl(
         if (customers.isEmpty()) return@withContext Result.success(Unit)
         try {
             val cleanUrl = normalizeUrl(url)
-            val response = httpClient.post("$cleanUrl/rest/v1/customers") {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Prefer", "resolution=merge-duplicates")
-                contentType(ContentType.Application.Json)
-                setBody(customers)
-            }
-            if (response.status.value in 200..299) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Fallo al sincronizar clientes: HTTP ${response.status.value}"))
-            }
+            pushInChunks(cleanUrl, key, "customers", customers)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -175,22 +201,13 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<CustomerDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val endpoint = if (sinceTimestamp > 0) {
-                "$cleanUrl/rest/v1/customers?updated_at=gt.$sinceTimestamp&order=updated_at.asc"
+            val query = if (sinceTimestamp > 0) {
+                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
             } else {
-                "$cleanUrl/rest/v1/customers?order=updated_at.asc"
+                "order=updated_at.asc"
             }
-            val response = httpClient.get(endpoint) {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Accept", "application/json")
-            }
-            if (response.status.value in 200..299) {
-                val list: List<CustomerDto> = response.body()
-                Result.success(list)
-            } else {
-                Result.failure(Exception("Fallo al descargar clientes: HTTP ${response.status.value}"))
-            }
+            val list: List<CustomerDto> = fetchAllPaged(cleanUrl, key, "customers", query)
+            Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -204,18 +221,8 @@ class SupabaseRemoteDataSourceImpl(
         if (payments.isEmpty()) return@withContext Result.success(Unit)
         try {
             val cleanUrl = normalizeUrl(url)
-            val response = httpClient.post("$cleanUrl/rest/v1/customer_payments") {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Prefer", "resolution=merge-duplicates")
-                contentType(ContentType.Application.Json)
-                setBody(payments)
-            }
-            if (response.status.value in 200..299) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Fallo al sincronizar abonos: HTTP ${response.status.value}"))
-            }
+            pushInChunks(cleanUrl, key, "customer_payments", payments)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -228,22 +235,13 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<CustomerPaymentDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val endpoint = if (sinceTimestamp > 0) {
-                "$cleanUrl/rest/v1/customer_payments?created_at=gt.$sinceTimestamp&order=created_at.asc"
+            val query = if (sinceTimestamp > 0) {
+                "created_at=gt.$sinceTimestamp&order=created_at.asc"
             } else {
-                "$cleanUrl/rest/v1/customer_payments?order=created_at.asc"
+                "order=created_at.asc"
             }
-            val response = httpClient.get(endpoint) {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Accept", "application/json")
-            }
-            if (response.status.value in 200..299) {
-                val list: List<CustomerPaymentDto> = response.body()
-                Result.success(list)
-            } else {
-                Result.failure(Exception("Fallo al descargar abonos: HTTP ${response.status.value}"))
-            }
+            val list: List<CustomerPaymentDto> = fetchAllPaged(cleanUrl, key, "customer_payments", query)
+            Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -257,18 +255,8 @@ class SupabaseRemoteDataSourceImpl(
         if (sales.isEmpty()) return@withContext Result.success(Unit)
         try {
             val cleanUrl = normalizeUrl(url)
-            val response = httpClient.post("$cleanUrl/rest/v1/sales") {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Prefer", "resolution=merge-duplicates")
-                contentType(ContentType.Application.Json)
-                setBody(sales)
-            }
-            if (response.status.value in 200..299) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Fallo al sincronizar ventas: HTTP ${response.status.value}"))
-            }
+            pushInChunks(cleanUrl, key, "sales", sales)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -281,22 +269,13 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<SaleDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val endpoint = if (sinceTimestamp > 0) {
-                "$cleanUrl/rest/v1/sales?created_at=gt.$sinceTimestamp&order=created_at.asc"
+            val query = if (sinceTimestamp > 0) {
+                "created_at=gt.$sinceTimestamp&order=created_at.asc"
             } else {
-                "$cleanUrl/rest/v1/sales?order=created_at.asc"
+                "order=created_at.asc"
             }
-            val response = httpClient.get(endpoint) {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Accept", "application/json")
-            }
-            if (response.status.value in 200..299) {
-                val list: List<SaleDto> = response.body()
-                Result.success(list)
-            } else {
-                Result.failure(Exception("Fallo al descargar ventas: HTTP ${response.status.value}"))
-            }
+            val list: List<SaleDto> = fetchAllPaged(cleanUrl, key, "sales", query)
+            Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -310,18 +289,8 @@ class SupabaseRemoteDataSourceImpl(
         if (items.isEmpty()) return@withContext Result.success(Unit)
         try {
             val cleanUrl = normalizeUrl(url)
-            val response = httpClient.post("$cleanUrl/rest/v1/sale_items") {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Prefer", "resolution=merge-duplicates")
-                contentType(ContentType.Application.Json)
-                setBody(items)
-            }
-            if (response.status.value in 200..299) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Fallo al sincronizar partidas de venta: HTTP ${response.status.value}"))
-            }
+            pushInChunks(cleanUrl, key, "sale_items", items)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -334,22 +303,13 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<SaleItemDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val endpoint = if (sinceTimestamp > 0) {
-                "$cleanUrl/rest/v1/sale_items?created_at=gt.$sinceTimestamp&order=created_at.asc"
+            val query = if (sinceTimestamp > 0) {
+                "created_at=gt.$sinceTimestamp&order=created_at.asc"
             } else {
-                "$cleanUrl/rest/v1/sale_items?order=created_at.asc"
+                "order=created_at.asc"
             }
-            val response = httpClient.get(endpoint) {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Accept", "application/json")
-            }
-            if (response.status.value in 200..299) {
-                val list: List<SaleItemDto> = response.body()
-                Result.success(list)
-            } else {
-                Result.failure(Exception("Fallo al descargar partidas de venta: HTTP ${response.status.value}"))
-            }
+            val list: List<SaleItemDto> = fetchAllPaged(cleanUrl, key, "sale_items", query)
+            Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -472,18 +432,8 @@ class SupabaseRemoteDataSourceImpl(
         if (records.isEmpty()) return@withContext Result.success(Unit)
         try {
             val cleanUrl = normalizeUrl(url)
-            val response = httpClient.post("$cleanUrl/rest/v1/deleted_records") {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Prefer", "resolution=merge-duplicates")
-                contentType(ContentType.Application.Json)
-                setBody(records)
-            }
-            if (response.status.value in 200..299) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Error al registrar eliminaciones remotas: HTTP ${response.status.value}"))
-            }
+            pushInChunks(cleanUrl, key, "deleted_records", records)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -496,22 +446,13 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<DeletedRecordDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val endpoint = if (sinceTimestamp > 0) {
-                "$cleanUrl/rest/v1/deleted_records?deleted_at=gt.$sinceTimestamp&order=deleted_at.asc"
+            val query = if (sinceTimestamp > 0) {
+                "deleted_at=gt.$sinceTimestamp&order=deleted_at.asc"
             } else {
-                "$cleanUrl/rest/v1/deleted_records?order=deleted_at.asc"
+                "order=deleted_at.asc"
             }
-            val response = httpClient.get(endpoint) {
-                header("apikey", key.trim())
-                header("Authorization", "Bearer ${key.trim()}")
-                header("Accept", "application/json")
-            }
-            if (response.status.value in 200..299) {
-                val list: List<DeletedRecordDto> = response.body()
-                Result.success(list)
-            } else {
-                Result.failure(Exception("Error al descargar eliminaciones remotas: HTTP ${response.status.value}"))
-            }
+            val list: List<DeletedRecordDto> = fetchAllPaged(cleanUrl, key, "deleted_records", query)
+            Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
         }

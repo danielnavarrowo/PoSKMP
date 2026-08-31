@@ -56,5 +56,8 @@ data class AjustesUiState(
     val isSavingCashier: Boolean = false,
     val isDeletingCashier: Boolean = false,
     val cashierActionError: String? = null,
-    val cashierActionSuccess: String? = null
+    val cashierActionSuccess: String? = null,
+    val isResettingApp: Boolean = false,
+    val resetAppError: String? = null,
+    val resetAppSuccess: String? = null
 )

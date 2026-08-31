@@ -98,6 +98,7 @@ interface SettingsRepository {
     suspend fun setLastBackupTimestamp(timestamp: Long)
     suspend fun setBackupDirectoryPath(path: String)
     suspend fun setReceiptSettings(settings: ReceiptSettings)
+    suspend fun clearAllSettings()
 }
 
 /**
@@ -519,6 +520,12 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.RECEIPT_FOOTER] = settings.footerMessage
             preferences[PreferenceKeys.OPEN_CASH_DRAWER_ON_CASH_SALE] = settings.openCashDrawerOnCashSale
             preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
+        }
+    }
+
+    override suspend fun clearAllSettings() {
+        dataStore.edit { preferences ->
+            preferences.clear()
         }
     }
 }
