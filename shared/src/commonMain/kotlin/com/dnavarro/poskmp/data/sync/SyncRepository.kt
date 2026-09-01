@@ -2,13 +2,14 @@ package com.dnavarro.poskmp.data.sync
 
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSource
+import com.dnavarro.poskmp.data.source.remote.dto.CashierDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
+import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
-import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.Dispatchers
@@ -174,7 +175,32 @@ class SyncRepositoryImpl(
                 totalPushed += unsyncedPayments.size
             }
 
-            // D) Ventas y Partidas de Ventas
+            // D) Cajeros
+            val unsyncedCashiers = queries.selectUnsyncedCashiers().executeAsList()
+            if (unsyncedCashiers.isNotEmpty()) {
+                val cashierDtos = unsyncedCashiers.map { c ->
+                    CashierDto(
+                        id = c.id,
+                        nombre = c.nombre,
+                        pin = c.pin,
+                        activo = c.activo == 1L,
+                        createdAt = c.created_at,
+                        updatedAt = c.updated_at
+                    )
+                }
+                val pushCashierResult = remoteDataSource.pushCashiers(url, key, cashierDtos)
+                if (pushCashierResult.isFailure) {
+                    throw pushCashierResult.exceptionOrNull() ?: Exception("Error al subir cajeros")
+                }
+                queries.transaction {
+                    for ((id) in unsyncedCashiers) {
+                        queries.updateCashierSyncState(sync_state = "SYNCED", id = id)
+                    }
+                }
+                totalPushed += unsyncedCashiers.size
+            }
+
+            // E) Ventas y Partidas de Ventas
             val unsyncedSales = queries.selectUnsyncedSales().executeAsList()
             if (unsyncedSales.isNotEmpty()) {
                 val saleDtos = unsyncedSales.map { s ->
@@ -191,6 +217,7 @@ class SyncRepositoryImpl(
                         totalItems = s.total_items,
                         customerId = s.customer_id,
                         createdAt = s.created_at,
+                        cashierName = s.cashier_name,
                         estado = s.estado
                     )
                 }
@@ -365,14 +392,37 @@ class SyncRepositoryImpl(
             }
             totalPulled += remotePayments.size
 
-            // D) Ventas y Partidas Remotas
+            // D) Cajeros Remotos
+            val pulledCashiersResult = remoteDataSource.pullCashiers(url, key, lastSync)
+            if (pulledCashiersResult.isFailure) {
+                throw pulledCashiersResult.exceptionOrNull() ?: Exception("Error al descargar cajeros")
+            }
+            val remoteCashiers = pulledCashiersResult.getOrDefault(emptyList())
+            queries.transaction {
+                for ((id, nombre, pin, activo, createdAt, updatedAt) in remoteCashiers) {
+                    val local = queries.selectCashierById(id).executeAsOneOrNull()
+                    if (local == null || updatedAt >= local.updated_at || local.sync_state == "SYNCED") {
+                        queries.upsertSyncedCashier(
+                            id = id,
+                            nombre = nombre,
+                            pin = pin,
+                            activo = if (activo) 1L else 0L,
+                            created_at = createdAt,
+                            updated_at = updatedAt
+                        )
+                    }
+                }
+            }
+            totalPulled += remoteCashiers.size
+
+            // E) Ventas y Partidas Remotas
             val pulledSalesResult = remoteDataSource.pullSales(url, key, lastSync)
             if (pulledSalesResult.isFailure) {
                 throw pulledSalesResult.exceptionOrNull() ?: Exception("Error al descargar ventas")
             }
             val remoteSales = pulledSalesResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, estado) in remoteSales) {
+                for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado) in remoteSales) {
                     queries.upsertSyncedSale(
                         id = id,
                         folio = folio,
@@ -388,7 +438,7 @@ class SyncRepositoryImpl(
                         created_at = createdAt,
                         shift_id = null,
                         cashier_id = null,
-                        cashier_name = null,
+                        cashier_name = cashierName,
                         estado = estado
                     )
                 }

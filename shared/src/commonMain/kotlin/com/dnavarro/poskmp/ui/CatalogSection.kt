@@ -177,7 +177,10 @@ fun CatalogSection(
                     val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
                     c1.lowercase().compareTo(c2.lowercase())
                 }
-                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
+
+                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase()
+                    .compareTo((p2.categoria ?: "").lowercase())
+
                 ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
                 ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                 ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
@@ -217,7 +220,8 @@ fun CatalogSection(
                 } else {
                     gridState.animateScrollToItem(selectedCatalogIndex)
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -247,10 +251,10 @@ fun CatalogSection(
                 .fillMaxWidth()
                 .height(54.dp)
                 .background(
-                color = if (latestSearchQuery.value.isNotEmpty())
-                    MaterialTheme.colorScheme.surfaceContainerLowest
-                else
-                    MaterialTheme.colorScheme.surfaceContainer,
+                    color = if (latestSearchQuery.value.isNotEmpty())
+                        MaterialTheme.colorScheme.surfaceContainerLowest
+                    else
+                        MaterialTheme.colorScheme.surfaceContainer,
                     shape = ShapeDefaults.cardShape
                 ),
             contentAlignment = Alignment.Center
@@ -293,13 +297,17 @@ fun CatalogSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .let { mod ->
-                                if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(searchFocusRequester) else mod
+                                if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(
+                                    searchFocusRequester
+                                ) else mod
                             }
                             .onPreviewKeyEvent { keyEvent ->
                                 val key = keyEvent.key
                                 val codePoint = keyEvent.utf16CodePoint
-                                val isPlus = key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
-                                val isMinus = key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
+                                val isPlus =
+                                    key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
+                                val isMinus =
+                                    key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
                                 val isUp = key == Key.DirectionUp
                                 val isDown = key == Key.DirectionDown
                                 val isEnter = key == Key.Enter || key == Key.NumPadEnter
@@ -330,14 +338,18 @@ fun CatalogSection(
                                     true
                                 } else if (latestSearchQuery.value.isNotEmpty() && isEnter && selectedCatalogIndex in displayedProducts.indices) {
                                     if (keyEvent.type == KeyEventType.KeyDown) {
-                                        val selectedProduct = displayedProducts[selectedCatalogIndex]
+                                        val selectedProduct =
+                                            displayedProducts[selectedCatalogIndex]
                                         onProductClick(selectedProduct)
                                         latestSearchQuery.value = ""
                                         onSearchQueryChange("")
                                         selectedCatalogIndex = -1
                                     }
                                     true
-                                } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(keyEvent)) {
+                                } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(
+                                        keyEvent
+                                    )
+                                ) {
                                     true
                                 } else if (isPlus || isMinus) {
                                     true
@@ -414,7 +426,8 @@ fun CatalogSection(
                                     delay(50.milliseconds)
                                     try {
                                         searchFocusRequester?.requestFocus()
-                                    } catch (_: Exception) {}
+                                    } catch (_: Exception) {
+                                    }
                                 }
                             }
                         }
@@ -496,7 +509,11 @@ fun CatalogSection(
                                         ) {
                                             DropdownMenuItem(
                                                 text = {
-                                                    Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
+                                                    Text(
+                                                        if (product.es_favorito == 1L) stringResource(
+                                                            Res.string.remove_from_favorites
+                                                        ) else stringResource(Res.string.mark_as_favorite)
+                                                    )
                                                 },
                                                 onClick = {
                                                     showContextMenu = false
@@ -504,7 +521,9 @@ fun CatalogSection(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
+                                                        painter = if (product.es_favorito == 1L) painterResource(
+                                                            Res.drawable.star_filled
+                                                        ) else painterResource(Res.drawable.star),
                                                         contentDescription = stringResource(Res.string.favorite_desc),
                                                         tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
                                                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -518,7 +537,10 @@ fun CatalogSection(
                                                     onModifyProduct(product)
                                                 },
                                                 leadingIcon = {
-                                                    Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.edit),
+                                                        contentDescription = stringResource(Res.string.modify)
+                                                    )
                                                 }
                                             )
                                         }
@@ -538,7 +560,8 @@ fun CatalogSection(
                                 )
                             }
                             val totalDefaultWeight = remember(activeColumns) {
-                                activeColumns.sumOf { it.defaultWeight.toDouble() }.toFloat().coerceAtLeast(0.01f)
+                                activeColumns.sumOf { it.defaultWeight.toDouble() }.toFloat()
+                                    .coerceAtLeast(0.01f)
                             }
                             var columnWeights by remember(activeColumns) {
                                 mutableStateOf(activeColumns.map { (it.defaultWeight / totalDefaultWeight) * 1.0f })
@@ -562,7 +585,8 @@ fun CatalogSection(
                             }
                             val onHeaderClick = { field: ProductSortField ->
                                 if (sortField == field) {
-                                    sortOrder = if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
+                                    sortOrder =
+                                        if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
                                 } else {
                                     sortField = field
                                     sortOrder = ProductSortOrder.ASC
@@ -598,7 +622,7 @@ fun CatalogSection(
                                                 else ShapeDefaults.middleListItemShape
                                             var showContextMenu by remember { mutableStateOf(false) }
 
-                                             ProductTableRow(
+                                            ProductTableRow(
                                                 product = product,
                                                 visibleColumns = activeColumns,
                                                 columnWeights = columnWeights,
@@ -620,11 +644,17 @@ fun CatalogSection(
                                                     DropdownMenu(
                                                         expanded = showContextMenu,
                                                         shape = MaterialTheme.shapes.medium,
-                                                        onDismissRequest = { showContextMenu = false }
+                                                        onDismissRequest = {
+                                                            showContextMenu = false
+                                                        }
                                                     ) {
                                                         DropdownMenuItem(
                                                             text = {
-                                                                Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
+                                                                Text(
+                                                                    if (product.es_favorito == 1L) stringResource(
+                                                                        Res.string.remove_from_favorites
+                                                                    ) else stringResource(Res.string.mark_as_favorite)
+                                                                )
                                                             },
                                                             onClick = {
                                                                 showContextMenu = false
@@ -632,8 +662,12 @@ fun CatalogSection(
                                                             },
                                                             leadingIcon = {
                                                                 Icon(
-                                                                    painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
-                                                                    contentDescription = stringResource(Res.string.favorite_desc),
+                                                                    painter = if (product.es_favorito == 1L) painterResource(
+                                                                        Res.drawable.star_filled
+                                                                    ) else painterResource(Res.drawable.star),
+                                                                    contentDescription = stringResource(
+                                                                        Res.string.favorite_desc
+                                                                    ),
                                                                     tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
                                                                     else MaterialTheme.colorScheme.onSurfaceVariant
                                                                 )
@@ -646,7 +680,12 @@ fun CatalogSection(
                                                                 onModifyProduct(product)
                                                             },
                                                             leadingIcon = {
-                                                                Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
+                                                                Icon(
+                                                                    painter = painterResource(Res.drawable.edit),
+                                                                    contentDescription = stringResource(
+                                                                        Res.string.modify
+                                                                    )
+                                                                )
                                                             }
                                                         )
                                                     }
@@ -673,7 +712,9 @@ fun CatalogSection(
 
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                                    containerColor = if (isHighlighted) MaterialTheme.colorScheme.primaryContainer.copy(
+                                        alpha = 0.45f
+                                    )
                                     else MaterialTheme.colorScheme.surfaceContainerLow
                                 ),
                                 shape = ShapeDefaults.cardShape,
@@ -681,7 +722,11 @@ fun CatalogSection(
                                     .fillMaxWidth()
                                     .height(140.dp)
                                     .then(
-                                        if (isHighlighted) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, ShapeDefaults.cardShape)
+                                        if (isHighlighted) Modifier.border(
+                                            2.dp,
+                                            MaterialTheme.colorScheme.primary,
+                                            ShapeDefaults.cardShape
+                                        )
                                         else Modifier
                                     )
                                     .combinedClickable(
@@ -700,7 +745,8 @@ fun CatalogSection(
                                             while (true) {
                                                 val event = awaitPointerEvent()
                                                 if (event.type == PointerEventType.Press) {
-                                                    val isRightClick = event.buttons.isSecondaryPressed
+                                                    val isRightClick =
+                                                        event.buttons.isSecondaryPressed
                                                     if (isRightClick) {
                                                         event.changes.forEach { it.consume() }
                                                         showContextMenu = true
@@ -717,7 +763,8 @@ fun CatalogSection(
                                     ) {
                                         Column {
                                             Text(
-                                                text = product.categoria ?: stringResource(Res.string.no_category),
+                                                text = product.categoria
+                                                    ?: stringResource(Res.string.no_category),
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = MaterialTheme.colorScheme.primary,
@@ -767,7 +814,9 @@ fun CatalogSection(
                                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                                             modifier = Modifier
                                                 .align(Alignment.TopEnd)
-                                                .padding(8.dp).clip(MaterialShapes.Cookie12Sided.toShape()).size(28.dp)
+                                                .padding(8.dp)
+                                                .clip(MaterialShapes.Cookie12Sided.toShape())
+                                                .size(28.dp)
                                         ) {
                                             Icon(
                                                 painter = painterResource(Res.drawable.star_filled),
@@ -784,7 +833,11 @@ fun CatalogSection(
                                     ) {
                                         DropdownMenuItem(
                                             text = {
-                                                Text(if (product.es_favorito == 1L) stringResource(Res.string.remove_from_favorites) else stringResource(Res.string.mark_as_favorite))
+                                                Text(
+                                                    if (product.es_favorito == 1L) stringResource(
+                                                        Res.string.remove_from_favorites
+                                                    ) else stringResource(Res.string.mark_as_favorite)
+                                                )
                                             },
                                             onClick = {
                                                 showContextMenu = false
@@ -792,7 +845,9 @@ fun CatalogSection(
                                             },
                                             leadingIcon = {
                                                 Icon(
-                                                    painter = if (product.es_favorito == 1L) painterResource(Res.drawable.star_filled) else painterResource(Res.drawable.star),
+                                                    painter = if (product.es_favorito == 1L) painterResource(
+                                                        Res.drawable.star_filled
+                                                    ) else painterResource(Res.drawable.star),
                                                     contentDescription = stringResource(Res.string.favorite_desc),
                                                     tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
                                                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -806,7 +861,10 @@ fun CatalogSection(
                                                 onModifyProduct(product)
                                             },
                                             leadingIcon = {
-                                                Icon(painter = painterResource(Res.drawable.edit), contentDescription = stringResource(Res.string.modify))
+                                                Icon(
+                                                    painter = painterResource(Res.drawable.edit),
+                                                    contentDescription = stringResource(Res.string.modify)
+                                                )
                                             }
                                         )
                                     }
@@ -854,7 +912,11 @@ fun CatalogSection(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    if (cartCount > 0) stringResource(Res.string.view_ticket_fab, cartCount, cartTotal.toString().formatPrice())
+                                    if (cartCount > 0) stringResource(
+                                        Res.string.view_ticket_fab,
+                                        cartCount,
+                                        cartTotal.toString().formatPrice()
+                                    )
                                     else stringResource(Res.string.tab_ticket)
                                 )
                             }
@@ -876,7 +938,15 @@ fun CatalogSection(
             item {
                 SuggestionChip(
                     onClick = onCashInflowClick,
-                    label = { Text(if (isAndroid()) stringResource(Res.string.btn_cash_inflow) else stringResource(Res.string.cash_inflow_hotkey), fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            if (isAndroid()) stringResource(Res.string.btn_cash_inflow) else stringResource(
+                                Res.string.cash_inflow_hotkey
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
@@ -885,7 +955,15 @@ fun CatalogSection(
             item {
                 SuggestionChip(
                     onClick = onCashOutflowClick,
-                    label = { Text(if (isAndroid()) stringResource(Res.string.btn_cash_outflow) else stringResource(Res.string.cash_outflow_hotkey), fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            if (isAndroid()) stringResource(Res.string.btn_cash_outflow) else stringResource(
+                                Res.string.cash_outflow_hotkey
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
@@ -894,7 +972,15 @@ fun CatalogSection(
             item {
                 SuggestionChip(
                     onClick = onSellUnregisteredClick,
-                    label = { Text(if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey), fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(
+                                Res.string.not_registered_hotkey
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
                     colors = SuggestionChipDefaults.suggestionChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
@@ -905,8 +991,11 @@ fun CatalogSection(
                     onClick = onApplyItemWholesaleClick,
                     label = {
                         Text(
-                            if (isAndroid()) stringResource(Res.string.wholesale_item) else stringResource(Res.string.wholesale_item_hotkey),
-                            fontWeight = FontWeight.Bold
+                            if (isAndroid()) stringResource(Res.string.wholesale_item) else stringResource(
+                                Res.string.wholesale_item_hotkey
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     },
                     colors = SuggestionChipDefaults.suggestionChipColors(
@@ -919,8 +1008,11 @@ fun CatalogSection(
                     onClick = onApplyWholesaleClick,
                     label = {
                         Text(
-                            if (isAndroid()) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey),
-                            fontWeight = FontWeight.Bold
+                            if (isAndroid()) stringResource(Res.string.wholesale_ticket) else stringResource(
+                                Res.string.wholesale_ticket_hotkey
+                            ),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     },
                     colors = SuggestionChipDefaults.suggestionChipColors(

@@ -611,6 +611,17 @@ UPDATE cashiers
 SET activo = 0, updated_at = ?, sync_state = 'PENDING_UPDATE'
 WHERE id = ?;
 
+selectUnsyncedCashiers:
+SELECT * FROM cashiers WHERE sync_state != 'SYNCED';
+
+updateCashierSyncState:
+UPDATE cashiers SET sync_state = ? WHERE id = ?;
+
+upsertSyncedCashier:
+INSERT OR REPLACE INTO cashiers (
+    id, nombre, pin, activo, created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED');
+
 deleteAllCashiers:
 DELETE FROM cashiers;
 

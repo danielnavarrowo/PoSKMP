@@ -109,8 +109,8 @@ CREATE TABLE IF NOT EXISTS public.sales (
     total_items    NUMERIC(10, 3) NOT NULL DEFAULT 0.000,
     customer_id    TEXT REFERENCES public.customers(id) ON DELETE SET NULL,
     created_at     BIGINT NOT NULL,
-    shift_id       TEXT REFERENCES public.shifts(id) ON DELETE SET NULL,
-    cashier_id     TEXT REFERENCES public.cashiers(id) ON DELETE SET NULL,
+    shift_id       TEXT,
+    cashier_id     TEXT,
     cashier_name   TEXT,
     estado         TEXT NOT NULL DEFAULT 'COMPLETADA'
 );

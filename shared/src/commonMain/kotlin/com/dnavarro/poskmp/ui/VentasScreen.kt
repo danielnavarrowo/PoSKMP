@@ -1,17 +1,8 @@
 package com.dnavarro.poskmp.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import com.dnavarro.poskmp.util.isAndroid
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -65,39 +55,46 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dnavarro.poskmp.domain.model.CashMovementType
 import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
-import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.ventas.HistorialVentasScreen
+import com.dnavarro.poskmp.ui.ventas.ProductosVendidosScreen
 import com.dnavarro.poskmp.ui.ventas.SalesPeriodPreset
 import com.dnavarro.poskmp.ui.ventas.VentasUiState
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
-import androidx.compose.material3.IconButton
-import androidx.compose.ui.text.style.TextDecoration
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatShiftInterval
+import com.dnavarro.poskmp.util.isAndroid
 import ir.ehsannarmani.compose_charts.ColumnChart
 import ir.ehsannarmani.compose_charts.PieChart
 import ir.ehsannarmani.compose_charts.models.BarProperties
@@ -109,14 +106,91 @@ import ir.ehsannarmani.compose_charts.models.LabelProperties
 import ir.ehsannarmani.compose_charts.models.Pie
 import ir.ehsannarmani.compose_charts.models.PopupProperties
 import ir.ehsannarmani.compose_charts.models.StrokeStyle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
-import com.dnavarro.poskmp.domain.model.CashMovementType
-import kotlinx.coroutines.delay
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.accept_button
+import poskmp.shared.generated.resources.active_shift_badge
+import poskmp.shared.generated.resources.all_shifts_option
+import poskmp.shared.generated.resources.arrow_up
+import poskmp.shared.generated.resources.btn_cash_inflow
+import poskmp.shared.generated.resources.btn_cash_inflow_desktop
+import poskmp.shared.generated.resources.btn_cash_outflow
+import poskmp.shared.generated.resources.btn_cash_outflow_desktop
+import poskmp.shared.generated.resources.btn_close_shift
+import poskmp.shared.generated.resources.btn_close_shift_desktop
+import poskmp.shared.generated.resources.btn_view_sales_history
+import poskmp.shared.generated.resources.btn_view_sold_products
+import poskmp.shared.generated.resources.cancel
+import poskmp.shared.generated.resources.cancel_sale_button
+import poskmp.shared.generated.resources.cancel_sale_confirm_action
+import poskmp.shared.generated.resources.cancel_sale_confirm_message
+import poskmp.shared.generated.resources.cancel_sale_confirm_title
+import poskmp.shared.generated.resources.cancel_sale_keep_action
+import poskmp.shared.generated.resources.card
+import poskmp.shared.generated.resources.category_stat_format
+import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.close_button
+import poskmp.shared.generated.resources.custom_range_active_format
+import poskmp.shared.generated.resources.daily_sales_avg_format
+import poskmp.shared.generated.resources.date_range_end_label
+import poskmp.shared.generated.resources.date_range_start_label
+import poskmp.shared.generated.resources.empty_category_sales
+import poskmp.shared.generated.resources.empty_daily_sales
+import poskmp.shared.generated.resources.empty_payment_methods
+import poskmp.shared.generated.resources.empty_recent_sales_history
+import poskmp.shared.generated.resources.empty_sold_products
+import poskmp.shared.generated.resources.kpi_average_ticket
+import poskmp.shared.generated.resources.kpi_gross_total
+import poskmp.shared.generated.resources.kpi_issued_tickets
+import poskmp.shared.generated.resources.kpi_margin
+import poskmp.shared.generated.resources.kpi_net_profit
+import poskmp.shared.generated.resources.kpi_total_sales
+import poskmp.shared.generated.resources.kpi_without_discount
+import poskmp.shared.generated.resources.money
+import poskmp.shared.generated.resources.money_transfer
+import poskmp.shared.generated.resources.no_active_shift_badge
+import poskmp.shared.generated.resources.payment_method_credito
+import poskmp.shared.generated.resources.payment_method_efectivo
+import poskmp.shared.generated.resources.payment_method_label
+import poskmp.shared.generated.resources.payment_method_mixto
+import poskmp.shared.generated.resources.payment_method_stat_format
+import poskmp.shared.generated.resources.payment_method_tarjeta
+import poskmp.shared.generated.resources.payment_method_transferencia
+import poskmp.shared.generated.resources.payments
+import poskmp.shared.generated.resources.period_range
+import poskmp.shared.generated.resources.period_this_month
+import poskmp.shared.generated.resources.period_this_week
+import poskmp.shared.generated.resources.period_today
+import poskmp.shared.generated.resources.period_yesterday
+import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.reprint_receipt_button
+import poskmp.shared.generated.resources.sale_status_cancelled
+import poskmp.shared.generated.resources.select_date_range_title
+import poskmp.shared.generated.resources.shift_filter_label
+import poskmp.shared.generated.resources.shift_status_open
+import poskmp.shared.generated.resources.ticket_cashier_format
+import poskmp.shared.generated.resources.ticket_detail_profit
+import poskmp.shared.generated.resources.ticket_detail_title
+import poskmp.shared.generated.resources.ticket_detail_total
+import poskmp.shared.generated.resources.title_category_sales
+import poskmp.shared.generated.resources.title_daily_sales
+import poskmp.shared.generated.resources.title_payment_methods
+import poskmp.shared.generated.resources.uncategorized_label
+import poskmp.shared.generated.resources.ventas_title
 import kotlin.time.Duration.Companion.milliseconds
+
+enum class VentasSubScreen {
+    MAIN,
+    PRODUCTOS_VENDIDOS,
+    HISTORIAL_VENTAS
+}
 
 @Composable
 fun VentasScreen(
@@ -215,9 +289,29 @@ fun VentasScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
+    var currentSubScreen by rememberSaveable { mutableStateOf(VentasSubScreen.MAIN) }
+
+    when (currentSubScreen) {
+        VentasSubScreen.PRODUCTOS_VENDIDOS -> {
+            ProductosVendidosScreen(
+                soldProducts = state.soldProducts,
+                onNavigateBack = { currentSubScreen = VentasSubScreen.MAIN },
+                modifier = modifier
+            )
+        }
+        VentasSubScreen.HISTORIAL_VENTAS -> {
+            HistorialVentasScreen(
+                sales = state.recentSales,
+                onSelectSale = onSelectSaleForDetail,
+                onCancelSale = onOpenCancelSaleDialog,
+                onNavigateBack = { currentSubScreen = VentasSubScreen.MAIN },
+                modifier = modifier
+            )
+        }
+        VentasSubScreen.MAIN -> {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
                 title = {
                     Text(
                         modifier = Modifier.fillMaxWidth(),
@@ -704,25 +798,50 @@ fun VentasScreen(
                     }
                 }
 
-                // Sold Products Table
+                // Botones para abrir las pantallas completas de Productos Vendidos e Historial de Ventas
                 item {
-                    SoldProductsCard(
-                        soldProducts = state.soldProducts,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // Recent Ticket History List Card (Fixed Height)
-                item {
-                    RecentSalesCard(
-                        sales = state.recentSales,
-                        onSelectSale = { onSelectSaleForDetail(it) },
-                        onCancelSale = { onOpenCancelSaleDialog(it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (isCompact) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            SoldProductsNavButton(
+                                soldProductsCount = state.soldProducts.size,
+                                totalPieces = state.soldProducts.sumOf { it.totalUnidades },
+                                onClick = { currentSubScreen = VentasSubScreen.PRODUCTOS_VENDIDOS },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            SalesHistoryNavButton(
+                                salesCount = state.recentSales.size,
+                                activeSalesCount = state.recentSales.count { !it.isCancelled },
+                                onClick = { currentSubScreen = VentasSubScreen.HISTORIAL_VENTAS },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            SoldProductsNavButton(
+                                soldProductsCount = state.soldProducts.size,
+                                totalPieces = state.soldProducts.sumOf { it.totalUnidades },
+                                onClick = { currentSubScreen = VentasSubScreen.PRODUCTOS_VENDIDOS },
+                                modifier = Modifier.weight(1f)
+                            )
+                            SalesHistoryNavButton(
+                                salesCount = state.recentSales.size,
+                                activeSalesCount = state.recentSales.count { !it.isCancelled },
+                                onClick = { currentSubScreen = VentasSubScreen.HISTORIAL_VENTAS },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+    }
     }
 
     // Date Range Picker Dialog
@@ -1110,236 +1229,148 @@ private fun formatShiftDisplay(shift: CashierShift): String {
 }
 
 @Composable
-private fun SoldProductsCard(
-    soldProducts: List<ProductSalesMetric>,
+private fun SoldProductsNavButton(
+    soldProductsCount: Int,
+    totalPieces: Double,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isAscending by rememberSaveable { mutableStateOf(false) }
-
-    val sortedProducts = remember(soldProducts, isAscending) {
-        if (isAscending) {
-            soldProducts.sortedBy { it.totalUnidades }
-        } else {
-            soldProducts.sortedByDescending { it.totalUnidades }
-        }
+    val piecesFormatted = if (totalPieces % 1.0 == 0.0) {
+        totalPieces.toLong().toString()
+    } else {
+        totalPieces.toString().formatPrice()
     }
-
     Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = MaterialTheme.shapes.medium
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = stringResource(Res.string.title_sold_products),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                if (soldProducts.isNotEmpty()) {
-                    val totalPieces = soldProducts.sumOf { it.totalUnidades }
-                    val piecesFormatted = if (totalPieces % 1.0 == 0.0) {
-                        totalPieces.toLong().toString()
-                    } else {
-                        totalPieces.toString().formatPrice()
-                    }
-                    Text(
-                        text = "$piecesFormatted piezas en total",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (sortedProducts.isEmpty()) {
-                Text(
-                    stringResource(Res.string.empty_sold_products),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                // Table Header (Clickable to toggle sort order)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { isAscending = !isAscending }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.size(44.dp)
                 ) {
-                    Text(
-                        text = stringResource(Res.string.header_product_name),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(0.50f)
-                    )
-                    Text(
-                        text = stringResource(Res.string.header_price),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(0.25f),
-                        textAlign = TextAlign.End
-                    )
-                    Row(
-                        modifier = Modifier.weight(0.25f),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.header_sold_pieces),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.End
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                    Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            painter = painterResource(Res.drawable.arrow_up),
-                            contentDescription = if (isAscending) "Menor a mayor" else "Mayor a menor",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .size(14.dp)
-                                .graphicsLayer {
-                                    rotationZ = if (isAscending) 0f else 180f
-                                }
+                            painter = painterResource(Res.drawable.products),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Table Rows inside fixed-height LazyColumn
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(500.dp)
-                ) {
-                    itemsIndexed(sortedProducts, key = { _, item -> item.productId ?: item.productNombre }) { index, metric ->
-                        val unitPrice = if (metric.totalUnidades > 0) metric.totalRecaudado / metric.totalUnidades else 0.0
-                        val qtyFormatted = if (metric.totalUnidades % 1.0 == 0.0) {
-                            metric.totalUnidades.toLong().toString()
+                Column {
+                    Text(
+                        text = stringResource(Res.string.btn_view_sold_products),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (soldProductsCount > 0) {
+                            "$piecesFormatted piezas en total ($soldProductsCount productos)"
                         } else {
-                            metric.totalUnidades.toString().formatPrice()
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = metric.productNombre,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(0.50f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "$${unitPrice.toString().formatPrice()}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(0.25f),
-                                textAlign = TextAlign.End,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = qtyFormatted,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.weight(0.25f),
-                                textAlign = TextAlign.End,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        if (index < sortedProducts.lastIndex) {
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            )
-                        }
-                    }
+                            stringResource(Res.string.empty_sold_products)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+            Icon(
+                painter = painterResource(Res.drawable.arrow_up),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = 90f }
+            )
         }
     }
 }
 
 @Composable
-private fun RecentSalesCard(
-    sales: List<Sale>,
-    onSelectSale: (Sale) -> Unit,
-    onCancelSale: (Sale) -> Unit,
+private fun SalesHistoryNavButton(
+    salesCount: Int,
+    activeSalesCount: Int,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = MaterialTheme.shapes.medium
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = stringResource(Res.string.title_recent_sales_history),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                if (sales.isNotEmpty()) {
-                    Text(
-                        text = "${sales.size} tickets",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (sales.isEmpty()) {
-                Text(
-                    stringResource(Res.string.empty_recent_sales_history),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(500.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.size(44.dp)
                 ) {
-                    items(sales, key = { it.id }) { sale ->
-                        SaleTicketCard(
-                            sale = sale,
-                            onClick = { onSelectSale(sale) },
-                            onCancelSale = { onCancelSale(sale) }
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(Res.drawable.point_of_sale),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
+                Column {
+                    Text(
+                        text = stringResource(Res.string.btn_view_sales_history),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (salesCount > 0) {
+                            "$salesCount tickets emitidos ($activeSalesCount activos)"
+                        } else {
+                            stringResource(Res.string.empty_recent_sales_history)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
+            Icon(
+                painter = painterResource(Res.drawable.arrow_up),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = 90f }
+            )
         }
     }
 }
@@ -1382,134 +1413,6 @@ private fun KpiCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-    }
-}
-
-@Composable
-private fun SaleTicketCard(
-    sale: Sale,
-    onClick: () -> Unit,
-    onCancelSale: (Sale) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val isCancelled = sale.isCancelled
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isCancelled) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = if (isCancelled) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            "#${sale.folio}",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isCancelled) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            stringResource(Res.string.ticket_folio_format, sale.folio),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (isCancelled) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(Res.string.sale_status_cancelled),
-                                    color = MaterialTheme.colorScheme.error,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                    Text(
-                        text = formatEpochMillisToDateTime(sale.createdAt),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        stringResource(Res.string.ticket_items_and_method, sale.totalItems.toString().formatPrice(), sale.metodoPago),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        "$${sale.total.toString().formatPrice()}",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 16.sp,
-                        color = if (isCancelled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                        style = if (isCancelled) TextStyle(textDecoration = TextDecoration.LineThrough) else TextStyle.Default,
-                        maxLines = 1
-                    )
-                    Text(
-                        stringResource(Res.string.ticket_profit_label, sale.ganancia.toString().formatPrice()),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
-
-                if (!isCancelled) {
-                    IconButton(
-                        onClick = { onCancelSale(sale) },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.close),
-                            contentDescription = stringResource(Res.string.cancel_sale_button),
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -1582,8 +1485,13 @@ private fun SaleDetailDialog(
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                val dateAndCashier = if (!sale.cashierName.isNullOrBlank()) {
+                    "${formatEpochMillisToDateTime(sale.createdAt)} • ${stringResource(Res.string.ticket_cashier_format, sale.cashierName)}"
+                } else {
+                    formatEpochMillisToDateTime(sale.createdAt)
+                }
                 Text(
-                    text = formatEpochMillisToDateTime(sale.createdAt),
+                    text = dateAndCashier,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)

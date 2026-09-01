@@ -55,6 +55,18 @@ data class CustomerPaymentDto(
 )
 
 @Serializable
+data class CashierDto(
+    val id: String,
+    val nombre: String,
+    val pin: String = "0000",
+    val activo: Boolean = true,
+    @SerialName("created_at")
+    val createdAt: Long,
+    @SerialName("updated_at")
+    val updatedAt: Long
+)
+
+@Serializable
 data class SaleDto(
     val id: String,
     val folio: Long,
@@ -75,6 +87,8 @@ data class SaleDto(
     val customerId: String? = null,
     @SerialName("created_at")
     val createdAt: Long,
+    @SerialName("cashier_name")
+    val cashierName: String? = null,
     val estado: String = "COMPLETADA"
 )
 

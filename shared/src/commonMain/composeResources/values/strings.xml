@@ -430,6 +430,16 @@
     <string name="cancel_sale_success">Venta #%1$d cancelada exitosamente</string>
     <string name="cancel_sale_error">Error al cancelar la venta: %1$s</string>
 
+    <!-- Subpantallas de Ventas: Productos Vendidos e Historial de Ventas -->
+    <string name="btn_view_sold_products">Ver productos vendidos</string>
+    <string name="btn_view_sales_history">Ver historial de ventas</string>
+    <string name="btn_back">Regresar</string>
+    <string name="search_sold_products_placeholder">Buscar producto por nombre...</string>
+    <string name="search_sales_history_placeholder">Buscar por folio o método...</string>
+    <string name="sold_products_total_summary">%1$s piezas en total • %2$d productos</string>
+    <string name="sales_history_total_summary">%1$d tickets (%2$d activos) • Total: $%3$s</string>
+    <string name="ticket_cashier_format">Cajero: %1$s</string>
+
     <!-- Update System -->
     <string name="updates_section_title">Actualizaciones del Sistema</string>
     <string name="updates_section_subtitle">Buscar e instalar la versión más reciente de la aplicación</string>

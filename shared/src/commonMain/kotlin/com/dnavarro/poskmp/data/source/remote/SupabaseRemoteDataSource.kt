@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.data.source.remote
 
+import com.dnavarro.poskmp.data.source.remote.dto.CashierDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
 import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
@@ -16,6 +17,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -33,6 +35,8 @@ interface SupabaseRemoteDataSource {
     suspend fun pullCustomers(url: String, key: String, sinceTimestamp: Long): Result<List<CustomerDto>>
     suspend fun pushCustomerPayments(url: String, key: String, payments: List<CustomerPaymentDto>): Result<Unit>
     suspend fun pullCustomerPayments(url: String, key: String, sinceTimestamp: Long): Result<List<CustomerPaymentDto>>
+    suspend fun pushCashiers(url: String, key: String, cashiers: List<CashierDto>): Result<Unit>
+    suspend fun pullCashiers(url: String, key: String, sinceTimestamp: Long): Result<List<CashierDto>>
     suspend fun pushSales(url: String, key: String, sales: List<SaleDto>): Result<Unit>
     suspend fun pullSales(url: String, key: String, sinceTimestamp: Long): Result<List<SaleDto>>
     suspend fun pushSaleItems(url: String, key: String, items: List<SaleItemDto>): Result<Unit>
@@ -119,7 +123,8 @@ class SupabaseRemoteDataSourceImpl(
                 setBody(chunk)
             }
             if (response.status.value !in 200..299) {
-                throw Exception("Error HTTP ${response.status.value} al subir datos a $table: ${response.status.description}")
+                val errorDetail = try { response.bodyAsText() } catch (_: Exception) { "" }
+                throw Exception("Error HTTP ${response.status.value} al subir datos a $table: ${response.status.description} ($errorDetail)")
             }
         }
     }
@@ -241,6 +246,40 @@ class SupabaseRemoteDataSourceImpl(
                 "order=created_at.asc"
             }
             val list: List<CustomerPaymentDto> = fetchAllPaged(cleanUrl, key, "customer_payments", query)
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pushCashiers(
+        url: String,
+        key: String,
+        cashiers: List<CashierDto>
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (cashiers.isEmpty()) return@withContext Result.success(Unit)
+        try {
+            val cleanUrl = normalizeUrl(url)
+            pushInChunks(cleanUrl, key, "cashiers", cashiers)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pullCashiers(
+        url: String,
+        key: String,
+        sinceTimestamp: Long
+    ): Result<List<CashierDto>> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val query = if (sinceTimestamp > 0) {
+                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
+            } else {
+                "order=updated_at.asc"
+            }
+            val list: List<CashierDto> = fetchAllPaged(cleanUrl, key, "cashiers", query)
             Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
