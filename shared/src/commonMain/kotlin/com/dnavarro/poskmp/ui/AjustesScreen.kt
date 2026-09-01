@@ -178,6 +178,8 @@ fun AjustesScreen(
         onShowExtraPricesChecadorChange = { viewModel.setShowExtraPricesChecador(it) },
         useProductTableInCatalog = uiState.useProductTableInCatalog,
         onUseProductTableInCatalogChange = { viewModel.setUseProductTableInCatalog(it) },
+        swapVentaLayoutOrder = uiState.swapVentaLayoutOrder,
+        onSwapVentaLayoutOrderChange = { viewModel.setSwapVentaLayoutOrder(it) },
         defaultRetailMargin = uiState.defaultRetailMargin,
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
@@ -263,6 +265,8 @@ fun AjustesScreen(
     onShowExtraPricesChecadorChange: (Boolean) -> Unit = {},
     useProductTableInCatalog: Boolean = false,
     onUseProductTableInCatalogChange: (Boolean) -> Unit = {},
+    swapVentaLayoutOrder: Boolean = false,
+    onSwapVentaLayoutOrderChange: (Boolean) -> Unit = {},
     defaultRetailMargin: Double = 0.0,
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
@@ -733,6 +737,40 @@ fun AjustesScreen(
                                     }
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Swap Venta Layout Order Toggle (Ticket on left, Catalog on right)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                Text(
+                                    text = stringResource(Res.string.swap_venta_layout_order_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.swap_venta_layout_order_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Switch(
+                                checked = swapVentaLayoutOrder,
+                                onCheckedChange = onSwapVentaLayoutOrderChange
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

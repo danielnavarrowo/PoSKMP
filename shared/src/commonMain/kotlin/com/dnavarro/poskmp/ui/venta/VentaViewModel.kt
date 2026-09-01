@@ -170,12 +170,13 @@ class VentaViewModel(
             combine(
                 settingsRepository.useProductTableInCatalogFlow,
                 getCustomersUseCase(),
-                _selectedCustomer
-            ) { useProductTableInCatalog, customers, selectedCustomer ->
-                Triple(useProductTableInCatalog, customers, selectedCustomer)
+                _selectedCustomer,
+                settingsRepository.swapVentaLayoutOrderFlow
+            ) { useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder ->
+                Tuple4(useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder)
             }
-        ) { (canUndo, retailMargin, wholesaleMargin), (useProductTableInCatalog, customers, selectedCustomer) ->
-            Tuple6(canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCustomer)
+        ) { (canUndo, retailMargin, wholesaleMargin), (useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder) ->
+            Tuple7(canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder)
         },
         combine(
             _customerSearchQuery,
@@ -202,7 +203,7 @@ class VentaViewModel(
         },
         syncRepository.syncState
     ) { (q, products, cat, cart, held),
-        (canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCust),
+        (canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCust, swapVentaLayoutOrder),
         receiptDialogState,
         (roundingSettings, receiptSettings, shiftState),
         syncState ->
@@ -234,6 +235,7 @@ class VentaViewModel(
             roundTicketTotal = isRoundingEnabled && roundTicketTotal,
             disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
             useProductTableInCatalog = useProductTableInCatalog,
+            swapVentaLayoutOrder = swapVentaLayoutOrder,
             customers = customers,
             filteredCustomers = filteredCust,
             selectedCustomer = selectedCust,
@@ -352,13 +354,14 @@ class VentaViewModel(
         val e: E
     )
 
-    private data class Tuple6<A, B, C, D, E, F>(
+    private data class Tuple7<A, B, C, D, E, F, G>(
         val a: A,
         val b: B,
         val c: C,
         val d: D,
         val e: E,
-        val f: F
+        val f: F,
+        val g: G
     )
 
     private fun pushCartHistory() {

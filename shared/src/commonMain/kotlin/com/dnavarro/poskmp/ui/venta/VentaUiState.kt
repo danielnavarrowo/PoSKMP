@@ -38,6 +38,7 @@ data class VentaUiState(
     val roundTicketTotal: Boolean = false,
     val disallowCardPaymentOnWholesale: Boolean = false,
     val useProductTableInCatalog: Boolean = false,
+    val swapVentaLayoutOrder: Boolean = false,
     val isLoading: Boolean = false,
     val customers: List<Customer> = emptyList(),
     val filteredCustomers: List<Customer> = emptyList(),

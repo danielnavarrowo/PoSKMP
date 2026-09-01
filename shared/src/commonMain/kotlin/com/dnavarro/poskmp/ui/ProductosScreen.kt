@@ -1021,7 +1021,8 @@ fun ProductosScreen(
                     onDismiss = { viewModel.onShowBulkModificationDialog(null) },
                     onApply = { modification ->
                         viewModel.applyBulkModification(modification)
-                    }
+                    },
+                    existingCategories = uiState.availableCategories
                 )
             }
 

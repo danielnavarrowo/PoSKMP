@@ -46,7 +46,6 @@ private data class UpdateInternalState(
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
-private data class Tuple6<A, B, C, D, E, F>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F)
 private data class Tuple7<A, B, C, D, E, F, G>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F, val g: G)
 
 /**
@@ -103,12 +102,13 @@ class AjustesViewModel(
             combine(
                 repository.useProductTableInCatalogFlow,
                 repository.defaultRetailMarginFlow,
-                repository.defaultWholesaleMarginFlow
-            ) { useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin ->
-                Triple(useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin)
+                repository.defaultWholesaleMarginFlow,
+                repository.swapVentaLayoutOrderFlow
+            ) { useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder ->
+                Tuple4(useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder)
             }
-        ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador), (useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin) ->
-            Tuple6(defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin)
+        ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador), (useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder) ->
+            Tuple7(defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder)
         },
         combine(
             repository.isRoundingEnabledFlow,
@@ -138,7 +138,7 @@ class AjustesViewModel(
         ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
             Tuple7(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
         }
-    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin),
+    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder),
         (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale),
         (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
         AjustesUiState(
@@ -146,6 +146,7 @@ class AjustesViewModel(
             isChecadorDialog = isChecadorDialog,
             showExtraPricesChecador = showExtraPricesChecador,
             useProductTableInCatalog = useProductTableInCatalog,
+            swapVentaLayoutOrder = swapVentaLayoutOrder,
             defaultRetailMargin = defaultRetailMargin,
             defaultWholesaleMargin = defaultWholesaleMargin,
             isRoundingEnabled = isRoundingEnabled,
@@ -175,6 +176,7 @@ class AjustesViewModel(
             isChecadorDialog = behaviorState.isChecadorDialog,
             showExtraPricesChecador = behaviorState.showExtraPricesChecador,
             useProductTableInCatalog = behaviorState.useProductTableInCatalog,
+            swapVentaLayoutOrder = behaviorState.swapVentaLayoutOrder,
             defaultRetailMargin = behaviorState.defaultRetailMargin,
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
             isRoundingEnabled = behaviorState.isRoundingEnabled,
@@ -285,6 +287,12 @@ class AjustesViewModel(
     fun setUseProductTableInCatalog(enabled: Boolean) {
         viewModelScope.launch {
             repository.setUseProductTableInCatalog(enabled)
+        }
+    }
+
+    fun setSwapVentaLayoutOrder(swap: Boolean) {
+        viewModelScope.launch {
+            repository.setSwapVentaLayoutOrder(swap)
         }
     }
 

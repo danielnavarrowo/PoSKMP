@@ -1,20 +1,9 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,42 +28,9 @@ import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.apply_changes_button
-import poskmp.shared.generated.resources.apply_changes_button_desktop
-import poskmp.shared.generated.resources.bulk_deactivate_confirmation
-import poskmp.shared.generated.resources.bulk_delete_confirmation
-import poskmp.shared.generated.resources.bulk_favorite_confirmation
-import poskmp.shared.generated.resources.bulk_enter_category_error
-import poskmp.shared.generated.resources.bulk_invalid_value_error
-import poskmp.shared.generated.resources.bulk_label_cost_price
-import poskmp.shared.generated.resources.bulk_label_retail_price
-import poskmp.shared.generated.resources.bulk_label_retail_profit
-import poskmp.shared.generated.resources.bulk_label_wholesale_price
-import poskmp.shared.generated.resources.bulk_label_wholesale_profit
-import poskmp.shared.generated.resources.bulk_mod_subtitle
-import poskmp.shared.generated.resources.bulk_op_change_category_title
-import poskmp.shared.generated.resources.bulk_op_change_prices_title
-import poskmp.shared.generated.resources.bulk_op_deactivate_title
-import poskmp.shared.generated.resources.bulk_op_delete_title
-import poskmp.shared.generated.resources.bulk_op_mark_as_favorite_title
-import poskmp.shared.generated.resources.bulk_op_set_profit_title
-import poskmp.shared.generated.resources.bulk_profit_cost_requirement
-import poskmp.shared.generated.resources.bulk_select_price_error
-import poskmp.shared.generated.resources.bulk_select_profit_error
-import poskmp.shared.generated.resources.cancel
-import poskmp.shared.generated.resources.cost_price
-import poskmp.shared.generated.resources.delete_button
-import poskmp.shared.generated.resources.delete_button_desktop
-import poskmp.shared.generated.resources.error_retail_less_than_cost
-import poskmp.shared.generated.resources.error_retail_less_than_wholesale
-import poskmp.shared.generated.resources.error_wholesale_less_than_cost
-import poskmp.shared.generated.resources.new_category
-import poskmp.shared.generated.resources.retail_price
-import poskmp.shared.generated.resources.retail_profit_pct
-import poskmp.shared.generated.resources.wholesale_price
-import poskmp.shared.generated.resources.wholesale_profit_pct
+import poskmp.shared.generated.resources.*
 
 enum class BulkProductOperation(val titleRes: StringResource) {
     CHANGE_PRICES(Res.string.bulk_op_change_prices_title),
@@ -117,12 +73,14 @@ fun applyBulkProductModification(product: Products, modification: BulkProductMod
     BulkProductOperation.DELETE -> null
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BulkProductModificationDialog(
     selectedCount: Int,
     operation: BulkProductOperation,
     onDismiss: () -> Unit,
-    onApply: (BulkProductModification) -> Unit
+    onApply: (BulkProductModification) -> Unit,
+    existingCategories: List<String> = emptyList()
 ) {
     var changeCost by remember { mutableStateOf(false) }
     var changeRetail by remember { mutableStateOf(true) }
@@ -134,6 +92,30 @@ fun BulkProductModificationDialog(
     var wholesaleProfitText by remember { mutableStateOf("") }
     var categoryText by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val defaultCategory = stringResource(Res.string.default_category_abarrotes)
+    val noCategoryStr = stringResource(Res.string.no_category)
+    var categoryDropdownExpanded by remember { mutableStateOf(false) }
+
+    val allCategories = remember(existingCategories, defaultCategory) {
+        (existingCategories + defaultCategory)
+            .filter { it.isNotBlank() && it != noCategoryStr }
+            .distinct()
+            .sorted()
+    }
+    val filteredCategories = remember(allCategories, categoryText) {
+        val trimmed = categoryText.trim()
+        if (trimmed.isEmpty()) {
+            allCategories
+        } else {
+            val matches = allCategories.filter { it.contains(trimmed, ignoreCase = true) }
+            if (matches.size == 1 && matches.first().equals(trimmed, ignoreCase = true)) {
+                allCategories
+            } else matches.ifEmpty {
+                emptyList()
+            }
+        }
+    }
 
     val firstFocusRequester = remember { FocusRequester() }
     val confirmButtonFocusRequester = remember { FocusRequester() }
@@ -355,15 +337,89 @@ fun BulkProductModificationDialog(
                         }
                     }
 
-                    BulkProductOperation.CHANGE_CATEGORY -> OutlinedTextField(
-                        value = categoryText,
-                        onValueChange = { categoryText = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier),
-                        label = { Text(stringResource(Res.string.new_category)) },
-                        singleLine = true
-                    )
+                    BulkProductOperation.CHANGE_CATEGORY -> {
+                        ExposedDropdownMenuBox(
+                            expanded = categoryDropdownExpanded,
+                            onExpandedChange = { categoryDropdownExpanded = it },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = categoryText,
+                                onValueChange = {
+                                    categoryText = it
+                                    categoryDropdownExpanded = true
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                                    .then(if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier),
+                                label = { Text(stringResource(Res.string.category_label), style = MaterialTheme.typography.labelLarge) },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
+                                },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                singleLine = true
+                            )
+                            if (filteredCategories.isNotEmpty() || (categoryText.trim().isNotEmpty() && !allCategories.any { it.equals(categoryText.trim(), ignoreCase = true) })) {
+                                ExposedDropdownMenu(
+                                    expanded = categoryDropdownExpanded,
+                                    onDismissRequest = { categoryDropdownExpanded = false }
+                                ) {
+                                    filteredCategories.forEach { category ->
+                                        val isSelected = category.equals(categoryText.trim(), ignoreCase = true)
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = category,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            },
+                                            trailingIcon = if (isSelected) {
+                                                {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.check),
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+                                            } else null,
+                                            onClick = {
+                                                categoryText = category
+                                                categoryDropdownExpanded = false
+                                            },
+                                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                        )
+                                    }
+                                    if (filteredCategories.isEmpty() && categoryText.trim().isNotEmpty()) {
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.add),
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = "${stringResource(Res.string.new_category)}: \"${categoryText.trim()}\"",
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            },
+                                            onClick = {
+                                                categoryDropdownExpanded = false
+                                            },
+                                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     BulkProductOperation.MARK_AS_FAVORITE -> Text(stringResource(Res.string.bulk_favorite_confirmation, selectedCount))
                     BulkProductOperation.DEACTIVATE -> Text(stringResource(Res.string.bulk_deactivate_confirmation, selectedCount))

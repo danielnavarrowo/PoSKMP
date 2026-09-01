@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -634,8 +635,9 @@ fun VentaScreen(
                     minCatalogWidth,
                     maxCatalogAllowed
                 )
+                val swapOrder = uiState.swapVentaLayoutOrder
 
-                Row(modifier = Modifier.fillMaxSize()) {
+                val catalogPane: @Composable () -> Unit = {
                     Box(modifier = Modifier.width(catalogWidth).fillMaxHeight()) {
                         CatalogSection(
                             searchQuery = searchQuery,
@@ -674,33 +676,9 @@ fun VentaScreen(
                             onSearchKeyIntercept = handleSearchKeyIntercept
                         )
                     }
+                }
 
-                    // Draggable Splitter with strict min width bounds
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(splitterWidth)
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .pointerInput(totalWidth) {
-                                detectHorizontalDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    val dragAmountDp = dragAmount.toDp()
-                                    val currentW = userCatalogWidthDp ?: defaultCatalogWidth
-                                    val maxAllowed = totalWidth - minTicketWidth - splitterWidth
-                                    userCatalogWidthDp = (currentW + dragAmountDp).coerceIn(minCatalogWidth, maxAllowed)
-                                }
-                            }
-                            .background(MaterialTheme.colorScheme.background),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(2.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
-                        )
-                    }
-
+                val ticketPane: @Composable RowScope.() -> Unit = {
                     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         TicketSection(
                             cartItems = cartItems,
@@ -735,6 +713,45 @@ fun VentaScreen(
                             onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                             onClearCustomerClick = { viewModel.clearSelectedCustomer() }
                         )
+                    }
+                }
+
+                val splitterPane: @Composable () -> Unit = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(splitterWidth)
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .pointerInput(totalWidth, swapOrder) {
+                                detectHorizontalDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    val dragAmountDp = if (swapOrder) -dragAmount.toDp() else dragAmount.toDp()
+                                    val currentW = userCatalogWidthDp ?: defaultCatalogWidth
+                                    val maxAllowed = totalWidth - minTicketWidth - splitterWidth
+                                    userCatalogWidthDp = (currentW + dragAmountDp).coerceIn(minCatalogWidth, maxAllowed)
+                                }
+                            }
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(2.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+                    }
+                }
+
+                Row(modifier = Modifier.fillMaxSize()) {
+                    if (swapOrder) {
+                        ticketPane()
+                        splitterPane()
+                        catalogPane()
+                    } else {
+                        catalogPane()
+                        splitterPane()
+                        ticketPane()
                     }
                 }
             } else {
