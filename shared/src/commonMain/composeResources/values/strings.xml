@@ -634,6 +634,7 @@
     <string name="open_drawer_on_receipt_title">Abrir cajón de dinero en ventas en efectivo</string>
     <string name="open_drawer_on_receipt_subtitle">Abrir automáticamente el cajón de dinero al registrar una venta que incluya pago en efectivo (con o sin impresión de ticket).</string>
     <string name="open_cash_drawer_button">Abrir cajón</string>
+    <string name="open_cash_drawer_button_desktop">Abrir cajón (F6)</string>
     <string name="receipt_preview_settings_title">Vista previa del ticket</string>
     <string name="receipt_preview_settings_subtitle">Esta vista usa exactamente las líneas, el tamaño, el estilo y la fuente seleccionados para imprimir.</string>
     <string name="receipt_preview_title">Ticket de compra</string>
@@ -773,4 +774,22 @@
     <string name="factory_reset_in_progress">Restableciendo aplicación...</string>
     <string name="factory_reset_success">La aplicación se ha restablecido a los valores de fábrica exitosamente.</string>
     <string name="factory_reset_error">Error al restablecer la aplicación: %1$s</string>
+
+    <!-- Categorías de Ajustes (ListDetailPaneScaffold) -->
+    <string name="settings_cat_general_title">General y Comportamiento</string>
+    <string name="settings_cat_general_subtitle">Pantalla de inicio, vistas y distribución</string>
+    <string name="settings_cat_appearance_title">Apariencia y Tema</string>
+    <string name="settings_cat_appearance_subtitle">Colores, modo oscuro y escala visual</string>
+    <string name="settings_cat_pricing_title">Precios y Márgenes</string>
+    <string name="settings_cat_pricing_subtitle">Márgenes de ganancia, redondeo y cobro</string>
+    <string name="settings_cat_ticket_title">Ticket e Impresora</string>
+    <string name="settings_cat_ticket_subtitle">Impresora térmica, datos de negocio y transferencias</string>
+    <string name="settings_cat_cashiers_title">Cajeros y Personal</string>
+    <string name="settings_cat_cashiers_subtitle">Administración de cajeros y accesos PIN</string>
+    <string name="settings_cat_sync_title">Sincronización en la Nube</string>
+    <string name="settings_cat_sync_subtitle">Conexión Supabase y sincronización</string>
+    <string name="settings_cat_backup_title">Copias de Seguridad</string>
+    <string name="settings_cat_backup_subtitle">Respaldos locales y restauración de datos</string>
+    <string name="settings_cat_about_title">Información y Sistema</string>
+    <string name="settings_cat_about_subtitle">Actualizaciones, catálogo y reinicio</string>
 </resources>

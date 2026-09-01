@@ -544,3 +544,28 @@ private fun ReceiptDropdown(
         }
     }
 }
+
+@Composable
+fun TicketSettingsSection(
+    settings: ReceiptSettings,
+    onSettingsChange: (ReceiptSettings) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        StoreInfoSettingsSection(
+            settings = settings,
+            onSettingsChange = onSettingsChange
+        )
+        TransferSettingsSection(
+            settings = settings,
+            onSettingsChange = onSettingsChange
+        )
+        PrinterSettingsSection(
+            settings = settings,
+            onSettingsChange = onSettingsChange
+        )
+    }
+}

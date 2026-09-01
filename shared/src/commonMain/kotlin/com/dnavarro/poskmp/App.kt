@@ -151,6 +151,7 @@ import poskmp.shared.generated.resources.nav_clientes_desktop
 import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
 import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
 import poskmp.shared.generated.resources.open_cash_drawer_button
+import poskmp.shared.generated.resources.open_cash_drawer_button_desktop
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
@@ -362,6 +363,21 @@ fun App(
                 }
             }
 
+            val triggerOpenCashDrawer: () -> Unit = {
+                if (!isOpeningDrawer) {
+                    isOpeningDrawer = true
+                    coroutineScope.launch {
+                        try {
+                            openCashDrawerUseCase()
+                        } finally {
+                            delay(600.milliseconds)
+                            isOpeningDrawer = false
+                        }
+                    }
+                }
+                reclaimCurrentScreenFocus()
+            }
+
             var currentDateText by remember { mutableStateOf(formatCurrentDate()) }
             var currentTimeText by remember { mutableStateOf(formatCurrentTime()) }
             val currentDateTimeText = remember(currentDateText, currentTimeText) { "$currentDateText\n$currentTimeText" }
@@ -549,6 +565,11 @@ fun App(
                                                     true
                                                 }
 
+                                                Key.F6 -> {
+                                                    triggerOpenCashDrawer()
+                                                    true
+                                                }
+
                                                 else -> false
                                             }
                                         }
@@ -724,18 +745,7 @@ fun App(
                                             if (isExpanded) {
                                                 FilledTonalButton(
                                                     onClick = {
-                                                        if (!isOpeningDrawer) {
-                                                            isOpeningDrawer = true
-                                                            coroutineScope.launch {
-                                                                try {
-                                                                  openCashDrawerUseCase()
-                                                                } finally {
-                                                                    delay(600.milliseconds)
-                                                                    isOpeningDrawer = false
-                                                                }
-                                                            }
-                                                        }
-                                                        reclaimCurrentScreenFocus()
+                                                        triggerOpenCashDrawer()
                                                     },
                                                     enabled = !isOpeningDrawer,
                                                     modifier = Modifier.fillMaxWidth(),
@@ -744,12 +754,12 @@ fun App(
                                                 ) {
                                                     Icon(
                                                         painter = painterResource(Res.drawable.point_of_sale),
-                                                        contentDescription = stringResource(Res.string.open_cash_drawer_button),
+                                                        contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
                                                         modifier = Modifier.size(18.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Text(
-                                                        text = stringResource(Res.string.open_cash_drawer_button),
+                                                        text = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
                                                         style = MaterialTheme.typography.labelMedium,
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis
@@ -758,25 +768,14 @@ fun App(
                                             } else {
                                                 FilledTonalIconButton(
                                                     onClick = {
-                                                        if (!isOpeningDrawer) {
-                                                            isOpeningDrawer = true
-                                                            coroutineScope.launch {
-                                                                try {
-                                                                    openCashDrawerUseCase()
-                                                                } finally {
-                                                                    delay(600.milliseconds)
-                                                                    isOpeningDrawer = false
-                                                                }
-                                                            }
-                                                        }
-                                                        reclaimCurrentScreenFocus()
+                                                        triggerOpenCashDrawer()
                                                     },
                                                     enabled = !isOpeningDrawer,
                                                     shape = MaterialTheme.shapes.medium
                                                 ) {
                                                     Icon(
                                                         painter = painterResource(Res.drawable.point_of_sale),
-                                                        contentDescription = stringResource(Res.string.open_cash_drawer_button),
+                                                        contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
                                                         modifier = Modifier.size(20.dp)
                                                     )
                                                 }
