@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -69,8 +70,8 @@ import com.dnavarro.poskmp.ui.ajustes.PricingSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.SyncSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.TicketSettingsSection
 import com.dnavarro.poskmp.ui.turnos.CashierManagementSection
+import com.dnavarro.poskmp.util.AdaptiveScaffoldPredictiveBackHandler
 import com.dnavarro.poskmp.util.AppConstants
-import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.launch
@@ -86,11 +87,17 @@ import poskmp.shared.generated.resources.settings_title
 @Composable
 fun AjustesScreen(
     viewModel: AjustesViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCompact: Boolean = false,
+    onNavigateToClientes: (() -> Unit)? = null,
+    onNavigateToVentas: (() -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     AjustesScreen(
         modifier = modifier,
+        isCompact = isCompact,
+        onNavigateToClientes = onNavigateToClientes,
+        onNavigateToVentas = onNavigateToVentas,
         useDynamicColor = uiState.useDynamicColor,
         onUseDynamicColorChange = { viewModel.setUseDynamicColor(it) },
         seedColor = uiState.seedColor,
@@ -174,10 +181,13 @@ fun AjustesScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AjustesScreen(
     modifier: Modifier = Modifier,
+    isCompact: Boolean = false,
+    onNavigateToClientes: (() -> Unit)? = null,
+    onNavigateToVentas: (() -> Unit)? = null,
     useDynamicColor: Boolean = isAndroid(),
     onUseDynamicColorChange: (Boolean) -> Unit = {},
     seedColor: Color = Color(0xFF0061A4),
@@ -285,21 +295,22 @@ fun AjustesScreen(
         navigator.scaffoldValue[ListDetailPaneScaffoldRole.List] == PaneAdaptedValue.Expanded &&
                 navigator.scaffoldValue[ListDetailPaneScaffoldRole.Detail] == PaneAdaptedValue.Expanded
 
-    PlatformBackHandler(enabled = navigator.canNavigateBack()) {
-        coroutineScope.launch {
-            navigator.navigateBack()
-        }
-    }
+    AdaptiveScaffoldPredictiveBackHandler(navigator = navigator)
 
-    val categories = remember {
-        if (isAndroid()) AjustesCategory.entries.filter { it != AjustesCategory.COPIA_SEGURIDAD }
-        else AjustesCategory.entries
+    val categories = remember(isCompact) {
+        val base = if (isCompact) {
+            listOf(AjustesCategory.CLIENTES, AjustesCategory.VENTAS) +
+                    AjustesCategory.entries.filter { it != AjustesCategory.CLIENTES && it != AjustesCategory.VENTAS }
+        } else {
+            AjustesCategory.entries.filter { it != AjustesCategory.CLIENTES && it != AjustesCategory.VENTAS }
+        }
+        if (isAndroid()) base.filter { it != AjustesCategory.COPIA_SEGURIDAD } else base
     }
 
     ListDetailPaneScaffold(
         modifier = modifier.fillMaxSize(),
         directive = navigator.scaffoldDirective,
-        value = navigator.scaffoldValue,
+        scaffoldState = navigator.scaffoldState,
         listPane = {
             AnimatedPane(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
@@ -332,9 +343,15 @@ fun AjustesScreen(
                             val isSelected = isListAndDetailVisible && currentCategory == category
                             Card(
                                 onClick = {
-                                    currentCategory = category
-                                    coroutineScope.launch {
-                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, category)
+                                    when (category) {
+                                        AjustesCategory.CLIENTES -> onNavigateToClientes?.invoke()
+                                        AjustesCategory.VENTAS -> onNavigateToVentas?.invoke()
+                                        else -> {
+                                            currentCategory = category
+                                            coroutineScope.launch {
+                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, category)
+                                            }
+                                        }
                                     }
                                 },
                                 shape = MaterialTheme.shapes.medium,
@@ -503,6 +520,11 @@ fun AjustesScreen(
                         }
 
                         when (currentCategory) {
+                            AjustesCategory.CLIENTES,
+                            AjustesCategory.VENTAS -> {
+                                // Handled directly from list
+                            }
+
                             AjustesCategory.GENERAL -> {
                                 GeneralSettingsSection(
                                     defaultScreen = defaultScreen,

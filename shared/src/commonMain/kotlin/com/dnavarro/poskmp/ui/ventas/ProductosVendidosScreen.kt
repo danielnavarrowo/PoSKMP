@@ -43,7 +43,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
-import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.formatPrice
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -64,8 +63,6 @@ fun ProductosVendidosScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    PlatformBackHandler(enabled = true, onBack = onNavigateBack)
-
     var isAscending by rememberSaveable { mutableStateOf(false) }
 
     val sortedProducts = remember(soldProducts, isAscending) {

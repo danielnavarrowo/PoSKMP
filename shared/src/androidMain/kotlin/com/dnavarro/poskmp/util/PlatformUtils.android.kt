@@ -5,6 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldPredictiveBackHandler
 import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.Products
@@ -19,6 +23,18 @@ actual fun isAndroid(): Boolean = true
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
     BackHandler(enabled = enabled, onBack = onBack)
+}
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+actual fun <T> AdaptiveScaffoldPredictiveBackHandler(
+    navigator: ThreePaneScaffoldNavigator<T>,
+    backBehavior: BackNavigationBehavior,
+) {
+    ThreePaneScaffoldPredictiveBackHandler(
+        navigator = navigator,
+        backBehavior = backBehavior
+    )
 }
 
 actual fun playSoundAlert(bytes: ByteArray) {

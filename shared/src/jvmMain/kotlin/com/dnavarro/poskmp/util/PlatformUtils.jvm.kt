@@ -1,5 +1,8 @@
 package com.dnavarro.poskmp.util
 
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.Products
 import kotlinx.coroutines.runBlocking
@@ -50,6 +53,15 @@ actual fun isAndroid(): Boolean = false
 
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    // No-op on Desktop JVM
+}
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+actual fun <T> AdaptiveScaffoldPredictiveBackHandler(
+    navigator: ThreePaneScaffoldNavigator<T>,
+    backBehavior: BackNavigationBehavior,
+) {
     // No-op on Desktop JVM
 }
 

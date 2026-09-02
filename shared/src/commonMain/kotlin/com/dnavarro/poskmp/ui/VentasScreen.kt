@@ -1,7 +1,21 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
+import androidx.savedstate.serialization.SavedStateConfiguration
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +48,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -53,7 +68,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,6 +142,7 @@ import poskmp.shared.generated.resources.btn_view_sold_products
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.cancel_sale_button
 import poskmp.shared.generated.resources.cancel_sale_confirm_action
+import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.cancel_sale_confirm_message
 import poskmp.shared.generated.resources.cancel_sale_confirm_title
 import poskmp.shared.generated.resources.cancel_sale_keep_action
@@ -186,16 +201,33 @@ import poskmp.shared.generated.resources.uncategorized_label
 import poskmp.shared.generated.resources.ventas_title
 import kotlin.time.Duration.Companion.milliseconds
 
-enum class VentasSubScreen {
-    MAIN,
-    PRODUCTOS_VENDIDOS,
-    HISTORIAL_VENTAS
+@Serializable
+sealed interface VentasSubRoute : NavKey {
+    @Serializable
+    data object Main : VentasSubRoute
+
+    @Serializable
+    data object ProductosVendidos : VentasSubRoute
+
+    @Serializable
+    data object HistorialVentas : VentasSubRoute
+}
+
+val ventasNavSavedStateConfig = SavedStateConfiguration {
+    serializersModule = SerializersModule {
+        polymorphic(NavKey::class) {
+            subclass(VentasSubRoute.Main::class, VentasSubRoute.Main.serializer())
+            subclass(VentasSubRoute.ProductosVendidos::class, VentasSubRoute.ProductosVendidos.serializer())
+            subclass(VentasSubRoute.HistorialVentas::class, VentasSubRoute.HistorialVentas.serializer())
+        }
+    }
 }
 
 @Composable
 fun VentasScreen(
     viewModel: VentasViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -223,6 +255,7 @@ fun VentasScreen(
         onCloseShift = { countedCash, notes -> viewModel.closeShift(countedCash, notes) },
         onClearShiftActionResult = { viewModel.clearShiftActionResult() },
         onReprintSaleReceipt = { sale, items -> viewModel.reprintSaleReceipt(sale, items) },
+        onNavigateBack = onNavigateBack,
         modifier = modifier
     )
 }
@@ -248,6 +281,7 @@ fun VentasScreen(
     onCloseShift: (Double, String?) -> Unit = { _, _ -> },
     onClearShiftActionResult: () -> Unit = {},
     onReprintSaleReceipt: (Sale, List<SaleItem>) -> Unit = { _, _ -> },
+    onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(state.shiftActionSuccess) {
@@ -289,43 +323,80 @@ fun VentasScreen(
         }
     }
 
-    var currentSubScreen by rememberSaveable { mutableStateOf(VentasSubScreen.MAIN) }
+    val subBackStack = rememberNavBackStack(ventasNavSavedStateConfig, VentasSubRoute.Main)
 
-    when (currentSubScreen) {
-        VentasSubScreen.PRODUCTOS_VENDIDOS -> {
-            ProductosVendidosScreen(
-                soldProducts = state.soldProducts,
-                onNavigateBack = { currentSubScreen = VentasSubScreen.MAIN },
-                modifier = modifier
-            )
-        }
-        VentasSubScreen.HISTORIAL_VENTAS -> {
-            HistorialVentasScreen(
-                sales = state.recentSales,
-                onSelectSale = onSelectSaleForDetail,
-                onCancelSale = onOpenCancelSaleDialog,
-                onNavigateBack = { currentSubScreen = VentasSubScreen.MAIN },
-                modifier = modifier
-            )
-        }
-        VentasSubScreen.MAIN -> {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                title = {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = stringResource(Res.string.ventas_title),
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.titleLarge,
-                        textAlign = TextAlign.Center
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+    NavDisplay(
+        backStack = subBackStack,
+        onBack = {
+            if (subBackStack.size > 1) {
+                subBackStack.removeLastOrNull()
+            }
+        },
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220))) togetherWith
+                    fadeOut(animationSpec = tween(180))
+        },
+        popTransitionSpec = {
+            fadeIn(animationSpec = tween(180)) togetherWith
+                    (fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 0.98f, animationSpec = tween(220)))
+        },
+        predictivePopTransitionSpec = {
+            fadeIn(animationSpec = tween(180)) togetherWith
+                    (fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 0.98f, animationSpec = tween(220)))
+        },
+        entryProvider = entryProvider {
+            entry<VentasSubRoute.ProductosVendidos> {
+                ProductosVendidosScreen(
+                    soldProducts = state.soldProducts,
+                    onNavigateBack = {
+                        if (subBackStack.size > 1) {
+                            subBackStack.removeLastOrNull()
+                        }
+                    },
+                    modifier = modifier
                 )
-            )
+            }
+            entry<VentasSubRoute.HistorialVentas> {
+                HistorialVentasScreen(
+                    sales = state.recentSales,
+                    onSelectSale = onSelectSaleForDetail,
+                    onCancelSale = onOpenCancelSaleDialog,
+                    onNavigateBack = {
+                        if (subBackStack.size > 1) {
+                            subBackStack.removeLastOrNull()
+                        }
+                    },
+                    modifier = modifier
+                )
+            }
+            entry<VentasSubRoute.Main> {
+                Scaffold(
+                topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            modifier = Modifier.fillMaxWidth(),
+                            text = stringResource(Res.string.ventas_title),
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = if (onNavigateBack != null) TextAlign.Start else TextAlign.Center
+                        )
+                    },
+                    navigationIcon = {
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.back),
+                                    contentDescription = stringResource(Res.string.cancel)
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
         },
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier
@@ -808,13 +879,21 @@ fun VentasScreen(
                             SoldProductsNavButton(
                                 soldProductsCount = state.soldProducts.size,
                                 totalPieces = state.soldProducts.sumOf { it.totalUnidades },
-                                onClick = { currentSubScreen = VentasSubScreen.PRODUCTOS_VENDIDOS },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.ProductosVendidos) {
+                                        subBackStack.add(VentasSubRoute.ProductosVendidos)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             SalesHistoryNavButton(
                                 salesCount = state.recentSales.size,
                                 activeSalesCount = state.recentSales.count { !it.isCancelled },
-                                onClick = { currentSubScreen = VentasSubScreen.HISTORIAL_VENTAS },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.HistorialVentas) {
+                                        subBackStack.add(VentasSubRoute.HistorialVentas)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -826,13 +905,21 @@ fun VentasScreen(
                             SoldProductsNavButton(
                                 soldProductsCount = state.soldProducts.size,
                                 totalPieces = state.soldProducts.sumOf { it.totalUnidades },
-                                onClick = { currentSubScreen = VentasSubScreen.PRODUCTOS_VENDIDOS },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.ProductosVendidos) {
+                                        subBackStack.add(VentasSubRoute.ProductosVendidos)
+                                    }
+                                },
                                 modifier = Modifier.weight(1f)
                             )
                             SalesHistoryNavButton(
                                 salesCount = state.recentSales.size,
                                 activeSalesCount = state.recentSales.count { !it.isCancelled },
-                                onClick = { currentSubScreen = VentasSubScreen.HISTORIAL_VENTAS },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.HistorialVentas) {
+                                        subBackStack.add(VentasSubRoute.HistorialVentas)
+                                    }
+                                },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -841,8 +928,9 @@ fun VentasScreen(
             }
         }
     }
-    }
-    }
+}
+}
+)
 
     // Date Range Picker Dialog
     if (state.showDateRangePicker) {

@@ -776,6 +776,10 @@
     <string name="factory_reset_error">Error al restablecer la aplicación: %1$s</string>
 
     <!-- Categorías de Ajustes (ListDetailPaneScaffold) -->
+    <string name="settings_cat_clientes_title">Clientes</string>
+    <string name="settings_cat_clientes_subtitle">Gestión de clientes y cuentas por cobrar</string>
+    <string name="settings_cat_ventas_title">Historial de Ventas</string>
+    <string name="settings_cat_ventas_subtitle">Métricas, reportes y corte de turno</string>
     <string name="settings_cat_general_title">General y Comportamiento</string>
     <string name="settings_cat_general_subtitle">Pantalla de inicio, vistas y distribución</string>
     <string name="settings_cat_appearance_title">Apariencia y Tema</string>

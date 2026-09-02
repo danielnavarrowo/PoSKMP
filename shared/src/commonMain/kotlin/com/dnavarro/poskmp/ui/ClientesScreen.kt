@@ -74,6 +74,7 @@ import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.add_customer_button
 import poskmp.shared.generated.resources.add_customer_button_desktop
+import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.badge_customer_always_wholesale
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.clientes_title
@@ -113,6 +114,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun ClientesScreen(
     viewModel: ClientesViewModel,
     refocusTrigger: Int = 0,
+    onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -120,6 +122,7 @@ fun ClientesScreen(
     ClientesContent(
         state = state,
         refocusTrigger = refocusTrigger,
+        onNavigateBack = onNavigateBack,
         onRefresh = viewModel::refreshSync,
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onOpenCreateCustomer = viewModel::openCreateCustomerDialog,
@@ -148,6 +151,7 @@ fun ClientesScreen(
 fun ClientesContent(
     state: ClientesUiState,
     refocusTrigger: Int = 0,
+    onNavigateBack: (() -> Unit)? = null,
     onRefresh: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
     onOpenCreateCustomer: () -> Unit,
@@ -255,9 +259,18 @@ fun ClientesContent(
                             text = stringResource(Res.string.clientes_title),
                             fontWeight = FontWeight.ExtraBold,
                             style = MaterialTheme.typography.titleLarge,
-                            textAlign = TextAlign.Center
-
+                            textAlign = if (onNavigateBack != null) TextAlign.Start else TextAlign.Center
                         )
+                    },
+                    navigationIcon = {
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.back),
+                                    contentDescription = stringResource(Res.string.cancel)
+                                )
+                            }
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,

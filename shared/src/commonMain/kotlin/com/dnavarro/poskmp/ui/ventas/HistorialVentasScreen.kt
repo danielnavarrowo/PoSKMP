@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Sale
-import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import org.jetbrains.compose.resources.painterResource
@@ -58,7 +57,6 @@ import poskmp.shared.generated.resources.ticket_items_and_method
 import poskmp.shared.generated.resources.ticket_profit_label
 import poskmp.shared.generated.resources.title_recent_sales_history
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialVentasScreen(
     sales: List<Sale>,
@@ -67,8 +65,6 @@ fun HistorialVentasScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    PlatformBackHandler(enabled = true, onBack = onNavigateBack)
-
     val activeSalesCount = remember(sales) { sales.count { !it.isCancelled } }
     val totalRevenue = remember(sales) { sales.filter { !it.isCancelled }.sumOf { it.total } }
 

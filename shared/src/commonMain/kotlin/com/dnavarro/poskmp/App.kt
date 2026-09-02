@@ -1,19 +1,21 @@
 package com.dnavarro.poskmp
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +34,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -188,9 +189,12 @@ import java.time.LocalDateTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
+internal val NAV_RAIL_MIN_WIDTH = 800.dp
+internal val NAV_RAIL_EXPANDED_MIN_WIDTH = 1200.dp
+
 internal fun navigationSuiteTypeForWidth(width: Dp): NavigationSuiteType = when {
-    width >= 1200.dp -> NavigationSuiteType.WideNavigationRailExpanded
-    width >= 800.dp -> NavigationSuiteType.WideNavigationRailCollapsed
+    width >= NAV_RAIL_EXPANDED_MIN_WIDTH -> NavigationSuiteType.WideNavigationRailExpanded
+    width >= NAV_RAIL_MIN_WIDTH -> NavigationSuiteType.WideNavigationRailCollapsed
     else -> NavigationSuiteType.None
 }
 
@@ -435,90 +439,6 @@ fun App(
             val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
 
             val isChecadorDialog = ajustesUiState.isChecadorDialog
-
-            val toolbarItems = remember(
-                currentScreen,
-                isDesktop,
-                isChecadorDialog,
-                tabVentaLabel,
-                tabProductosLabel,
-                tabClientesLabel,
-                tabVentasLabel,
-                tabChecadorLabel,
-                tabAjustesLabel
-            ) {
-                listOf(
-                    ToolbarItem(
-                        label = tabVentaLabel,
-                        icon = Res.drawable.point_of_sale,
-                        isSelected = currentScreen == Screen.VENTA,
-                        onCheckedChange = {
-                            if (it) {
-                                navigateTo(AppRoute.Venta)
-                                reclaimCurrentScreenFocus()
-                            }
-                        }
-                    ),
-                    ToolbarItem(
-                        label = tabChecadorLabel,
-                        icon = Res.drawable.barcode_scanner,
-                        isSelected = if (isChecadorDialog) showPriceCheckerDialog else currentScreen == Screen.CHECADOR,
-                        onCheckedChange = {
-                            if (isChecadorDialog) {
-                                showPriceCheckerDialog = true
-                            } else if (it) {
-                                navigateTo(AppRoute.Checador)
-                            }
-                            reclaimCurrentScreenFocus()
-                        }
-                    ),
-                    ToolbarItem(
-                        label = tabProductosLabel,
-                        icon = Res.drawable.products,
-                        isSelected = currentScreen == Screen.PRODUCTOS,
-                        onCheckedChange = {
-                            if (it) {
-                                navigateTo(AppRoute.Productos)
-                                reclaimCurrentScreenFocus()
-                            }
-                        }
-                    ),
-                    ToolbarItem(
-                        label = tabVentasLabel,
-                        icon = Res.drawable.analytics,
-                        isSelected = currentScreen == Screen.VENTAS,
-                        onCheckedChange = {
-                            if (it) {
-                                navigateTo(AppRoute.Ventas)
-                                reclaimCurrentScreenFocus()
-                            }
-                        }
-                    ),
-                    ToolbarItem(
-                        label = tabClientesLabel,
-                        icon = Res.drawable.person,
-                        isSelected = currentScreen == Screen.CLIENTES,
-                        onCheckedChange = {
-                            if (it) {
-                                navigateTo(AppRoute.Clientes)
-                                reclaimCurrentScreenFocus()
-                            }
-                        }
-                    ),
-                    ToolbarItem(
-                        label = tabAjustesLabel,
-                        icon = Res.drawable.settings,
-                        isSelected = currentScreen == Screen.AJUSTES,
-                        onCheckedChange = {
-                            if (it) {
-                                navigateTo(AppRoute.Ajustes)
-                                reclaimCurrentScreenFocus()
-                            }
-                        }
-                    )
-                )
-            }
-
             val useDynamicColor = ajustesUiState.useDynamicColor
             val seedColor = ajustesUiState.seedColor
             val isAmoled = ajustesUiState.isAmoled
@@ -614,6 +534,111 @@ fun App(
                     ) {
                     val appMaxWidth = maxWidth
                     val isCompact = appMaxWidth < 600.dp
+                    val isToolbarNavigation = navigationSuiteTypeForWidth(appMaxWidth) == NavigationSuiteType.None
+
+                    val toolbarItems = remember(
+                        currentScreen,
+                        isToolbarNavigation,
+                        isDesktop,
+                        isChecadorDialog,
+                        tabVentaLabel,
+                        tabProductosLabel,
+                        tabClientesLabel,
+                        tabVentasLabel,
+                        tabChecadorLabel,
+                        tabAjustesLabel
+                    ) {
+                        listOf(
+                            ToolbarItem(
+                                label = tabVentaLabel,
+                                icon = Res.drawable.point_of_sale,
+                                isSelected = currentScreen == Screen.VENTA,
+                                onCheckedChange = {
+                                    if (it) {
+                                        navigateTo(AppRoute.Venta)
+                                        reclaimCurrentScreenFocus()
+                                    }
+                                }
+                            ),
+                            ToolbarItem(
+                                label = tabChecadorLabel,
+                                icon = Res.drawable.barcode_scanner,
+                                isSelected = if (isChecadorDialog) showPriceCheckerDialog else currentScreen == Screen.CHECADOR,
+                                onCheckedChange = {
+                                    if (isChecadorDialog) {
+                                        showPriceCheckerDialog = true
+                                    } else if (it) {
+                                        navigateTo(AppRoute.Checador)
+                                    }
+                                    reclaimCurrentScreenFocus()
+                                }
+                            ),
+                            ToolbarItem(
+                                label = tabProductosLabel,
+                                icon = Res.drawable.products,
+                                isSelected = currentScreen == Screen.PRODUCTOS,
+                                onCheckedChange = {
+                                    if (it) {
+                                        navigateTo(AppRoute.Productos)
+                                        reclaimCurrentScreenFocus()
+                                    }
+                                }
+                            ),
+                            ToolbarItem(
+                                label = tabVentasLabel,
+                                icon = Res.drawable.analytics,
+                                isSelected = currentScreen == Screen.VENTAS,
+                                onCheckedChange = {
+                                    if (it) {
+                                        navigateTo(AppRoute.Ventas)
+                                        reclaimCurrentScreenFocus()
+                                    }
+                                }
+                            ),
+                            ToolbarItem(
+                                label = tabClientesLabel,
+                                icon = Res.drawable.person,
+                                isSelected = currentScreen == Screen.CLIENTES,
+                                onCheckedChange = {
+                                    if (it) {
+                                        navigateTo(AppRoute.Clientes)
+                                        reclaimCurrentScreenFocus()
+                                    }
+                                }
+                            ),
+                            ToolbarItem(
+                                label = tabAjustesLabel,
+                                icon = Res.drawable.settings,
+                                isSelected = if (isToolbarNavigation) {
+                                    currentScreen == Screen.AJUSTES || currentScreen == Screen.CLIENTES || currentScreen == Screen.VENTAS
+                                } else {
+                                    currentScreen == Screen.AJUSTES
+                                },
+                                onCheckedChange = {
+                                    if (it) {
+                                        navigateTo(AppRoute.Ajustes)
+                                        reclaimCurrentScreenFocus()
+                                    }
+                                }
+                            )
+                        )
+                    }
+
+                    val compactToolbarItems = remember(
+                        toolbarItems,
+                        tabVentaLabel,
+                        tabChecadorLabel,
+                        tabProductosLabel,
+                        tabAjustesLabel
+                    ) {
+                        toolbarItems.filter { item ->
+                            item.label == tabVentaLabel ||
+                                    item.label == tabChecadorLabel ||
+                                    item.label == tabProductosLabel ||
+                                    item.label == tabAjustesLabel
+                        }
+                    }
+
                     val showNavLayout = !(currentScreen == Screen.CHECADOR && !isChecadorDialog)
                     val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(appMaxWidth) else NavigationSuiteType.None
 
@@ -991,11 +1016,10 @@ fun App(
                                                 .widthIn(max = appMaxWidth - 32.dp)
                                         ) {
                                             Row(
-                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 var index = 0
-                                                toolbarItems.fastForEach { item ->
+                                                compactToolbarItems.fastForEach { item ->
                                                     TooltipBox(
                                                         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                                                             TooltipAnchorPosition.Above
@@ -1021,10 +1045,22 @@ fun App(
                                                                     painter = painterResource(item.icon),
                                                                     contentDescription = item.label
                                                                 )
+                                                                AnimatedVisibility(
+                                                                    visible = item.isSelected,
+                                                                    enter = expandHorizontally(),
+                                                                    exit = shrinkHorizontally()
+                                                                ) {
+                                                                    Text(
+                                                                        text = item.label,
+                                                                        fontSize = 15.sp,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        modifier = Modifier.padding(start = 8.dp)
+                                                                    )
+                                                                }
                                                             }
                                                         }
                                                     }
-                                                    if (index < toolbarItems.lastIndex) {
+                                                    if (index < compactToolbarItems.lastIndex) {
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                     }
                                                     index++
@@ -1082,14 +1118,45 @@ fun App(
                                         entry<AppRoute.Clientes> {
                                             ClientesScreen(
                                                 viewModel = koinViewModel<ClientesViewModel>(),
-                                                refocusTrigger = clientesRefocusTrigger
+                                                refocusTrigger = clientesRefocusTrigger,
+                                                onNavigateBack = if (isToolbarNavigation) {
+                                                    {
+                                                        if (backStack.size > 1) {
+                                                            backStack.removeLastOrNull()
+                                                            reclaimCurrentScreenFocus()
+                                                        }
+                                                    }
+                                                } else null
                                             )
                                         }
                                         entry<AppRoute.Ventas> {
-                                            VentasScreen(viewModel = koinViewModel<VentasViewModel>())
+                                            VentasScreen(
+                                                viewModel = koinViewModel<VentasViewModel>(),
+                                                onNavigateBack = if (isToolbarNavigation) {
+                                                    {
+                                                        if (backStack.size > 1) {
+                                                            backStack.removeLastOrNull()
+                                                            reclaimCurrentScreenFocus()
+                                                        }
+                                                    }
+                                                } else null
+                                            )
                                         }
                                         entry<AppRoute.Ajustes> {
-                                            AjustesScreen(viewModel = ajustesViewModel)
+                                            AjustesScreen(
+                                                viewModel = ajustesViewModel,
+                                                isCompact = isToolbarNavigation,
+                                                onNavigateToClientes = {
+                                                    if (backStack.lastOrNull() != AppRoute.Clientes) {
+                                                        backStack.add(AppRoute.Clientes)
+                                                    }
+                                                },
+                                                onNavigateToVentas = {
+                                                    if (backStack.lastOrNull() != AppRoute.Ventas) {
+                                                        backStack.add(AppRoute.Ventas)
+                                                    }
+                                                }
+                                            )
                                         }
                                         entry<AppRoute.Checador> {
                                             if (isChecadorDialog) {

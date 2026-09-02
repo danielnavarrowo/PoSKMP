@@ -1,5 +1,8 @@
 package com.dnavarro.poskmp.util
 
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.Products
 
@@ -10,6 +13,13 @@ expect fun playSoundAlert(bytes: ByteArray)
 
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+expect fun <T> AdaptiveScaffoldPredictiveBackHandler(
+    navigator: ThreePaneScaffoldNavigator<T>,
+    backBehavior: BackNavigationBehavior = BackNavigationBehavior.PopUntilScaffoldValueChange,
+)
 
 expect fun pickFile(
     allowedExtensions: List<String>,

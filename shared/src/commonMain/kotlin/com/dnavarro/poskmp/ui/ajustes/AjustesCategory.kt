@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.ajustes
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.info
 import poskmp.shared.generated.resources.light_mode
 import poskmp.shared.generated.resources.payments
@@ -18,6 +19,8 @@ import poskmp.shared.generated.resources.settings_cat_backup_subtitle
 import poskmp.shared.generated.resources.settings_cat_backup_title
 import poskmp.shared.generated.resources.settings_cat_cashiers_subtitle
 import poskmp.shared.generated.resources.settings_cat_cashiers_title
+import poskmp.shared.generated.resources.settings_cat_clientes_subtitle
+import poskmp.shared.generated.resources.settings_cat_clientes_title
 import poskmp.shared.generated.resources.settings_cat_general_subtitle
 import poskmp.shared.generated.resources.settings_cat_general_title
 import poskmp.shared.generated.resources.settings_cat_pricing_subtitle
@@ -26,6 +29,8 @@ import poskmp.shared.generated.resources.settings_cat_sync_subtitle
 import poskmp.shared.generated.resources.settings_cat_sync_title
 import poskmp.shared.generated.resources.settings_cat_ticket_subtitle
 import poskmp.shared.generated.resources.settings_cat_ticket_title
+import poskmp.shared.generated.resources.settings_cat_ventas_subtitle
+import poskmp.shared.generated.resources.settings_cat_ventas_title
 import poskmp.shared.generated.resources.sync
 
 enum class AjustesCategory(
@@ -33,6 +38,16 @@ enum class AjustesCategory(
     val subtitleRes: StringResource,
     val icon: DrawableResource
 ) {
+    CLIENTES(
+        titleRes = Res.string.settings_cat_clientes_title,
+        subtitleRes = Res.string.settings_cat_clientes_subtitle,
+        icon = Res.drawable.person
+    ),
+    VENTAS(
+        titleRes = Res.string.settings_cat_ventas_title,
+        subtitleRes = Res.string.settings_cat_ventas_subtitle,
+        icon = Res.drawable.analytics
+    ),
     GENERAL(
         titleRes = Res.string.settings_cat_general_title,
         subtitleRes = Res.string.settings_cat_general_subtitle,
