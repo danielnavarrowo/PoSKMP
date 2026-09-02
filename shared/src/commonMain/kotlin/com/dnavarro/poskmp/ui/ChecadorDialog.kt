@@ -43,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -55,7 +54,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -657,22 +655,9 @@ fun ChecadorScreen(
             isChecadorMode = showExtraPrices
         )
     } else {
-        val backgroundGradient = remember {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFF8C3A4D),
-                    Color(0xFF6B305B),
-                    Color(0xFF3A3660),
-                    Color(0xFF1C4352),
-                    Color(0xFF134C54)
-                )
-            )
-        }
-
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(backgroundGradient)
                 .clickable { focusRequester.requestFocus() }
                 .onPreviewKeyEvent { keyEvent ->
                     if (keyEvent.type == KeyEventType.KeyDown &&
@@ -683,6 +668,9 @@ fun ChecadorScreen(
                     } else false
                 }
         ) {
+            // Animated multi-color gradient shader background
+            ChecadorAnimatedBackground(modifier = Modifier.fillMaxSize())
+
             // Hidden but always-focused Input TextField to process scanner/keyboard input seamlessly
             BasicTextField(
                 value = barcodeInputValue,
@@ -735,7 +723,7 @@ fun ChecadorScreen(
                                         text = searchedProduct!!.nombre,
                                         color = Color.White,
                                         fontWeight = FontWeight.Black,
-                                        minFontSize = 24.sp,
+                                        minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -744,7 +732,7 @@ fun ChecadorScreen(
                                         text = stringResource(Res.string.product_not_found),
                                         color = MaterialTheme.colorScheme.error,
                                         fontWeight = FontWeight.Black,
-                                        minFontSize = 24.sp,
+                                        minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -753,7 +741,7 @@ fun ChecadorScreen(
                                         text = stringResource(Res.string.price_checker_title),
                                         color = Color.White,
                                         fontWeight = FontWeight.Black,
-                                        minFontSize = 28.sp,
+                                        minFontSize = 20.sp,
                                         maxFontSize = 360.sp,
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -935,7 +923,7 @@ private fun AutoSizingText(
     color: Color = Color.White,
     fontWeight: FontWeight = FontWeight.Black,
     textAlign: TextAlign = TextAlign.Start,
-    minFontSize: TextUnit = 24.sp,
+    minFontSize: TextUnit = 16.sp,
     maxFontSize: TextUnit = 360.sp
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -949,41 +937,87 @@ private fun AutoSizingText(
         val heightPx = with(density) { maxHeight.roundToPx() }
 
         val optimalFontSize = remember(text, widthPx, heightPx, fontWeight, minFontSize, maxFontSize) {
-            if (widthPx <= 0 || heightPx <= 0 || text.isBlank()) {
+            val trimmedText = text.trim()
+            if (widthPx <= 0 || heightPx <= 0 || trimmedText.isBlank()) {
                 minFontSize
             } else {
-                var low = minFontSize.value
-                var high = maxFontSize.value
-                var best = minFontSize.value
+                val words = trimmedText.split(Regex("\\s+")).filter { it.isNotEmpty() }
+                val safetyMarginPx = with(density) { 8.dp.roundToPx() }
+                val safeWidthPx = (widthPx - safetyMarginPx).coerceAtLeast(1)
+                val safeHeightPx = (heightPx - safetyMarginPx).coerceAtLeast(1)
 
-                for (i in 0..14) {
-                    if (high - low < 1.0f) break
+                val baseStyle = TextStyle(
+                    fontWeight = fontWeight,
+                    textAlign = textAlign
+                )
+
+                var low = minOf(minFontSize.value, 12f)
+                var high = maxFontSize.value
+                var best = low
+
+                for (i in 0..15) {
+                    if (high - low < 0.5f) break
                     val mid = (low + high) / 2f
+                    val testStyle = baseStyle.copy(
+                        fontSize = mid.sp,
+                        lineHeight = (mid * 1.05f).sp
+                    )
+
+                    // 1. Ensure EVERY individual word fits on a single line horizontally without overflowing safeWidthPx
+                    val allWordsFit = words.all { word ->
+                        val wordMeasurement = textMeasurer.measure(
+                            text = AnnotatedString(word),
+                            style = testStyle,
+                            constraints = Constraints(
+                                maxWidth = Constraints.Infinity,
+                                maxHeight = Constraints.Infinity
+                            )
+                        )
+                        wordMeasurement.size.width <= safeWidthPx && !wordMeasurement.hasVisualOverflow
+                    }
+
+                    if (!allWordsFit) {
+                        // Word cannot fit on a single line without being truncated or broken
+                        high = mid
+                        continue
+                    }
+
+                    // 2. Measure the full text wrapped at safeWidthPx
                     val measured = textMeasurer.measure(
-                        text = AnnotatedString(text),
-                        style = TextStyle(
-                            fontSize = mid.sp,
-                            fontWeight = fontWeight,
-                            lineHeight = (mid * 1.05f).sp,
-                            fontFamily = FontFamily.SansSerif
-                        ),
+                        text = AnnotatedString(trimmedText),
+                        style = testStyle,
                         constraints = Constraints(
-                            maxWidth = widthPx,
+                            maxWidth = safeWidthPx,
                             maxHeight = Constraints.Infinity
                         )
                     )
 
-                    val fitsWidth = measured.size.width <= widthPx && !measured.hasVisualOverflow
-                    val fitsHeight = measured.size.height <= heightPx
-                    val noLineOverflow = (0 until measured.lineCount).all { lineIdx ->
-                        (measured.getLineRight(lineIdx) - measured.getLineLeft(lineIdx)) <= widthPx
+                    val fitsWidth = measured.size.width <= safeWidthPx && !measured.hasVisualOverflow
+                    val fitsHeight = measured.size.height <= safeHeightPx
+
+                    // 3. Verify that Compose didn't break in the middle of any word across lines
+                    val noWordSplit = (0 until measured.lineCount - 1).all { lineIdx ->
+                        val lineEnd = measured.getLineEnd(lineIdx)
+                        if (lineEnd in 1 until trimmedText.length) {
+                            trimmedText[lineEnd - 1].isWhitespace() ||
+                                trimmedText[lineEnd].isWhitespace() ||
+                                trimmedText[lineEnd - 1] == '-' ||
+                                trimmedText[lineEnd - 1] == '/'
+                        } else {
+                            true
+                        }
                     }
 
-                    if (fitsWidth && fitsHeight && noLineOverflow) {
+                    // 4. Verify that each line doesn't overflow horizontally
+                    val noLineOverflow = (0 until measured.lineCount).all { lineIdx ->
+                        (measured.getLineRight(lineIdx) - measured.getLineLeft(lineIdx)) <= safeWidthPx
+                    }
+
+                    if (fitsWidth && fitsHeight && noWordSplit && noLineOverflow) {
                         best = mid
-                        low = mid
+                        low = mid // Try a larger font size
                     } else {
-                        high = mid
+                        high = mid // Too big, scale down
                     }
                 }
                 best.sp
@@ -997,6 +1031,7 @@ private fun AutoSizingText(
             fontSize = optimalFontSize,
             lineHeight = optimalFontSize * 1.05f,
             textAlign = textAlign,
+            softWrap = true,
             overflow = TextOverflow.Clip,
             modifier = Modifier.fillMaxWidth()
         )
