@@ -267,8 +267,7 @@ fun AjustesScreen(
 
     val initialDestinationHistory = remember {
         listOf(
-            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List),
-            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.Detail, AjustesCategory.GENERAL)
+            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List, AjustesCategory.GENERAL)
         )
     }
 
