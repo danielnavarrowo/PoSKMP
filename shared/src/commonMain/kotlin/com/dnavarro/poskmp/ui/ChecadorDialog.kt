@@ -6,16 +6,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -50,11 +51,19 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.data.ProductRepository
@@ -689,264 +698,374 @@ fun ChecadorScreen(
                     .focusRequester(focusRequester)
             )
 
-            // Centered Content Area
             Column(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.9f)
-                    .widthIn(max = 750.dp)
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
             ) {
-                // Header Title
-                Text(
-                    text = stringResource(Res.string.price_checker_title),
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                if (searchedProduct != null) {
-                    val product = searchedProduct!!
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.White.copy(alpha = 0.15f)
-                        ),
-                        shape = ShapeDefaults.cardShape,
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                // Two Columns Row taking the available height above date/time
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(28.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // LEFT COLUMN: "Checador de precios" + Product name (or idle title) with black font weight and dynamic font size
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
+                            .weight(1f)
+                            .fillMaxHeight()
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = product.nombre,
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
 
-                            Spacer(modifier = Modifier.height(20.dp))
+                            // Dynamic product name taking the available height with FontWeight.Black
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchedProduct != null) {
+                                    AutoSizingText(
+                                        text = searchedProduct!!.nombre,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Black,
+                                        minFontSize = 24.sp,
+                                        maxFontSize = 360.sp,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else if (hasSearched) {
+                                    AutoSizingText(
+                                        text = stringResource(Res.string.product_not_found),
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontWeight = FontWeight.Black,
+                                        minFontSize = 24.sp,
+                                        maxFontSize = 360.sp,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    AutoSizingText(
+                                        text = stringResource(Res.string.price_checker_title),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Black,
+                                        minFontSize = 28.sp,
+                                        maxFontSize = 360.sp,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        }
+                    }
 
+                    // RIGHT COLUMN: Prices and metrics in rows
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+                    ) {
+                        if (searchedProduct != null) {
+                            val product = searchedProduct!!
                             val perKgSuffix = stringResource(Res.string.per_kg_suffix)
                             val suffix = if (product.por_peso == 1L) perKgSuffix else ""
                             val hasMultiplePieces = product.piezas != 1.0 && product.piezas > 0.0
                             val pricePerPiece = if (hasMultiplePieces) product.precio / product.piezas else 0.0
                             val wholesalePerPiece = if (hasMultiplePieces) product.precio_mayoreo / product.piezas else 0.0
 
+                            // Row 1: Retail Price (Primary)
+                            ChecadorMetricRow(
+                                title = stringResource(Res.string.header_retail_price),
+                                value = "$${product.precio.toString().formatPrice()}$suffix",
+                                subtitle =  null,
+                                isPrimary = true
+                            )
+
+                            // Row 2: Wholesale Price
+                            if (product.precio_mayoreo > 0.0 && showExtraPrices) {
+                                ChecadorMetricRow(
+                                    title = stringResource(Res.string.wholesale),
+                                    value = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                    subtitle = if (hasMultiplePieces) {
+                                        stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice())
+                                    } else null
+                                )
+                            }
+
+                            // Row 3: Cost (if enabled)
                             if (showExtraPrices) {
-                                Row(
+                                ChecadorMetricRow(
+                                    title = stringResource(Res.string.cost_label),
+                                    value = "$${product.costo.toString().formatPrice()}"
+                                )
+                            }
+
+                            // Row 4: Pieces per packaging (if multiple pieces)
+                            if (hasMultiplePieces) {
+                                ChecadorMetricRow(
+                                    title = stringResource(Res.string.price_per_piece_fmt, ""),
+                                    value = "$${pricePerPiece.toString().formatPrice()}",
+                                    subtitle = "Contiene ${product.piezas.toInt()} piezas"
+                                )
+                            }
+
+                        } else if (hasSearched) {
+                            Box(Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.warning),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(256.dp)
+                                )
+                            }
+
+                        } else {
+                            // Idle state right column: Input card & scanner prompt
+                            Box(
+
+                                modifier = Modifier.fillMaxWidth().background(color = Color.Transparent,
+                                    shape = ShapeDefaults.cardShape
+                                ),
+
+                            ) {
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(28.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(20.dp)
                                 ) {
-                                    Column(horizontalAlignment = Alignment.Start) {
-                                        Text(
-                                            text = stringResource(Res.string.cost_label),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = Color.White.copy(alpha = 0.8f)
-                                        )
-                                        Text(
-                                            text = "$${product.costo.toString().formatPrice()}",
-                                            style = MaterialTheme.typography.titleLarge.copy(
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
-                                            )
-                                        )
-                                    }
-
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = stringResource(Res.string.header_retail_price),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = Color.White.copy(alpha = 0.8f)
-                                        )
-                                        Text(
-                                            text = "$${product.precio.toString().formatPrice()}$suffix",
-                                            style = MaterialTheme.typography.headlineLarge.copy(
-                                                fontWeight = FontWeight.Black,
-                                                color = Color.White
-                                            )
-                                        )
-                                        if (hasMultiplePieces) {
-                                            Text(
-                                                text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White.copy(alpha = 0.9f)
-                                            )
-                                        }
-                                    }
-
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(
-                                            text = stringResource(Res.string.wholesale),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = Color.White.copy(alpha = 0.8f)
-                                        )
-                                        Text(
-                                            text = "$${product.precio_mayoreo.toString().formatPrice()}",
-                                            style = MaterialTheme.typography.titleLarge.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
-                                        )
-                                        if (hasMultiplePieces) {
-                                            Text(
-                                                text = stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice()),
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White.copy(alpha = 0.9f)
-                                            )
-                                        }
-                                    }
-                                }
-                            } else {
-                                Text(
-                                    text = "$${product.precio.toString().formatPrice()}$suffix",
-                                   style = MaterialTheme.typography.displayMedium,
-                                    color = Color.White,
-                                )
-                                if (hasMultiplePieces) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = stringResource(Res.string.pieces_count_label, product.piezas.toInt().toString()),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        textAlign = TextAlign.Center
+                                    Icon(
+                                        painter = painterResource(Res.drawable.barcode_scanner),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(256.dp)
                                     )
-                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                    Text(
-                                        text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        textAlign = TextAlign.Center
+                                    // Visual input field for on-screen typing if needed
+                                    BasicTextField(
+                                        value = barcodeInputValue,
+                                        onValueChange = { newValue ->
+                                            barcodeInputValue = newValue
+                                        },
+                                        singleLine = true,
+                                        textStyle = TextStyle(
+                                            color = Color.White,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Center
+                                        ),
+                                        cursorBrush = SolidColor(Color.White),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        keyboardActions = KeyboardActions(onDone = { performSearch() }),
+                                        decorationBox = { innerTextField ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(52.dp)
+                                                    .background(
+                                                        color = Color.White.copy(alpha = 0.15f),
+                                                        shape = RoundedCornerShape(14.dp)
+                                                    )
+                                                    .border(
+                                                        width = 1.dp,
+                                                        color = Color.White.copy(alpha = 0.25f),
+                                                        shape = RoundedCornerShape(14.dp)
+                                                    )
+                                                    .padding(horizontal = 20.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                if (barcodeInputValue.text.isEmpty()) {
+                                                    Text(
+                                                        text = "Acerca el código de barras al escáner...",
+                                                        fontSize = 16.sp,
+                                                        color = Color.White.copy(alpha = 0.6f),
+                                                        textAlign = TextAlign.Center,
+                                                        style = MaterialTheme.typography.bodyLarge
+                                                    )
+                                                }
+                                                innerTextField()
+                                            }
+                                        },
+                                        modifier = Modifier.focusRequester(focusRequester)
                                     )
                                 }
                             }
                         }
                     }
-                } else if (hasSearched) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth(0.8f)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.warning),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(Res.string.product_not_found),
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            )
-                        }
-                    }
-                } else {
-                    // Visual Translucent Input Bar (When no product is scanned yet)
-                    BasicTextField(
-                        value = barcodeInputValue,
-                        onValueChange = { newValue ->
-                            barcodeInputValue = newValue
-                        },
-                        singleLine = true,
-                        textStyle = androidx.compose.ui.text.TextStyle(
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        ),
-                        cursorBrush = SolidColor(Color.White),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        keyboardActions = KeyboardActions(onDone = { performSearch() }),
-                        decorationBox = { innerTextField ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp)
-                                    .background(
-                                        color = Color.White.copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .border(
-                                        width = 1.dp,
-                                        color = Color.White.copy(alpha = 0.25f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(horizontal = 24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (barcodeInputValue.text.isEmpty()) {
-                                    Text(
-                                        text = stringResource(Res.string.barcode_input_placeholder),
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.White.copy(alpha = 0.75f),
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        },
-                        modifier = Modifier.focusRequester(focusRequester)
-                    )
                 }
-            }
 
-            // Bottom Date and Time Pills
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Bottom Left Pill: Date
-                Box {
+                // BOTTOM: Date and Time
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, start = 8.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = currentDateText,
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineSmall
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        )
                     )
-                }
-
-                // Bottom Right Pill: Time
-                Box {
                     Text(
                         text = currentTimeText,
                         color = Color.White,
-                        style = MaterialTheme.typography.headlineMedium
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        )
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AutoSizingText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.White,
+    fontWeight: FontWeight = FontWeight.Black,
+    textAlign: TextAlign = TextAlign.Start,
+    minFontSize: TextUnit = 24.sp,
+    maxFontSize: TextUnit = 360.sp
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.CenterStart
+    ) {
+        val widthPx = with(density) { maxWidth.roundToPx() }
+        val heightPx = with(density) { maxHeight.roundToPx() }
+
+        val optimalFontSize = remember(text, widthPx, heightPx, fontWeight, minFontSize, maxFontSize) {
+            if (widthPx <= 0 || heightPx <= 0 || text.isBlank()) {
+                minFontSize
+            } else {
+                var low = minFontSize.value
+                var high = maxFontSize.value
+                var best = minFontSize.value
+
+                for (i in 0..14) {
+                    if (high - low < 1.0f) break
+                    val mid = (low + high) / 2f
+                    val measured = textMeasurer.measure(
+                        text = AnnotatedString(text),
+                        style = TextStyle(
+                            fontSize = mid.sp,
+                            fontWeight = fontWeight,
+                            lineHeight = (mid * 1.05f).sp,
+                            fontFamily = FontFamily.SansSerif
+                        ),
+                        constraints = Constraints(
+                            maxWidth = widthPx,
+                            maxHeight = Constraints.Infinity
+                        )
+                    )
+
+                    val fitsWidth = measured.size.width <= widthPx && !measured.hasVisualOverflow
+                    val fitsHeight = measured.size.height <= heightPx
+                    val noLineOverflow = (0 until measured.lineCount).all { lineIdx ->
+                        (measured.getLineRight(lineIdx) - measured.getLineLeft(lineIdx)) <= widthPx
+                    }
+
+                    if (fitsWidth && fitsHeight && noLineOverflow) {
+                        best = mid
+                        low = mid
+                    } else {
+                        high = mid
+                    }
+                }
+                best.sp
+            }
+        }
+
+        Text(
+            text = text,
+            color = color,
+            fontWeight = fontWeight,
+            fontSize = optimalFontSize,
+            lineHeight = optimalFontSize * 1.05f,
+            textAlign = textAlign,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun ChecadorMetricRow(
+    title: String,
+    value: String,
+    subtitle: String? = null,
+    isPrimary: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPrimary) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.12f)
+        ),
+        shape = ShapeDefaults.cardShape,
+        border = BorderStroke(
+            1.dp,
+            if (isPrimary) Color.White.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.2f)
+        ),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = if (isPrimary) 20.dp else 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                Text(
+                    text = title.uppercase(),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.2.sp
+                    ),
+                    color = Color.White.copy(alpha = if (isPrimary) 0.9f else 0.7f)
+                )
+                if (subtitle != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = value,
+                style = if (isPrimary) {
+                    MaterialTheme.typography.displayLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        fontSize = 128.sp
+                    )
+                } else {
+                    MaterialTheme.typography.displayLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                },
+                textAlign = TextAlign.End
+            )
         }
     }
 }

@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -1005,7 +1004,6 @@ fun App(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(vertical = 12.dp)
                                             .navigationBarsPadding(),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -1013,7 +1011,6 @@ fun App(
                                             expanded = false,
                                             modifier = Modifier
                                                 .zIndex(1f)
-                                                .widthIn(max = appMaxWidth - 32.dp)
                                         ) {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically
