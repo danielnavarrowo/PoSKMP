@@ -1,6 +1,6 @@
 [versions]
-app-version = "1.0.1"
-app-versionCode = "34"
+app-version = "1.0.2"
+app-versionCode = "35"
 agp = "9.5.0-alpha03"
 android-compileSdk = "37"
 android-minSdk = "31"
@@ -23,6 +23,7 @@ playServicesMlkitBarcodeScanning = "18.3.1"
 koin = "4.2.2"
 ktor = "3.5.2"
 kotlinxSerialization = "1.11.0"
+navigation3 = "1.1.1"
 
 [libraries]
 compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref = "composeCharts" }
@@ -41,6 +42,8 @@ compose-material3 = { module = "org.jetbrains.compose.material3:material3", vers
 compose-material3-adaptive-navigation-suite = { module = "org.jetbrains.compose.material3:material3-adaptive-navigation-suite", version.ref = "material3" }
 compose-material3-adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version.ref = "adaptive" }
 compose-material3-adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptive" }
+jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
+jetbrains-lifecycle-viewmodelNavigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "androidx-lifecycle" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }

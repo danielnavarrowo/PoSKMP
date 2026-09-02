@@ -32,13 +32,16 @@ import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
-import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldDestinationItem
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -265,18 +268,19 @@ fun AjustesScreen(
         )
     }
 
-    val initialDestinationHistory = remember {
-        listOf(
-            ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List, AjustesCategory.GENERAL)
-        )
-    }
-
-    val navigator = rememberListDetailPaneScaffoldNavigator(
-        scaffoldDirective = scaffoldDirective,
-        initialDestinationHistory = initialDestinationHistory
+    val navigator = rememberListDetailPaneScaffoldNavigator<AjustesCategory>(
+        scaffoldDirective = scaffoldDirective
     )
 
-    val currentCategory = navigator.currentDestination?.contentKey ?: AjustesCategory.GENERAL
+    var currentCategory by rememberSaveable { mutableStateOf(AjustesCategory.GENERAL) }
+
+    LaunchedEffect(navigator.currentDestination) {
+        val destination = navigator.currentDestination
+        val destinationCategory = destination?.contentKey
+        if (destination?.pane == ListDetailPaneScaffoldRole.Detail && destinationCategory != null) {
+            currentCategory = destinationCategory
+        }
+    }
     val isListAndDetailVisible =
         navigator.scaffoldValue[ListDetailPaneScaffoldRole.List] == PaneAdaptedValue.Expanded &&
                 navigator.scaffoldValue[ListDetailPaneScaffoldRole.Detail] == PaneAdaptedValue.Expanded
@@ -328,6 +332,7 @@ fun AjustesScreen(
                             val isSelected = isListAndDetailVisible && currentCategory == category
                             Card(
                                 onClick = {
+                                    currentCategory = category
                                     coroutineScope.launch {
                                         navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, category)
                                     }

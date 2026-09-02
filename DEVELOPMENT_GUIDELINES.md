@@ -38,8 +38,7 @@ To avoid extremely large and monolithic user interface files, strict modular seg
 ---
 
 ## 4. User Interface (UI/UX) Requirements
-* **Language:** **Absolutely all** user-oriented text, labels, placeholders, and error messages must be in **Spanish**. Class names, methods, variables, resources, etc. must be named in english. DON'T hardcode strings into the code, 
-* use string resources instead. 
+* **Language:** **Absolutely all** user-oriented text, labels, placeholders, and error messages must be in **Spanish**. Class names, methods, variables, resources, etc. must be named in english. DON'T hardcode strings into the code, use string resources instead. 
 
 
 * **Premium Aesthetics:**

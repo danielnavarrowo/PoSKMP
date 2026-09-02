@@ -1,6 +1,5 @@
 package com.dnavarro.poskmp
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -10,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -90,6 +90,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SaleRepository
 import com.dnavarro.poskmp.data.SettingsRepository
@@ -97,6 +104,13 @@ import com.dnavarro.poskmp.data.backup.BackupRepository
 import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.di.initKoin
+import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
+import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
+import com.dnavarro.poskmp.navigation.AppRoute
+import com.dnavarro.poskmp.navigation.navSavedStateConfig
+import com.dnavarro.poskmp.navigation.navigateToTopLevel
+import com.dnavarro.poskmp.navigation.toRoute
+import com.dnavarro.poskmp.navigation.toScreen
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.AjustesScreen
@@ -148,8 +162,6 @@ import poskmp.shared.generated.resources.last_sale_title
 import poskmp.shared.generated.resources.last_sale_total
 import poskmp.shared.generated.resources.nav_clientes
 import poskmp.shared.generated.resources.nav_clientes_desktop
-import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
-import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
 import poskmp.shared.generated.resources.open_cash_drawer_button
 import poskmp.shared.generated.resources.open_cash_drawer_button_desktop
 import poskmp.shared.generated.resources.person
@@ -334,11 +346,29 @@ fun App(
 
     val ajustesUiState by ajustesViewModel.uiState.collectAsStateWithLifecycle()
             val defaultScreen = ajustesUiState.defaultScreen
+            val defaultRoute = remember(defaultScreen) { defaultScreen.toRoute() }
 
-            // 2. Navigation State
-            var selectedScreen by rememberSaveable { mutableStateOf<Screen?>(null) }
-            val currentScreen = selectedScreen ?: defaultScreen
+            // 2. Navigation State with Navigation 3
+            val backStack = rememberNavBackStack(navSavedStateConfig, defaultRoute)
+            var hasUserNavigated by rememberSaveable { mutableStateOf(false) }
+
+            LaunchedEffect(defaultRoute) {
+                if (backStack.isNotEmpty()) {
+                    backStack[0] = defaultRoute
+                    if (backStack.size > 1 && backStack[1] == defaultRoute) {
+                        backStack.removeAt(1)
+                    }
+                }
+            }
+
+            val currentRoute = (backStack.lastOrNull() as? AppRoute) ?: defaultRoute
+            val currentScreen = currentRoute.toScreen()
             var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
+
+            fun navigateTo(route: AppRoute) {
+                hasUserNavigated = true
+                backStack.navigateToTopLevel(route, defaultRoute)
+            }
 
             val focusRequester = remember { FocusRequester() }
             var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
@@ -424,7 +454,7 @@ fun App(
                         isSelected = currentScreen == Screen.VENTA,
                         onCheckedChange = {
                             if (it) {
-                                selectedScreen = Screen.VENTA
+                                navigateTo(AppRoute.Venta)
                                 reclaimCurrentScreenFocus()
                             }
                         }
@@ -437,7 +467,7 @@ fun App(
                             if (isChecadorDialog) {
                                 showPriceCheckerDialog = true
                             } else if (it) {
-                                selectedScreen = Screen.CHECADOR
+                                navigateTo(AppRoute.Checador)
                             }
                             reclaimCurrentScreenFocus()
                         }
@@ -448,7 +478,7 @@ fun App(
                         isSelected = currentScreen == Screen.PRODUCTOS,
                         onCheckedChange = {
                             if (it) {
-                                selectedScreen = Screen.PRODUCTOS
+                                navigateTo(AppRoute.Productos)
                                 reclaimCurrentScreenFocus()
                             }
                         }
@@ -459,7 +489,7 @@ fun App(
                         isSelected = currentScreen == Screen.VENTAS,
                         onCheckedChange = {
                             if (it) {
-                                selectedScreen = Screen.VENTAS
+                                navigateTo(AppRoute.Ventas)
                                 reclaimCurrentScreenFocus()
                             }
                         }
@@ -470,7 +500,7 @@ fun App(
                         isSelected = currentScreen == Screen.CLIENTES,
                         onCheckedChange = {
                             if (it) {
-                                selectedScreen = Screen.CLIENTES
+                                navigateTo(AppRoute.Clientes)
                                 reclaimCurrentScreenFocus()
                             }
                         }
@@ -481,7 +511,7 @@ fun App(
                         isSelected = currentScreen == Screen.AJUSTES,
                         onCheckedChange = {
                             if (it) {
-                                selectedScreen = Screen.AJUSTES
+                                navigateTo(AppRoute.Ajustes)
                                 reclaimCurrentScreenFocus()
                             }
                         }
@@ -515,7 +545,13 @@ fun App(
                 )
             }
 
-            CompositionLocalProvider(LocalDensity provides customDensity) {
+            val eventDispatcherOwner = LocalNavigationEventDispatcherOwner.current
+                ?: rememberNavigationEventDispatcherOwner(parent = null)
+
+            CompositionLocalProvider(
+                LocalDensity provides customDensity,
+                LocalNavigationEventDispatcherOwner provides eventDispatcherOwner
+            ) {
                 AppTheme(
                     seedColor = seedColor,
                     useDynamicColor = useDynamicColor,
@@ -534,7 +570,7 @@ fun App(
                                         .onPreviewKeyEvent { keyEvent ->
                                             keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
                                                 Key.F1 -> {
-                                                    selectedScreen = Screen.VENTA
+                                                    navigateTo(AppRoute.Venta)
                                                     ventaRefocusTrigger++
                                                     true
                                                 }
@@ -543,24 +579,24 @@ fun App(
                                                     if (isChecadorDialog) {
                                                         showPriceCheckerDialog = true
                                                     } else {
-                                                        selectedScreen = Screen.CHECADOR
+                                                        navigateTo(AppRoute.Checador)
                                                     }
                                                     true
                                                 }
 
                                                 Key.F3 -> {
-                                                    selectedScreen = Screen.PRODUCTOS
+                                                    navigateTo(AppRoute.Productos)
                                                     productosRefocusTrigger++
                                                     true
                                                 }
 
                                                 Key.F4 -> {
-                                                    selectedScreen = Screen.VENTAS
+                                                    navigateTo(AppRoute.Ventas)
                                                     true
                                                 }
 
                                                 Key.F5 -> {
-                                                    selectedScreen = Screen.CLIENTES
+                                                    navigateTo(AppRoute.Clientes)
                                                     clientesRefocusTrigger++
                                                     true
                                                 }
@@ -1004,32 +1040,58 @@ fun App(
                                     .fillMaxSize()
                                     .padding(contentPadding)
                             ) {
-                                AnimatedContent(
-                                    targetState = currentScreen,
+                                NavDisplay(
+                                    backStack = backStack,
+                                    onBack = {
+                                        if (backStack.size > 1) {
+                                            backStack.removeLastOrNull()
+                                            reclaimCurrentScreenFocus()
+                                        }
+                                    },
+                                    entryDecorators = listOf(
+                                        rememberSaveableStateHolderNavEntryDecorator(),
+                                        rememberViewModelStoreNavEntryDecorator(),
+                                    ),
                                     transitionSpec = {
                                         (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.98f, animationSpec = tween(220))) togetherWith
                                                 fadeOut(animationSpec = tween(180))
                                     },
-                                    label = "ScreenTransition"
-                                ) { targetScreen ->
-                                    when (targetScreen) {
-                                        Screen.VENTA -> VentaScreen(
-                                            viewModel = koinViewModel<VentaViewModel>(),
-                                            isCompact = isCompact,
-                                            refocusTrigger = ventaRefocusTrigger
-                                        )
+                                    popTransitionSpec = {
+                                        fadeIn(animationSpec = tween(180)) togetherWith
+                                                (fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 0.98f, animationSpec = tween(220)))
+                                    },
+                                    predictivePopTransitionSpec = {
+                                        fadeIn(animationSpec = tween(180)) togetherWith
+                                                (fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 0.98f, animationSpec = tween(220)))
+                                    },
+                                    entryProvider = entryProvider {
+                                        entry<AppRoute.Venta> {
+                                            VentaScreen(
+                                                viewModel = koinViewModel<VentaViewModel>(),
+                                                isCompact = isCompact,
+                                                refocusTrigger = ventaRefocusTrigger
+                                            )
+                                        }
 
-                                        Screen.PRODUCTOS -> ProductosScreen(
-                                            viewModel = koinViewModel<ProductosViewModel>(),
-                                            refocusTrigger = productosRefocusTrigger
-                                        )
-                                        Screen.CLIENTES -> ClientesScreen(
-                                            viewModel = koinViewModel<ClientesViewModel>(),
-                                            refocusTrigger = clientesRefocusTrigger
-                                        )
-                                        Screen.VENTAS -> VentasScreen(viewModel = koinViewModel<VentasViewModel>())
-                                        Screen.AJUSTES -> AjustesScreen(viewModel = ajustesViewModel)
-                                        Screen.CHECADOR -> {
+                                        entry<AppRoute.Productos> {
+                                            ProductosScreen(
+                                                viewModel = koinViewModel<ProductosViewModel>(),
+                                                refocusTrigger = productosRefocusTrigger
+                                            )
+                                        }
+                                        entry<AppRoute.Clientes> {
+                                            ClientesScreen(
+                                                viewModel = koinViewModel<ClientesViewModel>(),
+                                                refocusTrigger = clientesRefocusTrigger
+                                            )
+                                        }
+                                        entry<AppRoute.Ventas> {
+                                            VentasScreen(viewModel = koinViewModel<VentasViewModel>())
+                                        }
+                                        entry<AppRoute.Ajustes> {
+                                            AjustesScreen(viewModel = ajustesViewModel)
+                                        }
+                                        entry<AppRoute.Checador> {
                                             if (isChecadorDialog) {
                                                 VentaScreen(
                                                     viewModel = koinViewModel<VentaViewModel>(),
@@ -1046,7 +1108,7 @@ fun App(
                                             }
                                         }
                                     }
-                                }
+                                )
                             }
                         }
                     }
