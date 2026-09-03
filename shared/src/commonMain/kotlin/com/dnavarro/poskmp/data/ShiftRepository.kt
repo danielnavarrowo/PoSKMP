@@ -40,7 +40,6 @@ interface ShiftRepository {
     suspend fun countActiveCashiers(): Long
     fun getMovementsForShiftFlow(shiftId: String): Flow<List<CashMovement>>
     suspend fun getShiftSummary(shiftId: String): Result<ShiftSummary>
-    suspend fun ensureDefaultCashierExists()
 }
 
 class ShiftRepositoryImpl(
@@ -62,9 +61,8 @@ class ShiftRepositoryImpl(
     override val activeCashiersFlow: Flow<List<Cashier>> =
         localDataSource.getAllActiveCashiersFlow().map { list -> list.map { it.toDomain() } }
 
-    override suspend fun getAllActiveCashiers(): List<Cashier> {
-        ensureDefaultCashierExists()
-        return localDataSource.getAllActiveCashiers().map { it.toDomain() }
+    override suspend fun getAllActiveCashiers(): List<Cashier> = withContext(Dispatchers.IO) {
+        localDataSource.getAllActiveCashiers().map { it.toDomain() }
     }
 
     override suspend fun getCashierById(id: String): Cashier? =
@@ -72,7 +70,6 @@ class ShiftRepositoryImpl(
 
     override suspend fun openShift(cashierId: String, initialCash: Double): Result<CashierShift> = withContext(Dispatchers.IO) {
         try {
-            ensureDefaultCashierExists()
             val existing = localDataSource.getActiveShift()
             if (existing != null) {
                 return@withContext Result.failure(IllegalStateException("Ya existe un turno activo."))
@@ -244,23 +241,6 @@ class ShiftRepositoryImpl(
             Result.success(shiftSummary)
         } catch (e: Exception) {
             Result.failure(e)
-        }
-    }
-
-    override suspend fun ensureDefaultCashierExists() = withContext(Dispatchers.IO) {
-        val count = localDataSource.countCashiers()
-        if (count == 0L) {
-            val now = currentTimeMillis()
-            val defaultCashier = Cashiers(
-                id = "default-cashier-001",
-                nombre = "Cajero Principal",
-                pin = "0000",
-                activo = 1L,
-                created_at = now,
-                updated_at = now,
-                sync_state = "PENDING_INSERT"
-            )
-            localDataSource.insertCashier(defaultCashier)
         }
     }
 

@@ -337,7 +337,7 @@ private fun CashierFormDialog(
     onDismiss: () -> Unit
 ) {
     var nameText by remember(cashier) { mutableStateOf(cashier?.nombre ?: "") }
-    var pinText by remember(cashier) { mutableStateOf(cashier?.pin ?: "0000") }
+    var pinText by remember(cashier) { mutableStateOf(cashier?.pin ?: "") }
 
     val isEditing = cashier != null
     val title = if (isEditing) stringResource(Res.string.edit_cashier_dialog_title) else stringResource(Res.string.add_cashier_dialog_title)
@@ -374,7 +374,6 @@ private fun CashierFormDialog(
                     value = pinText,
                     onValueChange = { if (it.length <= 4 && it.all { char -> char.isDigit() }) pinText = it },
                     label = { Text(stringResource(Res.string.cashier_pin_label)) },
-                    placeholder = { Text(stringResource(Res.string.cashier_pin_field_placeholder)) },
                     supportingText = { Text(stringResource(Res.string.cashier_pin_helper), fontSize = 11.sp) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),

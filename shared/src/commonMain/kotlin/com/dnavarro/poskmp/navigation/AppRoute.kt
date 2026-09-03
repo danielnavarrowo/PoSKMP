@@ -28,7 +28,7 @@ sealed interface AppRoute : NavKey {
     data object Clientes : AppRoute
 
     @Serializable
-    data object Ajustes : AppRoute
+    data class Ajustes(val category: com.dnavarro.poskmp.ui.ajustes.AjustesCategory? = null) : AppRoute
 }
 
 fun Screen.toRoute(): AppRoute = when (this) {
@@ -37,16 +37,16 @@ fun Screen.toRoute(): AppRoute = when (this) {
     Screen.PRODUCTOS -> AppRoute.Productos
     Screen.VENTAS -> AppRoute.Ventas
     Screen.CLIENTES -> AppRoute.Clientes
-    Screen.AJUSTES -> AppRoute.Ajustes
+    Screen.AJUSTES -> AppRoute.Ajustes()
 }
 
 fun AppRoute.toScreen(): Screen = when (this) {
-    AppRoute.Venta -> Screen.VENTA
-    AppRoute.Checador -> Screen.CHECADOR
-    AppRoute.Productos -> Screen.PRODUCTOS
-    AppRoute.Ventas -> Screen.VENTAS
-    AppRoute.Clientes -> Screen.CLIENTES
-    AppRoute.Ajustes -> Screen.AJUSTES
+    is AppRoute.Venta -> Screen.VENTA
+    is AppRoute.Checador -> Screen.CHECADOR
+    is AppRoute.Productos -> Screen.PRODUCTOS
+    is AppRoute.Ventas -> Screen.VENTAS
+    is AppRoute.Clientes -> Screen.CLIENTES
+    is AppRoute.Ajustes -> Screen.AJUSTES
 }
 
 val navSavedStateConfig = SavedStateConfiguration {

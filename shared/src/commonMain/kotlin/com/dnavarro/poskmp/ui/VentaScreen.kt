@@ -203,7 +203,8 @@ fun VentaScreen(
     viewModel: VentaViewModel,
     isCompact: Boolean,
     modifier: Modifier = Modifier,
-    refocusTrigger: Int = 0
+    refocusTrigger: Int = 0,
+    onNavigateToSettings: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -219,6 +220,7 @@ fun VentaScreen(
             onClearError = {
                 viewModel.clearOpenShiftError()
             },
+            onNavigateToSettings = onNavigateToSettings,
             modifier = modifier
         )
         return

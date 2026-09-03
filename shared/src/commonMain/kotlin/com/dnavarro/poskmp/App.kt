@@ -617,7 +617,7 @@ fun App(
                                 },
                                 onCheckedChange = {
                                     if (it) {
-                                        navigateTo(AppRoute.Ajustes)
+                                        navigateTo(AppRoute.Ajustes())
                                         reclaimCurrentScreenFocus()
                                     }
                                 }
@@ -1104,7 +1104,10 @@ fun App(
                                             VentaScreen(
                                                 viewModel = koinViewModel<VentaViewModel>(),
                                                 isCompact = isCompact,
-                                                refocusTrigger = ventaRefocusTrigger
+                                                refocusTrigger = ventaRefocusTrigger,
+                                                onNavigateToSettings = {
+                                                    navigateTo(AppRoute.Ajustes(category = com.dnavarro.poskmp.ui.ajustes.AjustesCategory.CAJEROS))
+                                                }
                                             )
                                         }
 
@@ -1141,10 +1144,11 @@ fun App(
                                                 } else null
                                             )
                                         }
-                                        entry<AppRoute.Ajustes> {
+                                        entry<AppRoute.Ajustes> { route ->
                                             AjustesScreen(
                                                 viewModel = ajustesViewModel,
                                                 isCompact = isToolbarNavigation,
+                                                initialCategory = route.category,
                                                 onNavigateToClientes = {
                                                     if (backStack.lastOrNull() != AppRoute.Clientes) {
                                                         backStack.add(AppRoute.Clientes)

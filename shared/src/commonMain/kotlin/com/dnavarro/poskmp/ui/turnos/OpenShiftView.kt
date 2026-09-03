@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -42,24 +44,39 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Cashier
+import com.dnavarro.poskmp.util.isAndroid
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.cashier_label
+import poskmp.shared.generated.resources.go_to_cashier_settings_button
 import poskmp.shared.generated.resources.initial_cash_label
+import poskmp.shared.generated.resources.no_cashiers_prompt_desc
+import poskmp.shared.generated.resources.no_cashiers_prompt_title
 import poskmp.shared.generated.resources.open_shift_button
 import poskmp.shared.generated.resources.open_shift_dialog_subtitle
 import poskmp.shared.generated.resources.open_shift_dialog_title
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.pin_label
 import poskmp.shared.generated.resources.pin_placeholder
+import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.warning
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +87,7 @@ fun OpenShiftView(
     errorMessage: String?,
     onOpenShift: (cashierId: String, pin: String, initialCash: Double) -> Unit,
     onClearError: () -> Unit,
+    onNavigateToSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedCashier by remember(cashiers) { mutableStateOf(cashiers.firstOrNull()) }
@@ -79,9 +97,26 @@ fun OpenShiftView(
 
     val quickAmounts = listOf(0, 200, 500, 1000, 2000)
 
+    val canSubmit = selectedCashier != null && pinText.isNotBlank() && !isOpening
+    val submit = {
+        val cashier = selectedCashier
+        val amount = initialCashText.toDoubleOrNull() ?: 0.0
+        if (cashier != null && canSubmit) {
+            onOpenShift(cashier.id, pinText, amount)
+        }
+    }
+
+    val pinFocusRequester = remember { FocusRequester() }
+
     LaunchedEffect(cashiers) {
         if (selectedCashier == null || !cashiers.any { it.id == selectedCashier?.id }) {
             selectedCashier = cashiers.firstOrNull()
+        }
+        if (!isAndroid() && cashiers.isNotEmpty()) {
+            delay(100.milliseconds)
+            try {
+                pinFocusRequester.requestFocus()
+            } catch (_: Exception) {}
         }
     }
 
@@ -101,17 +136,89 @@ fun OpenShiftView(
         ElevatedCard(
             modifier = Modifier
                 .widthIn(max = 480.dp)
-                .fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge
+                .fillMaxWidth()
+                .onPreviewKeyEvent { keyEvent ->
+                    keyEvent.type == KeyEventType.KeyDown && (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (!isDropdownExpanded && canSubmit) {
+                        submit()
+                        true
+                    } else false
+                },
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+            )
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 32.dp, vertical = 28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
+            if (cashiers.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp, vertical = 36.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = CircleShape,
+                        modifier = Modifier.size(72.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(Res.drawable.person),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.no_cashiers_prompt_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = stringResource(Res.string.no_cashiers_prompt_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    if (onNavigateToSettings != null) {
+                        Button(
+                            onClick = onNavigateToSettings,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.settings),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(Res.string.go_to_cashier_settings_button),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 32.dp, vertical = 28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
                 // Header Icon & Title
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -196,9 +303,21 @@ fun OpenShiftView(
                         label = { Text(stringResource(Res.string.pin_label)) },
                         placeholder = { Text(stringResource(Res.string.pin_placeholder)) },
                         visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.NumberPassword,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (canSubmit) {
+                                    submit()
+                                }
+                            }
+                        ),
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (!isAndroid()) Modifier.focusRequester(pinFocusRequester) else Modifier),
                         shape = MaterialTheme.shapes.medium
                     )
 
@@ -209,7 +328,17 @@ fun OpenShiftView(
                             onValueChange = { initialCashText = it.filter { char -> char.isDigit() || char == '.' } },
                             label = { Text(stringResource(Res.string.initial_cash_label)) },
                             prefix = { Text("$ ", fontWeight = FontWeight.Bold) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    if (canSubmit) {
+                                        submit()
+                                    }
+                                }
+                            ),
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium
@@ -264,14 +393,8 @@ fun OpenShiftView(
 
                 // Botón Iniciar Turno
                 Button(
-                    onClick = {
-                        val cashier = selectedCashier
-                        val amount = initialCashText.toDoubleOrNull() ?: 0.0
-                        if (cashier != null) {
-                            onOpenShift(cashier.id, pinText, amount)
-                        }
-                    },
-                    enabled = selectedCashier != null && pinText.isNotBlank() && !isOpening,
+                    onClick = submit,
+                    enabled = canSubmit,
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
@@ -292,4 +415,5 @@ fun OpenShiftView(
             }
         }
     }
+}
 }

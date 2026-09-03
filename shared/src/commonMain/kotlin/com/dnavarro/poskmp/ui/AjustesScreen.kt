@@ -88,6 +88,7 @@ fun AjustesScreen(
     viewModel: AjustesViewModel,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
+    initialCategory: AjustesCategory? = null,
     onNavigateToClientes: (() -> Unit)? = null,
     onNavigateToVentas: (() -> Unit)? = null,
 ) {
@@ -95,6 +96,7 @@ fun AjustesScreen(
     AjustesScreen(
         modifier = modifier,
         isCompact = isCompact,
+        initialCategory = initialCategory,
         onNavigateToClientes = onNavigateToClientes,
         onNavigateToVentas = onNavigateToVentas,
         useDynamicColor = uiState.useDynamicColor,
@@ -191,6 +193,7 @@ fun AjustesScreen(
 fun AjustesScreen(
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
+    initialCategory: AjustesCategory? = null,
     onNavigateToClientes: (() -> Unit)? = null,
     onNavigateToVentas: (() -> Unit)? = null,
     useDynamicColor: Boolean = isAndroid(),
@@ -293,7 +296,14 @@ fun AjustesScreen(
         scaffoldDirective = scaffoldDirective
     )
 
-    var currentCategory by rememberSaveable { mutableStateOf(AjustesCategory.GENERAL) }
+    var currentCategory by rememberSaveable { mutableStateOf(initialCategory ?: AjustesCategory.GENERAL) }
+
+    LaunchedEffect(initialCategory) {
+        if (initialCategory != null) {
+            currentCategory = initialCategory
+            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, initialCategory)
+        }
+    }
 
     LaunchedEffect(navigator.currentDestination) {
         val destination = navigator.currentDestination

@@ -781,6 +781,9 @@
     <string name="delete_cashier_confirm_button">Eliminar</string>
     <string name="no_cashiers_found">No hay cajeros registrados.</string>
     <string name="cashier_card_pin_masked">PIN: ••••</string>
+    <string name="no_cashiers_prompt_title">No hay cajeros registrados</string>
+    <string name="no_cashiers_prompt_desc">Para poder abrir un turno de caja y comenzar a registrar ventas, primero debes crear una cuenta de cajero en los ajustes.</string>
+    <string name="go_to_cashier_settings_button">Ir a Ajustes de Cajeros</string>
 
     <!-- Filtro de Turnos en VentasScreen -->
     <string name="shift_filter_label">Turno de caja:</string>

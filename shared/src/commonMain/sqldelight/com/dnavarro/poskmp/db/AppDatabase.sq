@@ -33,11 +33,25 @@ selectUnsyncedProducts:
 SELECT * FROM products WHERE sync_state != 'SYNCED';
 
 insertProduct:
-INSERT OR REPLACE INTO products (
+INSERT INTO products (
     id, codigos, nombre, precio, costo, 
     categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery,
     updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    codigos = excluded.codigos,
+    nombre = excluded.nombre,
+    precio = excluded.precio,
+    costo = excluded.costo,
+    categoria = excluded.categoria,
+    activo = excluded.activo,
+    por_peso = excluded.por_peso,
+    precio_mayoreo = excluded.precio_mayoreo,
+    es_favorito = excluded.es_favorito,
+    piezas = excluded.piezas,
+    precio_delivery = excluded.precio_delivery,
+    updated_at = excluded.updated_at,
+    sync_state = excluded.sync_state;
 
 updateProduct:
 UPDATE products
@@ -68,11 +82,25 @@ SET sync_state = ?
 WHERE id = ?;
 
 upsertSyncedProduct:
-INSERT OR REPLACE INTO products (
+INSERT INTO products (
     id, codigos, nombre, precio, costo, 
     categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery,
     updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED')
+ON CONFLICT(id) DO UPDATE SET
+    codigos = excluded.codigos,
+    nombre = excluded.nombre,
+    precio = excluded.precio,
+    costo = excluded.costo,
+    categoria = excluded.categoria,
+    activo = excluded.activo,
+    por_peso = excluded.por_peso,
+    precio_mayoreo = excluded.precio_mayoreo,
+    es_favorito = excluded.es_favorito,
+    piezas = excluded.piezas,
+    precio_delivery = excluded.precio_delivery,
+    updated_at = excluded.updated_at,
+    sync_state = 'SYNCED';
 
 searchProducts:
 SELECT * FROM products 
@@ -204,9 +232,20 @@ updateCustomerSyncState:
 UPDATE customers SET sync_state = ? WHERE id = ?;
 
 upsertSyncedCustomer:
-INSERT OR REPLACE INTO customers (
+INSERT INTO customers (
     id, nombre, telefono, direccion, notas, limite_credito, siempre_mayoreo, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED')
+ON CONFLICT(id) DO UPDATE SET
+    nombre = excluded.nombre,
+    telefono = excluded.telefono,
+    direccion = excluded.direccion,
+    notas = excluded.notas,
+    limite_credito = excluded.limite_credito,
+    siempre_mayoreo = excluded.siempre_mayoreo,
+    activo = excluded.activo,
+    created_at = excluded.created_at,
+    updated_at = excluded.updated_at,
+    sync_state = 'SYNCED';
 
 -- Customer Payments Queries
 
@@ -236,9 +275,16 @@ updateCustomerPaymentSyncState:
 UPDATE customer_payments SET sync_state = ? WHERE id = ?;
 
 upsertSyncedCustomerPayment:
-INSERT OR REPLACE INTO customer_payments (
+INSERT INTO customer_payments (
     id, customer_id, monto, metodo_pago, notas, created_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED');
+) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED')
+ON CONFLICT(id) DO UPDATE SET
+    customer_id = excluded.customer_id,
+    monto = excluded.monto,
+    metodo_pago = excluded.metodo_pago,
+    notas = excluded.notas,
+    created_at = excluded.created_at,
+    sync_state = 'SYNCED';
 
 selectCustomerDebtSummary:
 SELECT 
@@ -326,11 +372,28 @@ updateSaleSyncState:
 UPDATE sales SET sync_state = ? WHERE id = ?;
 
 upsertSyncedSale:
-INSERT OR REPLACE INTO sales (
+INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
     shift_id, cashier_id, cashier_name, estado
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    folio = excluded.folio,
+    total = excluded.total,
+    total_original = excluded.total_original,
+    total_costo = excluded.total_costo,
+    ganancia = excluded.ganancia,
+    pago_con = excluded.pago_con,
+    cambio = excluded.cambio,
+    metodo_pago = excluded.metodo_pago,
+    total_items = excluded.total_items,
+    customer_id = excluded.customer_id,
+    created_at = excluded.created_at,
+    sync_state = 'SYNCED',
+    shift_id = excluded.shift_id,
+    cashier_id = excluded.cashier_id,
+    cashier_name = excluded.cashier_name,
+    estado = excluded.estado;
 
 cancelSale:
 UPDATE sales
@@ -354,10 +417,22 @@ INSERT INTO sale_items (
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 upsertSyncedSaleItem:
-INSERT OR REPLACE INTO sale_items (
+INSERT INTO sale_items (
     id, sale_id, product_id, product_nombre, cantidad,
     precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, es_delivery, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    sale_id = excluded.sale_id,
+    product_id = excluded.product_id,
+    product_nombre = excluded.product_nombre,
+    cantidad = excluded.cantidad,
+    precio_unitario = excluded.precio_unitario,
+    costo_unitario = excluded.costo_unitario,
+    subtotal = excluded.subtotal,
+    ganancia = excluded.ganancia,
+    es_mayoreo = excluded.es_mayoreo,
+    es_delivery = excluded.es_delivery,
+    created_at = excluded.created_at;
 
 getNextFolio:
 SELECT COALESCE(MAX(folio), 0) + 1 AS next_folio FROM sales;
@@ -520,8 +595,11 @@ CREATE TABLE deleted_sync_records (
 );
 
 insertDeletedSyncRecord:
-INSERT OR REPLACE INTO deleted_sync_records (id, entity_type, deleted_at)
-VALUES (?, ?, ?);
+INSERT INTO deleted_sync_records (id, entity_type, deleted_at)
+VALUES (?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    entity_type = excluded.entity_type,
+    deleted_at = excluded.deleted_at;
 
 selectDeletedSyncRecords:
 SELECT * FROM deleted_sync_records;
@@ -599,9 +677,16 @@ countActiveCashiers:
 SELECT COUNT(id) FROM cashiers WHERE activo = 1;
 
 insertCashier:
-INSERT OR REPLACE INTO cashiers (
+INSERT INTO cashiers (
     id, nombre, pin, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+    nombre = excluded.nombre,
+    pin = excluded.pin,
+    activo = excluded.activo,
+    created_at = excluded.created_at,
+    updated_at = excluded.updated_at,
+    sync_state = excluded.sync_state;
 
 updateCashier:
 UPDATE cashiers
@@ -620,9 +705,16 @@ updateCashierSyncState:
 UPDATE cashiers SET sync_state = ? WHERE id = ?;
 
 upsertSyncedCashier:
-INSERT OR REPLACE INTO cashiers (
+INSERT INTO cashiers (
     id, nombre, pin, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED');
+) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED')
+ON CONFLICT(id) DO UPDATE SET
+    nombre = excluded.nombre,
+    pin = excluded.pin,
+    activo = excluded.activo,
+    created_at = excluded.created_at,
+    updated_at = excluded.updated_at,
+    sync_state = 'SYNCED';
 
 deleteAllCashiers:
 DELETE FROM cashiers;

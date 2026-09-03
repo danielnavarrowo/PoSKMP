@@ -88,6 +88,7 @@ sqldelight {
     databases {
         create("AppDatabase") {
             packageName.set("com.dnavarro.poskmp.db")
+            dialect(libs.sqldelight.dialect)
         }
     }
 }

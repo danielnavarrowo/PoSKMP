@@ -32,7 +32,9 @@ import poskmp.shared.generated.resources.settings_cat_ticket_title
 import poskmp.shared.generated.resources.settings_cat_ventas_subtitle
 import poskmp.shared.generated.resources.settings_cat_ventas_title
 import poskmp.shared.generated.resources.sync
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class AjustesCategory(
     val titleRes: StringResource,
     val subtitleRes: StringResource,

@@ -385,14 +385,17 @@ class SyncRepositoryImpl(
             val remotePayments = pulledPaymentsResult.getOrDefault(emptyList())
             queries.transaction {
                 for ((id, customerId, monto, metodoPago, notas, createdAt) in remotePayments) {
-                    queries.upsertSyncedCustomerPayment(
-                        id = id,
-                        customer_id = customerId,
-                        monto = monto,
-                        metodo_pago = metodoPago,
-                        notas = notas,
-                        created_at = createdAt
-                    )
+                    val customerExists = queries.selectCustomerById(customerId).executeAsOneOrNull() != null
+                    if (customerExists) {
+                        queries.upsertSyncedCustomerPayment(
+                            id = id,
+                            customer_id = customerId,
+                            monto = monto,
+                            metodo_pago = metodoPago,
+                            notas = notas,
+                            created_at = createdAt
+                        )
+                    }
                 }
             }
             totalPulled += remotePayments.size
@@ -428,6 +431,11 @@ class SyncRepositoryImpl(
             val remoteSales = pulledSalesResult.getOrDefault(emptyList())
             queries.transaction {
                 for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado) in remoteSales) {
+                    val validCustomerId = if (customerId != null && queries.selectCustomerById(customerId).executeAsOneOrNull() != null) {
+                        customerId
+                    } else {
+                        null
+                    }
                     queries.upsertSyncedSale(
                         id = id,
                         folio = folio,
@@ -439,7 +447,7 @@ class SyncRepositoryImpl(
                         cambio = cambio,
                         metodo_pago = metodoPago,
                         total_items = totalItems,
-                        customer_id = customerId,
+                        customer_id = validCustomerId,
                         created_at = createdAt,
                         shift_id = null,
                         cashier_id = null,
@@ -457,20 +465,23 @@ class SyncRepositoryImpl(
             val remoteItems = pulledItemsResult.getOrDefault(emptyList())
             queries.transaction {
                 for ((id, saleId, productId, productNombre, cantidad, precioUnitario, costoUnitario, subtotal, ganancia, esMayoreo, esDelivery, createdAt) in remoteItems) {
-                    queries.upsertSyncedSaleItem(
-                        id = id,
-                        sale_id = saleId,
-                        product_id = productId,
-                        product_nombre = productNombre,
-                        cantidad = cantidad,
-                        precio_unitario = precioUnitario,
-                        costo_unitario = costoUnitario,
-                        subtotal = subtotal,
-                        ganancia = ganancia,
-                        es_mayoreo = if (esMayoreo) 1L else 0L,
-                        es_delivery = if (esDelivery) 1L else 0L,
-                        created_at = createdAt
-                    )
+                    val saleExists = queries.selectSaleById(saleId).executeAsOneOrNull() != null
+                    if (saleExists) {
+                        queries.upsertSyncedSaleItem(
+                            id = id,
+                            sale_id = saleId,
+                            product_id = productId,
+                            product_nombre = productNombre,
+                            cantidad = cantidad,
+                            precio_unitario = precioUnitario,
+                            costo_unitario = costoUnitario,
+                            subtotal = subtotal,
+                            ganancia = ganancia,
+                            es_mayoreo = if (esMayoreo) 1L else 0L,
+                            es_delivery = if (esDelivery) 1L else 0L,
+                            created_at = createdAt
+                        )
+                    }
                 }
             }
 

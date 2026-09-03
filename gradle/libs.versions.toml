@@ -1,6 +1,6 @@
 [versions]
-app-version = "1.0.7"
-app-versionCode = "40"
+app-version = "1.0.8"
+app-versionCode = "41"
 agp = "9.5.0-alpha04"
 android-compileSdk = "37"
 android-minSdk = "31"
@@ -52,6 +52,7 @@ material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "m
 sqldelight-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-dialect = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqldelight" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCore" }
 androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "cameraCore" }

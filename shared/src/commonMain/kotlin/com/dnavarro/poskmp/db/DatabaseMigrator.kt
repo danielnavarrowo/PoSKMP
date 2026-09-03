@@ -179,19 +179,6 @@ object DatabaseMigrator {
         // Migrate sale_items columns
         ensureColumnExists(driver, "sale_items", "es_delivery", "INTEGER NOT NULL DEFAULT 0")
 
-        // Ensure default cashier
-        try {
-            driver.execute(
-                null,
-                """
-                INSERT INTO cashiers (id, nombre, pin, activo, created_at, updated_at, sync_state)
-                SELECT 'default-cashier-001', 'Cajero Principal', '0000', 1, 0, 0, 'PENDING_INSERT'
-                WHERE NOT EXISTS (SELECT 1 FROM cashiers);
-                """.trimIndent(),
-                0
-            )
-        } catch (_: Exception) {}
-
         // Indexes
         val indexStatements = listOf(
             "CREATE INDEX IF NOT EXISTS idx_products_activo ON products(activo)",
