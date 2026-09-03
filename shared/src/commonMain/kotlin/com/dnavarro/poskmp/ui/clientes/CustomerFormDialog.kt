@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -97,7 +99,10 @@ fun CustomerFormDialog(
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        modifier = Modifier.then(
+        modifier = Modifier
+            .widthIn(max = 500.dp)
+            .fillMaxWidth()
+            .then(
             if (!isAndroid()) {
                 Modifier
                     .focusable()
@@ -112,7 +117,7 @@ fun CustomerFormDialog(
                     }
             } else Modifier
         ),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = ShapeDefaults.cardShape,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
             Text(

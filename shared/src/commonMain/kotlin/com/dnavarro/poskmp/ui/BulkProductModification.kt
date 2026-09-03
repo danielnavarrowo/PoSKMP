@@ -25,7 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.roundPrice
 import kotlinx.coroutines.delay
@@ -360,7 +362,11 @@ fun BulkProductModificationDialog(
                 onDismiss()
             }
         },
-        modifier = Modifier.then(
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier
+            .widthIn(min = 340.dp, max = 560.dp)
+            .fillMaxWidth(0.92f)
+            .then(
             if (!isAndroid()) {
                 Modifier
                     .focusable()
@@ -378,7 +384,9 @@ fun BulkProductModificationDialog(
                     }
             } else Modifier
         ),
-        title = { Text(stringResource(operation.titleRes)) },
+        shape = ShapeDefaults.cardShape,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        title = { Text(stringResource(operation.titleRes), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(

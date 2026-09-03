@@ -34,14 +34,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -146,10 +144,6 @@ import poskmp.shared.generated.resources.checkout_field_efectivo
 import poskmp.shared.generated.resources.checkout_field_tarjeta
 import poskmp.shared.generated.resources.checkout_field_transferencia
 import poskmp.shared.generated.resources.checkout_missing_to_cover_label
-import poskmp.shared.generated.resources.transfer_info_title
-import poskmp.shared.generated.resources.transfer_clabe_label
-import poskmp.shared.generated.resources.transfer_beneficiary_label
-import poskmp.shared.generated.resources.transfer_no_data_configured
 import poskmp.shared.generated.resources.checkout_pay_and_print_button
 import poskmp.shared.generated.resources.checkout_pay_and_print_button_desktop
 import poskmp.shared.generated.resources.checkout_pay_without_print_button
@@ -186,6 +180,10 @@ import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
 import poskmp.shared.generated.resources.total_to_pay_label
+import poskmp.shared.generated.resources.transfer_beneficiary_label
+import poskmp.shared.generated.resources.transfer_clabe_label
+import poskmp.shared.generated.resources.transfer_info_title
+import poskmp.shared.generated.resources.transfer_no_data_configured
 import poskmp.shared.generated.resources.unit_price_label
 import poskmp.shared.generated.resources.unregistered_name_placeholder
 import poskmp.shared.generated.resources.weight_kg_label
@@ -199,7 +197,7 @@ data class CartItem(
 )
 
 @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VentaScreen(
     viewModel: VentaViewModel,
@@ -1018,24 +1016,25 @@ fun VentaScreen(
         }
 
 
-        BasicAlertDialog(
+        AlertDialog(
             onDismissRequest = { showWeightDialogForProduct = null },
-            modifier = Modifier.background(
-                MaterialTheme.colorScheme.surfaceContainerLowest, ShapeDefaults.cardShape
-            )
-            .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown && 
-                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                ) {
-                    val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
-                    addProductToCart(product, weight)
-                    showWeightDialogForProduct = null
-                    true
-                } else false
-            }
-            .padding(20.dp),
-            content = {
-                Column(modifier = Modifier.fillMaxWidth()) {
+            modifier = Modifier
+                .widthIn(max = if (isCompact) 420.dp else 560.dp)
+                .fillMaxWidth()
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown && 
+                        (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                    ) {
+                        val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
+                        addProductToCart(product, weight)
+                        showWeightDialogForProduct = null
+                        true
+                    } else false
+                },
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            title = {
+                Column {
                     Text(
                         text = stringResource(Res.string.quantity_prompt_title, product.nombre),
                         fontSize = 20.sp,
@@ -1049,9 +1048,10 @@ fun VentaScreen(
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     val inputFieldsContent = @Composable {
                         // Left Column: Weight
                         Column(modifier = if (isCompact) Modifier.fillMaxWidth() else Modifier.weight(1f)) {
@@ -1240,37 +1240,31 @@ fun VentaScreen(
                             inputFieldsContent()
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    )
-                    {
-
-                        OutlinedButton(
-                            onClick = { showWeightDialogForProduct = null },
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            shape = MaterialTheme.shapes.small,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
-                        ) {
-                            Text(stringResource(Res.string.cancel), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Button(
-                            onClick = {
-                                val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
-                                addProductToCart(product, weight)
-                                showWeightDialogForProduct = null
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = MaterialTheme.shapes.small,
-                        ) {
-                            Text(stringResource(Res.string.add_button), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        }
-
-                    }
                 }
             },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
+                        addProductToCart(product, weight)
+                        showWeightDialogForProduct = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Text(stringResource(Res.string.add_button), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showWeightDialogForProduct = null },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    shape = MaterialTheme.shapes.small,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                ) {
+                    Text(stringResource(Res.string.cancel), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
         )
     }
 
@@ -1348,7 +1342,10 @@ fun VentaScreen(
 
         AlertDialog(
             onDismissRequest = { showCheckoutDialog = false },
-            modifier = Modifier.then(
+            modifier = Modifier
+                .widthIn(max = 520.dp)
+                .fillMaxWidth()
+                .then(
                 if (!isAndroid()) {
                     Modifier
                         .focusable()
@@ -1379,7 +1376,7 @@ fun VentaScreen(
                         }
                 } else Modifier
             ),
-            shape = MaterialTheme.shapes.large,
+            shape = ShapeDefaults.cardShape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = { Text(stringResource(Res.string.checkout_sale_title), fontWeight = FontWeight.Bold) },
             text = {
@@ -1971,7 +1968,10 @@ fun VentaScreen(
 
         AlertDialog(
             onDismissRequest = { showUnregisteredDialog = false },
-            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+            modifier = Modifier
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown && 
                     (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
                 ) {
@@ -2006,7 +2006,7 @@ fun VentaScreen(
                     } else false
                 } else false
             },
-            shape = MaterialTheme.shapes.large,
+            shape = ShapeDefaults.cardShape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
                 Text(

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -39,6 +40,7 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -971,7 +973,10 @@ fun VentasScreen(
             onDismissRequest = {
                 if (!state.isCancellingSale) onDismissCancelSaleDialog()
             },
-            modifier = Modifier.then(
+            modifier = Modifier
+                .widthIn(max = 440.dp)
+                .fillMaxWidth()
+                .then(
                 if (!isAndroid()) {
                     Modifier
                         .focusable()
@@ -988,6 +993,8 @@ fun VentasScreen(
                         }
                 } else Modifier
             ),
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
                 Text(
                     text = stringResource(Res.string.cancel_sale_confirm_title),
@@ -1119,6 +1126,8 @@ private fun DateRangePickerDialog(
 
     DatePickerDialog(
         onDismissRequest = onDismissRequest,
+        shape = ShapeDefaults.cardShape,
+        colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         modifier = Modifier.then(
             if (!isAndroid()) {
                 Modifier
@@ -1530,7 +1539,10 @@ private fun SaleDetailDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.then(
+        modifier = Modifier
+            .widthIn(max = 580.dp)
+            .fillMaxWidth()
+            .then(
             if (!isAndroid()) {
                 Modifier
                     .focusable()
@@ -1546,6 +1558,8 @@ private fun SaleDetailDialog(
                     }
             } else Modifier
         ),
+        shape = ShapeDefaults.cardShape,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -105,6 +106,7 @@ fun AccountStatementDialog(
     ) {
         Surface(
             modifier = Modifier
+                .widthIn(max = 920.dp)
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.88f)
                 .then(
@@ -257,7 +259,10 @@ fun AccountStatementDialog(
 
         AlertDialog(
             onDismissRequest = { paymentToDelete = null },
-            modifier = Modifier.then(
+            modifier = Modifier
+                .widthIn(max = 440.dp)
+                .fillMaxWidth()
+                .then(
                 if (!isAndroid()) {
                     Modifier
                         .focusable()
@@ -273,7 +278,7 @@ fun AccountStatementDialog(
                         }
                 } else Modifier
             ),
-            shape = MaterialTheme.shapes.large,
+            shape = ShapeDefaults.cardShape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
                 Text(

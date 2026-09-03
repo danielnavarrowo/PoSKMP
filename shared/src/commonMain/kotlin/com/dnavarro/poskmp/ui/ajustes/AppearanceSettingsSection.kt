@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonGroupDefaults
@@ -622,6 +624,9 @@ fun AppearanceSettingsSection(
     styleForDescriptionDialog?.let { style ->
         AlertDialog(
             onDismissRequest = { styleForDescriptionDialog = null },
+            modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth(),
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             icon = {
                 Icon(
                     painter = painterResource(Res.drawable.info),

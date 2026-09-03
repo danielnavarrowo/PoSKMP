@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -135,10 +137,11 @@ fun ImportProductsDialog(
     Dialog(onDismissRequest = { if (!isProcessing) onDismiss() }) {
         Card(
             modifier = Modifier
+                .widthIn(max = if (currentStep == 2) 980.dp else 680.dp)
                 .fillMaxWidth(if (currentStep == 2) 0.95f else 0.85f)
                 .wrapContentHeight()
                 .padding(16.dp),
-            shape = MaterialTheme.shapes.large,
+            shape = ShapeDefaults.cardShape,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {

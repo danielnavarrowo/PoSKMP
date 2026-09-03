@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
@@ -414,6 +416,9 @@ fun AboutSettingsSection(
                     onDismissUpdateResult()
                 }
             },
+            modifier = Modifier.widthIn(max = 500.dp).fillMaxWidth(),
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
                 Text(
                     text = stringResource(

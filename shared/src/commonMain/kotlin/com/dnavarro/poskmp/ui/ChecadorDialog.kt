@@ -17,11 +17,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +29,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -542,7 +545,6 @@ fun ChecadorContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChecadorDialog(
     showDialog: Boolean,
@@ -560,23 +562,28 @@ fun ChecadorDialog(
             showExtraPrices = showExtraPrices
         )
     } else {
-        BasicAlertDialog(
+        Dialog(
             onDismissRequest = onDismiss,
-            modifier = Modifier
-                .background(
-                    MaterialTheme.colorScheme.surfaceContainerLowest, ShapeDefaults.cardShape
-                )
-                .padding(24.dp)
-                .fillMaxWidth(),
-            content = {
-                ChecadorContent(
-                    repository = repository,
-                    onClose = onDismiss,
-                    showHeaderTitle = true,
-                    showExtraPrices = showExtraPrices
-                )
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .widthIn(min = 360.dp, max = 800.dp)
+                    .fillMaxWidth(0.92f),
+                shape = ShapeDefaults.cardShape,
+                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                tonalElevation = 6.dp
+            ) {
+                Box(modifier = Modifier.padding(24.dp)) {
+                    ChecadorContent(
+                        repository = repository,
+                        onClose = onDismiss,
+                        showHeaderTitle = true,
+                        showExtraPrices = showExtraPrices
+                    )
+                }
             }
-        )
+        }
     }
 }
 

@@ -33,7 +33,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -1195,6 +1197,9 @@ fun App(
 
                         AlertDialog(
                             onDismissRequest = {},
+                            modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth(),
+                            shape = ShapeDefaults.cardShape,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                             title = {
                                 Text(
                                     text = titleText,
