@@ -19,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -124,16 +123,22 @@ fun AjustesScreen(
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
         onDefaultWholesaleMarginChange = { viewModel.setDefaultWholesaleMargin(it) },
+        defaultDeliveryMargin = uiState.defaultDeliveryMargin,
+        onDefaultDeliveryMarginChange = { viewModel.setDefaultDeliveryMargin(it) },
         isRoundingEnabled = uiState.isRoundingEnabled,
         onIsRoundingEnabledChange = { viewModel.setIsRoundingEnabled(it) },
         roundRetailPrice = uiState.roundRetailPrice,
         onRoundRetailPriceChange = { viewModel.setRoundRetailPrice(it) },
         roundWholesalePrice = uiState.roundWholesalePrice,
         onRoundWholesalePriceChange = { viewModel.setRoundWholesalePrice(it) },
+        roundDeliveryPrice = uiState.roundDeliveryPrice,
+        onRoundDeliveryPriceChange = { viewModel.setRoundDeliveryPrice(it) },
         roundTicketTotal = uiState.roundTicketTotal,
         onRoundTicketTotalChange = { viewModel.setRoundTicketTotal(it) },
         disallowCardPaymentOnWholesale = uiState.disallowCardPaymentOnWholesale,
         onDisallowCardPaymentOnWholesaleChange = { viewModel.setDisallowCardPaymentOnWholesale(it) },
+        prioritizeDeliveryPrice = uiState.prioritizeDeliveryPrice,
+        onPrioritizeDeliveryPriceChange = { viewModel.setPrioritizeDeliveryPrice(it) },
         receiptSettings = uiState.receiptSettings,
         onReceiptSettingsChange = { viewModel.setReceiptSettings(it) },
         supabaseUrl = uiState.supabaseUrl,
@@ -181,7 +186,7 @@ fun AjustesScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun AjustesScreen(
     modifier: Modifier = Modifier,
@@ -214,16 +219,22 @@ fun AjustesScreen(
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
     onDefaultWholesaleMarginChange: (Double) -> Unit = {},
+    defaultDeliveryMargin: Double = 0.0,
+    onDefaultDeliveryMarginChange: (Double) -> Unit = {},
     isRoundingEnabled: Boolean = false,
     onIsRoundingEnabledChange: (Boolean) -> Unit = {},
     roundRetailPrice: Boolean = false,
     onRoundRetailPriceChange: (Boolean) -> Unit = {},
     roundWholesalePrice: Boolean = false,
     onRoundWholesalePriceChange: (Boolean) -> Unit = {},
+    roundDeliveryPrice: Boolean = false,
+    onRoundDeliveryPriceChange: (Boolean) -> Unit = {},
     roundTicketTotal: Boolean = false,
     onRoundTicketTotalChange: (Boolean) -> Unit = {},
     disallowCardPaymentOnWholesale: Boolean = false,
     onDisallowCardPaymentOnWholesaleChange: (Boolean) -> Unit = {},
+    prioritizeDeliveryPrice: Boolean = false,
+    onPrioritizeDeliveryPriceChange: (Boolean) -> Unit = {},
     receiptSettings: ReceiptSettings = ReceiptSettings(),
     onReceiptSettingsChange: (ReceiptSettings) -> Unit = {},
     supabaseUrl: String = "",
@@ -563,16 +574,22 @@ fun AjustesScreen(
                                     onDefaultRetailMarginChange = onDefaultRetailMarginChange,
                                     defaultWholesaleMargin = defaultWholesaleMargin,
                                     onDefaultWholesaleMarginChange = onDefaultWholesaleMarginChange,
+                                    defaultDeliveryMargin = defaultDeliveryMargin,
+                                    onDefaultDeliveryMarginChange = onDefaultDeliveryMarginChange,
                                     isRoundingEnabled = isRoundingEnabled,
                                     onIsRoundingEnabledChange = onIsRoundingEnabledChange,
                                     roundRetailPrice = roundRetailPrice,
                                     onRoundRetailPriceChange = onRoundRetailPriceChange,
                                     roundWholesalePrice = roundWholesalePrice,
                                     onRoundWholesalePriceChange = onRoundWholesalePriceChange,
+                                    roundDeliveryPrice = roundDeliveryPrice,
+                                    onRoundDeliveryPriceChange = onRoundDeliveryPriceChange,
                                     roundTicketTotal = roundTicketTotal,
                                     onRoundTicketTotalChange = onRoundTicketTotalChange,
                                     disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
-                                    onDisallowCardPaymentOnWholesaleChange = onDisallowCardPaymentOnWholesaleChange
+                                    onDisallowCardPaymentOnWholesaleChange = onDisallowCardPaymentOnWholesaleChange,
+                                    prioritizeDeliveryPrice = prioritizeDeliveryPrice,
+                                    onPrioritizeDeliveryPriceChange = onPrioritizeDeliveryPriceChange
                                 )
                             }
 

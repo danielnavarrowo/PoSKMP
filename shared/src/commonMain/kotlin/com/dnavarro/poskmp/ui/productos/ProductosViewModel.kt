@@ -10,10 +10,13 @@ import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.BulkProductModification
 import com.dnavarro.poskmp.ui.BulkProductOperation
+import com.dnavarro.poskmp.ui.BulkProgressState
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,10 +29,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
-import kotlinx.coroutines.Dispatchers
+import com.dnavarro.poskmp.domain.model.ProductSalesStats
 
 private data class DisplayState(
     val sortField: ProductSortField = ProductSortField.NOMBRE,
@@ -37,14 +41,29 @@ private data class DisplayState(
     val selectedCategory: String? = null,
     val favoriteFilter: FavoriteFilterOption = FavoriteFilterOption.ALL,
     val statusFilter: StatusFilterOption = StatusFilterOption.ALL,
-    val visibleColumns: Set<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMNS,
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
-    val selectedProductIds: Set<String> = emptySet()
+    val selectedProductIds: Set<String> = emptySet(),
+    val bulkModificationProgress: BulkProgressState? = null
 )
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
-private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
+
+private data class ProductSettingsConfig(
+    val defaultRetailMargin: Double,
+    val defaultWholesaleMargin: Double,
+    val defaultDeliveryMargin: Double,
+    val isRoundingEnabled: Boolean,
+    val roundRetailPrice: Boolean,
+    val roundWholesalePrice: Boolean,
+    val roundDeliveryPrice: Boolean
+)
+
+private data class ProductExtraState(
+    val visibleColumns: Set<ProductTableColumn>,
+    val salesStats: Map<String, ProductSalesStats>,
+    val syncState: SyncStateEnum
+)
 
 /**
  * ViewModel for Productos screen, hosting state and handling UI events according to Google UI & Domain Layer architecture.
@@ -52,7 +71,7 @@ private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D,
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class ProductosViewModel(
     private val repository: ProductRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
     private val applyBulkModificationUseCase: ApplyBulkModificationUseCase = ApplyBulkModificationUseCase(repository),
@@ -62,6 +81,18 @@ class ProductosViewModel(
     private val _searchQuery = MutableStateFlow("")
     private val _displayState = MutableStateFlow(DisplayState())
 
+    private val _visibleColumnsFlow: Flow<Set<ProductTableColumn>> =
+        settingsRepository.productTableVisibleColumnsFlow.map { savedNames ->
+            val parsed = savedNames.mapNotNull { name ->
+                try {
+                    ProductTableColumn.valueOf(name)
+                } catch (_: Exception) {
+                    null
+                }
+            }.toSet()
+            parsed.ifEmpty { DEFAULT_PRODUCT_TABLE_COLUMNS }
+        }.distinctUntilChanged()
+
     private val _debouncedSearchQuery = _searchQuery.debounce { query ->
         if (query.isEmpty()) 0L else 300L
     }
@@ -70,9 +101,9 @@ class ProductosViewModel(
         getProductsUseCase(query = query, activeOnly = false)
     }
 
-    private val _needsSalesStats = _displayState.map { display ->
-        display.visibleColumns.contains(ProductTableColumn.VENTAS_TOTALES) ||
-            display.visibleColumns.contains(ProductTableColumn.ULTIMA_VENTA) ||
+    private val _needsSalesStats = combine(_displayState, _visibleColumnsFlow) { display, visibleCols ->
+        visibleCols.contains(ProductTableColumn.VENTAS_TOTALES) ||
+            visibleCols.contains(ProductTableColumn.ULTIMA_VENTA) ||
             display.sortField == ProductSortField.VENTAS_TOTALES ||
             display.sortField == ProductSortField.ULTIMA_VENTA
     }.distinctUntilChanged()
@@ -89,42 +120,66 @@ class ProductosViewModel(
         combine(
             _searchQuery,
             _productsFlow,
-            _displayState,
-            settingsRepository.defaultRetailMarginFlow,
-            settingsRepository.defaultWholesaleMarginFlow
-        ) { query, products, display, defaultRetailMargin, defaultWholesaleMargin ->
-            Tuple5(query, products, display, defaultRetailMargin, defaultWholesaleMargin)
+            _displayState
+        ) { query, products, display ->
+            Triple(query, products, display)
         },
         combine(
-            settingsRepository.isRoundingEnabledFlow,
-            settingsRepository.roundRetailPriceFlow,
-            settingsRepository.roundWholesalePriceFlow,
-            _salesStatsFlow
-        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, salesStats ->
-            Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, salesStats)
+            _visibleColumnsFlow,
+            _salesStatsFlow,
+            syncRepository.syncState
+        ) { visibleColumns, salesStats, syncState ->
+            ProductExtraState(visibleColumns, salesStats, syncState)
         },
-        syncRepository.syncState
-    ) { (query, products, display, defaultRetailMargin, defaultWholesaleMargin),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, salesStats),
-        syncState ->
+        combine(
+            combine(
+                settingsRepository.defaultRetailMarginFlow,
+                settingsRepository.defaultWholesaleMarginFlow,
+                settingsRepository.defaultDeliveryMarginFlow
+            ) { retailMargin, wholesaleMargin, deliveryMargin ->
+                Triple(retailMargin, wholesaleMargin, deliveryMargin)
+            },
+            combine(
+                settingsRepository.isRoundingEnabledFlow,
+                settingsRepository.roundRetailPriceFlow,
+                settingsRepository.roundWholesalePriceFlow,
+                settingsRepository.roundDeliveryPriceFlow
+            ) { isRounding, roundRetail, roundWholesale, roundDelivery ->
+                Tuple4(isRounding, roundRetail, roundWholesale, roundDelivery)
+            }
+        ) { (retailMargin, wholesaleMargin, deliveryMargin), (isRounding, roundRetail, roundWholesale, roundDelivery) ->
+            ProductSettingsConfig(
+                defaultRetailMargin = retailMargin,
+                defaultWholesaleMargin = wholesaleMargin,
+                defaultDeliveryMargin = deliveryMargin,
+                isRoundingEnabled = isRounding,
+                roundRetailPrice = roundRetail,
+                roundWholesalePrice = roundWholesale,
+                roundDeliveryPrice = roundDelivery
+            )
+        }
+    ) { (query, products, display), extra, settings ->
         ProductosUiState(
             searchQuery = query,
             rawProducts = products,
-            salesStats = salesStats,
+            salesStats = extra.salesStats,
             sortField = display.sortField,
             sortOrder = display.sortOrder,
             selectedCategory = display.selectedCategory,
             favoriteFilter = display.favoriteFilter,
             statusFilter = display.statusFilter,
-            visibleColumns = display.visibleColumns,
+            visibleColumns = extra.visibleColumns,
             showProductDialogFor = display.showProductDialogFor,
             showBulkModificationFor = display.showBulkModificationFor,
             selectedProductIds = display.selectedProductIds,
-            defaultRetailMargin = defaultRetailMargin,
-            defaultWholesaleMargin = defaultWholesaleMargin,
-            roundRetailPrice = isRoundingEnabled && roundRetailPrice,
-            roundWholesalePrice = isRoundingEnabled && roundWholesalePrice,
-            isSyncing = syncState == SyncStateEnum.SYNCING
+            bulkModificationProgress = display.bulkModificationProgress,
+            defaultRetailMargin = settings.defaultRetailMargin,
+            defaultWholesaleMargin = settings.defaultWholesaleMargin,
+            defaultDeliveryMargin = settings.defaultDeliveryMargin,
+            roundRetailPrice = settings.isRoundingEnabled && settings.roundRetailPrice,
+            roundWholesalePrice = settings.isRoundingEnabled && settings.roundWholesalePrice,
+            roundDeliveryPrice = settings.isRoundingEnabled && settings.roundDeliveryPrice,
+            isSyncing = extra.syncState == SyncStateEnum.SYNCING
         )
     }.stateIn(
         scope = viewModelScope,
@@ -157,14 +212,11 @@ class ProductosViewModel(
     }
 
     fun onToggleColumn(column: ProductTableColumn) {
-        _displayState.update { state ->
-            val current = state.visibleColumns
-            val updated = if (current.contains(column)) {
-                if (current.size > 1) current - column else current
-            } else {
-                current + column
-            }
-            state.copy(visibleColumns = updated)
+        viewModelScope.launch {
+            settingsRepository.toggleProductTableColumn(
+                columnName = column.name,
+                defaultColumns = DEFAULT_PRODUCT_TABLE_COLUMNS.map { it.name }.toSet()
+            )
         }
     }
 
@@ -189,7 +241,12 @@ class ProductosViewModel(
     }
 
     fun onShowBulkModificationDialog(op: BulkProductOperation?) {
-        _displayState.update { it.copy(showBulkModificationFor = op) }
+        _displayState.update {
+            it.copy(
+                showBulkModificationFor = op,
+                bulkModificationProgress = if (op == null) null else it.bulkModificationProgress
+            )
+        }
     }
 
     fun onToggleSelectProduct(productId: String) {
@@ -230,12 +287,44 @@ class ProductosViewModel(
     }
 
     fun applyBulkModification(modification: BulkProductModification) {
+        val state = uiState.value
+        val selectedIds = _displayState.value.selectedProductIds
+        val total = selectedIds.size
         viewModelScope.launch {
-            applyBulkModificationUseCase(_displayState.value.selectedProductIds, modification)
+            _displayState.update {
+                it.copy(
+                    bulkModificationProgress = BulkProgressState(
+                        operation = modification.operation,
+                        current = 0,
+                        total = total
+                    )
+                )
+            }
+            withContext(Dispatchers.IO) {
+                applyBulkModificationUseCase(
+                    selectedIds = selectedIds,
+                    modification = modification,
+                    roundRetailPrice = state.roundRetailPrice,
+                    roundWholesalePrice = state.roundWholesalePrice,
+                    roundDeliveryPrice = state.roundDeliveryPrice,
+                    onProgress = { current, count ->
+                        _displayState.update {
+                            it.copy(
+                                bulkModificationProgress = BulkProgressState(
+                                    operation = modification.operation,
+                                    current = current,
+                                    total = count
+                                )
+                            )
+                        }
+                    }
+                )
+            }
             _displayState.update {
                 it.copy(
                     selectedProductIds = emptySet(),
-                    showBulkModificationFor = null
+                    showBulkModificationFor = null,
+                    bulkModificationProgress = null
                 )
             }
             launch(Dispatchers.IO) {

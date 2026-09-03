@@ -38,7 +38,8 @@ data class ReceiptItem(
     val subtotal: Double,
     val isWeightBased: Boolean = false,
     val originalUnitPrice: Double = unitPrice,
-    val isWholesale: Boolean = false
+    val isWholesale: Boolean = false,
+    val isDelivery: Boolean = false
 )
 
 enum class ReceiptAlignment {

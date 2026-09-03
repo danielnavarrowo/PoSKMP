@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.model.DEFAULT_PAPER_WIDTH_MM
@@ -24,6 +25,14 @@ import kotlinx.coroutines.flow.map
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+
+val DEFAULT_PRODUCT_TABLE_COLUMN_NAMES: Set<String> = setOf(
+    "NOMBRE",
+    "CATEGORIA",
+    "PRECIO",
+    "COSTO",
+    "MAYOREO"
+)
 
 /**
  * Interface defining settings data operations.
@@ -42,11 +51,15 @@ interface SettingsRepository {
     val swapVentaLayoutOrderFlow: Flow<Boolean>
     val defaultRetailMarginFlow: Flow<Double>
     val defaultWholesaleMarginFlow: Flow<Double>
+    val defaultDeliveryMarginFlow: Flow<Double>
     val isRoundingEnabledFlow: Flow<Boolean>
     val roundRetailPriceFlow: Flow<Boolean>
     val roundWholesalePriceFlow: Flow<Boolean>
+    val roundDeliveryPriceFlow: Flow<Boolean>
     val roundTicketTotalFlow: Flow<Boolean>
     val disallowCardPaymentOnWholesaleFlow: Flow<Boolean>
+    val prioritizeDeliveryPriceFlow: Flow<Boolean>
+    val productTableVisibleColumnsFlow: Flow<Set<String>>
     val supabaseUrlFlow: Flow<String>
     val supabaseKeyFlow: Flow<String>
     val lastSyncTimestampFlow: Flow<Long>
@@ -70,17 +83,24 @@ interface SettingsRepository {
     suspend fun setSwapVentaLayoutOrder(swap: Boolean)
     suspend fun setDefaultRetailMargin(margin: Double)
     suspend fun setDefaultWholesaleMargin(margin: Double)
+    suspend fun setDefaultDeliveryMargin(margin: Double)
     suspend fun setIsRoundingEnabled(enabled: Boolean)
     suspend fun setRoundRetailPrice(enabled: Boolean)
     suspend fun setRoundWholesalePrice(enabled: Boolean)
+    suspend fun setRoundDeliveryPrice(enabled: Boolean)
     suspend fun setRoundTicketTotal(enabled: Boolean)
     suspend fun setDisallowCardPaymentOnWholesale(disallow: Boolean)
+    suspend fun setPrioritizeDeliveryPrice(prioritize: Boolean)
+    suspend fun setProductTableVisibleColumns(columns: Set<String>)
+    suspend fun toggleProductTableColumn(columnName: String, defaultColumns: Set<String> = DEFAULT_PRODUCT_TABLE_COLUMN_NAMES)
     suspend fun setBusinessSettings(
         defaultRetailMargin: Double,
         defaultWholesaleMargin: Double,
+        defaultDeliveryMargin: Double = 0.0,
         isRoundingEnabled: Boolean,
         roundRetailPrice: Boolean,
         roundWholesalePrice: Boolean,
+        roundDeliveryPrice: Boolean = false,
         roundTicketTotal: Boolean,
         disallowCardPaymentOnWholesale: Boolean = false,
         storeName: String = "",
@@ -124,11 +144,14 @@ class SettingsRepositoryImpl(
         val SWAP_VENTA_LAYOUT_ORDER = booleanPreferencesKey("swap_venta_layout_order")
         val DEFAULT_RETAIL_MARGIN = doublePreferencesKey("default_retail_margin_percentage")
         val DEFAULT_WHOLESALE_MARGIN = doublePreferencesKey("default_wholesale_margin_percentage")
+        val DEFAULT_DELIVERY_MARGIN = doublePreferencesKey("default_delivery_margin_percentage")
         val IS_ROUNDING_ENABLED = booleanPreferencesKey("is_rounding_enabled")
         val ROUND_RETAIL_PRICE = booleanPreferencesKey("round_retail_price")
         val ROUND_WHOLESALE_PRICE = booleanPreferencesKey("round_wholesale_price")
+        val ROUND_DELIVERY_PRICE = booleanPreferencesKey("round_delivery_price")
         val ROUND_TICKET_TOTAL = booleanPreferencesKey("round_ticket_total")
         val DISALLOW_CARD_PAYMENT_ON_WHOLESALE = booleanPreferencesKey("disallow_card_payment_on_wholesale")
+        val PRIORITIZE_DELIVERY_PRICE = booleanPreferencesKey("prioritize_delivery_price")
         val SUPABASE_URL = stringPreferencesKey("supabase_url")
         val SUPABASE_KEY = stringPreferencesKey("supabase_key")
         val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
@@ -150,6 +173,7 @@ class SettingsRepositoryImpl(
         val RECEIPT_FOOTER = stringPreferencesKey("receipt_footer")
         val OPEN_CASH_DRAWER_ON_RECEIPT = booleanPreferencesKey("open_cash_drawer_on_receipt")
         val OPEN_CASH_DRAWER_ON_CASH_SALE = booleanPreferencesKey("open_cash_drawer_on_cash_sale")
+        val PRODUCT_TABLE_VISIBLE_COLUMNS = stringSetPreferencesKey("product_table_visible_columns")
     }
 
     override val businessSettingsUpdatedAtFlow: Flow<Long> = dataStore.data.map { preferences ->
@@ -225,6 +249,10 @@ class SettingsRepositoryImpl(
         preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] ?: 0.0
     }
 
+    override val defaultDeliveryMarginFlow: Flow<Double> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.DEFAULT_DELIVERY_MARGIN] ?: 0.0
+    }
+
     override val isRoundingEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.IS_ROUNDING_ENABLED] ?: false
     }
@@ -237,12 +265,25 @@ class SettingsRepositoryImpl(
         preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] ?: false
     }
 
+    override val roundDeliveryPriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] ?: false
+    }
+
     override val roundTicketTotalFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.ROUND_TICKET_TOTAL] ?: false
     }
 
     override val disallowCardPaymentOnWholesaleFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.DISALLOW_CARD_PAYMENT_ON_WHOLESALE] ?: false
+    }
+
+    override val prioritizeDeliveryPriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.PRIORITIZE_DELIVERY_PRICE] ?: false
+    }
+
+    override val productTableVisibleColumnsFlow: Flow<Set<String>> = dataStore.data.map { preferences ->
+        val saved = preferences[PreferenceKeys.PRODUCT_TABLE_VISIBLE_COLUMNS]
+        if (saved.isNullOrEmpty()) DEFAULT_PRODUCT_TABLE_COLUMN_NAMES else saved
     }
 
     override val supabaseUrlFlow: Flow<String> = dataStore.data.map { preferences ->
@@ -400,6 +441,13 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override suspend fun setDefaultDeliveryMargin(margin: Double) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DEFAULT_DELIVERY_MARGIN] = margin
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
+        }
+    }
+
     override suspend fun setIsRoundingEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.IS_ROUNDING_ENABLED] = enabled
@@ -421,6 +469,13 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override suspend fun setRoundDeliveryPrice(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] = enabled
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
+        }
+    }
+
     override suspend fun setRoundTicketTotal(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = enabled
@@ -435,12 +490,39 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override suspend fun setPrioritizeDeliveryPrice(prioritize: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.PRIORITIZE_DELIVERY_PRICE] = prioritize
+        }
+    }
+
+    override suspend fun setProductTableVisibleColumns(columns: Set<String>) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.PRODUCT_TABLE_VISIBLE_COLUMNS] = columns
+        }
+    }
+
+    override suspend fun toggleProductTableColumn(columnName: String, defaultColumns: Set<String>) {
+        dataStore.edit { preferences ->
+            val saved = preferences[PreferenceKeys.PRODUCT_TABLE_VISIBLE_COLUMNS]
+            val current = if (saved.isNullOrEmpty()) defaultColumns else saved
+            val updated = if (current.contains(columnName)) {
+                if (current.size > 1) current - columnName else current
+            } else {
+                current + columnName
+            }
+            preferences[PreferenceKeys.PRODUCT_TABLE_VISIBLE_COLUMNS] = updated
+        }
+    }
+
     override suspend fun setBusinessSettings(
         defaultRetailMargin: Double,
         defaultWholesaleMargin: Double,
+        defaultDeliveryMargin: Double,
         isRoundingEnabled: Boolean,
         roundRetailPrice: Boolean,
         roundWholesalePrice: Boolean,
+        roundDeliveryPrice: Boolean,
         roundTicketTotal: Boolean,
         disallowCardPaymentOnWholesale: Boolean,
         storeName: String,
@@ -454,9 +536,11 @@ class SettingsRepositoryImpl(
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.DEFAULT_RETAIL_MARGIN] = defaultRetailMargin
             preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] = defaultWholesaleMargin
+            preferences[PreferenceKeys.DEFAULT_DELIVERY_MARGIN] = defaultDeliveryMargin
             preferences[PreferenceKeys.IS_ROUNDING_ENABLED] = isRoundingEnabled
             preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = roundRetailPrice
             preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = roundWholesalePrice
+            preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] = roundDeliveryPrice
             preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = roundTicketTotal
             preferences[PreferenceKeys.DISALLOW_CARD_PAYMENT_ON_WHOLESALE] = disallowCardPaymentOnWholesale
             preferences[PreferenceKeys.STORE_NAME] = storeName

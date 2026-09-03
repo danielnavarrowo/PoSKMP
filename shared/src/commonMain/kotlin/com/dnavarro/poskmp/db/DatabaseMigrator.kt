@@ -19,6 +19,7 @@ object DatabaseMigrator {
                 precio_mayoreo REAL    NOT NULL DEFAULT 0,
                 es_favorito    INTEGER NOT NULL DEFAULT 0,
                 piezas         REAL    NOT NULL DEFAULT 1.0,
+                precio_delivery REAL   NOT NULL DEFAULT 0,
                 updated_at     INTEGER NOT NULL DEFAULT 0,
                 sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
             );
@@ -84,6 +85,7 @@ object DatabaseMigrator {
                 subtotal        REAL    NOT NULL,
                 ganancia        REAL    NOT NULL,
                 es_mayoreo      INTEGER NOT NULL DEFAULT 0,
+                es_delivery     INTEGER NOT NULL DEFAULT 0,
                 created_at      INTEGER NOT NULL,
                 FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
             );
@@ -148,6 +150,7 @@ object DatabaseMigrator {
         // Migrate products columns
         ensureColumnExists(driver, "products", "piezas", "REAL NOT NULL DEFAULT 1.0")
         ensureColumnExists(driver, "products", "precio_mayoreo", "REAL NOT NULL DEFAULT 0")
+        ensureColumnExists(driver, "products", "precio_delivery", "REAL NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "es_favorito", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "por_peso", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "categoria", "TEXT DEFAULT 'Sin categoria'")
@@ -172,6 +175,9 @@ object DatabaseMigrator {
         ensureColumnExists(driver, "sales", "customer_id", "TEXT DEFAULT NULL")
         ensureColumnExists(driver, "sales", "estado", "TEXT NOT NULL DEFAULT 'COMPLETADA'")
         ensureColumnExists(driver, "sales", "sync_state", "TEXT NOT NULL DEFAULT 'PENDING_INSERT'")
+
+        // Migrate sale_items columns
+        ensureColumnExists(driver, "sale_items", "es_delivery", "INTEGER NOT NULL DEFAULT 0")
 
         // Ensure default cashier
         try {

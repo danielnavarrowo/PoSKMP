@@ -54,6 +54,7 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.arrow_up
 import poskmp.shared.generated.resources.cost_display_label
+import poskmp.shared.generated.resources.delivery_display_label
 import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.favorite_desc
 import poskmp.shared.generated.resources.no_category
@@ -352,6 +353,19 @@ fun ProductTableRow(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
+                    ProductTableColumn.DOMICILIO -> {
+                        val priceText = if (product.por_peso == 1L) {
+                            "$${product.precio_delivery.toString().formatPrice()} / Kg"
+                        } else {
+                            "$${product.precio_delivery.toString().formatPrice()}"
+                        }
+                        Text(
+                            text = if (product.precio_delivery > 0.0) priceText else "-",
+                            modifier = Modifier.weight(weight),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (product.precio_delivery > 0.0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     ProductTableColumn.MARGEN_VENTA -> {
                         if (product.costo > 0.0 && product.precio > 0.0) {
                             val margin = ((product.precio - product.costo) / product.costo) * 100.0
@@ -382,6 +396,24 @@ fun ProductTableRow(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = if (isBelowDefault) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = if (isBelowDefault) FontWeight.Bold else FontWeight.Normal
+                            )
+                        } else {
+                            Text(
+                                text = "-",
+                                modifier = Modifier.weight(weight),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    ProductTableColumn.MARGEN_DOMICILIO -> {
+                        if (product.costo > 0.0 && product.precio_delivery > 0.0) {
+                            val margin = ((product.precio_delivery - product.costo) / product.costo) * 100.0
+                            Text(
+                                text = "${margin.toString().formatPrice()}%",
+                                modifier = Modifier.weight(weight),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         } else {
                             Text(
@@ -562,6 +594,17 @@ fun ProductSimpleCard(
                             text = stringResource(
                                 Res.string.wholesale_display_label,
                                 product.precio_mayoreo.toString().formatPrice()
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (product.precio_delivery > 0.0) {
+                        Text(
+                            text = stringResource(
+                                Res.string.delivery_display_label,
+                                product.precio_delivery.toString().formatPrice()
                             ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)

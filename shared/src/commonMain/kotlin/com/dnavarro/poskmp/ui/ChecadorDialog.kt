@@ -83,6 +83,7 @@ import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_button
 import poskmp.shared.generated.resources.cost_label
+import poskmp.shared.generated.resources.delivery_price_label
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.per_kg_suffix
@@ -309,6 +310,7 @@ fun ChecadorContent(
                     val hasMultiplePieces = product.piezas != 1.0 && product.piezas > 0.0
                     val pricePerPiece = if (hasMultiplePieces) product.precio / product.piezas else 0.0
                     val wholesalePerPiece = if (hasMultiplePieces) product.precio_mayoreo / product.piezas else 0.0
+                    val deliveryPerPiece = if (hasMultiplePieces) product.precio_delivery / product.piezas else 0.0
 
                     if (showExtraPrices) {
                         Row(
@@ -387,6 +389,32 @@ fun ChecadorContent(
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.secondary
                                     )
+                                }
+                            }
+
+                            if (product.precio_delivery > 0.0) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = stringResource(Res.string.delivery_price_label),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "$${product.precio_delivery.toString().formatPrice()}$suffix",
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    )
+                                    if (hasMultiplePieces) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = stringResource(Res.string.price_per_piece_fmt, deliveryPerPiece.toString().formatPrice()),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -764,6 +792,7 @@ fun ChecadorScreen(
                             val hasMultiplePieces = product.piezas != 1.0 && product.piezas > 0.0
                             val pricePerPiece = if (hasMultiplePieces) product.precio / product.piezas else 0.0
                             val wholesalePerPiece = if (hasMultiplePieces) product.precio_mayoreo / product.piezas else 0.0
+                            val deliveryPerPiece = if (hasMultiplePieces) product.precio_delivery / product.piezas else 0.0
 
                             // Row 1: Retail Price (Primary)
                             ChecadorMetricRow(
@@ -780,6 +809,17 @@ fun ChecadorScreen(
                                     value = "$${product.precio_mayoreo.toString().formatPrice()}",
                                     subtitle = if (hasMultiplePieces) {
                                         stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice())
+                                    } else null
+                                )
+                            }
+
+                            // Delivery Price
+                            if (product.precio_delivery > 0.0 && showExtraPrices) {
+                                ChecadorMetricRow(
+                                    title = stringResource(Res.string.delivery_price_label),
+                                    value = "$${product.precio_delivery.toString().formatPrice()}$suffix",
+                                    subtitle = if (hasMultiplePieces) {
+                                        stringResource(Res.string.price_per_piece_fmt, deliveryPerPiece.toString().formatPrice())
                                     } else null
                                 )
                             }
@@ -998,14 +1038,10 @@ private fun AutoSizingText(
                     // 3. Verify that Compose didn't break in the middle of any word across lines
                     val noWordSplit = (0 until measured.lineCount - 1).all { lineIdx ->
                         val lineEnd = measured.getLineEnd(lineIdx)
-                        if (lineEnd in 1 until trimmedText.length) {
-                            trimmedText[lineEnd - 1].isWhitespace() ||
+                        lineEnd !in 1 until trimmedText.length || trimmedText[lineEnd - 1].isWhitespace() ||
                                 trimmedText[lineEnd].isWhitespace() ||
                                 trimmedText[lineEnd - 1] == '-' ||
                                 trimmedText[lineEnd - 1] == '/'
-                        } else {
-                            true
-                        }
                     }
 
                     // 4. Verify that each line doesn't overflow horizontally

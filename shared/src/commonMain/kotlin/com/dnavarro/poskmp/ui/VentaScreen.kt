@@ -655,6 +655,7 @@ fun VentaScreen(
                             onModifyProduct = { product -> showProductDialogFor = product },
                             isCompact = false,
                             useProductTable = uiState.useProductTableInCatalog,
+                            prioritizeDeliveryPrice = uiState.prioritizeDeliveryPrice,
                             onViewCartClick = null,
                             onOpenScanner = { showCameraScanner = true },
                             cartCount = cartItems.size,
@@ -711,7 +712,8 @@ fun VentaScreen(
                             },
                             selectedCustomer = uiState.selectedCustomer,
                             onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
-                            onClearCustomerClick = { viewModel.clearSelectedCustomer() }
+                            onClearCustomerClick = { viewModel.clearSelectedCustomer() },
+                            isDeliveryMode = uiState.prioritizeDeliveryPrice
                         )
                     }
                 }
@@ -780,6 +782,7 @@ fun VentaScreen(
                                 onModifyProduct = { product -> showProductDialogFor = product },
                                 isCompact = isCompact,
                                 useProductTable = uiState.useProductTableInCatalog,
+                                prioritizeDeliveryPrice = uiState.prioritizeDeliveryPrice,
                                 onViewCartClick = {
                                     if (isAndroid()) {
                                         focusManager.clearFocus(force = true)
@@ -860,7 +863,8 @@ fun VentaScreen(
                                 },
                                 selectedCustomer = uiState.selectedCustomer,
                                 onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
-                                onClearCustomerClick = { viewModel.clearSelectedCustomer() }
+                                onClearCustomerClick = { viewModel.clearSelectedCustomer() },
+                                isDeliveryMode = uiState.prioritizeDeliveryPrice
                             )
                         }
                     }
@@ -1989,6 +1993,7 @@ fun VentaScreen(
                             precio_mayoreo = 0.0,
                             es_favorito = 0L,
                             piezas = 1.0,
+                            precio_delivery = 0.0,
                             updated_at = currentTimeMillis(),
                             sync_state = "PENDING_INSERT"
                         )
@@ -2112,6 +2117,7 @@ fun VentaScreen(
                                 precio_mayoreo = 0.0,
                                 es_favorito = 0L,
                                 piezas = 1.0,
+                                precio_delivery = 0.0,
                                 updated_at = currentTimeMillis(),
                                 sync_state = "PENDING_INSERT"
                             )
@@ -2152,8 +2158,10 @@ fun VentaScreen(
             existingCategories = categories,
             defaultRetailMarginPercentage = uiState.defaultRetailMargin,
             defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
+            defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
             roundRetailPrice = uiState.roundRetailPrice,
-            roundWholesalePrice = uiState.roundWholesalePrice
+            roundWholesalePrice = uiState.roundWholesalePrice,
+            roundDeliveryPrice = uiState.roundDeliveryPrice
         )
     }
 

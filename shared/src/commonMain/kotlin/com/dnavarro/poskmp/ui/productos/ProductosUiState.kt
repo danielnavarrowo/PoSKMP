@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.productos
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.ui.BulkProductOperation
+import com.dnavarro.poskmp.ui.BulkProgressState
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
@@ -17,6 +18,8 @@ import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.header_retail_margin
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.header_total_sales
+import poskmp.shared.generated.resources.header_delivery_margin
+import poskmp.shared.generated.resources.header_delivery_price
 import poskmp.shared.generated.resources.header_wholesale_margin
 import poskmp.shared.generated.resources.wholesale
 
@@ -32,8 +35,10 @@ enum class ProductTableColumn(
     PRECIO(Res.string.header_retail_price, ProductSortField.PRECIO, 0.12f),
     COSTO(Res.string.header_cost, ProductSortField.COSTO, 0.12f),
     MAYOREO(Res.string.wholesale, ProductSortField.MAYOREO, 0.12f),
+    DOMICILIO(Res.string.header_delivery_price, ProductSortField.DOMICILIO, 0.12f),
     MARGEN_VENTA(Res.string.header_retail_margin, ProductSortField.MARGEN_VENTA, 0.10f),
     MARGEN_MAYOREO(Res.string.header_wholesale_margin, ProductSortField.MARGEN_MAYOREO, 0.10f),
+    MARGEN_DOMICILIO(Res.string.header_delivery_margin, ProductSortField.MARGEN_DOMICILIO, 0.10f),
     VENTAS_TOTALES(Res.string.header_total_sales, ProductSortField.VENTAS_TOTALES, 0.10f),
     ULTIMA_VENTA(Res.string.header_last_sale, ProductSortField.ULTIMA_VENTA, 0.14f)
 }
@@ -70,10 +75,13 @@ data class ProductosUiState(
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet(),
+    val bulkModificationProgress: BulkProgressState? = null,
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
+    val defaultDeliveryMargin: Double = 0.0,
     val roundRetailPrice: Boolean = false,
     val roundWholesalePrice: Boolean = false,
+    val roundDeliveryPrice: Boolean = false,
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false
 ) {
@@ -121,6 +129,7 @@ data class ProductosUiState(
                         ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                         ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
                         ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
+                        ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
                         ProductSortField.MARGEN_VENTA -> {
                             val m1 = if (p1.costo > 0.0 && p1.precio > 0.0) ((p1.precio - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
                             val m2 = if (p2.costo > 0.0 && p2.precio > 0.0) ((p2.precio - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
@@ -129,6 +138,11 @@ data class ProductosUiState(
                         ProductSortField.MARGEN_MAYOREO -> {
                             val m1 = if (p1.costo > 0.0 && p1.precio_mayoreo > 0.0) ((p1.precio_mayoreo - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
                             val m2 = if (p2.costo > 0.0 && p2.precio_mayoreo > 0.0) ((p2.precio_mayoreo - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                            m1.compareTo(m2)
+                        }
+                        ProductSortField.MARGEN_DOMICILIO -> {
+                            val m1 = if (p1.costo > 0.0 && p1.precio_delivery > 0.0) ((p1.precio_delivery - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                            val m2 = if (p2.costo > 0.0 && p2.precio_delivery > 0.0) ((p2.precio_delivery - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
                             m1.compareTo(m2)
                         }
                         ProductSortField.VENTAS_TOTALES -> {

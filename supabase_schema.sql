@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     activo         BOOLEAN NOT NULL DEFAULT true,
     por_peso       BOOLEAN NOT NULL DEFAULT false,
     precio_mayoreo NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    precio_delivery NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     es_favorito    BOOLEAN NOT NULL DEFAULT false,
     piezas         NUMERIC(10, 3) NOT NULL DEFAULT 1.000,
     updated_at     BIGINT NOT NULL,
@@ -132,6 +133,7 @@ CREATE TABLE IF NOT EXISTS public.sale_items (
     subtotal        NUMERIC(12, 2) NOT NULL,
     ganancia        NUMERIC(12, 2) NOT NULL,
     es_mayoreo      BOOLEAN NOT NULL DEFAULT false,
+    es_delivery     BOOLEAN NOT NULL DEFAULT false,
     created_at      BIGINT NOT NULL
 );
 
@@ -146,9 +148,11 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     receipt_footer                     TEXT NOT NULL DEFAULT '',
     default_retail_margin              NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     default_wholesale_margin           NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
+    default_delivery_margin            NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     is_rounding_enabled                BOOLEAN NOT NULL DEFAULT false,
     round_retail_price                 BOOLEAN NOT NULL DEFAULT false,
     round_wholesale_price              BOOLEAN NOT NULL DEFAULT false,
+    round_delivery_price               BOOLEAN NOT NULL DEFAULT false,
     round_ticket_total                 BOOLEAN NOT NULL DEFAULT false,
     disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false,
     updated_at                         BIGINT NOT NULL
@@ -214,9 +218,14 @@ CREATE INDEX IF NOT EXISTS idx_sales_estado ON public.sales(estado);
 
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS siempre_mayoreo BOOLEAN NOT NULL DEFAULT false;
 
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS precio_delivery NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS es_delivery BOOLEAN NOT NULL DEFAULT false;
+
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_address TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_phone TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS receipt_footer TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS default_delivery_margin NUMERIC(10, 4) NOT NULL DEFAULT 0.0;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_delivery_price BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false;
 */

@@ -167,11 +167,13 @@ import poskmp.shared.generated.resources.sort_order_desc
 import poskmp.shared.generated.resources.sort_order_section_title
 import poskmp.shared.generated.resources.sort_section_title
 import poskmp.shared.generated.resources.star
+import poskmp.shared.generated.resources.header_delivery_margin
+import poskmp.shared.generated.resources.header_delivery_price
 import poskmp.shared.generated.resources.wholesale
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class ProductSortField {
-    CODIGO, NOMBRE, CATEGORIA, PIEZAS, PRECIO, COSTO, MAYOREO, MARGEN_VENTA, MARGEN_MAYOREO, VENTAS_TOTALES, ULTIMA_VENTA
+    CODIGO, NOMBRE, CATEGORIA, PIEZAS, PRECIO, COSTO, MAYOREO, DOMICILIO, MARGEN_VENTA, MARGEN_MAYOREO, MARGEN_DOMICILIO, VENTAS_TOTALES, ULTIMA_VENTA
 }
 
 enum class ProductSortOrder {
@@ -278,6 +280,7 @@ fun ProductosScreen(
                         precio_mayoreo = 0.0,
                         es_favorito = 0L,
                         piezas = 1.0,
+                        precio_delivery = 0.0,
                         updated_at = 0L,
                         sync_state = ""
                     )
@@ -527,6 +530,7 @@ fun ProductosScreen(
                                         precio_mayoreo = 0.0,
                                         es_favorito = 0L,
                                         piezas = 1.0,
+                                        precio_delivery = 0.0,
                                         updated_at = 0L,
                                         sync_state = ""
                                     )
@@ -592,6 +596,7 @@ fun ProductosScreen(
                                             precio_mayoreo = 0.0,
                                             es_favorito = 0L,
                                             piezas = 1.0,
+                                            precio_delivery = 0.0,
                                             updated_at = 0L,
                                             sync_state = ""
                                         )
@@ -625,6 +630,7 @@ fun ProductosScreen(
                                             precio_mayoreo = 0.0,
                                             es_favorito = 0L,
                                             piezas = 1.0,
+                                            precio_delivery = 0.0,
                                             updated_at = 0L,
                                             sync_state = ""
                                         )
@@ -1009,8 +1015,10 @@ fun ProductosScreen(
                     existingCategories = uiState.availableCategories,
                     defaultRetailMarginPercentage = uiState.defaultRetailMargin,
                     defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
+                    defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
                     roundRetailPrice = uiState.roundRetailPrice,
-                    roundWholesalePrice = uiState.roundWholesalePrice
+                    roundWholesalePrice = uiState.roundWholesalePrice,
+                    roundDeliveryPrice = uiState.roundDeliveryPrice
                 )
             }
 
@@ -1022,7 +1030,11 @@ fun ProductosScreen(
                     onApply = { modification ->
                         viewModel.applyBulkModification(modification)
                     },
-                    existingCategories = uiState.availableCategories
+                    existingCategories = uiState.availableCategories,
+                    defaultRetailMarginPercentage = uiState.defaultRetailMargin,
+                    defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
+                    defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
+                    progress = uiState.bulkModificationProgress
                 )
             }
 
@@ -1166,8 +1178,10 @@ fun ProductFilterAndSortBottomSheet(
                                 ProductSortField.PRECIO to stringResource(Res.string.header_retail_price),
                                 ProductSortField.COSTO to stringResource(Res.string.header_cost),
                                 ProductSortField.MAYOREO to stringResource(Res.string.wholesale),
+                                ProductSortField.DOMICILIO to stringResource(Res.string.header_delivery_price),
                                 ProductSortField.MARGEN_VENTA to stringResource(Res.string.header_retail_margin),
                                 ProductSortField.MARGEN_MAYOREO to stringResource(Res.string.header_wholesale_margin),
+                                ProductSortField.MARGEN_DOMICILIO to stringResource(Res.string.header_delivery_margin),
                                 ProductSortField.VENTAS_TOTALES to stringResource(Res.string.header_total_sales),
                                 ProductSortField.ULTIMA_VENTA to stringResource(Res.string.header_last_sale)
                             )

@@ -201,8 +201,8 @@ fun AboutSettingsSection(
                             scope.launch {
                                 val products = repository.getAllProductsList()
                                 val csvBuilder =
-                                    StringBuilder("id,codigos,nombre,precio,costo,categoria,activo,por_peso,precio_mayoreo,es_favorito\n")
-                                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito) in products) {
+                                    StringBuilder("id,codigos,nombre,precio,costo,categoria,activo,por_peso,precio_mayoreo,precio_delivery,es_favorito\n")
+                                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, _, precio_delivery) in products) {
                                     csvBuilder.append("$id,")
                                     csvBuilder.append("\"${codigos.replace("\"", "\"\"")}\",")
                                     csvBuilder.append("\"${nombre.replace("\"", "\"\"")}\",")
@@ -212,6 +212,7 @@ fun AboutSettingsSection(
                                     csvBuilder.append("$activo,")
                                     csvBuilder.append("$por_peso,")
                                     csvBuilder.append("$precio_mayoreo,")
+                                    csvBuilder.append("$precio_delivery,")
                                     csvBuilder.append("$es_favorito\n")
                                 }
                                 val csvText = csvBuilder.toString()

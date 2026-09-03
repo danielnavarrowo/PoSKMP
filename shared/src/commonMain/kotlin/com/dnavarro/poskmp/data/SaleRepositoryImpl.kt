@@ -49,6 +49,7 @@ class SaleRepositoryImpl(
                 subtotal = item.subtotal,
                 ganancia = item.ganancia,
                 es_mayoreo = if (item.esMayoreo) 1L else 0L,
+                es_delivery = if (item.esDelivery) 1L else 0L,
                 created_at = item.createdAt
             )
         }
@@ -194,6 +195,7 @@ class SaleRepositoryImpl(
                 subtotal = row.subtotal,
                 ganancia = row.ganancia,
                 esMayoreo = row.es_mayoreo == 1L,
+                esDelivery = row.es_delivery == 1L,
                 createdAt = row.created_at
             )
         }

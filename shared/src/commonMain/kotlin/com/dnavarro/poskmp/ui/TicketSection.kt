@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -32,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,7 +66,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.OutlinedButton
 import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.venta.HeldTicket
@@ -73,11 +73,46 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add
+import poskmp.shared.generated.resources.assign_customer_button
+import poskmp.shared.generated.resources.back
+import poskmp.shared.generated.resources.back_to_catalog_desc
+import poskmp.shared.generated.resources.badge_customer_always_wholesale
+import poskmp.shared.generated.resources.change_customer_button
+import poskmp.shared.generated.resources.checkout_button
+import poskmp.shared.generated.resources.checkout_hotkey
+import poskmp.shared.generated.resources.clear_all_button
+import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.current_ticket_title
+import poskmp.shared.generated.resources.customer_balance_format
+import poskmp.shared.generated.resources.customer_no_debt_pending
+import poskmp.shared.generated.resources.decrease_desc
+import poskmp.shared.generated.resources.delivery_mode_active_badge
+import poskmp.shared.generated.resources.discard_held_ticket_desc
+import poskmp.shared.generated.resources.general_public_label
+import poskmp.shared.generated.resources.hold_ticket_button_desc
+import poskmp.shared.generated.resources.increase_desc
+import poskmp.shared.generated.resources.items_count_label
+import poskmp.shared.generated.resources.money
+import poskmp.shared.generated.resources.no_customer_assigned
+import poskmp.shared.generated.resources.pause
+import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.pieces_count_label
+import poskmp.shared.generated.resources.remove
+import poskmp.shared.generated.resources.remove_customer_button
+import poskmp.shared.generated.resources.shopping_cart
+import poskmp.shared.generated.resources.ticket_empty_message
+import poskmp.shared.generated.resources.total_label
+import poskmp.shared.generated.resources.total_without_discount_label
+import poskmp.shared.generated.resources.trash
+import poskmp.shared.generated.resources.undo
+import poskmp.shared.generated.resources.undo_button_desc
+import poskmp.shared.generated.resources.wholesale_badge
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun TicketSection(
@@ -100,7 +135,8 @@ fun TicketSection(
     onDiscardHeldTicket: (HeldTicket) -> Unit = {},
     selectedCustomer: Customer? = null,
     onAssignCustomerClick: () -> Unit = {},
-    onClearCustomerClick: () -> Unit = {}
+    onClearCustomerClick: () -> Unit = {},
+    isDeliveryMode: Boolean = false
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -168,6 +204,21 @@ fun TicketSection(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                if (isDeliveryMode) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.delivery_mode_active_badge),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(

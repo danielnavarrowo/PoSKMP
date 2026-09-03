@@ -55,6 +55,7 @@ class RecordSaleUseCase(
             val itemCost = unitCost * qty
             val itemProfit = itemSubtotal - itemCost
             val isWholesale = unitPrice == cartItem.product.precio_mayoreo && cartItem.product.precio_mayoreo > 0.0
+            val isDelivery = !isWholesale && unitPrice == cartItem.product.precio_delivery && cartItem.product.precio_delivery > 0.0
 
             total += itemSubtotal
             totalOriginal += itemOrigSubtotal
@@ -72,6 +73,7 @@ class RecordSaleUseCase(
                 subtotal = itemSubtotal,
                 ganancia = itemProfit,
                 esMayoreo = isWholesale,
+                esDelivery = isDelivery,
                 createdAt = now
             )
         }

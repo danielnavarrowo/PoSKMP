@@ -11,6 +11,7 @@ CREATE TABLE products (
     precio_mayoreo REAL    NOT NULL DEFAULT 0,
     es_favorito    INTEGER NOT NULL DEFAULT 0, -- 0 = false, 1 = true
     piezas         REAL    NOT NULL DEFAULT 1.0,
+    precio_delivery REAL   NOT NULL DEFAULT 0,
     
     -- Sync fields
     updated_at     INTEGER NOT NULL, -- Unix epoch millisecond timestamp
@@ -34,14 +35,14 @@ SELECT * FROM products WHERE sync_state != 'SYNCED';
 insertProduct:
 INSERT OR REPLACE INTO products (
     id, codigos, nombre, precio, costo, 
-    categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, 
+    categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery,
     updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateProduct:
 UPDATE products
 SET codigos = ?, nombre = ?, precio = ?, costo = ?, 
-    categoria = ?, activo = ?, por_peso = ?, precio_mayoreo = ?, es_favorito = ?, piezas = ?, 
+    categoria = ?, activo = ?, por_peso = ?, precio_mayoreo = ?, es_favorito = ?, piezas = ?, precio_delivery = ?,
     updated_at = ?, sync_state = ?
 WHERE id = ?;
 
@@ -69,9 +70,9 @@ WHERE id = ?;
 upsertSyncedProduct:
 INSERT OR REPLACE INTO products (
     id, codigos, nombre, precio, costo, 
-    categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, 
+    categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery,
     updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED');
 
 searchProducts:
 SELECT * FROM products 
@@ -300,6 +301,7 @@ CREATE TABLE sale_items (
     subtotal        REAL    NOT NULL,
     ganancia        REAL    NOT NULL,
     es_mayoreo      INTEGER NOT NULL DEFAULT 0,
+    es_delivery     INTEGER NOT NULL DEFAULT 0,
     created_at      INTEGER NOT NULL,
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
 );
@@ -348,14 +350,14 @@ ORDER BY created_at DESC;
 insertSaleItem:
 INSERT INTO sale_items (
     id, sale_id, product_id, product_nombre, cantidad,
-    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, es_delivery, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 upsertSyncedSaleItem:
 INSERT OR REPLACE INTO sale_items (
     id, sale_id, product_id, product_nombre, cantidad,
-    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, es_delivery, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 getNextFolio:
 SELECT COALESCE(MAX(folio), 0) + 1 AS next_folio FROM sales;

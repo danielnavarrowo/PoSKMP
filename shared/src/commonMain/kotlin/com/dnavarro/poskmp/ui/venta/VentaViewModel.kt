@@ -163,9 +163,10 @@ class VentaViewModel(
             combine(
                 _canUndo,
                 settingsRepository.defaultRetailMarginFlow,
-                settingsRepository.defaultWholesaleMarginFlow
-            ) { canUndo, retailMargin, wholesaleMargin ->
-                Triple(canUndo, retailMargin, wholesaleMargin)
+                settingsRepository.defaultWholesaleMarginFlow,
+                settingsRepository.defaultDeliveryMarginFlow
+            ) { canUndo, retailMargin, wholesaleMargin, deliveryMargin ->
+                Tuple4(canUndo, retailMargin, wholesaleMargin, deliveryMargin)
             },
             combine(
                 settingsRepository.useProductTableInCatalogFlow,
@@ -175,8 +176,17 @@ class VentaViewModel(
             ) { useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder ->
                 Tuple4(useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder)
             }
-        ) { (canUndo, retailMargin, wholesaleMargin), (useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder) ->
-            Tuple7(canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder)
+        ) { (canUndo, retailMargin, wholesaleMargin, deliveryMargin), (useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder) ->
+            VentaCatalogConfig(
+                canUndo = canUndo,
+                defaultRetailMargin = retailMargin,
+                defaultWholesaleMargin = wholesaleMargin,
+                defaultDeliveryMargin = deliveryMargin,
+                useProductTableInCatalog = useProductTableInCatalog,
+                customers = customers,
+                selectedCustomer = selectedCustomer,
+                swapVentaLayoutOrder = swapVentaLayoutOrder
+            )
         },
         combine(
             _customerSearchQuery,
@@ -188,13 +198,32 @@ class VentaViewModel(
         },
         combine(
             combine(
-                settingsRepository.isRoundingEnabledFlow,
-                settingsRepository.roundRetailPriceFlow,
-                settingsRepository.roundWholesalePriceFlow,
-                settingsRepository.roundTicketTotalFlow,
-                settingsRepository.disallowCardPaymentOnWholesaleFlow
-            ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale ->
-                Tuple5(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale)
+                combine(
+                    settingsRepository.isRoundingEnabledFlow,
+                    settingsRepository.roundRetailPriceFlow,
+                    settingsRepository.roundWholesalePriceFlow,
+                    settingsRepository.roundDeliveryPriceFlow
+                ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundDeliveryPrice ->
+                    Tuple4(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundDeliveryPrice)
+                },
+                combine(
+                    settingsRepository.roundTicketTotalFlow,
+                    settingsRepository.disallowCardPaymentOnWholesaleFlow,
+                    settingsRepository.prioritizeDeliveryPriceFlow
+                ) { roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
+                    Triple(roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+                }
+            ) { (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundDeliveryPrice),
+                (roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice) ->
+                VentaRoundingConfig(
+                    isRoundingEnabled = isRoundingEnabled,
+                    roundRetailPrice = roundRetailPrice,
+                    roundWholesalePrice = roundWholesalePrice,
+                    roundDeliveryPrice = roundDeliveryPrice,
+                    roundTicketTotal = roundTicketTotal,
+                    disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
+                    prioritizeDeliveryPrice = prioritizeDeliveryPrice
+                )
             },
             settingsRepository.receiptSettingsFlow,
             _shiftFlow
@@ -203,17 +232,16 @@ class VentaViewModel(
         },
         syncRepository.syncState
     ) { (q, products, cat, cart, held),
-        (canUndo, retailMargin, wholesaleMargin, useProductTableInCatalog, customers, selectedCust, swapVentaLayoutOrder),
+        catalogConfig,
         receiptDialogState,
         (roundingSettings, receiptSettings, shiftState),
         syncState ->
         val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
-        val (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale) = roundingSettings
         val filteredCust = if (cQuery.isBlank()) {
-            customers
+            catalogConfig.customers
         } else {
             val query = cQuery.trim().lowercase()
-            customers.filter {
+            catalogConfig.customers.filter {
                 it.nombre.lowercase().contains(query) ||
                 it.telefono.lowercase().contains(query) ||
                 it.direccion.lowercase().contains(query)
@@ -226,19 +254,22 @@ class VentaViewModel(
             selectedCategory = cat,
             cartItems = cart,
             heldTickets = held,
-            canUndo = canUndo,
-            defaultRetailMargin = retailMargin,
-            defaultWholesaleMargin = wholesaleMargin,
-            isRoundingEnabled = isRoundingEnabled,
-            roundRetailPrice = isRoundingEnabled && roundRetailPrice,
-            roundWholesalePrice = isRoundingEnabled && roundWholesalePrice,
-            roundTicketTotal = isRoundingEnabled && roundTicketTotal,
-            disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
-            useProductTableInCatalog = useProductTableInCatalog,
-            swapVentaLayoutOrder = swapVentaLayoutOrder,
-            customers = customers,
+            canUndo = catalogConfig.canUndo,
+            defaultRetailMargin = catalogConfig.defaultRetailMargin,
+            defaultWholesaleMargin = catalogConfig.defaultWholesaleMargin,
+            defaultDeliveryMargin = catalogConfig.defaultDeliveryMargin,
+            isRoundingEnabled = roundingSettings.isRoundingEnabled,
+            roundRetailPrice = roundingSettings.isRoundingEnabled && roundingSettings.roundRetailPrice,
+            roundWholesalePrice = roundingSettings.isRoundingEnabled && roundingSettings.roundWholesalePrice,
+            roundDeliveryPrice = roundingSettings.isRoundingEnabled && roundingSettings.roundDeliveryPrice,
+            roundTicketTotal = roundingSettings.isRoundingEnabled && roundingSettings.roundTicketTotal,
+            disallowCardPaymentOnWholesale = roundingSettings.disallowCardPaymentOnWholesale,
+            prioritizeDeliveryPrice = roundingSettings.prioritizeDeliveryPrice,
+            useProductTableInCatalog = catalogConfig.useProductTableInCatalog,
+            swapVentaLayoutOrder = catalogConfig.swapVentaLayoutOrder,
+            customers = catalogConfig.customers,
             filteredCustomers = filteredCust,
-            selectedCustomer = selectedCust,
+            selectedCustomer = catalogConfig.selectedCustomer,
             customerSearchQuery = cQuery,
             showCustomerDialog = showDialog,
             isSyncing = syncState == SyncStateEnum.SYNCING,
@@ -353,15 +384,25 @@ class VentaViewModel(
         val d: D,
         val e: E
     )
+    private data class VentaCatalogConfig(
+        val canUndo: Boolean = false,
+        val defaultRetailMargin: Double = 0.0,
+        val defaultWholesaleMargin: Double = 0.0,
+        val defaultDeliveryMargin: Double = 0.0,
+        val useProductTableInCatalog: Boolean = false,
+        val customers: List<Customer> = emptyList(),
+        val selectedCustomer: Customer? = null,
+        val swapVentaLayoutOrder: Boolean = false
+    )
 
-    private data class Tuple7<A, B, C, D, E, F, G>(
-        val a: A,
-        val b: B,
-        val c: C,
-        val d: D,
-        val e: E,
-        val f: F,
-        val g: G
+    private data class VentaRoundingConfig(
+        val isRoundingEnabled: Boolean = false,
+        val roundRetailPrice: Boolean = false,
+        val roundWholesalePrice: Boolean = false,
+        val roundDeliveryPrice: Boolean = false,
+        val roundTicketTotal: Boolean = false,
+        val disallowCardPaymentOnWholesale: Boolean = false,
+        val prioritizeDeliveryPrice: Boolean = false
     )
 
     private fun pushCartHistory() {
@@ -454,10 +495,16 @@ class VentaViewModel(
             pushCartHistory()
             val roundedQty = (quantity * 1000.0).roundToInt() / 1000.0
             val isWholesaleCustomer = _selectedCustomer.value?.siempreMayoreo == true
+            val prioritizeDelivery = uiState.value.prioritizeDeliveryPrice
+            val basePrice = if (prioritizeDelivery && product.precio_delivery > 0.0) {
+                product.precio_delivery
+            } else {
+                product.precio
+            }
             val effectivePrice = if (isWholesaleCustomer && product.precio_mayoreo > 0.0) {
                 product.precio_mayoreo
             } else {
-                product.precio
+                basePrice
             }
             val productToCart = if (effectivePrice != product.precio) {
                 product.copy(precio = effectivePrice)
@@ -468,7 +515,7 @@ class VentaViewModel(
                 CartItem(
                     product = productToCart,
                     quantity = roundedQty,
-                    originalPrice = product.precio
+                    originalPrice = basePrice
                 )
             )
         }
@@ -649,6 +696,7 @@ class VentaViewModel(
                 createdAt = currentTimeMillis(),
                 items = currentItems.map { item ->
                     val isWholesale = item.product.precio == item.product.precio_mayoreo && item.product.precio_mayoreo > 0.0
+                    val isDelivery = !isWholesale && item.product.precio == item.product.precio_delivery && item.product.precio_delivery > 0.0
                     ReceiptItem(
                         name = item.product.nombre,
                         quantity = item.quantity,
@@ -656,7 +704,8 @@ class VentaViewModel(
                         subtotal = item.product.precio * item.quantity,
                         isWeightBased = item.product.por_peso == 1L,
                         originalUnitPrice = item.originalPrice,
-                        isWholesale = isWholesale
+                        isWholesale = isWholesale,
+                        isDelivery = isDelivery
                     )
                 },
                 total = currentItems.sumOf { it.product.precio * it.quantity }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.roundPrice
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.StringResource
@@ -46,22 +49,49 @@ data class BulkProductModification(
     val costPrice: Double? = null,
     val retailPrice: Double? = null,
     val wholesalePrice: Double? = null,
+    val deliveryPrice: Double? = null,
     val retailProfitPercentage: Double? = null,
     val wholesaleProfitPercentage: Double? = null,
+    val deliveryProfitPercentage: Double? = null,
     val category: String? = null
 )
 
-fun applyBulkProductModification(product: Products, modification: BulkProductModification): Products? = when (modification.operation) {
+data class BulkProgressState(
+    val operation: BulkProductOperation,
+    val current: Int,
+    val total: Int
+) {
+    val fraction: Float
+        get() = if (total > 0) (current.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
+
+    val percentage: Int
+        get() = (fraction * 100).toInt()
+}
+
+fun applyBulkProductModification(
+    product: Products,
+    modification: BulkProductModification,
+    roundRetailPrice: Boolean = false,
+    roundWholesalePrice: Boolean = false,
+    roundDeliveryPrice: Boolean = false
+): Products? = when (modification.operation) {
     BulkProductOperation.CHANGE_PRICES -> product.copy(
         costo = modification.costPrice ?: product.costo,
-        precio = modification.retailPrice ?: product.precio,
-        precio_mayoreo = modification.wholesalePrice ?: product.precio_mayoreo
+        precio = modification.retailPrice?.let { if (roundRetailPrice) roundPrice(it) else it } ?: product.precio,
+        precio_mayoreo = modification.wholesalePrice?.let { if (roundWholesalePrice) roundPrice(it) else it } ?: product.precio_mayoreo,
+        precio_delivery = modification.deliveryPrice?.let { if (roundDeliveryPrice) roundPrice(it) else it } ?: product.precio_delivery
     )
 
     BulkProductOperation.SET_PROFIT -> if (product.costo > 0.0) {
+        fun calcPrice(profitPct: Double, shouldRound: Boolean): Double {
+            val raw = kotlin.math.round(product.costo * (1.0 + profitPct / 100.0) * 100.0) / 100.0
+            return if (shouldRound) roundPrice(raw) else raw
+        }
+
         product.copy(
-            precio = modification.retailProfitPercentage?.let { product.costo * (1 + it / 100) } ?: product.precio,
-            precio_mayoreo = modification.wholesaleProfitPercentage?.let { product.costo * (1 + it / 100) } ?: product.precio_mayoreo
+            precio = modification.retailProfitPercentage?.let { calcPrice(it, roundRetailPrice) } ?: product.precio,
+            precio_mayoreo = modification.wholesaleProfitPercentage?.let { calcPrice(it, roundWholesalePrice) } ?: product.precio_mayoreo,
+            precio_delivery = modification.deliveryProfitPercentage?.let { calcPrice(it, roundDeliveryPrice) } ?: product.precio_delivery
         )
     } else {
         product
@@ -73,23 +103,84 @@ fun applyBulkProductModification(product: Products, modification: BulkProductMod
     BulkProductOperation.DELETE -> null
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BulkProductModificationDialog(
     selectedCount: Int,
     operation: BulkProductOperation,
     onDismiss: () -> Unit,
     onApply: (BulkProductModification) -> Unit,
-    existingCategories: List<String> = emptyList()
+    existingCategories: List<String> = emptyList(),
+    defaultRetailMarginPercentage: Double = 0.0,
+    defaultWholesaleMarginPercentage: Double = 0.0,
+    defaultDeliveryMarginPercentage: Double = 0.0,
+    progress: BulkProgressState? = null
 ) {
+    val isProcessing = progress != null
+    val progressText = if (progress != null) {
+        when (progress.operation) {
+            BulkProductOperation.CHANGE_PRICES -> stringResource(
+                Res.string.bulk_progress_change_prices,
+                progress.current,
+                progress.total,
+                progress.percentage
+            )
+            BulkProductOperation.SET_PROFIT -> stringResource(
+                Res.string.bulk_progress_set_profit,
+                progress.current,
+                progress.total,
+                progress.percentage
+            )
+            BulkProductOperation.CHANGE_CATEGORY -> stringResource(
+                Res.string.bulk_progress_change_category,
+                progress.current,
+                progress.total,
+                progress.percentage
+            )
+            BulkProductOperation.MARK_AS_FAVORITE -> stringResource(
+                Res.string.bulk_progress_mark_as_favorite,
+                progress.current,
+                progress.total,
+                progress.percentage
+            )
+            BulkProductOperation.DEACTIVATE -> stringResource(
+                Res.string.bulk_progress_deactivate,
+                progress.current,
+                progress.total,
+                progress.percentage
+            )
+            BulkProductOperation.DELETE -> stringResource(
+                Res.string.bulk_progress_delete,
+                progress.current,
+                progress.total,
+                progress.percentage
+            )
+        }
+    } else ""
+
     var changeCost by remember { mutableStateOf(false) }
     var changeRetail by remember { mutableStateOf(true) }
     var changeWholesale by remember { mutableStateOf(false) }
+    var changeDelivery by remember { mutableStateOf(false) }
     var costText by remember { mutableStateOf("") }
     var retailText by remember { mutableStateOf("") }
     var wholesaleText by remember { mutableStateOf("") }
-    var retailProfitText by remember { mutableStateOf("") }
-    var wholesaleProfitText by remember { mutableStateOf("") }
+    var deliveryText by remember { mutableStateOf("") }
+    var retailProfitText by remember(defaultRetailMarginPercentage) {
+        mutableStateOf(if (defaultRetailMarginPercentage > 0.0) {
+            if (defaultRetailMarginPercentage % 1.0 == 0.0) defaultRetailMarginPercentage.toLong().toString() else defaultRetailMarginPercentage.toString()
+        } else "")
+    }
+    var wholesaleProfitText by remember(defaultWholesaleMarginPercentage) {
+        mutableStateOf(if (defaultWholesaleMarginPercentage > 0.0) {
+            if (defaultWholesaleMarginPercentage % 1.0 == 0.0) defaultWholesaleMarginPercentage.toLong().toString() else defaultWholesaleMarginPercentage.toString()
+        } else "")
+    }
+    var deliveryProfitText by remember(defaultDeliveryMarginPercentage) {
+        mutableStateOf(if (defaultDeliveryMarginPercentage > 0.0) {
+            if (defaultDeliveryMarginPercentage % 1.0 == 0.0) defaultDeliveryMarginPercentage.toLong().toString() else defaultDeliveryMarginPercentage.toString()
+        } else "")
+    }
     var categoryText by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -143,8 +234,10 @@ fun BulkProductModificationDialog(
     val costPriceLabel = stringResource(Res.string.bulk_label_cost_price)
     val retailPriceLabel = stringResource(Res.string.bulk_label_retail_price)
     val wholesalePriceLabel = stringResource(Res.string.bulk_label_wholesale_price)
+    val deliveryPriceLabel = stringResource(Res.string.bulk_label_delivery_price)
     val retailProfitLabel = stringResource(Res.string.bulk_label_retail_profit)
     val wholesaleProfitLabel = stringResource(Res.string.bulk_label_wholesale_profit)
+    val deliveryProfitLabel = stringResource(Res.string.bulk_label_delivery_profit)
     val selectPriceErr = stringResource(Res.string.bulk_select_price_error)
     val selectProfitErr = stringResource(Res.string.bulk_select_profit_error)
     val enterCategoryErr = stringResource(Res.string.bulk_enter_category_error)
@@ -152,6 +245,7 @@ fun BulkProductModificationDialog(
     val costVal = if (changeCost) costText.replace(',', '.').toDoubleOrNull() else null
     val retailVal = if (changeRetail) retailText.replace(',', '.').toDoubleOrNull() else null
     val wholesaleVal = if (changeWholesale) wholesaleText.replace(',', '.').toDoubleOrNull() else null
+    val deliveryVal = if (changeDelivery) deliveryText.replace(',', '.').toDoubleOrNull() else null
 
     val wholesalePriceError: String? = when {
         operation == BulkProductOperation.CHANGE_PRICES &&
@@ -161,13 +255,19 @@ fun BulkProductModificationDialog(
         else -> null
     }
 
-    val retailPriceError: String? = when {
+    val deliveryPriceError: String? = when {
         operation == BulkProductOperation.CHANGE_PRICES &&
-            costVal != null && costVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < costVal -> {
+            costVal != null && costVal > 0.0 && deliveryVal != null && deliveryVal > 0.0 && deliveryVal < costVal -> {
+            stringResource(Res.string.error_delivery_less_than_cost)
+        }
+        else -> null
+    }
+
+    val retailPriceError: String? = when (operation) {
+        BulkProductOperation.CHANGE_PRICES if costVal != null && costVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < costVal -> {
             stringResource(Res.string.error_retail_less_than_cost)
         }
-        operation == BulkProductOperation.CHANGE_PRICES &&
-            wholesaleVal != null && wholesaleVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < wholesaleVal -> {
+        BulkProductOperation.CHANGE_PRICES if wholesaleVal != null && wholesaleVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < wholesaleVal -> {
             stringResource(Res.string.error_retail_less_than_wholesale)
         }
         else -> null
@@ -175,25 +275,29 @@ fun BulkProductModificationDialog(
 
     val retailProfitVal = if (operation == BulkProductOperation.SET_PROFIT) retailProfitText.replace(',', '.').toDoubleOrNull() else null
     val wholesaleProfitVal = if (operation == BulkProductOperation.SET_PROFIT) wholesaleProfitText.replace(',', '.').toDoubleOrNull() else null
+    val deliveryProfitVal = if (operation == BulkProductOperation.SET_PROFIT) deliveryProfitText.replace(',', '.').toDoubleOrNull() else null
 
-    val profitError: String? = when {
-        operation == BulkProductOperation.SET_PROFIT && wholesaleProfitVal != null && wholesaleProfitVal < 0.0 -> {
+    val profitError: String? = when (operation) {
+        BulkProductOperation.SET_PROFIT if wholesaleProfitVal != null && wholesaleProfitVal < 0.0 -> {
             stringResource(Res.string.error_wholesale_less_than_cost)
         }
-        operation == BulkProductOperation.SET_PROFIT && retailProfitVal != null && retailProfitVal < 0.0 -> {
+        BulkProductOperation.SET_PROFIT if retailProfitVal != null && retailProfitVal < 0.0 -> {
             stringResource(Res.string.error_retail_less_than_cost)
         }
-        operation == BulkProductOperation.SET_PROFIT && retailProfitVal != null && wholesaleProfitVal != null && retailProfitVal < wholesaleProfitVal -> {
+        BulkProductOperation.SET_PROFIT if deliveryProfitVal != null && deliveryProfitVal < 0.0 -> {
+            stringResource(Res.string.error_delivery_less_than_cost)
+        }
+        BulkProductOperation.SET_PROFIT if retailProfitVal != null && wholesaleProfitVal != null && retailProfitVal < wholesaleProfitVal -> {
             stringResource(Res.string.error_retail_less_than_wholesale)
         }
         else -> null
     }
 
-    val isPriceModificationValid = wholesalePriceError == null && retailPriceError == null && profitError == null
+    val isPriceModificationValid = wholesalePriceError == null && retailPriceError == null && deliveryPriceError == null && profitError == null
 
     fun numberOrError(text: String, labelStr: String, errorFmt: String): Double? {
         return text.replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0 } ?: run {
-            errorMessage = errorFmt.replace("%1\$s", labelStr)
+            errorMessage = errorFmt.replace($$"%1$s", labelStr)
             null
         }
     }
@@ -205,18 +309,20 @@ fun BulkProductModificationDialog(
         if (!isPriceModificationValid) return null
         return when (operation) {
             BulkProductOperation.CHANGE_PRICES -> {
-                if (!changeCost && !changeRetail && !changeWholesale) {
+                if (!changeCost && !changeRetail && !changeWholesale && !changeDelivery) {
                     errorMessage = selectPriceErr
                     null
                 } else {
                     val cost = if (changeCost) numberOrError(costText, costPriceLabel, invalidValueFmt) else 0.0
                     val retail = if (changeRetail) numberOrError(retailText, retailPriceLabel, invalidValueFmt) else 0.0
                     val wholesale = if (changeWholesale) numberOrError(wholesaleText, wholesalePriceLabel, invalidValueFmt) else 0.0
+                    val delivery = if (changeDelivery) numberOrError(deliveryText, deliveryPriceLabel, invalidValueFmt) else 0.0
                     if (errorMessage == null) BulkProductModification(
                         operation = operation,
                         costPrice = if (changeCost) cost else null,
                         retailPrice = if (changeRetail) retail else null,
-                        wholesalePrice = if (changeWholesale) wholesale else null
+                        wholesalePrice = if (changeWholesale) wholesale else null,
+                        deliveryPrice = if (changeDelivery) delivery else null
                     ) else null
                 }
             }
@@ -224,10 +330,16 @@ fun BulkProductModificationDialog(
             BulkProductOperation.SET_PROFIT -> {
                 val retail = retailProfitText.takeIf { it.isNotBlank() }?.let { numberOrError(it, retailProfitLabel, invalidValueFmt) }
                 val wholesale = wholesaleProfitText.takeIf { it.isNotBlank() }?.let { numberOrError(it, wholesaleProfitLabel, invalidValueFmt) }
-                if (errorMessage == null && retail == null && wholesale == null) {
+                val delivery = deliveryProfitText.takeIf { it.isNotBlank() }?.let { numberOrError(it, deliveryProfitLabel, invalidValueFmt) }
+                if (errorMessage == null && retail == null && wholesale == null && delivery == null) {
                     errorMessage = selectProfitErr
                 }
-                if (errorMessage == null) BulkProductModification(operation, retailProfitPercentage = retail, wholesaleProfitPercentage = wholesale) else null
+                if (errorMessage == null) BulkProductModification(
+                    operation,
+                    retailProfitPercentage = retail,
+                    wholesaleProfitPercentage = wholesale,
+                    deliveryProfitPercentage = delivery
+                ) else null
             }
 
             BulkProductOperation.CHANGE_CATEGORY -> {
@@ -243,7 +355,11 @@ fun BulkProductModificationDialog(
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isProcessing) {
+                onDismiss()
+            }
+        },
         modifier = Modifier.then(
             if (!isAndroid()) {
                 Modifier
@@ -251,7 +367,9 @@ fun BulkProductModificationDialog(
                     .onPreviewKeyEvent { keyEvent ->
                         keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
                             Key.Enter, Key.NumPadEnter -> {
-                                createModification()?.let(onApply)
+                                if (!isProcessing) {
+                                    createModification()?.let(onApply)
+                                }
                                 true
                             }
 
@@ -275,7 +393,8 @@ fun BulkProductModificationDialog(
                             checked = changeCost,
                             onCheckedChange = { changeCost = it },
                             value = costText,
-                            onValueChange = { costText = it }
+                            onValueChange = { costText = it },
+                            enabled = !isProcessing
                         )
                         PriceOption(
                             label = stringResource(Res.string.retail_price),
@@ -284,6 +403,7 @@ fun BulkProductModificationDialog(
                             value = retailText,
                             onValueChange = { retailText = it },
                             isError = retailPriceError != null,
+                            enabled = !isProcessing,
                             modifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
                         )
                         if (retailPriceError != null) {
@@ -301,11 +421,30 @@ fun BulkProductModificationDialog(
                             onCheckedChange = { changeWholesale = it },
                             value = wholesaleText,
                             onValueChange = { wholesaleText = it },
-                            isError = wholesalePriceError != null
+                            isError = wholesalePriceError != null,
+                            enabled = !isProcessing
                         )
                         if (wholesalePriceError != null) {
                             Text(
                                 text = wholesalePriceError,
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(start = 48.dp)
+                            )
+                        }
+                        PriceOption(
+                            label = stringResource(Res.string.delivery_price),
+                            checked = changeDelivery,
+                            onCheckedChange = { changeDelivery = it },
+                            value = deliveryText,
+                            onValueChange = { deliveryText = it },
+                            isError = deliveryPriceError != null,
+                            enabled = !isProcessing
+                        )
+                        if (deliveryPriceError != null) {
+                            Text(
+                                text = deliveryPriceError,
                                 color = MaterialTheme.colorScheme.error,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -320,13 +459,21 @@ fun BulkProductModificationDialog(
                             label = stringResource(Res.string.retail_profit_pct),
                             value = retailProfitText,
                             isError = profitError != null,
+                            enabled = !isProcessing,
                             modifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
                         ) { retailProfitText = it }
                         DecimalInput(
                             label = stringResource(Res.string.wholesale_profit_pct),
                             value = wholesaleProfitText,
-                            isError = profitError != null
+                            isError = profitError != null,
+                            enabled = !isProcessing
                         ) { wholesaleProfitText = it }
+                        DecimalInput(
+                            label = stringResource(Res.string.delivery_profit_pct),
+                            value = deliveryProfitText,
+                            isError = profitError != null,
+                            enabled = !isProcessing
+                        ) { deliveryProfitText = it }
                         if (profitError != null) {
                             Text(
                                 text = profitError,
@@ -339,8 +486,8 @@ fun BulkProductModificationDialog(
 
                     BulkProductOperation.CHANGE_CATEGORY -> {
                         ExposedDropdownMenuBox(
-                            expanded = categoryDropdownExpanded,
-                            onExpandedChange = { categoryDropdownExpanded = it },
+                            expanded = categoryDropdownExpanded && !isProcessing,
+                            onExpandedChange = { if (!isProcessing) categoryDropdownExpanded = it },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             OutlinedTextField(
@@ -349,6 +496,7 @@ fun BulkProductModificationDialog(
                                     categoryText = it
                                     categoryDropdownExpanded = true
                                 },
+                                enabled = !isProcessing,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
@@ -362,7 +510,7 @@ fun BulkProductModificationDialog(
                             )
                             if (filteredCategories.isNotEmpty() || (categoryText.trim().isNotEmpty() && !allCategories.any { it.equals(categoryText.trim(), ignoreCase = true) })) {
                                 ExposedDropdownMenu(
-                                    expanded = categoryDropdownExpanded,
+                                    expanded = categoryDropdownExpanded && !isProcessing,
                                     onDismissRequest = { categoryDropdownExpanded = false }
                                 ) {
                                     filteredCategories.forEach { category ->
@@ -429,17 +577,43 @@ fun BulkProductModificationDialog(
                     )
                 }
                 errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (progress != null) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        LinearWavyProgressIndicator(
+                            progress = { progress.fraction },
+                            modifier = Modifier.fillMaxWidth().height(8.dp),
+                            color = if (operation == BulkProductOperation.DELETE) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Text(
+                            text = progressText,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isProcessing
+            ) { Text(stringResource(Res.string.cancel)) }
         },
         confirmButton = {
             Button(
                 onClick = {
                     createModification()?.let(onApply)
                 },
-                enabled = isPriceModificationValid,
+                enabled = isPriceModificationValid && !isProcessing,
                 modifier = if (!isAndroid() && !hasTextField) Modifier.focusRequester(confirmButtonFocusRequester) else Modifier
             ) {
                 Text(
@@ -464,10 +638,15 @@ private fun PriceOption(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    isError: Boolean = false
+    isError: Boolean = false,
+    enabled: Boolean = true
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
+        )
         OutlinedTextField(
             value = value,
             onValueChange = { input ->
@@ -478,7 +657,7 @@ private fun PriceOption(
             modifier = Modifier.fillMaxWidth().padding(start = 4.dp).then(modifier),
             prefix = { Text("$") },
             label = { Text(label) },
-            enabled = checked,
+            enabled = checked && enabled,
             isError = isError,
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
@@ -492,6 +671,7 @@ private fun DecimalInput(
     value: String,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
+    enabled: Boolean = true,
     onValueChange: (String) -> Unit
 ) {
     OutlinedTextField(
@@ -503,6 +683,7 @@ private fun DecimalInput(
         },
         modifier = Modifier.fillMaxWidth().then(modifier),
         label = { Text(label) },
+        enabled = enabled,
         isError = isError,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)

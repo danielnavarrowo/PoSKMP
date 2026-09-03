@@ -96,9 +96,10 @@
     <string name="swap_venta_layout_order_title">Ticket a la izquierda en Venta</string>
     <string name="swap_venta_layout_order_subtitle">Muestra el ticket de venta a la izquierda y el catálogo de productos a la derecha en el diseño ancho</string>
     <string name="default_margins_section_title">Márgenes de Ganancia Predeterminados</string>
-    <string name="default_margins_section_subtitle">Define los porcentajes de ganancia automáticos para calcular el precio de venta y mayoreo a partir del costo</string>
+    <string name="default_margins_section_subtitle">Define los porcentajes de ganancia automáticos para calcular el precio de venta, mayoreo y domicilio a partir del costo</string>
     <string name="retail_margin_label">% Venta</string>
     <string name="wholesale_margin_label">% Mayoreo</string>
+    <string name="delivery_margin_label">% Domicilio</string>
 
     <!-- PlatformBarcodeScanner (Android) -->
     <string name="close_scanner_desc">Cerrar escáner</string>
@@ -159,21 +160,32 @@
     <string name="bulk_label_cost_price">el precio de costo</string>
     <string name="bulk_label_retail_price">el precio de venta</string>
     <string name="bulk_label_wholesale_price">el precio de mayoreo</string>
+    <string name="bulk_label_delivery_price">el precio a domicilio</string>
     <string name="bulk_label_retail_profit">la ganancia de venta</string>
     <string name="bulk_label_wholesale_profit">la ganancia de mayoreo</string>
+    <string name="bulk_label_delivery_profit">la ganancia a domicilio</string>
     <string name="bulk_select_profit_error">Ingresa al menos un porcentaje de ganancia.</string>
     <string name="bulk_enter_category_error">Ingresa la categoría que se asignará.</string>
     <string name="bulk_mod_title">Modificación masiva</string>
     <string name="bulk_mod_subtitle">%1$d producto(s) seleccionado(s)</string>
     <string name="cost_price">Precio de costo</string>
     <string name="retail_price">Precio de venta</string>
-    <string name="wholesale_price">Mayoreo</string>
+    <string name="wholesale_price">$ Mayoreo</string>
+    <string name="delivery_price">$ Domicilio</string>
     <string name="bulk_profit_cost_requirement">Solo se actualizarán los productos que tengan precio de costo.</string>
     <string name="retail_profit_pct">Ganancia de venta (%)</string>
     <string name="wholesale_profit_pct">Ganancia de mayoreo (%)</string>
+    <string name="delivery_profit_pct">Ganancia a domicilio (%)</string>
+    <string name="error_delivery_less_than_cost">El precio a domicilio no puede ser menor al costo</string>
     <string name="new_category">Nueva categoría</string>
     <string name="bulk_deactivate_confirmation">Los %1$d productos seleccionados quedarán inactivos.</string>
     <string name="bulk_delete_confirmation">¿Confirmas la eliminación definitiva de los %1$d productos seleccionados?</string>
+    <string name="bulk_progress_change_prices">Actualizando precios: %1$d de %2$d (%3$d%%)</string>
+    <string name="bulk_progress_set_profit">Estableciendo ganancia: %1$d de %2$d (%3$d%%)</string>
+    <string name="bulk_progress_change_category">Cambiando categoría: %1$d de %2$d (%3$d%%)</string>
+    <string name="bulk_progress_mark_as_favorite">Marcando como favoritos: %1$d de %2$d (%3$d%%)</string>
+    <string name="bulk_progress_deactivate">Desactivando productos: %1$d de %2$d (%3$d%%)</string>
+    <string name="bulk_progress_delete">Eliminando productos: %1$d de %2$d (%3$d%%)</string>
     <string name="apply_changes_button">Aplicar cambios</string>
     <string name="apply_changes_button_desktop">Aplicar cambios (Enter)</string>
 
@@ -229,6 +241,9 @@
     <string name="error_wholesale_less_than_cost">El precio de mayoreo no puede ser menor que el costo.</string>
     <string name="error_retail_less_than_wholesale">El precio de venta no puede ser menor que el mayoreo.</string>
     <string name="error_retail_less_than_cost">El precio de venta no puede ser menor que el costo.</string>
+    <string name="warning_retail_margin_below_default">Aviso: El margen de venta (%1$s%) es menor al margen por defecto (%2$s%%)</string>
+    <string name="warning_wholesale_margin_below_default">Aviso: El margen de mayoreo (%1$s%) es menor al margen por defecto (%2$s%%)</string>
+    <string name="warning_delivery_margin_below_default">Aviso: El margen a domicilio (%1$s%) es menor al margen por defecto (%2$s%%)</string>
 
     <!-- ProductosScreen -->
     <string name="product_admin_title">Administración de Productos</string>
@@ -259,6 +274,10 @@
     <string name="header_cost">Costo</string>
     <string name="header_retail_margin">% Ganancia</string>
     <string name="header_wholesale_margin">% Gan. Mayoreo</string>
+    <string name="header_delivery_price">Domicilio</string>
+    <string name="header_delivery_margin">% Gan. Domicilio</string>
+    <string name="delivery_price_label">Domicilio</string>
+    <string name="delivery_display_label">Dom: $%1$s</string>
     <string name="header_total_sales">Ventas Totales</string>
     <string name="header_last_sale">Última Venta</string>
     <string name="header_actions">Acciones</string>
@@ -565,6 +584,8 @@
     <string name="round_retail_price_subtitle">Aplica el redondeo al precio regular de venta al guardar</string>
     <string name="round_wholesale_price_title">Redondear precio de mayoreo al guardar producto</string>
     <string name="round_wholesale_price_subtitle">Aplica el redondeo al precio de mayoreo al guardar</string>
+    <string name="round_delivery_price_title">Redondear precio a domicilio al guardar producto</string>
+    <string name="round_delivery_price_subtitle">Aplica el redondeo al precio de entrega a domicilio al guardar</string>
     <string name="round_ticket_total_title">Redondear total del ticket antes del cobro</string>
     <string name="round_ticket_total_subtitle">Redondea el total acumulado en el ticket de venta al finalizar</string>
 
@@ -576,6 +597,13 @@
     <string name="card_payment_blocked_wholesale_warning">El pago con tarjeta no está permitido porque el ticket contiene productos con precio de mayoreo.</string>
     <string name="mixed_card_payment_blocked_wholesale_warning">No se permite incluir monto con tarjeta porque el ticket contiene productos con precio de mayoreo.</string>
     <string name="synced_badge_label">Sincronizado</string>
+
+    <!-- Delivery Sales Settings Strings -->
+    <string name="delivery_sales_section_title">Modalidad de Venta a Domicilio</string>
+    <string name="delivery_sales_section_subtitle">Configuración local para dispositivos destinados a registrar entregas a domicilio</string>
+    <string name="prioritize_delivery_price_title">Priorizar precio a domicilio</string>
+    <string name="prioritize_delivery_price_subtitle">En este dispositivo, los productos con precio a domicilio configurado se cobrarán a ese precio por defecto en la venta</string>
+    <string name="delivery_mode_active_badge">Domicilio</string>
 
     <!-- Supabase Cloud Sync Settings Strings -->
     <string name="supabase_section_title">Sincronización en la Nube (Supabase)</string>

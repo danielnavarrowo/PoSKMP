@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
@@ -65,6 +67,29 @@ private fun formatMargin(value: Double): String {
     }
 }
 
+@Composable
+private fun MarginWarningBadge(warningText: String) {
+    val warningColor = if (isSystemInDarkTheme()) Color(0xFFFFB74D) else Color(0xFFD97706)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.warning),
+            contentDescription = null,
+            tint = warningColor,
+            modifier = Modifier.size(13.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = warningText,
+            color = warningColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductFormDialog(
@@ -75,8 +100,10 @@ fun ProductFormDialog(
     existingCategories: List<String> = emptyList(),
     defaultRetailMarginPercentage: Double = 0.0,
     defaultWholesaleMarginPercentage: Double = 0.0,
+    defaultDeliveryMarginPercentage: Double = 0.0,
     roundRetailPrice: Boolean = false,
-    roundWholesalePrice: Boolean = false
+    roundWholesalePrice: Boolean = false,
+    roundDeliveryPrice: Boolean = false
 ) {
     val isNew = product == null || product.id.isEmpty()
 
@@ -141,6 +168,30 @@ fun ProductFormDialog(
         }
         mutableStateOf(initialWholesale)
     }
+    var formMargenDelivery by remember(product, defaultDeliveryMarginPercentage) {
+        val cost = product?.costo
+        val delivery = product?.precio_delivery
+        val initialMargin = if (cost != null && cost > 0.0 && delivery != null && delivery > 0.0) {
+            ((delivery - cost) / cost) * 100.0
+        } else if (defaultDeliveryMarginPercentage > 0.0) {
+            defaultDeliveryMarginPercentage
+        } else {
+            null
+        }
+        mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
+    }
+    var formPrecioDelivery by remember(product, defaultDeliveryMarginPercentage) {
+        val delivery = product?.precio_delivery
+        val cost = product?.costo
+        val initialDelivery = if (delivery != null && delivery > 0.0) {
+            formatNumber(delivery)
+        } else if (cost != null && cost > 0.0 && defaultDeliveryMarginPercentage > 0.0) {
+            formatNumber(cost * (1.0 + defaultDeliveryMarginPercentage / 100.0))
+        } else {
+            ""
+        }
+        mutableStateOf(initialDelivery)
+    }
     var formPiezas by remember(product) {
         val pieces = product?.piezas
         mutableStateOf(if (pieces == null || pieces == 0.0) "1" else if (pieces % 1.0 == 0.0) pieces.toLong().toString() else pieces.toString())
@@ -181,10 +232,18 @@ fun ProductFormDialog(
     val costVal = formCosto.toDoubleOrNull()
     val retailVal = formPrecio.toDoubleOrNull()
     val wholesaleVal = formPrecioMayoreo.toDoubleOrNull()
+    val deliveryVal = formPrecioDelivery.toDoubleOrNull()
 
     val wholesalePriceError: String? = when {
         costVal != null && costVal > 0.0 && wholesaleVal != null && wholesaleVal > 0.0 && wholesaleVal < costVal -> {
             stringResource(Res.string.error_wholesale_less_than_cost)
+        }
+        else -> null
+    }
+
+    val deliveryPriceError: String? = when {
+        costVal != null && costVal > 0.0 && deliveryVal != null && deliveryVal > 0.0 && deliveryVal < costVal -> {
+            stringResource(Res.string.error_delivery_less_than_cost)
         }
         else -> null
     }
@@ -199,7 +258,55 @@ fun ProductFormDialog(
         else -> null
     }
 
-    val isPriceValid = retailVal != null && wholesalePriceError == null && retailPriceError == null
+    val currentRetailMargin: Double? = if (costVal != null && costVal > 0.0 && retailVal != null && retailVal > 0.0) {
+        formMargenVenta.toDoubleOrNull() ?: (((retailVal - costVal) / costVal) * 100.0)
+    } else null
+
+    val currentWholesaleMargin: Double? = if (costVal != null && costVal > 0.0 && wholesaleVal != null && wholesaleVal > 0.0) {
+        formMargenMayoreo.toDoubleOrNull() ?: (((wholesaleVal - costVal) / costVal) * 100.0)
+    } else null
+
+    val currentDeliveryMargin: Double? = if (costVal != null && costVal > 0.0 && deliveryVal != null && deliveryVal > 0.0) {
+        formMargenDelivery.toDoubleOrNull() ?: (((deliveryVal - costVal) / costVal) * 100.0)
+    } else null
+
+    val retailMarginWarning: String? = when {
+        retailPriceError != null -> null
+        currentRetailMargin != null && defaultRetailMarginPercentage > 0.0 && currentRetailMargin < (defaultRetailMarginPercentage - 0.001) -> {
+            stringResource(
+                Res.string.warning_retail_margin_below_default,
+                formatMargin(currentRetailMargin),
+                formatMargin(defaultRetailMarginPercentage)
+            )
+        }
+        else -> null
+    }
+
+    val wholesaleMarginWarning: String? = when {
+        wholesalePriceError != null -> null
+        currentWholesaleMargin != null && defaultWholesaleMarginPercentage > 0.0 && currentWholesaleMargin < (defaultWholesaleMarginPercentage - 0.001) -> {
+            stringResource(
+                Res.string.warning_wholesale_margin_below_default,
+                formatMargin(currentWholesaleMargin),
+                formatMargin(defaultWholesaleMarginPercentage)
+            )
+        }
+        else -> null
+    }
+
+    val deliveryMarginWarning: String? = when {
+        deliveryPriceError != null -> null
+        currentDeliveryMargin != null && defaultDeliveryMarginPercentage > 0.0 && currentDeliveryMargin < (defaultDeliveryMarginPercentage - 0.001) -> {
+            stringResource(
+                Res.string.warning_delivery_margin_below_default,
+                formatMargin(currentDeliveryMargin),
+                formatMargin(defaultDeliveryMarginPercentage)
+            )
+        }
+        else -> null
+    }
+
+    val isPriceValid = retailVal != null && wholesalePriceError == null && retailPriceError == null && deliveryPriceError == null
 
     fun addBarcodeFromInput() {
         val codesToAdd = parseBarcodes(barcodeInput)
@@ -284,6 +391,8 @@ fun ProductFormDialog(
         val finalPrice = if (roundRetailPrice) roundPrice(rawPrice) else rawPrice
         val rawWholesale = formPrecioMayoreo.toDoubleOrNull() ?: 0.0
         val finalWholesale = if (roundWholesalePrice) roundPrice(rawWholesale) else rawWholesale
+        val rawDelivery = formPrecioDelivery.toDoubleOrNull() ?: 0.0
+        val finalDelivery = if (roundDeliveryPrice) roundPrice(rawDelivery) else rawDelivery
 
         val p = Products(
             id = id,
@@ -297,6 +406,7 @@ fun ProductFormDialog(
             precio_mayoreo = finalWholesale,
             es_favorito = if (formEsFavorito) 1L else 0L,
             piezas = formPiezas.toDoubleOrNull() ?: 1.0,
+            precio_delivery = finalDelivery,
             updated_at = currentTimeMillis(),
             sync_state = if (isNew) "PENDING_INSERT" else "PENDING_UPDATE"
         )
@@ -461,6 +571,11 @@ fun ProductFormDialog(
                                         val newWholesale = cost * (1.0 + marginMayoreo / 100.0)
                                         formPrecioMayoreo = formatNumber(newWholesale)
                                     }
+                                    val marginDelivery = formMargenDelivery.toDoubleOrNull()
+                                    if (marginDelivery != null) {
+                                        val newDelivery = cost * (1.0 + marginDelivery / 100.0)
+                                        formPrecioDelivery = formatNumber(newDelivery)
+                                    }
                                 }
                             }
                         },
@@ -535,6 +650,8 @@ fun ProductFormDialog(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                     )
+                } else if (retailMarginWarning != null) {
+                    MarginWarningBadge(retailMarginWarning)
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -588,6 +705,63 @@ fun ProductFormDialog(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                     )
+                } else if (wholesaleMarginWarning != null) {
+                    MarginWarningBadge(wholesaleMarginWarning)
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = formPrecioDelivery,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                formPrecioDelivery = input
+                                val delivery = input.toDoubleOrNull()
+                                val cost = formCosto.toDoubleOrNull()
+                                if (delivery != null && cost != null && cost > 0) {
+                                    val margin = ((delivery - cost) / cost) * 100.0
+                                    formMargenDelivery = formatMargin(margin)
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                        label = { Text(stringResource(Res.string.delivery_price), style = MaterialTheme.typography.labelLarge) },
+                        isError = deliveryPriceError != null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = formMargenDelivery,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                                formMargenDelivery = input
+                                val margin = input.toDoubleOrNull()
+                                val cost = formCosto.toDoubleOrNull()
+                                if (margin != null && cost != null && cost > 0) {
+                                    val newDelivery = cost * (1.0 + margin / 100.0)
+                                    formPrecioDelivery = formatNumber(newDelivery)
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                        label = { Text(stringResource(Res.string.delivery_margin_label), style = MaterialTheme.typography.labelLarge) },
+                        isError = deliveryPriceError != null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                }
+
+                if (deliveryPriceError != null) {
+                    Text(
+                        text = deliveryPriceError,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    )
+                } else if (deliveryMarginWarning != null) {
+                    MarginWarningBadge(deliveryMarginWarning)
                 }
 
                 ExposedDropdownMenuBox(

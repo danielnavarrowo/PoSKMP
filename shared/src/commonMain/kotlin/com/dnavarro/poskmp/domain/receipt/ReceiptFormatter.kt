@@ -26,7 +26,8 @@ object ReceiptFormatter {
                 subtotal = item.subtotal,
                 isWeightBased = item.cantidad % 1.0 != 0.0,
                 originalUnitPrice = item.precioUnitario,
-                isWholesale = item.esMayoreo
+                isWholesale = item.esMayoreo,
+                isDelivery = item.esDelivery
             )
         }
         return create(
@@ -105,6 +106,8 @@ object ReceiptFormatter {
             val hasWholesale = item.isWholesale || (item.originalUnitPrice > item.unitPrice + 0.001)
             val displayName = if (hasWholesale) {
                 "${item.name.trim().ifEmpty { "Producto" }} (MAY)"
+            } else if (item.isDelivery) {
+                "${item.name.trim().ifEmpty { "Producto" }} (DOM)"
             } else {
                 item.name.trim().ifEmpty { "Producto" }
             }

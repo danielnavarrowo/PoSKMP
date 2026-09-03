@@ -16,6 +16,8 @@ data class ProductDto(
     val porPeso: Boolean = false,
     @SerialName("precio_mayoreo")
     val precioMayoreo: Double = 0.0,
+    @SerialName("precio_delivery")
+    val precioDelivery: Double = 0.0,
     @SerialName("es_favorito")
     val esFavorito: Boolean = false,
     val piezas: Double = 1.0,
@@ -110,6 +112,8 @@ data class SaleItemDto(
     val ganancia: Double,
     @SerialName("es_mayoreo")
     val esMayoreo: Boolean = false,
+    @SerialName("es_delivery")
+    val esDelivery: Boolean = false,
     @SerialName("created_at")
     val createdAt: Long
 )
@@ -129,12 +133,16 @@ data class StoreSettingsDto(
     val defaultRetailMargin: Double = 0.0,
     @SerialName("default_wholesale_margin")
     val defaultWholesaleMargin: Double = 0.0,
+    @SerialName("default_delivery_margin")
+    val defaultDeliveryMargin: Double = 0.0,
     @SerialName("is_rounding_enabled")
     val isRoundingEnabled: Boolean = false,
     @SerialName("round_retail_price")
     val roundRetailPrice: Boolean = false,
     @SerialName("round_wholesale_price")
     val roundWholesalePrice: Boolean = false,
+    @SerialName("round_delivery_price")
+    val roundDeliveryPrice: Boolean = false,
     @SerialName("round_ticket_total")
     val roundTicketTotal: Boolean = false,
     @SerialName("disallow_card_payment_on_wholesale")

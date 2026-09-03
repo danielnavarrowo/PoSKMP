@@ -88,6 +88,7 @@ class SqlDelightProductDataSource(
                 precio_mayoreo = product.precio_mayoreo,
                 es_favorito = product.es_favorito,
                 piezas = product.piezas,
+                precio_delivery = product.precio_delivery,
                 updated_at = product.updated_at,
                 sync_state = product.sync_state
             )
@@ -97,7 +98,7 @@ class SqlDelightProductDataSource(
     override suspend fun insertProducts(products: List<Products>) {
         withContext(Dispatchers.IO) {
             queries.transaction {
-                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, updated_at, sync_state) in products) {
+                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery, updated_at, sync_state) in products) {
                     queries.insertProduct(
                         id = id,
                         codigos = codigos,
@@ -110,6 +111,7 @@ class SqlDelightProductDataSource(
                         precio_mayoreo = precio_mayoreo,
                         es_favorito = es_favorito,
                         piezas = piezas,
+                        precio_delivery = precio_delivery,
                         updated_at = updated_at,
                         sync_state = sync_state
                     )
@@ -132,6 +134,7 @@ class SqlDelightProductDataSource(
                 precio_mayoreo = product.precio_mayoreo,
                 es_favorito = product.es_favorito,
                 piezas = product.piezas,
+                precio_delivery = product.precio_delivery,
                 updated_at = product.updated_at,
                 sync_state = product.sync_state
             )

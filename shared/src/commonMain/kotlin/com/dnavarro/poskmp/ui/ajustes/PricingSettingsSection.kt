@@ -34,13 +34,20 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.default_margins_section_subtitle
 import poskmp.shared.generated.resources.default_margins_section_title
+import poskmp.shared.generated.resources.delivery_margin_label
+import poskmp.shared.generated.resources.delivery_sales_section_subtitle
+import poskmp.shared.generated.resources.delivery_sales_section_title
 import poskmp.shared.generated.resources.disallow_card_on_wholesale_subtitle
 import poskmp.shared.generated.resources.disallow_card_on_wholesale_title
 import poskmp.shared.generated.resources.enable_rounding_subtitle
 import poskmp.shared.generated.resources.enable_rounding_title
 import poskmp.shared.generated.resources.payment_policies_section_subtitle
 import poskmp.shared.generated.resources.payment_policies_section_title
+import poskmp.shared.generated.resources.prioritize_delivery_price_subtitle
+import poskmp.shared.generated.resources.prioritize_delivery_price_title
 import poskmp.shared.generated.resources.retail_margin_label
+import poskmp.shared.generated.resources.round_delivery_price_subtitle
+import poskmp.shared.generated.resources.round_delivery_price_title
 import poskmp.shared.generated.resources.round_retail_price_subtitle
 import poskmp.shared.generated.resources.round_retail_price_title
 import poskmp.shared.generated.resources.round_ticket_total_subtitle
@@ -57,16 +64,22 @@ fun PricingSettingsSection(
     onDefaultRetailMarginChange: (Double) -> Unit,
     defaultWholesaleMargin: Double,
     onDefaultWholesaleMarginChange: (Double) -> Unit,
+    defaultDeliveryMargin: Double = 0.0,
+    onDefaultDeliveryMarginChange: (Double) -> Unit = {},
     isRoundingEnabled: Boolean,
     onIsRoundingEnabledChange: (Boolean) -> Unit,
     roundRetailPrice: Boolean,
     onRoundRetailPriceChange: (Boolean) -> Unit,
     roundWholesalePrice: Boolean,
     onRoundWholesalePriceChange: (Boolean) -> Unit,
+    roundDeliveryPrice: Boolean = false,
+    onRoundDeliveryPriceChange: (Boolean) -> Unit = {},
     roundTicketTotal: Boolean,
     onRoundTicketTotalChange: (Boolean) -> Unit,
     disallowCardPaymentOnWholesale: Boolean,
     onDisallowCardPaymentOnWholesaleChange: (Boolean) -> Unit,
+    prioritizeDeliveryPrice: Boolean,
+    onPrioritizeDeliveryPriceChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var retailMarginText by remember(defaultRetailMargin) {
@@ -77,6 +90,11 @@ fun PricingSettingsSection(
     var wholesaleMarginText by remember(defaultWholesaleMargin) {
         mutableStateOf(if (defaultWholesaleMargin > 0.0) {
             if (defaultWholesaleMargin % 1.0 == 0.0) defaultWholesaleMargin.toLong().toString() else defaultWholesaleMargin.toString()
+        } else "")
+    }
+    var deliveryMarginText by remember(defaultDeliveryMargin) {
+        mutableStateOf(if (defaultDeliveryMargin > 0.0) {
+            if (defaultDeliveryMargin % 1.0 == 0.0) defaultDeliveryMargin.toLong().toString() else defaultDeliveryMargin.toString()
         } else "")
     }
 
@@ -142,6 +160,22 @@ fun PricingSettingsSection(
                             }
                         },
                         label = { Text(stringResource(Res.string.wholesale_margin_label)) },
+                        suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                        placeholder = { Text("0") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    OutlinedTextField(
+                        value = deliveryMarginText,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                deliveryMarginText = input
+                                onDefaultDeliveryMarginChange(input.toDoubleOrNull() ?: 0.0)
+                            }
+                        },
+                        label = { Text(stringResource(Res.string.delivery_margin_label)) },
                         suffix = { Text("%", fontWeight = FontWeight.Bold) },
                         placeholder = { Text("0") },
                         singleLine = true,
@@ -289,6 +323,40 @@ fun PricingSettingsSection(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        // Secondary Toggle 3: Redondear precio a domicilio al guardar producto
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                                Text(
+                                    text = stringResource(Res.string.round_delivery_price_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(Res.string.round_delivery_price_subtitle),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Switch(
+                                checked = roundDeliveryPrice,
+                                onCheckedChange = onRoundDeliveryPriceChange
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         // Secondary Toggle 3: Redondear total del ticket antes del cobro
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -372,6 +440,57 @@ fun PricingSettingsSection(
                     Switch(
                         checked = disallowCardPaymentOnWholesale,
                         onCheckedChange = onDisallowCardPaymentOnWholesaleChange
+                    )
+                }
+            }
+        }
+
+        // Card: Modalidad de Venta a Domicilio (Ajuste local de este dispositivo)
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = stringResource(Res.string.delivery_sales_section_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(Res.string.delivery_sales_section_subtitle),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.prioritize_delivery_price_title),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.prioritize_delivery_price_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = prioritizeDeliveryPrice,
+                        onCheckedChange = onPrioritizeDeliveryPriceChange
                     )
                 }
             }

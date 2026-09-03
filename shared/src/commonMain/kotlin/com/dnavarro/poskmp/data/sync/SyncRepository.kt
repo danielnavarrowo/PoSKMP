@@ -104,6 +104,7 @@ class SyncRepositoryImpl(
                         activo = p.activo == 1L,
                         porPeso = p.por_peso == 1L,
                         precioMayoreo = p.precio_mayoreo,
+                        precioDelivery = p.precio_delivery,
                         esFavorito = p.es_favorito == 1L,
                         piezas = p.piezas,
                         updatedAt = p.updated_at
@@ -242,6 +243,7 @@ class SyncRepositoryImpl(
                             subtotal = item.subtotal,
                             ganancia = item.ganancia,
                             esMayoreo = item.es_mayoreo == 1L,
+                            esDelivery = item.es_delivery == 1L,
                             createdAt = item.created_at
                         )
                     })
@@ -275,9 +277,11 @@ class SyncRepositoryImpl(
                     receiptFooter = receiptSettings.footerMessage,
                     defaultRetailMargin = settingsRepository.defaultRetailMarginFlow.first(),
                     defaultWholesaleMargin = settingsRepository.defaultWholesaleMarginFlow.first(),
+                    defaultDeliveryMargin = settingsRepository.defaultDeliveryMarginFlow.first(),
                     isRoundingEnabled = settingsRepository.isRoundingEnabledFlow.first(),
                     roundRetailPrice = settingsRepository.roundRetailPriceFlow.first(),
                     roundWholesalePrice = settingsRepository.roundWholesalePriceFlow.first(),
+                    roundDeliveryPrice = settingsRepository.roundDeliveryPriceFlow.first(),
                     roundTicketTotal = settingsRepository.roundTicketTotalFlow.first(),
                     disallowCardPaymentOnWholesale = settingsRepository.disallowCardPaymentOnWholesaleFlow.first(),
                     updatedAt = if (localSettingsUpdatedAt > 0L) localSettingsUpdatedAt else currentTimeMillis()
@@ -323,7 +327,7 @@ class SyncRepositoryImpl(
             }
             val remoteProducts = pulledProductsResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, esFavorito, piezas, updatedAt) in remoteProducts) {
+                for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, precioDelivery, esFavorito, piezas, updatedAt) in remoteProducts) {
                     val local = queries.selectProductById(id).executeAsOneOrNull()
                     if (local == null || updatedAt >= local.updated_at || local.sync_state == "SYNCED") {
                         queries.upsertSyncedProduct(
@@ -336,6 +340,7 @@ class SyncRepositoryImpl(
                             activo = if (activo) 1L else 0L,
                             por_peso = if (porPeso) 1L else 0L,
                             precio_mayoreo = precioMayoreo,
+                            precio_delivery = precioDelivery,
                             es_favorito = if (esFavorito) 1L else 0L,
                             piezas = piezas,
                             updated_at = updatedAt
@@ -451,7 +456,7 @@ class SyncRepositoryImpl(
             }
             val remoteItems = pulledItemsResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, saleId, productId, productNombre, cantidad, precioUnitario, costoUnitario, subtotal, ganancia, esMayoreo, createdAt) in remoteItems) {
+                for ((id, saleId, productId, productNombre, cantidad, precioUnitario, costoUnitario, subtotal, ganancia, esMayoreo, esDelivery, createdAt) in remoteItems) {
                     queries.upsertSyncedSaleItem(
                         id = id,
                         sale_id = saleId,
@@ -463,6 +468,7 @@ class SyncRepositoryImpl(
                         subtotal = subtotal,
                         ganancia = ganancia,
                         es_mayoreo = if (esMayoreo) 1L else 0L,
+                        es_delivery = if (esDelivery) 1L else 0L,
                         created_at = createdAt
                     )
                 }
@@ -478,9 +484,11 @@ class SyncRepositoryImpl(
                         settingsRepository.setBusinessSettings(
                             defaultRetailMargin = remoteSettings.defaultRetailMargin,
                             defaultWholesaleMargin = remoteSettings.defaultWholesaleMargin,
+                            defaultDeliveryMargin = remoteSettings.defaultDeliveryMargin,
                             isRoundingEnabled = remoteSettings.isRoundingEnabled,
                             roundRetailPrice = remoteSettings.roundRetailPrice,
                             roundWholesalePrice = remoteSettings.roundWholesalePrice,
+                            roundDeliveryPrice = remoteSettings.roundDeliveryPrice,
                             roundTicketTotal = remoteSettings.roundTicketTotal,
                             disallowCardPaymentOnWholesale = remoteSettings.disallowCardPaymentOnWholesale,
                             storeName = remoteSettings.storeName,

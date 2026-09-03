@@ -204,6 +204,7 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
     val activeIndex = headerCols.indexOfFirst { it == "activo" || it == "active" }
     val weightIndex = headerCols.indexOfFirst { it == "por_peso" || it == "by_weight" }
     val wholesaleIndex = headerCols.indexOfFirst { it == "precio_mayoreo" || it == "wholesale_price" }
+    val deliveryIndex = headerCols.indexOfFirst { it == "precio_delivery" || it == "precio_domicilio" || it == "delivery_price" }
     val favoriteIndex = headerCols.indexOfFirst { it == "es_favorito" || it == "favorite" }
     val piezasIndex = headerCols.indexOfFirst { it == "piezas" || it == "pieces" }
 
@@ -244,6 +245,7 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
         } else 0L
         
         val precioMayoreo = if (wholesaleIndex != -1) cols.getOrNull(wholesaleIndex)?.toDoubleOrNull() ?: 0.0 else 0.0
+        val precioDelivery = if (deliveryIndex != -1) cols.getOrNull(deliveryIndex)?.toDoubleOrNull() ?: 0.0 else 0.0
         
         val esFavorito = if (favoriteIndex != -1) {
             val favStr = cols.getOrNull(favoriteIndex)?.trim() ?: "0"
@@ -265,6 +267,7 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
                 precio_mayoreo = precioMayoreo,
                 es_favorito = esFavorito,
                 piezas = piezas,
+                precio_delivery = precioDelivery,
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )
@@ -373,6 +376,7 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
     val activeIndex = headerCols.indexOfFirst { it == "activo" || it == "active" }
     val weightIndex = headerCols.indexOfFirst { it == "por_peso" || it == "by_weight" }
     val wholesaleIndex = headerCols.indexOfFirst { it == "precio_mayoreo" || it == "wholesale_price" }
+    val deliveryIndex = headerCols.indexOfFirst { it == "precio_delivery" || it == "precio_domicilio" || it == "delivery_price" }
     val favoriteIndex = headerCols.indexOfFirst { it == "es_favorito" || it == "favorite" }
     val piezasIndex = headerCols.indexOfFirst { it == "piezas" || it == "pieces" }
 
@@ -408,6 +412,7 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
         } else 0L
         
         val precioMayoreo = if (wholesaleIndex != -1) cols.getOrNull(wholesaleIndex)?.toDoubleOrNull() ?: 0.0 else 0.0
+        val precioDelivery = if (deliveryIndex != -1) cols.getOrNull(deliveryIndex)?.toDoubleOrNull() ?: 0.0 else 0.0
         
         val esFavorito = if (favoriteIndex != -1) {
             val favStr = cols.getOrNull(favoriteIndex)?.trim() ?: "0"
@@ -429,6 +434,7 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
                 precio_mayoreo = precioMayoreo,
                 es_favorito = esFavorito,
                 piezas = piezas,
+                precio_delivery = precioDelivery,
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )
@@ -506,6 +512,7 @@ private fun parseJsonContent(content: ByteArray): List<Products> {
         val activo = obj.findJsonBooleanAsLong("activo", "active", "enabled", "is_active", "isActive", default = 1L)
         val porPeso = obj.findJsonBooleanAsLong("por_peso", "porPeso", "by_weight", "byWeight", "is_weighted", "isWeighted", "weighted", default = 0L)
         val precioMayoreo = obj.findJsonDouble("precio_mayoreo", "precioMayoreo", "wholesale_price", "wholesalePrice", "wholesale") ?: 0.0
+        val precioDelivery = obj.findJsonDouble("precio_delivery", "precioDelivery", "delivery_price", "deliveryPrice", "precio_domicilio", "precioDomicilio") ?: 0.0
         val esFavorito = obj.findJsonBooleanAsLong("es_favorito", "esFavorito", "favorite", "is_favorite", "isFavorite", default = 0L)
         val piezas = obj.findJsonDouble("piezas", "pieces", "piezas_paquete", "piezasPorPaquete", "units") ?: 1.0
 
@@ -522,6 +529,7 @@ private fun parseJsonContent(content: ByteArray): List<Products> {
                 precio_mayoreo = precioMayoreo,
                 es_favorito = esFavorito,
                 piezas = piezas,
+                precio_delivery = precioDelivery,
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )

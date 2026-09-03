@@ -139,6 +139,7 @@ fun CatalogSection(
     onModifyProduct: (Products) -> Unit,
     isCompact: Boolean,
     useProductTable: Boolean = false,
+    prioritizeDeliveryPrice: Boolean = false,
     onViewCartClick: (() -> Unit)? = null,
     onOpenScanner: (() -> Unit)? = null,
     cartCount: Int = 0,
@@ -185,6 +186,7 @@ fun CatalogSection(
                 ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                 ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
                 ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
+                ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
                 else -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
             }
 
@@ -481,13 +483,19 @@ fun CatalogSection(
                                     ShapeDefaults.topListItemShape
                                 } else if (index == displayedProducts.lastIndex) {
                                     ShapeDefaults.bottomListItemShape
-                                } else {
+                    } else {
                                     ShapeDefaults.middleListItemShape
                                 }
                                 var showContextMenu by remember { mutableStateOf(false) }
 
+                                val displayProduct = if (prioritizeDeliveryPrice && product.precio_delivery > 0.0) {
+                                    product.copy(precio = product.precio_delivery)
+                                } else {
+                                    product
+                                }
+
                                 ProductSimpleCard(
-                                    product = product,
+                                    product = displayProduct,
                                     shape = shape,
                                     isSelected = selectedCatalogIndex == index,
                                     showCheckbox = false,
@@ -622,8 +630,14 @@ fun CatalogSection(
                                                 else ShapeDefaults.middleListItemShape
                                             var showContextMenu by remember { mutableStateOf(false) }
 
+                                            val displayProduct = if (prioritizeDeliveryPrice && product.precio_delivery > 0.0) {
+                                                product.copy(precio = product.precio_delivery)
+                                            } else {
+                                                product
+                                            }
+
                                             ProductTableRow(
-                                                product = product,
+                                                product = displayProduct,
                                                 visibleColumns = activeColumns,
                                                 columnWeights = columnWeights,
                                                 totalDefaultWeight = totalDefaultWeight,
@@ -781,6 +795,11 @@ fun CatalogSection(
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                         }
+                                        val displayPrice = if (prioritizeDeliveryPrice && product.precio_delivery > 0.0) {
+                                            product.precio_delivery
+                                        } else {
+                                            product.precio
+                                        }
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -789,7 +808,7 @@ fun CatalogSection(
                                             if (product.por_peso == 1L) {
                                                 Text(
                                                     text = "$${
-                                                        product.precio.toString().formatPrice()
+                                                        displayPrice.toString().formatPrice()
                                                     } / Kg",
                                                     fontSize = 15.sp,
                                                     fontWeight = FontWeight.ExtraBold,
@@ -798,7 +817,7 @@ fun CatalogSection(
                                             } else {
                                                 Text(
                                                     text = "$${
-                                                        product.precio.toString().formatPrice()
+                                                        displayPrice.toString().formatPrice()
                                                     }",
                                                     fontSize = 15.sp,
                                                     fontWeight = FontWeight.ExtraBold,

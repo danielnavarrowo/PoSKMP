@@ -46,6 +46,7 @@ private data class UpdateInternalState(
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
+private data class Tuple6<A, B, C, D, E, F>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F)
 private data class Tuple7<A, B, C, D, E, F, G>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F, val g: G)
 
 /**
@@ -90,34 +91,70 @@ class AjustesViewModel(
         )
     }
 
+    private data class BehaviorPricingState(
+        val defaultRetailMargin: Double = 0.0,
+        val defaultWholesaleMargin: Double = 0.0,
+        val defaultDeliveryMargin: Double = 0.0,
+        val isRoundingEnabled: Boolean = false,
+        val roundRetailPrice: Boolean = false,
+        val roundWholesalePrice: Boolean = false,
+        val roundDeliveryPrice: Boolean = false,
+        val roundTicketTotal: Boolean = false,
+        val disallowCardPaymentOnWholesale: Boolean = false,
+        val prioritizeDeliveryPrice: Boolean = false
+    )
+
     private val _behaviorFlow = combine(
         combine(
-            combine(
-                repository.defaultScreenFlow,
-                repository.isChecadorDialogFlow,
-                repository.showExtraPricesChecadorFlow
-            ) { defaultScreen, isChecadorDialog, showExtraPricesChecador ->
-                Triple(defaultScreen, isChecadorDialog, showExtraPricesChecador)
-            },
-            combine(
-                repository.useProductTableInCatalogFlow,
-                repository.defaultRetailMarginFlow,
-                repository.defaultWholesaleMarginFlow,
-                repository.swapVentaLayoutOrderFlow
-            ) { useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder ->
-                Tuple4(useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder)
-            }
-        ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador), (useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder) ->
-            Tuple7(defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder)
+            repository.defaultScreenFlow,
+            repository.isChecadorDialogFlow,
+            repository.showExtraPricesChecadorFlow,
+            repository.useProductTableInCatalogFlow,
+            repository.swapVentaLayoutOrderFlow
+        ) { defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, swapVentaLayoutOrder ->
+            Tuple5(defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, swapVentaLayoutOrder)
         },
         combine(
-            repository.isRoundingEnabledFlow,
-            repository.roundRetailPriceFlow,
-            repository.roundWholesalePriceFlow,
-            repository.roundTicketTotalFlow,
-            repository.disallowCardPaymentOnWholesaleFlow
-        ) { isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale ->
-            Tuple5(isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale)
+            combine(
+                repository.defaultRetailMarginFlow,
+                repository.defaultWholesaleMarginFlow,
+                repository.defaultDeliveryMarginFlow,
+                repository.isRoundingEnabledFlow
+            ) { defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled ->
+                Tuple4(defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled)
+            },
+            combine(
+                combine(
+                    repository.roundRetailPriceFlow,
+                    repository.roundWholesalePriceFlow,
+                    repository.roundDeliveryPriceFlow
+                ) { roundRetailPrice, roundWholesalePrice, roundDeliveryPrice ->
+                    Triple(roundRetailPrice, roundWholesalePrice, roundDeliveryPrice)
+                },
+                combine(
+                    repository.roundTicketTotalFlow,
+                    repository.disallowCardPaymentOnWholesaleFlow,
+                    repository.prioritizeDeliveryPriceFlow
+                ) { roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
+                    Triple(roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+                }
+            ) { (roundRetailPrice, roundWholesalePrice, roundDeliveryPrice), (roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice) ->
+                Tuple6(roundRetailPrice, roundWholesalePrice, roundDeliveryPrice, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+            }
+        ) { (defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled),
+            (roundRetailPrice, roundWholesalePrice, roundDeliveryPrice, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice) ->
+            BehaviorPricingState(
+                defaultRetailMargin = defaultRetailMargin,
+                defaultWholesaleMargin = defaultWholesaleMargin,
+                defaultDeliveryMargin = defaultDeliveryMargin,
+                isRoundingEnabled = isRoundingEnabled,
+                roundRetailPrice = roundRetailPrice,
+                roundWholesalePrice = roundWholesalePrice,
+                roundDeliveryPrice = roundDeliveryPrice,
+                roundTicketTotal = roundTicketTotal,
+                disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
+                prioritizeDeliveryPrice = prioritizeDeliveryPrice
+            )
         },
         combine(
             combine(
@@ -138,8 +175,8 @@ class AjustesViewModel(
         ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
             Tuple7(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
         }
-    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, defaultRetailMargin, defaultWholesaleMargin, swapVentaLayoutOrder),
-        (isRoundingEnabled, roundRetailPrice, roundWholesalePrice, roundTicketTotal, disallowCardPaymentOnWholesale),
+    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, swapVentaLayoutOrder),
+        pricingState,
         (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
         AjustesUiState(
             defaultScreen = defaultScreen,
@@ -147,13 +184,16 @@ class AjustesViewModel(
             showExtraPricesChecador = showExtraPricesChecador,
             useProductTableInCatalog = useProductTableInCatalog,
             swapVentaLayoutOrder = swapVentaLayoutOrder,
-            defaultRetailMargin = defaultRetailMargin,
-            defaultWholesaleMargin = defaultWholesaleMargin,
-            isRoundingEnabled = isRoundingEnabled,
-            roundRetailPrice = roundRetailPrice,
-            roundWholesalePrice = roundWholesalePrice,
-            roundTicketTotal = roundTicketTotal,
-            disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
+            defaultRetailMargin = pricingState.defaultRetailMargin,
+            defaultWholesaleMargin = pricingState.defaultWholesaleMargin,
+            defaultDeliveryMargin = pricingState.defaultDeliveryMargin,
+            isRoundingEnabled = pricingState.isRoundingEnabled,
+            roundRetailPrice = pricingState.roundRetailPrice,
+            roundWholesalePrice = pricingState.roundWholesalePrice,
+            roundDeliveryPrice = pricingState.roundDeliveryPrice,
+            roundTicketTotal = pricingState.roundTicketTotal,
+            disallowCardPaymentOnWholesale = pricingState.disallowCardPaymentOnWholesale,
+            prioritizeDeliveryPrice = pricingState.prioritizeDeliveryPrice,
             supabaseUrl = supabaseUrl,
             supabaseKey = supabaseKey,
             lastSyncTimestamp = lastSyncTimestamp,
@@ -179,11 +219,14 @@ class AjustesViewModel(
             swapVentaLayoutOrder = behaviorState.swapVentaLayoutOrder,
             defaultRetailMargin = behaviorState.defaultRetailMargin,
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
+            defaultDeliveryMargin = behaviorState.defaultDeliveryMargin,
             isRoundingEnabled = behaviorState.isRoundingEnabled,
             roundRetailPrice = behaviorState.roundRetailPrice,
             roundWholesalePrice = behaviorState.roundWholesalePrice,
+            roundDeliveryPrice = behaviorState.roundDeliveryPrice,
             roundTicketTotal = behaviorState.roundTicketTotal,
             disallowCardPaymentOnWholesale = behaviorState.disallowCardPaymentOnWholesale,
+            prioritizeDeliveryPrice = behaviorState.prioritizeDeliveryPrice,
             supabaseUrl = behaviorState.supabaseUrl,
             supabaseKey = behaviorState.supabaseKey,
             lastSyncTimestamp = behaviorState.lastSyncTimestamp,
@@ -314,6 +357,15 @@ class AjustesViewModel(
         }
     }
 
+    fun setDefaultDeliveryMargin(margin: Double) {
+        viewModelScope.launch {
+            repository.setDefaultDeliveryMargin(margin)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
+        }
+    }
+
     fun setIsRoundingEnabled(enabled: Boolean) {
         viewModelScope.launch {
             repository.setIsRoundingEnabled(enabled)
@@ -341,6 +393,15 @@ class AjustesViewModel(
         }
     }
 
+    fun setRoundDeliveryPrice(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setRoundDeliveryPrice(enabled)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
+        }
+    }
+
     fun setRoundTicketTotal(enabled: Boolean) {
         viewModelScope.launch {
             repository.setRoundTicketTotal(enabled)
@@ -356,6 +417,12 @@ class AjustesViewModel(
             launch(Dispatchers.IO) {
                 syncRepository.syncAll()
             }
+        }
+    }
+
+    fun setPrioritizeDeliveryPrice(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setPrioritizeDeliveryPrice(enabled)
         }
     }
 

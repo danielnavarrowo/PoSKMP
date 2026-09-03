@@ -11,5 +11,6 @@ data class SaleItem(
     val subtotal: Double,
     val ganancia: Double,
     val esMayoreo: Boolean,
+    val esDelivery: Boolean = false,
     val createdAt: Long
 )
