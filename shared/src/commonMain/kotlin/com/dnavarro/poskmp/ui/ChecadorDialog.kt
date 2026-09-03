@@ -564,7 +564,7 @@ fun ChecadorDialog(
             onDismissRequest = onDismiss,
             modifier = Modifier
                 .background(
-                    MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.medium
+                    MaterialTheme.colorScheme.surfaceContainerLowest, ShapeDefaults.cardShape
                 )
                 .padding(24.dp)
                 .fillMaxWidth(),
@@ -758,7 +758,7 @@ fun ChecadorScreen(
                                 } else if (hasSearched) {
                                     AutoSizingText(
                                         text = stringResource(Res.string.product_not_found),
-                                        color = MaterialTheme.colorScheme.error,
+                                        color = Color.Red,
                                         fontWeight = FontWeight.Black,
                                         minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
@@ -783,7 +783,7 @@ fun ChecadorScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+                        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
                     ) {
                         if (searchedProduct != null) {
                             val product = searchedProduct!!
@@ -847,7 +847,7 @@ fun ChecadorScreen(
                                 Icon(
                                     painter = painterResource(Res.drawable.warning),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
+                                    tint = Color.Red,
                                     modifier = Modifier.size(256.dp)
                                 )
                             }

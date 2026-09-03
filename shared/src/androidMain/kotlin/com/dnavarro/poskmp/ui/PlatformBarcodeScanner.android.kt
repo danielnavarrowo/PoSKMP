@@ -1,4 +1,4 @@
-package com.dnavarro.poskmp.ui
+    package com.dnavarro.poskmp.ui
 
 import android.Manifest
 import android.view.HapticFeedbackConstants
@@ -56,11 +56,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.dnavarro.poskmp.data.SettingsRepository
+import org.koin.compose.koinInject
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -112,6 +115,7 @@ import poskmp.shared.generated.resources.delete_button
 import poskmp.shared.generated.resources.flash_off
 import poskmp.shared.generated.resources.flash_on
 import poskmp.shared.generated.resources.grant_permission_button
+import poskmp.shared.generated.resources.header_delivery_price
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.photo_camera
@@ -138,7 +142,8 @@ actual fun PlatformBarcodeScanner(
     lastScannedQuantity: Double,
     onUndo: (() -> Unit)?,
     onQuantityChange: ((Double) -> Unit)?,
-    isChecadorMode: Boolean
+    isChecadorMode: Boolean,
+    prioritizeDeliveryPrice: Boolean
 ) {
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
@@ -163,7 +168,8 @@ actual fun PlatformBarcodeScanner(
                     lastScannedQuantity = lastScannedQuantity,
                     onUndo = onUndo,
                     onQuantityChange = onQuantityChange,
-                    isChecadorMode = isChecadorMode
+                    isChecadorMode = isChecadorMode,
+                    prioritizeDeliveryPrice = prioritizeDeliveryPrice
                 )
             } else {
                 PermissionRationaleScreen(
@@ -187,7 +193,8 @@ fun CameraPreviewScreen(
     lastScannedQuantity: Double = 1.0,
     onUndo: (() -> Unit)? = null,
     onQuantityChange: ((Double) -> Unit)? = null,
-    isChecadorMode: Boolean = false
+    isChecadorMode: Boolean = false,
+    prioritizeDeliveryPrice: Boolean = false
 ) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
@@ -216,6 +223,9 @@ fun CameraPreviewScreen(
     var isFlashEnabled by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<Camera?>(null) }
     var lastScannedBarcode by remember { mutableStateOf<String?>(null) }
+    val settingsRepository = koinInject<SettingsRepository>()
+    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsState(initial = false)
+    val effectivePrioritizeDelivery = prioritizeDeliveryPrice || settingsPrioritizeDelivery
 
     LaunchedEffect(lastScannedProduct) {
         if (lastScannedProduct == null && statusMessage == null) {
@@ -398,7 +408,7 @@ fun CameraPreviewScreen(
                 ) {
                     if (lastScannedProduct != null) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
+                            modifier = Modifier.padding(if (isChecadorMode) 16.dp else 24.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
 
@@ -458,8 +468,12 @@ fun CameraPreviewScreen(
                             }
 
                             val hasMultiplePieces = lastScannedProduct.piezas != 1.0 && lastScannedProduct.piezas > 0.0
-                            val pricePerPiece = if (hasMultiplePieces) lastScannedProduct.precio / lastScannedProduct.piezas else 0.0
+                            val isDeliveryActive = effectivePrioritizeDelivery && lastScannedProduct.precio_delivery > 0.0
+                            val effectiveUnitPrice = if (isDeliveryActive) lastScannedProduct.precio_delivery else lastScannedProduct.precio
+                            val pricePerPiece = if (hasMultiplePieces) effectiveUnitPrice / lastScannedProduct.piezas else 0.0
+                            val retailPerPiece = if (hasMultiplePieces) lastScannedProduct.precio / lastScannedProduct.piezas else 0.0
                             val wholesalePerPiece = if (hasMultiplePieces) lastScannedProduct.precio_mayoreo / lastScannedProduct.piezas else 0.0
+                            val deliveryPerPiece = if (hasMultiplePieces && lastScannedProduct.precio_delivery > 0.0) lastScannedProduct.precio_delivery / lastScannedProduct.piezas else 0.0
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -477,14 +491,17 @@ fun CameraPreviewScreen(
                                 )
                                 if (!isChecadorMode) {
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "$${
-                                            (lastScannedProduct.precio * lastScannedQuantity).toString()
-                                                .formatPrice()
-                                        }",
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            fontWeight = FontWeight.ExtraBold)
-                                    )
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = "$${
+                                                (effectiveUnitPrice * lastScannedQuantity).toString()
+                                                    .formatPrice()
+                                            }",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.ExtraBold
+                                            )
+                                        )
+                                    }
                                 }
                             }
 
@@ -510,6 +527,7 @@ fun CameraPreviewScreen(
                             }
 
                             if (isChecadorMode) {
+                                val showDeliveryPrice = lastScannedProduct.precio_delivery > 0.0 || effectivePrioritizeDelivery
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -518,12 +536,12 @@ fun CameraPreviewScreen(
                                     Column(horizontalAlignment = Alignment.Start) {
                                         Text(
                                             text = stringResource(Res.string.cost_label),
-                                            style = MaterialTheme.typography.titleSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
                                             text = "$${(lastScannedProduct.costo * lastScannedQuantity).toString().formatPrice()}",
-                                            style = MaterialTheme.typography.titleMedium.copy(
+                                            style = MaterialTheme.typography.titleSmall.copy(
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
@@ -541,34 +559,35 @@ fun CameraPreviewScreen(
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
                                             text = stringResource(Res.string.header_retail_price),
-                                            style = MaterialTheme.typography.titleSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
                                             text = "$${(lastScannedProduct.precio * lastScannedQuantity).toString().formatPrice()}",
-                                            style = MaterialTheme.typography.titleLarge.copy(
+                                            style = MaterialTheme.typography.titleMedium.copy(
                                                 fontWeight = FontWeight.ExtraBold,
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                         )
                                         if (hasMultiplePieces) {
                                             Text(
-                                                text = stringResource(Res.string.price_per_piece_short_fmt, pricePerPiece.toString().formatPrice()),
+                                                text = stringResource(Res.string.price_per_piece_short_fmt, retailPerPiece.toString().formatPrice()),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.tertiary
                                             )
                                         }
                                     }
-                                    Column(horizontalAlignment = Alignment.End) {
+
+                                    Column(horizontalAlignment = if (showDeliveryPrice) Alignment.CenterHorizontally else Alignment.End) {
                                         Text(
                                             text = stringResource(Res.string.wholesale),
-                                            style = MaterialTheme.typography.titleSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
                                             text = "$${(lastScannedProduct.precio_mayoreo * lastScannedQuantity).toString().formatPrice()}",
-                                            style = MaterialTheme.typography.titleMedium.copy(
+                                            style = MaterialTheme.typography.titleSmall.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
@@ -580,6 +599,41 @@ fun CameraPreviewScreen(
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.tertiary
                                             )
+                                        }
+                                    }
+
+                                    if (showDeliveryPrice) {
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text = stringResource(Res.string.header_delivery_price),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            if (lastScannedProduct.precio_delivery > 0.0) {
+                                                Text(
+                                                    text = "$${(lastScannedProduct.precio_delivery * lastScannedQuantity).toString().formatPrice()}",
+                                                    style = MaterialTheme.typography.titleSmall.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                )
+                                                if (hasMultiplePieces) {
+                                                    Text(
+                                                        text = stringResource(Res.string.price_per_piece_short_fmt, deliveryPerPiece.toString().formatPrice()),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.tertiary
+                                                    )
+                                                }
+                                            } else {
+                                                Text(
+                                                    text = "-",
+                                                    style = MaterialTheme.typography.titleSmall.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                )
+                                            }
                                         }
                                     }
                                 }

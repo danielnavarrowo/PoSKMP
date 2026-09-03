@@ -2178,7 +2178,8 @@ fun VentaScreen(
             lastScannedProduct = lastScannedProduct,
             lastScannedQuantity = currentScannedQuantity,
             onUndo = handleUndoLastScan,
-            onQuantityChange = handleQuantityChange
+            onQuantityChange = handleQuantityChange,
+            prioritizeDeliveryPrice = uiState.prioritizeDeliveryPrice
         )
     }
 

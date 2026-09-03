@@ -53,15 +53,15 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.arrow_up
-import poskmp.shared.generated.resources.cost_display_label
-import poskmp.shared.generated.resources.delivery_display_label
+import poskmp.shared.generated.resources.cost_label
 import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.favorite_desc
+import poskmp.shared.generated.resources.header_delivery_price
+import poskmp.shared.generated.resources.header_price
 import poskmp.shared.generated.resources.no_category
-import poskmp.shared.generated.resources.price_display_label
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.status_inactive
-import poskmp.shared.generated.resources.wholesale_display_label
+import poskmp.shared.generated.resources.wholesale
 
 @Composable
 fun RowScope.TableHeader(
@@ -457,6 +457,12 @@ fun ProductTableRow(
     }
 }
 
+private data class ProductPriceItem(
+    val label: String,
+    val price: String,
+    val isPrimary: Boolean = false
+)
+
 @Composable
 fun ProductSimpleCard(
     product: Products,
@@ -558,58 +564,85 @@ fun ProductSimpleCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                val priceItems = buildList {
                     if (product.costo > 0.0) {
-                        Text(
-                            text = stringResource(
-                                Res.string.cost_display_label,
-                                product.costo.toString().formatPrice()
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        add(
+                            ProductPriceItem(
+                                label = stringResource(Res.string.cost_label),
+                                price = "$${product.costo.toString().formatPrice()}",
+                                isPrimary = false
+                            )
                         )
                     }
                     if (product.precio > 0.0) {
-                        val priceLabel = if (product.por_peso == 1L) {
+                        val priceText = if (product.por_peso == 1L) {
                             "$${product.precio.toString().formatPrice()} / Kg"
                         } else {
-                            stringResource(Res.string.price_display_label, product.precio.toString().formatPrice())
+                            "$${product.precio.toString().formatPrice()}"
                         }
-                        Text(
-                            text = priceLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                        add(
+                            ProductPriceItem(
+                                label = stringResource(Res.string.header_price),
+                                price = priceText,
+                                isPrimary = true
+                            )
                         )
                     }
                     if (product.precio_mayoreo > 0.0) {
-                        Text(
-                            text = stringResource(
-                                Res.string.wholesale_display_label,
-                                product.precio_mayoreo.toString().formatPrice()
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        add(
+                            ProductPriceItem(
+                                label = stringResource(Res.string.wholesale),
+                                price = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                isPrimary = false
+                            )
                         )
                     }
                     if (product.precio_delivery > 0.0) {
-                        Text(
-                            text = stringResource(
-                                Res.string.delivery_display_label,
-                                product.precio_delivery.toString().formatPrice()
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        add(
+                            ProductPriceItem(
+                                label = stringResource(Res.string.header_delivery_price),
+                                price = "$${product.precio_delivery.toString().formatPrice()}",
+                                isPrimary = false
+                            )
                         )
+                    }
+                }
+
+                if (priceItems.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        priceItems.forEachIndexed { index, item ->
+                            val alignment = when {
+                                priceItems.size == 1 -> Alignment.Start
+                                index == 0 -> Alignment.Start
+                                index == priceItems.lastIndex -> Alignment.End
+                                else -> Alignment.CenterHorizontally
+                            }
+                            Column(horizontalAlignment = alignment) {
+                                Text(
+                                    text = item.label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = item.price,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (item.isPrimary) FontWeight.Bold else FontWeight.Normal,
+                                    color = when {
+                                        isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+                                        item.isPrimary -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
