@@ -46,14 +46,10 @@ import poskmp.shared.generated.resources.payment_policies_section_title
 import poskmp.shared.generated.resources.prioritize_delivery_price_subtitle
 import poskmp.shared.generated.resources.prioritize_delivery_price_title
 import poskmp.shared.generated.resources.retail_margin_label
-import poskmp.shared.generated.resources.round_delivery_price_subtitle
-import poskmp.shared.generated.resources.round_delivery_price_title
-import poskmp.shared.generated.resources.round_retail_price_subtitle
-import poskmp.shared.generated.resources.round_retail_price_title
+import poskmp.shared.generated.resources.round_product_prices_subtitle
+import poskmp.shared.generated.resources.round_product_prices_title
 import poskmp.shared.generated.resources.round_ticket_total_subtitle
 import poskmp.shared.generated.resources.round_ticket_total_title
-import poskmp.shared.generated.resources.round_wholesale_price_subtitle
-import poskmp.shared.generated.resources.round_wholesale_price_title
 import poskmp.shared.generated.resources.rounding_section_subtitle
 import poskmp.shared.generated.resources.rounding_section_title
 import poskmp.shared.generated.resources.wholesale_margin_label
@@ -68,12 +64,8 @@ fun PricingSettingsSection(
     onDefaultDeliveryMarginChange: (Double) -> Unit = {},
     isRoundingEnabled: Boolean,
     onIsRoundingEnabledChange: (Boolean) -> Unit,
-    roundRetailPrice: Boolean,
-    onRoundRetailPriceChange: (Boolean) -> Unit,
-    roundWholesalePrice: Boolean,
-    onRoundWholesalePriceChange: (Boolean) -> Unit,
-    roundDeliveryPrice: Boolean = false,
-    onRoundDeliveryPriceChange: (Boolean) -> Unit = {},
+    roundProductPrices: Boolean,
+    onRoundProductPricesChange: (Boolean) -> Unit,
     roundTicketTotal: Boolean,
     onRoundTicketTotalChange: (Boolean) -> Unit,
     disallowCardPaymentOnWholesale: Boolean,
@@ -255,7 +247,7 @@ fun PricingSettingsSection(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Secondary Toggle 1: Redondear precio de venta al guardar producto
+                        // Secondary Toggle 1: Redondear precios al guardar producto
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -263,90 +255,22 @@ fun PricingSettingsSection(
                         ) {
                             Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                                 Text(
-                                    text = stringResource(Res.string.round_retail_price_title),
+                                    text = stringResource(Res.string.round_product_prices_title),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = stringResource(Res.string.round_retail_price_subtitle),
+                                    text = stringResource(Res.string.round_product_prices_subtitle),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
                             Switch(
-                                checked = roundRetailPrice,
-                                onCheckedChange = onRoundRetailPriceChange
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            thickness = 1.dp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Secondary Toggle 2: Redondear precio de mayoreo al guardar producto
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                                Text(
-                                    text = stringResource(Res.string.round_wholesale_price_title),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = stringResource(Res.string.round_wholesale_price_subtitle),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Switch(
-                                checked = roundWholesalePrice,
-                                onCheckedChange = onRoundWholesalePriceChange
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            thickness = 1.dp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Secondary Toggle 3: Redondear precio a domicilio al guardar producto
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                                Text(
-                                    text = stringResource(Res.string.round_delivery_price_title),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = stringResource(Res.string.round_delivery_price_subtitle),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Switch(
-                                checked = roundDeliveryPrice,
-                                onCheckedChange = onRoundDeliveryPriceChange
+                                checked = roundProductPrices,
+                                onCheckedChange = onRoundProductPricesChange
                             )
                         }
 

@@ -5,6 +5,7 @@ import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
 import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
+import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
@@ -13,7 +14,9 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
+import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -25,7 +28,6 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import io.ktor.client.request.get
 
 interface SupabaseRemoteDataSource {
     suspend fun testConnection(url: String, key: String): Result<Boolean>
@@ -48,6 +50,7 @@ interface SupabaseRemoteDataSource {
     suspend fun deleteRemoteCustomerPayment(url: String, key: String, id: String): Result<Unit>
     suspend fun pushDeletedRecords(url: String, key: String, records: List<DeletedRecordDto>): Result<Unit>
     suspend fun pullDeletedRecords(url: String, key: String, sinceTimestamp: Long): Result<List<DeletedRecordDto>>
+    suspend fun fetchRemoteAuditLogs(url: String, key: String, limit: Int = 100): Result<List<RemoteAuditLogDto>>
 }
 
 class SupabaseRemoteDataSourceImpl(
@@ -492,6 +495,36 @@ class SupabaseRemoteDataSourceImpl(
             }
             val list: List<DeletedRecordDto> = fetchAllPaged(cleanUrl, key, "deleted_records", query)
             Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun fetchRemoteAuditLogs(
+        url: String,
+        key: String,
+        limit: Int
+    ): Result<List<RemoteAuditLogDto>> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            if (cleanUrl.isBlank() || key.isBlank()) {
+                return@withContext Result.failure(IllegalArgumentException("Credenciales no configuradas"))
+            }
+            val response: HttpResponse = httpClient.get("$cleanUrl/rest/v1/remote_audit_logs") {
+                header("apikey", key.trim())
+                header("Authorization", "Bearer ${key.trim()}")
+                header("Accept", "application/json")
+                parameter("select", "*")
+                parameter("order", "created_at.desc")
+                parameter("limit", limit)
+            }
+            if (response.status == HttpStatusCode.OK) {
+                val list: List<RemoteAuditLogDto> = response.body()
+                Result.success(list)
+            } else {
+                val errorDetail = try { response.bodyAsText() } catch (_: Exception) { "" }
+                Result.failure(Exception("HTTP ${response.status.value}: $errorDetail"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -73,15 +73,13 @@ data class BulkProgressState(
 fun applyBulkProductModification(
     product: Products,
     modification: BulkProductModification,
-    roundRetailPrice: Boolean = false,
-    roundWholesalePrice: Boolean = false,
-    roundDeliveryPrice: Boolean = false
+    roundProductPrices: Boolean = false
 ): Products? = when (modification.operation) {
     BulkProductOperation.CHANGE_PRICES -> product.copy(
         costo = modification.costPrice ?: product.costo,
-        precio = modification.retailPrice?.let { if (roundRetailPrice) roundPrice(it) else it } ?: product.precio,
-        precio_mayoreo = modification.wholesalePrice?.let { if (roundWholesalePrice) roundPrice(it) else it } ?: product.precio_mayoreo,
-        precio_delivery = modification.deliveryPrice?.let { if (roundDeliveryPrice) roundPrice(it) else it } ?: product.precio_delivery
+        precio = modification.retailPrice?.let { if (roundProductPrices) roundPrice(it) else it } ?: product.precio,
+        precio_mayoreo = modification.wholesalePrice?.let { if (roundProductPrices) roundPrice(it) else it } ?: product.precio_mayoreo,
+        precio_delivery = modification.deliveryPrice?.let { if (roundProductPrices) roundPrice(it) else it } ?: product.precio_delivery
     )
 
     BulkProductOperation.SET_PROFIT -> if (product.costo > 0.0) {
@@ -91,9 +89,9 @@ fun applyBulkProductModification(
         }
 
         product.copy(
-            precio = modification.retailProfitPercentage?.let { calcPrice(it, roundRetailPrice) } ?: product.precio,
-            precio_mayoreo = modification.wholesaleProfitPercentage?.let { calcPrice(it, roundWholesalePrice) } ?: product.precio_mayoreo,
-            precio_delivery = modification.deliveryProfitPercentage?.let { calcPrice(it, roundDeliveryPrice) } ?: product.precio_delivery
+            precio = modification.retailProfitPercentage?.let { calcPrice(it, roundProductPrices) } ?: product.precio,
+            precio_mayoreo = modification.wholesaleProfitPercentage?.let { calcPrice(it, roundProductPrices) } ?: product.precio_mayoreo,
+            precio_delivery = modification.deliveryProfitPercentage?.let { calcPrice(it, roundProductPrices) } ?: product.precio_delivery
         )
     } else {
         product

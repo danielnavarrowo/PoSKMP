@@ -17,6 +17,7 @@ import com.dnavarro.poskmp.domain.usecase.DeleteCashierUseCase
 import com.dnavarro.poskmp.domain.usecase.ResetAppToFactoryDefaultsUseCase
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
+import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,12 +42,14 @@ private data class UpdateInternalState(
     val cashierActionSuccess: String? = null,
     val isResettingApp: Boolean = false,
     val resetAppError: String? = null,
-    val resetAppSuccess: String? = null
+    val resetAppSuccess: String? = null,
+    val remoteAuditLogs: List<RemoteAuditLogDto> = emptyList(),
+    val isLoadingAuditLogs: Boolean = false,
+    val auditLogsError: String? = null
 )
 
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
-private data class Tuple6<A, B, C, D, E, F>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F)
 private data class Tuple7<A, B, C, D, E, F, G>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F, val g: G)
 
 /**
@@ -96,9 +99,7 @@ class AjustesViewModel(
         val defaultWholesaleMargin: Double = 0.0,
         val defaultDeliveryMargin: Double = 0.0,
         val isRoundingEnabled: Boolean = false,
-        val roundRetailPrice: Boolean = false,
-        val roundWholesalePrice: Boolean = false,
-        val roundDeliveryPrice: Boolean = false,
+        val roundProductPrices: Boolean = false,
         val roundTicketTotal: Boolean = false,
         val disallowCardPaymentOnWholesale: Boolean = false,
         val prioritizeDeliveryPrice: Boolean = false
@@ -124,33 +125,21 @@ class AjustesViewModel(
                 Tuple4(defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled)
             },
             combine(
-                combine(
-                    repository.roundRetailPriceFlow,
-                    repository.roundWholesalePriceFlow,
-                    repository.roundDeliveryPriceFlow
-                ) { roundRetailPrice, roundWholesalePrice, roundDeliveryPrice ->
-                    Triple(roundRetailPrice, roundWholesalePrice, roundDeliveryPrice)
-                },
-                combine(
-                    repository.roundTicketTotalFlow,
-                    repository.disallowCardPaymentOnWholesaleFlow,
-                    repository.prioritizeDeliveryPriceFlow
-                ) { roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
-                    Triple(roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
-                }
-            ) { (roundRetailPrice, roundWholesalePrice, roundDeliveryPrice), (roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice) ->
-                Tuple6(roundRetailPrice, roundWholesalePrice, roundDeliveryPrice, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+                repository.roundProductPricesFlow,
+                repository.roundTicketTotalFlow,
+                repository.disallowCardPaymentOnWholesaleFlow,
+                repository.prioritizeDeliveryPriceFlow
+            ) { roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
+                Tuple4(roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
             }
         ) { (defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled),
-            (roundRetailPrice, roundWholesalePrice, roundDeliveryPrice, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice) ->
+            (roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice) ->
             BehaviorPricingState(
                 defaultRetailMargin = defaultRetailMargin,
                 defaultWholesaleMargin = defaultWholesaleMargin,
                 defaultDeliveryMargin = defaultDeliveryMargin,
                 isRoundingEnabled = isRoundingEnabled,
-                roundRetailPrice = roundRetailPrice,
-                roundWholesalePrice = roundWholesalePrice,
-                roundDeliveryPrice = roundDeliveryPrice,
+                roundProductPrices = roundProductPrices,
                 roundTicketTotal = roundTicketTotal,
                 disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
                 prioritizeDeliveryPrice = prioritizeDeliveryPrice
@@ -188,9 +177,7 @@ class AjustesViewModel(
             defaultWholesaleMargin = pricingState.defaultWholesaleMargin,
             defaultDeliveryMargin = pricingState.defaultDeliveryMargin,
             isRoundingEnabled = pricingState.isRoundingEnabled,
-            roundRetailPrice = pricingState.roundRetailPrice,
-            roundWholesalePrice = pricingState.roundWholesalePrice,
-            roundDeliveryPrice = pricingState.roundDeliveryPrice,
+            roundProductPrices = pricingState.roundProductPrices,
             roundTicketTotal = pricingState.roundTicketTotal,
             disallowCardPaymentOnWholesale = pricingState.disallowCardPaymentOnWholesale,
             prioritizeDeliveryPrice = pricingState.prioritizeDeliveryPrice,
@@ -221,9 +208,7 @@ class AjustesViewModel(
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
             defaultDeliveryMargin = behaviorState.defaultDeliveryMargin,
             isRoundingEnabled = behaviorState.isRoundingEnabled,
-            roundRetailPrice = behaviorState.roundRetailPrice,
-            roundWholesalePrice = behaviorState.roundWholesalePrice,
-            roundDeliveryPrice = behaviorState.roundDeliveryPrice,
+            roundProductPrices = behaviorState.roundProductPrices,
             roundTicketTotal = behaviorState.roundTicketTotal,
             disallowCardPaymentOnWholesale = behaviorState.disallowCardPaymentOnWholesale,
             prioritizeDeliveryPrice = behaviorState.prioritizeDeliveryPrice,
@@ -262,7 +247,10 @@ class AjustesViewModel(
             cashierActionSuccess = updateState.cashierActionSuccess,
             isResettingApp = updateState.isResettingApp,
             resetAppError = updateState.resetAppError,
-            resetAppSuccess = updateState.resetAppSuccess
+            resetAppSuccess = updateState.resetAppSuccess,
+            remoteAuditLogs = updateState.remoteAuditLogs,
+            isLoadingAuditLogs = updateState.isLoadingAuditLogs,
+            auditLogsError = updateState.auditLogsError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -375,33 +363,14 @@ class AjustesViewModel(
         }
     }
 
-    fun setRoundRetailPrice(enabled: Boolean) {
+    fun setRoundProductPrices(enabled: Boolean) {
         viewModelScope.launch {
-            repository.setRoundRetailPrice(enabled)
+            repository.setRoundProductPrices(enabled)
             launch(Dispatchers.IO) {
                 syncRepository.syncAll()
             }
         }
     }
-
-    fun setRoundWholesalePrice(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.setRoundWholesalePrice(enabled)
-            launch(Dispatchers.IO) {
-                syncRepository.syncAll()
-            }
-        }
-    }
-
-    fun setRoundDeliveryPrice(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.setRoundDeliveryPrice(enabled)
-            launch(Dispatchers.IO) {
-                syncRepository.syncAll()
-            }
-        }
-    }
-
     fun setRoundTicketTotal(enabled: Boolean) {
         viewModelScope.launch {
             repository.setRoundTicketTotal(enabled)
@@ -545,6 +514,28 @@ class AjustesViewModel(
             } else {
                 _updateState.value = _updateState.value.copy(
                     syncMessage = "SYNC_ERROR:${result.exceptionOrNull()?.message ?: "Error"}"
+                )
+            }
+        }
+    }
+
+    fun fetchRemoteAuditLogs(limit: Int = 100) {
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(
+                isLoadingAuditLogs = true,
+                auditLogsError = null
+            )
+            val result = syncRepository.getRemoteAuditLogs(limit)
+            if (result.isSuccess) {
+                _updateState.value = _updateState.value.copy(
+                    isLoadingAuditLogs = false,
+                    remoteAuditLogs = result.getOrDefault(emptyList()),
+                    auditLogsError = null
+                )
+            } else {
+                _updateState.value = _updateState.value.copy(
+                    isLoadingAuditLogs = false,
+                    auditLogsError = result.exceptionOrNull()?.message ?: "Error al cargar bitácora del servidor"
                 )
             }
         }

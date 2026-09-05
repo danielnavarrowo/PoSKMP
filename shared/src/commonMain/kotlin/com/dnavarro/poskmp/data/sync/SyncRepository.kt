@@ -7,6 +7,7 @@ import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
 import com.dnavarro.poskmp.data.source.remote.dto.DeletedRecordDto
 import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
+import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
@@ -39,6 +40,7 @@ interface SyncRepository {
 
     suspend fun testConnection(url: String, key: String): Result<Boolean>
     suspend fun syncAll(forceFullSync: Boolean = false, isManual: Boolean = false): Result<SyncReport>
+    suspend fun getRemoteAuditLogs(limit: Int = 100): Result<List<RemoteAuditLogDto>>
 }
 
 class SyncRepositoryImpl(
@@ -279,9 +281,7 @@ class SyncRepositoryImpl(
                     defaultWholesaleMargin = settingsRepository.defaultWholesaleMarginFlow.first(),
                     defaultDeliveryMargin = settingsRepository.defaultDeliveryMarginFlow.first(),
                     isRoundingEnabled = settingsRepository.isRoundingEnabledFlow.first(),
-                    roundRetailPrice = settingsRepository.roundRetailPriceFlow.first(),
-                    roundWholesalePrice = settingsRepository.roundWholesalePriceFlow.first(),
-                    roundDeliveryPrice = settingsRepository.roundDeliveryPriceFlow.first(),
+                    roundProductPrices = settingsRepository.roundProductPricesFlow.first(),
                     roundTicketTotal = settingsRepository.roundTicketTotalFlow.first(),
                     disallowCardPaymentOnWholesale = settingsRepository.disallowCardPaymentOnWholesaleFlow.first(),
                     updatedAt = if (localSettingsUpdatedAt > 0L) localSettingsUpdatedAt else currentTimeMillis()
@@ -497,9 +497,7 @@ class SyncRepositoryImpl(
                             defaultWholesaleMargin = remoteSettings.defaultWholesaleMargin,
                             defaultDeliveryMargin = remoteSettings.defaultDeliveryMargin,
                             isRoundingEnabled = remoteSettings.isRoundingEnabled,
-                            roundRetailPrice = remoteSettings.roundRetailPrice,
-                            roundWholesalePrice = remoteSettings.roundWholesalePrice,
-                            roundDeliveryPrice = remoteSettings.roundDeliveryPrice,
+                            roundProductPrices = remoteSettings.roundProductPrices,
                             roundTicketTotal = remoteSettings.roundTicketTotal,
                             disallowCardPaymentOnWholesale = remoteSettings.disallowCardPaymentOnWholesale,
                             storeName = remoteSettings.storeName,
@@ -549,5 +547,11 @@ class SyncRepositoryImpl(
             _syncState.value = SyncStateEnum.ERROR
             Result.failure(e)
         }
+    }
+
+    override suspend fun getRemoteAuditLogs(limit: Int): Result<List<RemoteAuditLogDto>> = withContext(Dispatchers.IO) {
+        val url = settingsRepository.supabaseUrlFlow.first()
+        val key = settingsRepository.supabaseKeyFlow.first()
+        remoteDataSource.fetchRemoteAuditLogs(url, key, limit)
     }
 }

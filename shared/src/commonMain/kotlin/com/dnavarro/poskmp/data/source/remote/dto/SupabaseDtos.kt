@@ -137,12 +137,8 @@ data class StoreSettingsDto(
     val defaultDeliveryMargin: Double = 0.0,
     @SerialName("is_rounding_enabled")
     val isRoundingEnabled: Boolean = false,
-    @SerialName("round_retail_price")
-    val roundRetailPrice: Boolean = false,
-    @SerialName("round_wholesale_price")
-    val roundWholesalePrice: Boolean = false,
-    @SerialName("round_delivery_price")
-    val roundDeliveryPrice: Boolean = false,
+    @SerialName("round_product_prices")
+    val roundProductPrices: Boolean = false,
     @SerialName("round_ticket_total")
     val roundTicketTotal: Boolean = false,
     @SerialName("disallow_card_payment_on_wholesale")
@@ -158,5 +154,20 @@ data class DeletedRecordDto(
     val entityType: String,
     @SerialName("deleted_at")
     val deletedAt: Long
+)
+
+@Serializable
+data class RemoteAuditLogDto(
+    val id: Long = 0,
+    @SerialName("table_name")
+    val tableName: String = "",
+    val operation: String = "",
+    @SerialName("record_id")
+    val recordId: String = "",
+    val summary: String? = null,
+    @SerialName("device_id")
+    val deviceId: String? = null,
+    @SerialName("created_at")
+    val createdAt: String = ""
 )
 

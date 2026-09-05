@@ -127,6 +127,7 @@ import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
+import com.dnavarro.poskmp.ui.components.DesktopTitleBar
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
@@ -222,7 +223,9 @@ fun App(
     modifier: Modifier = Modifier,
     isExiting: Boolean = false,
     onCancelExit: () -> Unit = {},
-    onExitCompleted: () -> Unit = {}
+    onExitCompleted: () -> Unit = {},
+    onMinimize: (() -> Unit)? = null,
+    onClose: (() -> Unit)? = null
 ) {
     initKoin()
 
@@ -415,7 +418,9 @@ fun App(
 
             var currentDateText by remember { mutableStateOf(formatCurrentDate()) }
             var currentTimeText by remember { mutableStateOf(formatCurrentTime()) }
-            val currentDateTimeText = remember(currentDateText, currentTimeText) { "$currentDateText\n$currentTimeText" }
+            val desktopDateTimeText = remember(currentDateText, currentTimeText) {
+                "${currentDateText.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}  •  $currentTimeText"
+            }
 
             LaunchedEffect(Unit) {
                 while (isActive) {
@@ -480,10 +485,22 @@ fun App(
                     paletteStyle = paletteStyle,
                     darkTheme = darkTheme
                 ) {
-                    BoxWithConstraints(
-                        modifier = modifier
-                            .fillMaxSize()
-                            .then(
+                    Column(
+                        modifier = modifier.fillMaxSize()
+                    ) {
+                        if (!isAndroid()) {
+                            DesktopTitleBar(
+                                title = ajustesUiState.receiptSettings.storeName.ifBlank { "Punto de Venta" },
+                                dateTimeText = desktopDateTimeText,
+                                onMinimize = { onMinimize?.invoke() },
+                                onClose = { onClose?.invoke() }
+                            )
+                        }
+                        BoxWithConstraints(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .then(
                                 if (!isAndroid()) {
                                     Modifier
                                         .focusRequester(focusRequester)
@@ -947,26 +964,6 @@ fun App(
                                                         }
                                                     }
                                                 }
-                                                Spacer(modifier = Modifier.height(6.dp))
-                                            }
-
-                                            Surface(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = MaterialTheme.shapes.medium,
-                                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
-                                                    horizontalAlignment = Alignment.CenterHorizontally
-                                                ) {
-                                                    Text(
-                                                        text = currentDateTimeText,
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        textAlign = TextAlign.Center,
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                }
                                             }
                                         }
                                     }
@@ -1355,3 +1352,4 @@ fun App(
             }
         }
     }
+}

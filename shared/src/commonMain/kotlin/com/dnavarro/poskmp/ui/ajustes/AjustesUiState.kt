@@ -8,6 +8,7 @@ import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
 
+import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 
@@ -32,9 +33,7 @@ data class AjustesUiState(
     val defaultWholesaleMargin: Double = 0.0,
     val defaultDeliveryMargin: Double = 0.0,
     val isRoundingEnabled: Boolean = false,
-    val roundRetailPrice: Boolean = false,
-    val roundWholesalePrice: Boolean = false,
-    val roundDeliveryPrice: Boolean = false,
+    val roundProductPrices: Boolean = false,
     val roundTicketTotal: Boolean = false,
     val disallowCardPaymentOnWholesale: Boolean = false,
     val prioritizeDeliveryPrice: Boolean = false,
@@ -63,5 +62,8 @@ data class AjustesUiState(
     val cashierActionSuccess: String? = null,
     val isResettingApp: Boolean = false,
     val resetAppError: String? = null,
-    val resetAppSuccess: String? = null
+    val resetAppSuccess: String? = null,
+    val remoteAuditLogs: List<RemoteAuditLogDto> = emptyList(),
+    val isLoadingAuditLogs: Boolean = false,
+    val auditLogsError: String? = null
 )

@@ -2106,7 +2106,7 @@ fun VentaScreen(
                 Button(
                     onClick = {
                         if (isNameValid && isPriceValid && isQtyValid) {
-                            val effectivePrice = if (uiState.roundRetailPrice && saveUnregisteredToDatabase) roundPrice(priceVal) else priceVal
+                            val effectivePrice = if (uiState.roundProductPrices && saveUnregisteredToDatabase) roundPrice(priceVal) else priceVal
                             val dummyProduct = Products(
                                 id = "UNREG-${generateUUID()}",
                                 codigos = "[]",
@@ -2161,9 +2161,7 @@ fun VentaScreen(
             defaultRetailMarginPercentage = uiState.defaultRetailMargin,
             defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
             defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
-            roundRetailPrice = uiState.roundRetailPrice,
-            roundWholesalePrice = uiState.roundWholesalePrice,
-            roundDeliveryPrice = uiState.roundDeliveryPrice
+            roundProductPrices = uiState.roundProductPrices
         )
     }
 

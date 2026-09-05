@@ -150,9 +150,7 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     default_wholesale_margin           NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     default_delivery_margin            NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     is_rounding_enabled                BOOLEAN NOT NULL DEFAULT false,
-    round_retail_price                 BOOLEAN NOT NULL DEFAULT false,
-    round_wholesale_price              BOOLEAN NOT NULL DEFAULT false,
-    round_delivery_price               BOOLEAN NOT NULL DEFAULT false,
+    round_product_prices               BOOLEAN NOT NULL DEFAULT false,
     round_ticket_total                 BOOLEAN NOT NULL DEFAULT false,
     disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false,
     updated_at                         BIGINT NOT NULL
@@ -166,6 +164,120 @@ CREATE TABLE IF NOT EXISTS public.deleted_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_deleted_records_deleted_at ON public.deleted_records(deleted_at);
+
+-- 11. TABLA: remote_audit_logs (Bitácora de Operaciones de Escritura/Actualización Remotas)
+CREATE TABLE IF NOT EXISTS public.remote_audit_logs (
+    id          BIGSERIAL PRIMARY KEY,
+    table_name  TEXT NOT NULL,
+    operation   TEXT NOT NULL, -- 'INSERT', 'UPDATE', 'DELETE'
+    record_id   TEXT NOT NULL,
+    summary     TEXT,
+    device_id   TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_remote_audit_logs_created_at ON public.remote_audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_remote_audit_logs_table ON public.remote_audit_logs(table_name);
+
+-- Función de Trigger para registrar operaciones de escritura y actualización automáticamente
+CREATE OR REPLACE FUNCTION public.fn_log_remote_audit()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_table_name TEXT := TG_TABLE_NAME;
+    v_op TEXT := TG_OP;
+    v_record_id TEXT;
+    v_summary TEXT;
+BEGIN
+    IF (v_op = 'DELETE') THEN
+        v_record_id := OLD.id::text;
+        IF v_table_name = 'products' THEN
+            v_summary := 'Producto eliminado: ' || COALESCE(OLD.nombre, OLD.id);
+        ELSIF v_table_name = 'customers' THEN
+            v_summary := 'Cliente eliminado: ' || COALESCE(OLD.nombre, OLD.id);
+        ELSIF v_table_name = 'customer_payments' THEN
+            v_summary := 'Abono eliminado: $' || COALESCE(OLD.monto::text, '0');
+        ELSIF v_table_name = 'cashiers' THEN
+            v_summary := 'Cajero eliminado: ' || COALESCE(OLD.nombre, OLD.id);
+        ELSIF v_table_name = 'sales' THEN
+            v_summary := 'Venta eliminada: Folio #' || COALESCE(OLD.folio::text, OLD.id) || ' ($' || COALESCE(OLD.total::text, '0') || ')';
+        ELSE
+            v_summary := 'Registro eliminado en ' || v_table_name;
+        END IF;
+    ELSIF (v_op = 'INSERT') THEN
+        v_record_id := NEW.id::text;
+        IF v_table_name = 'products' THEN
+            v_summary := 'Producto creado: ' || NEW.nombre || ' ($' || NEW.precio || ')';
+        ELSIF v_table_name = 'customers' THEN
+            v_summary := 'Cliente registrado: ' || NEW.nombre;
+        ELSIF v_table_name = 'customer_payments' THEN
+            v_summary := 'Abono registrado: $' || NEW.monto || ' (' || NEW.metodo_pago || ')';
+        ELSIF v_table_name = 'cashiers' THEN
+            v_summary := 'Cajero registrado: ' || NEW.nombre;
+        ELSIF v_table_name = 'sales' THEN
+            v_summary := 'Venta creada: Folio #' || NEW.folio || ' ($' || NEW.total || ' - ' || NEW.metodo_pago || ')' || CASE WHEN NEW.cashier_name IS NOT NULL AND NEW.cashier_name != '' THEN ' • ' || NEW.cashier_name ELSE '' END;
+        ELSIF v_table_name = 'store_settings' THEN
+            v_summary := 'Ajustes de tienda guardados';
+        ELSIF v_table_name = 'deleted_records' THEN
+            v_summary := 'Baja registrada: ' || NEW.entity_type || ' (' || NEW.id || ')';
+        ELSE
+            v_summary := 'Nuevo registro en ' || v_table_name;
+        END IF;
+    ELSIF (v_op = 'UPDATE') THEN
+        v_record_id := NEW.id::text;
+        IF v_table_name = 'products' THEN
+            v_summary := 'Producto modificado: ' || NEW.nombre || ' ($' || NEW.precio || ', stock: ' || NEW.piezas || ')';
+        ELSIF v_table_name = 'customers' THEN
+            v_summary := 'Cliente modificado: ' || NEW.nombre || ' (Límite: $' || NEW.limite_credito || ')';
+        ELSIF v_table_name = 'customer_payments' THEN
+            v_summary := 'Abono modificado: $' || NEW.monto;
+        ELSIF v_table_name = 'cashiers' THEN
+            v_summary := 'Cajero modificado: ' || NEW.nombre || ' (Activo: ' || CASE WHEN NEW.activo THEN 'Sí' ELSE 'No' END || ')';
+        ELSIF v_table_name = 'sales' THEN
+            v_summary := 'Venta modificada: Folio #' || NEW.folio || ' (Estado: ' || NEW.estado || ')';
+        ELSIF v_table_name = 'store_settings' THEN
+            v_summary := 'Ajustes de tienda actualizados';
+        ELSE
+            v_summary := 'Registro actualizado en ' || v_table_name;
+        END IF;
+    END IF;
+
+    INSERT INTO public.remote_audit_logs (table_name, operation, record_id, summary, created_at)
+    VALUES (v_table_name, v_op, v_record_id, v_summary, now());
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Triggers automáticos
+DROP TRIGGER IF EXISTS trg_audit_products ON public.products;
+CREATE TRIGGER trg_audit_products
+AFTER INSERT OR UPDATE OR DELETE ON public.products
+FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_customers ON public.customers;
+CREATE TRIGGER trg_audit_customers
+AFTER INSERT OR UPDATE OR DELETE ON public.customers
+FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_customer_payments ON public.customer_payments;
+CREATE TRIGGER trg_audit_customer_payments
+AFTER INSERT OR UPDATE OR DELETE ON public.customer_payments
+FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_cashiers ON public.cashiers;
+CREATE TRIGGER trg_audit_cashiers
+AFTER INSERT OR UPDATE OR DELETE ON public.cashiers
+FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_sales ON public.sales;
+CREATE TRIGGER trg_audit_sales
+AFTER INSERT OR UPDATE OR DELETE ON public.sales
+FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_store_settings ON public.store_settings;
+CREATE TRIGGER trg_audit_store_settings
+AFTER INSERT OR UPDATE OR DELETE ON public.store_settings
+FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
 
 -- =========================================================================
 -- SCRIPT DE MIGRACIÓN PARA BASES DE DATOS SUPABASE EXISTENTES
@@ -226,6 +338,121 @@ ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_address TEXT NO
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_phone TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS receipt_footer TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS default_delivery_margin NUMERIC(10, 4) NOT NULL DEFAULT 0.0;
-ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_delivery_price BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_product_prices BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false;
+
+-- Si existían columnas de redondeo previas, migrar valores hacia round_product_prices:
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'store_settings' AND column_name = 'round_retail_price'
+    ) THEN
+        UPDATE public.store_settings 
+        SET round_product_prices = (
+            COALESCE(round_retail_price, false) OR 
+            COALESCE(round_wholesale_price, false) OR 
+            COALESCE(round_delivery_price, false)
+        );
+    END IF;
+END $$;
+
+-- Bitácora de operaciones remotas y triggers:
+CREATE TABLE IF NOT EXISTS public.remote_audit_logs (
+    id          BIGSERIAL PRIMARY KEY,
+    table_name  TEXT NOT NULL,
+    operation   TEXT NOT NULL,
+    record_id   TEXT NOT NULL,
+    summary     TEXT,
+    device_id   TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_remote_audit_logs_created_at ON public.remote_audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_remote_audit_logs_table ON public.remote_audit_logs(table_name);
+
+CREATE OR REPLACE FUNCTION public.fn_log_remote_audit()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_table_name TEXT := TG_TABLE_NAME;
+    v_op TEXT := TG_OP;
+    v_record_id TEXT;
+    v_summary TEXT;
+BEGIN
+    IF (v_op = 'DELETE') THEN
+        v_record_id := OLD.id::text;
+        IF v_table_name = 'products' THEN
+            v_summary := 'Producto eliminado: ' || COALESCE(OLD.nombre, OLD.id);
+        ELSIF v_table_name = 'customers' THEN
+            v_summary := 'Cliente eliminado: ' || COALESCE(OLD.nombre, OLD.id);
+        ELSIF v_table_name = 'customer_payments' THEN
+            v_summary := 'Abono eliminado: $' || COALESCE(OLD.monto::text, '0');
+        ELSIF v_table_name = 'cashiers' THEN
+            v_summary := 'Cajero eliminado: ' || COALESCE(OLD.nombre, OLD.id);
+        ELSIF v_table_name = 'sales' THEN
+            v_summary := 'Venta eliminada: Folio #' || COALESCE(OLD.folio::text, OLD.id) || ' ($' || COALESCE(OLD.total::text, '0') || ')';
+        ELSE
+            v_summary := 'Registro eliminado en ' || v_table_name;
+        END IF;
+    ELSIF (v_op = 'INSERT') THEN
+        v_record_id := NEW.id::text;
+        IF v_table_name = 'products' THEN
+            v_summary := 'Producto creado: ' || NEW.nombre || ' ($' || NEW.precio || ')';
+        ELSIF v_table_name = 'customers' THEN
+            v_summary := 'Cliente registrado: ' || NEW.nombre;
+        ELSIF v_table_name = 'customer_payments' THEN
+            v_summary := 'Abono registrado: $' || NEW.monto || ' (' || NEW.metodo_pago || ')';
+        ELSIF v_table_name = 'cashiers' THEN
+            v_summary := 'Cajero registrado: ' || NEW.nombre;
+        ELSIF v_table_name = 'sales' THEN
+            v_summary := 'Venta creada: Folio #' || NEW.folio || ' ($' || NEW.total || ' - ' || NEW.metodo_pago || ')' || CASE WHEN NEW.cashier_name IS NOT NULL AND NEW.cashier_name != '' THEN ' • ' || NEW.cashier_name ELSE '' END;
+        ELSIF v_table_name = 'store_settings' THEN
+            v_summary := 'Ajustes de tienda guardados';
+        ELSIF v_table_name = 'deleted_records' THEN
+            v_summary := 'Baja registrada: ' || NEW.entity_type || ' (' || NEW.id || ')';
+        ELSE
+            v_summary := 'Nuevo registro en ' || v_table_name;
+        END IF;
+    ELSIF (v_op = 'UPDATE') THEN
+        v_record_id := NEW.id::text;
+        IF v_table_name = 'products' THEN
+            v_summary := 'Producto modificado: ' || NEW.nombre || ' ($' || NEW.precio || ', stock: ' || NEW.piezas || ')';
+        ELSIF v_table_name = 'customers' THEN
+            v_summary := 'Cliente modificado: ' || NEW.nombre || ' (Límite: $' || NEW.limite_credito || ')';
+        ELSIF v_table_name = 'customer_payments' THEN
+            v_summary := 'Abono modificado: $' || NEW.monto;
+        ELSIF v_table_name = 'cashiers' THEN
+            v_summary := 'Cajero modificado: ' || NEW.nombre || ' (Activo: ' || CASE WHEN NEW.activo THEN 'Sí' ELSE 'No' END || ')';
+        ELSIF v_table_name = 'sales' THEN
+            v_summary := 'Venta modificada: Folio #' || NEW.folio || ' (Estado: ' || NEW.estado || ')';
+        ELSIF v_table_name = 'store_settings' THEN
+            v_summary := 'Ajustes de tienda actualizados';
+        ELSE
+            v_summary := 'Registro actualizado en ' || v_table_name;
+        END IF;
+    END IF;
+
+    INSERT INTO public.remote_audit_logs (table_name, operation, record_id, summary, created_at)
+    VALUES (v_table_name, v_op, v_record_id, v_summary, now());
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_audit_products ON public.products;
+CREATE TRIGGER trg_audit_products AFTER INSERT OR UPDATE OR DELETE ON public.products FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_customers ON public.customers;
+CREATE TRIGGER trg_audit_customers AFTER INSERT OR UPDATE OR DELETE ON public.customers FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_customer_payments ON public.customer_payments;
+CREATE TRIGGER trg_audit_customer_payments AFTER INSERT OR UPDATE OR DELETE ON public.customer_payments FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_cashiers ON public.cashiers;
+CREATE TRIGGER trg_audit_cashiers AFTER INSERT OR UPDATE OR DELETE ON public.cashiers FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_sales ON public.sales;
+CREATE TRIGGER trg_audit_sales AFTER INSERT OR UPDATE OR DELETE ON public.sales FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+DROP TRIGGER IF EXISTS trg_audit_store_settings ON public.store_settings;
+CREATE TRIGGER trg_audit_store_settings AFTER INSERT OR UPDATE OR DELETE ON public.store_settings FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
 */

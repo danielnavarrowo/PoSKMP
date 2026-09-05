@@ -79,9 +79,7 @@ data class ProductosUiState(
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
     val defaultDeliveryMargin: Double = 0.0,
-    val roundRetailPrice: Boolean = false,
-    val roundWholesalePrice: Boolean = false,
-    val roundDeliveryPrice: Boolean = false,
+    val roundProductPrices: Boolean = false,
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false
 ) {

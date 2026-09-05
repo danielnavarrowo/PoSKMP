@@ -1016,9 +1016,7 @@ fun ProductosScreen(
                     defaultRetailMarginPercentage = uiState.defaultRetailMargin,
                     defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
                     defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
-                    roundRetailPrice = uiState.roundRetailPrice,
-                    roundWholesalePrice = uiState.roundWholesalePrice,
-                    roundDeliveryPrice = uiState.roundDeliveryPrice
+                    roundProductPrices = uiState.roundProductPrices
                 )
             }
 

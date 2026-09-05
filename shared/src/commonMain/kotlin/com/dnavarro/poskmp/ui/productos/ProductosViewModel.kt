@@ -46,17 +46,12 @@ private data class DisplayState(
     val selectedProductIds: Set<String> = emptySet(),
     val bulkModificationProgress: BulkProgressState? = null
 )
-
-private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
-
 private data class ProductSettingsConfig(
     val defaultRetailMargin: Double,
     val defaultWholesaleMargin: Double,
     val defaultDeliveryMargin: Double,
     val isRoundingEnabled: Boolean,
-    val roundRetailPrice: Boolean,
-    val roundWholesalePrice: Boolean,
-    val roundDeliveryPrice: Boolean
+    val roundProductPrices: Boolean
 )
 
 private data class ProductExtraState(
@@ -132,30 +127,18 @@ class ProductosViewModel(
             ProductExtraState(visibleColumns, salesStats, syncState)
         },
         combine(
-            combine(
-                settingsRepository.defaultRetailMarginFlow,
-                settingsRepository.defaultWholesaleMarginFlow,
-                settingsRepository.defaultDeliveryMarginFlow
-            ) { retailMargin, wholesaleMargin, deliveryMargin ->
-                Triple(retailMargin, wholesaleMargin, deliveryMargin)
-            },
-            combine(
-                settingsRepository.isRoundingEnabledFlow,
-                settingsRepository.roundRetailPriceFlow,
-                settingsRepository.roundWholesalePriceFlow,
-                settingsRepository.roundDeliveryPriceFlow
-            ) { isRounding, roundRetail, roundWholesale, roundDelivery ->
-                Tuple4(isRounding, roundRetail, roundWholesale, roundDelivery)
-            }
-        ) { (retailMargin, wholesaleMargin, deliveryMargin), (isRounding, roundRetail, roundWholesale, roundDelivery) ->
+            settingsRepository.defaultRetailMarginFlow,
+            settingsRepository.defaultWholesaleMarginFlow,
+            settingsRepository.defaultDeliveryMarginFlow,
+            settingsRepository.isRoundingEnabledFlow,
+            settingsRepository.roundProductPricesFlow
+        ) { retail, wholesale, delivery, isRounding, roundPrices ->
             ProductSettingsConfig(
-                defaultRetailMargin = retailMargin,
-                defaultWholesaleMargin = wholesaleMargin,
-                defaultDeliveryMargin = deliveryMargin,
+                defaultRetailMargin = retail,
+                defaultWholesaleMargin = wholesale,
+                defaultDeliveryMargin = delivery,
                 isRoundingEnabled = isRounding,
-                roundRetailPrice = roundRetail,
-                roundWholesalePrice = roundWholesale,
-                roundDeliveryPrice = roundDelivery
+                roundProductPrices = roundPrices
             )
         }
     ) { (query, products, display), extra, settings ->
@@ -176,9 +159,7 @@ class ProductosViewModel(
             defaultRetailMargin = settings.defaultRetailMargin,
             defaultWholesaleMargin = settings.defaultWholesaleMargin,
             defaultDeliveryMargin = settings.defaultDeliveryMargin,
-            roundRetailPrice = settings.isRoundingEnabled && settings.roundRetailPrice,
-            roundWholesalePrice = settings.isRoundingEnabled && settings.roundWholesalePrice,
-            roundDeliveryPrice = settings.isRoundingEnabled && settings.roundDeliveryPrice,
+            roundProductPrices = settings.isRoundingEnabled && settings.roundProductPrices,
             isSyncing = extra.syncState == SyncStateEnum.SYNCING
         )
     }.stateIn(
@@ -304,9 +285,7 @@ class ProductosViewModel(
                 applyBulkModificationUseCase(
                     selectedIds = selectedIds,
                     modification = modification,
-                    roundRetailPrice = state.roundRetailPrice,
-                    roundWholesalePrice = state.roundWholesalePrice,
-                    roundDeliveryPrice = state.roundDeliveryPrice,
+                    roundProductPrices = state.roundProductPrices,
                     onProgress = { current, count ->
                         _displayState.update {
                             it.copy(

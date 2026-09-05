@@ -37,10 +37,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.restore
 import poskmp.shared.generated.resources.supabase_auto_sync_subtitle
@@ -53,6 +55,7 @@ import poskmp.shared.generated.resources.supabase_key_label
 import poskmp.shared.generated.resources.supabase_key_placeholder
 import poskmp.shared.generated.resources.supabase_last_sync_format
 import poskmp.shared.generated.resources.supabase_last_sync_never
+import poskmp.shared.generated.resources.supabase_remote_logs_button
 import poskmp.shared.generated.resources.supabase_save_and_test_button
 import poskmp.shared.generated.resources.supabase_section_subtitle
 import poskmp.shared.generated.resources.supabase_section_title
@@ -84,11 +87,16 @@ fun SyncSettingsSection(
     onForceFullSync: () -> Unit,
     lastSyncTimestamp: Long,
     syncMessage: String?,
+    remoteAuditLogs: List<RemoteAuditLogDto> = emptyList(),
+    isLoadingAuditLogs: Boolean = false,
+    auditLogsError: String? = null,
+    onFetchRemoteAuditLogs: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var localSupabaseUrl by remember(supabaseUrl) { mutableStateOf(supabaseUrl) }
     var localSupabaseKey by remember(supabaseKey) { mutableStateOf(supabaseKey) }
     var isKeyVisible by remember { mutableStateOf(false) }
+    var showAuditLogsDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -360,6 +368,26 @@ fun SyncSettingsSection(
                             fontSize = 13.sp
                         )
                     }
+
+                    OutlinedButton(
+                        onClick = {
+                            onFetchRemoteAuditLogs()
+                            showAuditLogsDialog = true
+                        },
+                        enabled = isConfigured,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.analytics),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(Res.string.supabase_remote_logs_button),
+                            fontSize = 13.sp
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -408,5 +436,15 @@ fun SyncSettingsSection(
                 }
             }
         }
+    }
+
+    if (showAuditLogsDialog) {
+        RemoteAuditLogsDialog(
+            logs = remoteAuditLogs,
+            isLoading = isLoadingAuditLogs,
+            errorMessage = auditLogsError,
+            onRefresh = onFetchRemoteAuditLogs,
+            onDismissRequest = { showAuditLogsDialog = false }
+        )
     }
 }

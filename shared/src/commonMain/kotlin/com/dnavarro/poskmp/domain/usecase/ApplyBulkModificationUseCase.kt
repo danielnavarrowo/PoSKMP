@@ -17,9 +17,7 @@ class ApplyBulkModificationUseCase(
     suspend operator fun invoke(
         selectedIds: Set<String>,
         modification: BulkProductModification,
-        roundRetailPrice: Boolean = false,
-        roundWholesalePrice: Boolean = false,
-        roundDeliveryPrice: Boolean = false,
+        roundProductPrices: Boolean = false,
         onProgress: ((current: Int, total: Int) -> Unit)? = null
     ) {
         if (selectedIds.isEmpty()) return
@@ -35,9 +33,7 @@ class ApplyBulkModificationUseCase(
             val updated = applyBulkProductModification(
                 product = product,
                 modification = modification,
-                roundRetailPrice = roundRetailPrice,
-                roundWholesalePrice = roundWholesalePrice,
-                roundDeliveryPrice = roundDeliveryPrice
+                roundProductPrices = roundProductPrices
             )
             if (updated == null) {
                 repository.deleteProductHard(product.id)
@@ -55,8 +51,6 @@ class ApplyBulkModificationUseCase(
                 delay(15.milliseconds)
             }
         }
-        if (total > 0) {
-            delay(200.milliseconds)
-        }
+        delay(200.milliseconds)
     }
 }

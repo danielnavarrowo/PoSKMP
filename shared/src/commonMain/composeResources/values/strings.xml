@@ -580,12 +580,8 @@
     <string name="rounding_section_subtitle">Ajusta cómo se redondean los precios y totales de venta</string>
     <string name="enable_rounding_title">Activar redondeo</string>
     <string name="enable_rounding_subtitle">Redondea centavos de 0 a 49 a 50¢, y de 51 a 99 a $1.00</string>
-    <string name="round_retail_price_title">Redondear precio de venta al guardar producto</string>
-    <string name="round_retail_price_subtitle">Aplica el redondeo al precio regular de venta al guardar</string>
-    <string name="round_wholesale_price_title">Redondear precio de mayoreo al guardar producto</string>
-    <string name="round_wholesale_price_subtitle">Aplica el redondeo al precio de mayoreo al guardar</string>
-    <string name="round_delivery_price_title">Redondear precio a domicilio al guardar producto</string>
-    <string name="round_delivery_price_subtitle">Aplica el redondeo al precio de entrega a domicilio al guardar</string>
+    <string name="round_product_prices_title">Redondear precios al guardar producto</string>
+    <string name="round_product_prices_subtitle">Aplica el redondeo a los precios de venta, mayoreo y domicilio al guardar o recalcular</string>
     <string name="round_ticket_total_title">Redondear total del ticket antes del cobro</string>
     <string name="round_ticket_total_subtitle">Redondea el total acumulado en el ticket de venta al finalizar</string>
 
@@ -629,6 +625,21 @@
     <string name="supabase_show_key">Mostrar token</string>
     <string name="supabase_hide_key">Ocultar token</string>
     <string name="supabase_force_full_sync_button">Descarga Completa</string>
+    <string name="supabase_remote_logs_button">Bitácora en Servidor</string>
+    <string name="supabase_remote_logs_title">Bitácora de Operaciones Remotas</string>
+    <string name="supabase_remote_logs_subtitle">Historial de escrituras y modificaciones en Supabase</string>
+    <string name="supabase_remote_logs_empty">No hay operaciones registradas en el servidor aún.</string>
+    <string name="supabase_remote_logs_empty_hint">Las operaciones de inserción, actualización o eliminación en Supabase aparecerán aquí automáticamente.</string>
+    <string name="supabase_remote_logs_filter_all">Todos</string>
+    <string name="supabase_remote_logs_filter_sales">Ventas</string>
+    <string name="supabase_remote_logs_filter_products">Productos</string>
+    <string name="supabase_remote_logs_filter_customers">Clientes</string>
+    <string name="supabase_remote_logs_filter_cashiers">Cajeros</string>
+    <string name="supabase_remote_logs_filter_settings">Ajustes</string>
+    <string name="supabase_remote_logs_operation_insert">Creación</string>
+    <string name="supabase_remote_logs_operation_update">Modificación</string>
+    <string name="supabase_remote_logs_operation_delete">Eliminación</string>
+    <string name="supabase_remote_logs_retry">Reintentar</string>
 
     <!-- Receipt and Printer Settings -->
     <string name="store_info_section_title">Información de la tienda</string>
@@ -805,6 +816,7 @@
     <string name="factory_reset_in_progress">Restableciendo aplicación...</string>
     <string name="factory_reset_success">La aplicación se ha restablecido a los valores de fábrica exitosamente.</string>
     <string name="factory_reset_error">Error al restablecer la aplicación: %1$s</string>
+    <string name="minimize_window">Minimizar</string>
 
     <!-- Categorías de Ajustes (ListDetailPaneScaffold) -->
     <string name="settings_cat_clientes_title">Clientes</string>

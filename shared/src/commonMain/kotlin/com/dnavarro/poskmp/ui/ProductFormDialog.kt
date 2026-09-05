@@ -102,9 +102,7 @@ fun ProductFormDialog(
     defaultRetailMarginPercentage: Double = 0.0,
     defaultWholesaleMarginPercentage: Double = 0.0,
     defaultDeliveryMarginPercentage: Double = 0.0,
-    roundRetailPrice: Boolean = false,
-    roundWholesalePrice: Boolean = false,
-    roundDeliveryPrice: Boolean = false
+    roundProductPrices: Boolean = false
 ) {
     val isNew = product == null || product.id.isEmpty()
 
@@ -389,11 +387,11 @@ fun ProductFormDialog(
         val formattedCodes = finalBarcodes.encodeToJsonBarcodes()
 
         val rawPrice = formPrecio.toDoubleOrNull() ?: 0.0
-        val finalPrice = if (roundRetailPrice) roundPrice(rawPrice) else rawPrice
+        val finalPrice = if (roundProductPrices) roundPrice(rawPrice) else rawPrice
         val rawWholesale = formPrecioMayoreo.toDoubleOrNull() ?: 0.0
-        val finalWholesale = if (roundWholesalePrice) roundPrice(rawWholesale) else rawWholesale
+        val finalWholesale = if (roundProductPrices) roundPrice(rawWholesale) else rawWholesale
         val rawDelivery = formPrecioDelivery.toDoubleOrNull() ?: 0.0
-        val finalDelivery = if (roundDeliveryPrice) roundPrice(rawDelivery) else rawDelivery
+        val finalDelivery = if (roundProductPrices) roundPrice(rawDelivery) else rawDelivery
 
         val p = Products(
             id = id,

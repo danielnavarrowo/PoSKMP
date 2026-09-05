@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
@@ -129,12 +130,8 @@ fun AjustesScreen(
         onDefaultDeliveryMarginChange = { viewModel.setDefaultDeliveryMargin(it) },
         isRoundingEnabled = uiState.isRoundingEnabled,
         onIsRoundingEnabledChange = { viewModel.setIsRoundingEnabled(it) },
-        roundRetailPrice = uiState.roundRetailPrice,
-        onRoundRetailPriceChange = { viewModel.setRoundRetailPrice(it) },
-        roundWholesalePrice = uiState.roundWholesalePrice,
-        onRoundWholesalePriceChange = { viewModel.setRoundWholesalePrice(it) },
-        roundDeliveryPrice = uiState.roundDeliveryPrice,
-        onRoundDeliveryPriceChange = { viewModel.setRoundDeliveryPrice(it) },
+        roundProductPrices = uiState.roundProductPrices,
+        onRoundProductPricesChange = { viewModel.setRoundProductPrices(it) },
         roundTicketTotal = uiState.roundTicketTotal,
         onRoundTicketTotalChange = { viewModel.setRoundTicketTotal(it) },
         disallowCardPaymentOnWholesale = uiState.disallowCardPaymentOnWholesale,
@@ -162,6 +159,10 @@ fun AjustesScreen(
         isTestingConnection = uiState.isTestingConnection,
         connectionTestResult = uiState.connectionTestResult,
         syncMessage = uiState.syncMessage,
+        remoteAuditLogs = uiState.remoteAuditLogs,
+        isLoadingAuditLogs = uiState.isLoadingAuditLogs,
+        auditLogsError = uiState.auditLogsError,
+        onFetchRemoteAuditLogs = { viewModel.fetchRemoteAuditLogs() },
         onTestAndSaveSupabaseConnection = { url, key -> viewModel.testAndSaveConnection(url, key) },
         onSyncNow = { viewModel.syncNow() },
         onForceFullSync = { viewModel.syncNow(forceFullSync = true) },
@@ -226,12 +227,8 @@ fun AjustesScreen(
     onDefaultDeliveryMarginChange: (Double) -> Unit = {},
     isRoundingEnabled: Boolean = false,
     onIsRoundingEnabledChange: (Boolean) -> Unit = {},
-    roundRetailPrice: Boolean = false,
-    onRoundRetailPriceChange: (Boolean) -> Unit = {},
-    roundWholesalePrice: Boolean = false,
-    onRoundWholesalePriceChange: (Boolean) -> Unit = {},
-    roundDeliveryPrice: Boolean = false,
-    onRoundDeliveryPriceChange: (Boolean) -> Unit = {},
+    roundProductPrices: Boolean = false,
+    onRoundProductPricesChange: (Boolean) -> Unit = {},
     roundTicketTotal: Boolean = false,
     onRoundTicketTotalChange: (Boolean) -> Unit = {},
     disallowCardPaymentOnWholesale: Boolean = false,
@@ -259,6 +256,10 @@ fun AjustesScreen(
     isTestingConnection: Boolean = false,
     connectionTestResult: String? = null,
     syncMessage: String? = null,
+    remoteAuditLogs: List<RemoteAuditLogDto> = emptyList(),
+    isLoadingAuditLogs: Boolean = false,
+    auditLogsError: String? = null,
+    onFetchRemoteAuditLogs: () -> Unit = {},
     onTestAndSaveSupabaseConnection: (url: String, key: String) -> Unit = { _, _ -> },
     onSyncNow: () -> Unit = {},
     onForceFullSync: () -> Unit = {},
@@ -588,12 +589,8 @@ fun AjustesScreen(
                                     onDefaultDeliveryMarginChange = onDefaultDeliveryMarginChange,
                                     isRoundingEnabled = isRoundingEnabled,
                                     onIsRoundingEnabledChange = onIsRoundingEnabledChange,
-                                    roundRetailPrice = roundRetailPrice,
-                                    onRoundRetailPriceChange = onRoundRetailPriceChange,
-                                    roundWholesalePrice = roundWholesalePrice,
-                                    onRoundWholesalePriceChange = onRoundWholesalePriceChange,
-                                    roundDeliveryPrice = roundDeliveryPrice,
-                                    onRoundDeliveryPriceChange = onRoundDeliveryPriceChange,
+                                    roundProductPrices = roundProductPrices,
+                                    onRoundProductPricesChange = onRoundProductPricesChange,
                                     roundTicketTotal = roundTicketTotal,
                                     onRoundTicketTotalChange = onRoundTicketTotalChange,
                                     disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
@@ -636,7 +633,11 @@ fun AjustesScreen(
                                     onSyncNow = onSyncNow,
                                     onForceFullSync = onForceFullSync,
                                     lastSyncTimestamp = lastSyncTimestamp,
-                                    syncMessage = syncMessage
+                                    syncMessage = syncMessage,
+                                    remoteAuditLogs = remoteAuditLogs,
+                                    isLoadingAuditLogs = isLoadingAuditLogs,
+                                    auditLogsError = auditLogsError,
+                                    onFetchRemoteAuditLogs = onFetchRemoteAuditLogs
                                 )
                             }
 

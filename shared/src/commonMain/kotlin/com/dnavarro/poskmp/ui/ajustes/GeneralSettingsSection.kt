@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,7 +23,6 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -47,20 +45,14 @@ import poskmp.shared.generated.resources.checador_layout_dialog
 import poskmp.shared.generated.resources.checador_layout_fullscreen
 import poskmp.shared.generated.resources.checador_layout_subtitle
 import poskmp.shared.generated.resources.checador_layout_title
-import poskmp.shared.generated.resources.check
-import poskmp.shared.generated.resources.database_section_title
 import poskmp.shared.generated.resources.default_screen_subtitle
 import poskmp.shared.generated.resources.default_screen_title
 import poskmp.shared.generated.resources.fullscreen
-import poskmp.shared.generated.resources.local_db_connected_desc
-import poskmp.shared.generated.resources.local_db_status_connected
-import poskmp.shared.generated.resources.local_db_title
 import poskmp.shared.generated.resources.pip
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.show_extra_prices_checador_subtitle
 import poskmp.shared.generated.resources.show_extra_prices_checador_title
-import poskmp.shared.generated.resources.status_connected
 import poskmp.shared.generated.resources.swap_venta_layout_order_subtitle
 import poskmp.shared.generated.resources.swap_venta_layout_order_title
 import poskmp.shared.generated.resources.tab_checador
@@ -415,64 +407,6 @@ fun GeneralSettingsSection(
                         checked = swapVentaLayoutOrder,
                         onCheckedChange = onSwapVentaLayoutOrderChange
                     )
-                }
-            }
-        }
-
-        // Card: Base de Datos Local Status
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
-            ),
-            shape = MaterialTheme.shapes.medium,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = stringResource(Res.string.database_section_title),
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(Res.drawable.check),
-                            contentDescription = stringResource(Res.string.local_db_connected_desc),
-                            tint = Color(0xFF10B981),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = stringResource(Res.string.local_db_title),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = stringResource(Res.string.local_db_status_connected),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Badge(
-                        containerColor = Color(0xFFD1FAE5),
-                        contentColor = Color(0xFF065F46)
-                    ) {
-                        Text(
-                            stringResource(Res.string.status_connected),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            fontSize = 11.sp
-                        )
-                    }
                 }
             }
         }

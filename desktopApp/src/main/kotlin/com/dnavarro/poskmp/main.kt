@@ -30,7 +30,7 @@ fun main() {
 
     application {
         val windowState = rememberWindowState(
-            placement = WindowPlacement.Maximized
+            placement = WindowPlacement.Fullscreen
         )
         var isClosing by remember { mutableStateOf(false) }
 
@@ -45,7 +45,14 @@ fun main() {
             App(
                 isExiting = isClosing,
                 onCancelExit = { isClosing = false },
-                onExitCompleted = ::exitApplication
+                onExitCompleted = ::exitApplication,
+                onMinimize = {
+                    windowState.isMinimized = true
+                    window.extendedState = java.awt.Frame.ICONIFIED
+                },
+                onClose = {
+                    isClosing = true
+                }
             )
         }
     }
