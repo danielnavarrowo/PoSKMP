@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -115,6 +114,7 @@ import com.dnavarro.poskmp.navigation.toRoute
 import com.dnavarro.poskmp.navigation.toScreen
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.AjustesScreen
 import com.dnavarro.poskmp.ui.ChecadorDialog
 import com.dnavarro.poskmp.ui.ChecadorScreen
@@ -125,14 +125,15 @@ import com.dnavarro.poskmp.ui.VentaScreen
 import com.dnavarro.poskmp.ui.VentasScreen
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
-import com.dnavarro.poskmp.ui.productos.ProductosViewModel
-import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.components.DesktopTitleBar
+import com.dnavarro.poskmp.ui.productos.ProductosViewModel
+import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
+import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
+import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
-import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatTimeOnly
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.Dispatchers
@@ -148,7 +149,13 @@ import org.koin.compose.viewmodel.koinViewModel
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.btn_cash_inflow
+import poskmp.shared.generated.resources.btn_cash_inflow_desktop
+import poskmp.shared.generated.resources.btn_cash_outflow
+import poskmp.shared.generated.resources.btn_cash_outflow_desktop
 import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.money_transfer
+import poskmp.shared.generated.resources.payments
 import poskmp.shared.generated.resources.exit_backup_sync_dialog_title
 import poskmp.shared.generated.resources.exit_backup_sync_error
 import poskmp.shared.generated.resources.exit_backup_sync_step_backup
@@ -158,11 +165,6 @@ import poskmp.shared.generated.resources.exit_backup_sync_title_backing_up
 import poskmp.shared.generated.resources.exit_backup_sync_title_failure
 import poskmp.shared.generated.resources.exit_backup_sync_title_success
 import poskmp.shared.generated.resources.exit_backup_sync_title_syncing
-import poskmp.shared.generated.resources.last_sale_change
-import poskmp.shared.generated.resources.last_sale_items
-import poskmp.shared.generated.resources.last_sale_paid
-import poskmp.shared.generated.resources.last_sale_title
-import poskmp.shared.generated.resources.last_sale_total
 import poskmp.shared.generated.resources.nav_clientes
 import poskmp.shared.generated.resources.nav_clientes_desktop
 import poskmp.shared.generated.resources.open_cash_drawer_button
@@ -236,9 +238,22 @@ fun App(
     val shiftRepository = koinInject<com.dnavarro.poskmp.data.ShiftRepository>()
     val openCashDrawerUseCase = koinInject<OpenCashDrawerUseCase>()
     val reprintSaleReceiptUseCase = koinInject<ReprintSaleReceiptUseCase>()
+    val recordCashMovementUseCase = koinInject<RecordCashMovementUseCase>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
 
     val activeShift by shiftRepository.activeShiftFlow.collectAsStateWithLifecycle(initialValue = null)
+    var showAppInflowDialog by remember { mutableStateOf(false) }
+    var showAppOutflowDialog by remember { mutableStateOf(false) }
+    var isRecordingAppCashMovement by remember { mutableStateOf(false) }
+    var appCashMovementError by remember { mutableStateOf<String?>(null) }
+    val appShiftMovements by remember(activeShift?.id) {
+        if (activeShift != null) {
+            shiftRepository.getMovementsForShiftFlow(activeShift!!.id)
+        } else {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        }
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
+
     var showExitOpenShiftDialog by remember { mutableStateOf(false) }
     var showExitCloseShiftDialog by remember { mutableStateOf(false) }
     var exitShiftSummary by remember { mutableStateOf<com.dnavarro.poskmp.domain.model.ShiftSummary?>(null) }
@@ -490,8 +505,8 @@ fun App(
                     ) {
                         if (!isAndroid()) {
                             DesktopTitleBar(
-                                title = ajustesUiState.receiptSettings.storeName.ifBlank { "Punto de Venta" },
                                 dateTimeText = desktopDateTimeText,
+                                lastSale = lastSale,
                                 onMinimize = { onMinimize?.invoke() },
                                 onClose = { onClose?.invoke() }
                             )
@@ -541,6 +556,24 @@ fun App(
 
                                                 Key.F6 -> {
                                                     triggerOpenCashDrawer()
+                                                    true
+                                                }
+
+                                                Key.F7 -> {
+                                                    if (activeShift != null) {
+                                                        appCashMovementError = null
+                                                        showAppInflowDialog = true
+                                                        showAppOutflowDialog = false
+                                                    }
+                                                    true
+                                                }
+
+                                                Key.F8 -> {
+                                                    if (activeShift != null) {
+                                                        appCashMovementError = null
+                                                        showAppInflowDialog = false
+                                                        showAppOutflowDialog = true
+                                                    }
                                                     true
                                                 }
 
@@ -845,122 +878,238 @@ fun App(
                                                     )
                                                 }
                                             } else {
-                                                FilledTonalIconButton(
-                                                    onClick = {
-                                                        triggerOpenCashDrawer()
+                                                TooltipBox(
+                                                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                        TooltipAnchorPosition.Above,
+                                                        4.dp
+                                                    ),
+                                                    tooltip = {
+                                                        PlainTooltip {
+                                                            Text(stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button))
+                                                        }
                                                     },
-                                                    enabled = !isOpeningDrawer,
+                                                    state = rememberTooltipState()
+                                                ) {
+                                                    FilledTonalIconButton(
+                                                        onClick = {
+                                                            triggerOpenCashDrawer()
+                                                        },
+                                                        enabled = !isOpeningDrawer,
+                                                        shape = MaterialTheme.shapes.medium
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.point_of_sale),
+                                                            contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // Botón para entrada de efectivo
+                                            if (isExpanded) {
+                                                FilledTonalButton(
+                                                    onClick = {
+                                                        if (activeShift != null) {
+                                                            appCashMovementError = null
+                                                            showAppInflowDialog = true
+                                                            showAppOutflowDialog = false
+                                                        }
+                                                        reclaimCurrentScreenFocus()
+                                                    },
+                                                    enabled = activeShift != null,
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                                     shape = MaterialTheme.shapes.medium
                                                 ) {
                                                     Icon(
-                                                        painter = painterResource(Res.drawable.point_of_sale),
-                                                        contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                        modifier = Modifier.size(20.dp)
+                                                        painter = painterResource(Res.drawable.payments),
+                                                        contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
+                                                        modifier = Modifier.size(18.dp)
                                                     )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            } else {
+                                                TooltipBox(
+                                                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                        TooltipAnchorPosition.Above,
+                                                        4.dp
+                                                    ),
+                                                    tooltip = {
+                                                        PlainTooltip {
+                                                            Text(stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow))
+                                                        }
+                                                    },
+                                                    state = rememberTooltipState()
+                                                ) {
+                                                    FilledTonalIconButton(
+                                                        onClick = {
+                                                            if (activeShift != null) {
+                                                                appCashMovementError = null
+                                                                showAppInflowDialog = true
+                                                                showAppOutflowDialog = false
+                                                            }
+                                                            reclaimCurrentScreenFocus()
+                                                        },
+                                                        enabled = activeShift != null,
+                                                        shape = MaterialTheme.shapes.medium
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.payments),
+                                                            contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // Botón para salida de efectivo
+                                            if (isExpanded) {
+                                                FilledTonalButton(
+                                                    onClick = {
+                                                        if (activeShift != null) {
+                                                            appCashMovementError = null
+                                                            showAppInflowDialog = false
+                                                            showAppOutflowDialog = true
+                                                        }
+                                                        reclaimCurrentScreenFocus()
+                                                    },
+                                                    enabled = activeShift != null,
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                    shape = MaterialTheme.shapes.medium
+                                                ) {
+                                                    Icon(
+                                                        painter = painterResource(Res.drawable.money_transfer),
+                                                        contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            } else {
+                                                TooltipBox(
+                                                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                        TooltipAnchorPosition.Above,
+                                                        4.dp
+                                                    ),
+                                                    tooltip = {
+                                                        PlainTooltip {
+                                                            Text(stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow))
+                                                        }
+                                                    },
+                                                    state = rememberTooltipState()
+                                                ) {
+                                                    FilledTonalIconButton(
+                                                        onClick = {
+                                                            if (activeShift != null) {
+                                                                appCashMovementError = null
+                                                                showAppInflowDialog = false
+                                                                showAppOutflowDialog = true
+                                                            }
+                                                            reclaimCurrentScreenFocus()
+                                                        },
+                                                        enabled = activeShift != null,
+                                                        shape = MaterialTheme.shapes.medium
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.money_transfer),
+                                                            contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
                                                 }
                                             }
 
                                             Spacer(modifier = Modifier.height(6.dp))
 
                                             lastSale?.let { sale ->
-                                                Surface(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    shape = MaterialTheme.shapes.medium,
-                                                    color = MaterialTheme.colorScheme.secondaryContainer,
-                                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                                ) {
-                                                    Column(
-                                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 6.dp),
-                                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                                // Botón de reimpresión del último ticket
+                                                if (isExpanded) {
+                                                    FilledTonalButton(
+                                                        onClick = {
+                                                            if (!isReprintingLastSale) {
+                                                                isReprintingLastSale = true
+                                                                coroutineScope.launch {
+                                                                    try {
+                                                                        reprintSaleReceiptUseCase(sale)
+                                                                    } finally {
+                                                                        delay(800.milliseconds)
+                                                                        isReprintingLastSale = false
+                                                                    }
+                                                                }
+                                                            }
+                                                            reclaimCurrentScreenFocus()
+                                                        },
+                                                        enabled = !isReprintingLastSale,
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                        shape = MaterialTheme.shapes.medium
                                                     ) {
-                                                        Text(
-                                                            text = stringResource(Res.string.last_sale_title),
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            color = MaterialTheme.colorScheme.secondary,
-                                                            textAlign = TextAlign.Center
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.point_of_sale),
+                                                            contentDescription = stringResource(Res.string.reprint_receipt_button),
+                                                            modifier = Modifier.size(18.dp)
                                                         )
+                                                        Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
-                                                            text = stringResource(Res.string.last_sale_total, sale.total.toString().formatPrice()),
+                                                            text = stringResource(Res.string.reprint_receipt_button),
                                                             style = MaterialTheme.typography.labelMedium,
-                                                            fontWeight = FontWeight.ExtraBold,
-                                                            textAlign = TextAlign.Center
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
                                                         )
-                                                        Text(
-                                                            text = stringResource(Res.string.last_sale_paid, sale.pagoCon.toString().formatPrice()),
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                        Text(
-                                                            text = stringResource(Res.string.last_sale_change, sale.cambio.toString().formatPrice()),
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                        val itemsFormatted = if (sale.totalItems % 1.0 == 0.0) sale.totalItems.toLong().toString() else sale.totalItems.toString()
-                                                        Text(
-                                                            text = stringResource(Res.string.last_sale_items, itemsFormatted),
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            textAlign = TextAlign.Center
-                                                        )
-
-                                                        Spacer(modifier = Modifier.height(4.dp))
-
-                                                        // Botón de reimpresión del último ticket
-                                                        if (isExpanded) {
-                                                            FilledTonalButton(
-                                                                onClick = {
-                                                                    if (!isReprintingLastSale) {
-                                                                        isReprintingLastSale = true
-                                                                        coroutineScope.launch {
-                                                                            try {
-                                                                                reprintSaleReceiptUseCase(sale)
-                                                                            } finally {
-                                                                                delay(800.milliseconds)
-                                                                                isReprintingLastSale = false
-                                                                            }
+                                                    }
+                                                } else {
+                                                    TooltipBox(
+                                                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                            TooltipAnchorPosition.Above,
+                                                            4.dp
+                                                        ),
+                                                        tooltip = {
+                                                            PlainTooltip {
+                                                                Text(stringResource(Res.string.reprint_receipt_button))
+                                                            }
+                                                        },
+                                                        state = rememberTooltipState()
+                                                    ) {
+                                                        FilledTonalIconButton(
+                                                            onClick = {
+                                                                if (!isReprintingLastSale) {
+                                                                    isReprintingLastSale = true
+                                                                    coroutineScope.launch {
+                                                                        try {
+                                                                            reprintSaleReceiptUseCase(sale)
+                                                                        } finally {
+                                                                            delay(800.milliseconds)
+                                                                            isReprintingLastSale = false
                                                                         }
                                                                     }
-                                                                    reclaimCurrentScreenFocus()
-                                                                },
-                                                                enabled = !isReprintingLastSale,
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
-                                                                shape = MaterialTheme.shapes.small
-                                                            ) {
-                                                                Text(
-                                                                    text = stringResource(Res.string.reprint_receipt_button),
-                                                                    style = MaterialTheme.typography.labelSmall,
-                                                                    maxLines = 1,
-                                                                    overflow = TextOverflow.Ellipsis
-                                                                )
-                                                            }
-                                                        } else {
-                                                            FilledTonalIconButton(
-                                                                onClick = {
-                                                                    if (!isReprintingLastSale) {
-                                                                        isReprintingLastSale = true
-                                                                        coroutineScope.launch {
-                                                                            try {
-                                                                                reprintSaleReceiptUseCase(sale)
-                                                                            } finally {
-                                                                                delay(800.milliseconds)
-                                                                                isReprintingLastSale = false
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    reclaimCurrentScreenFocus()
-                                                                },
-                                                                enabled = !isReprintingLastSale,
-                                                                modifier = Modifier.size(32.dp),
-                                                                shape = MaterialTheme.shapes.small
-                                                             ) {
-                                                                Icon(
-                                                                    painter = painterResource(Res.drawable.point_of_sale),
-                                                                    contentDescription = stringResource(Res.string.reprint_receipt_button),
-                                                                    modifier = Modifier.size(16.dp)
-                                                                )
-                                                            }
+                                                                }
+                                                                reclaimCurrentScreenFocus()
+                                                            },
+                                                            enabled = !isReprintingLastSale,
+                                                            shape = MaterialTheme.shapes.medium
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.point_of_sale),
+                                                                contentDescription = stringResource(Res.string.reprint_receipt_button),
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -1276,6 +1425,44 @@ fun App(
                             confirmButton = {}
                         )
                     }
+
+                    // Diálogos de movimiento de efectivo (Entrada / Salida)
+                    CashMovementDialogs(
+                        showInflowDialog = showAppInflowDialog,
+                        showOutflowDialog = showAppOutflowDialog,
+                        isLoading = isRecordingAppCashMovement,
+                        errorMessage = appCashMovementError,
+                        movements = appShiftMovements,
+                        onRecordMovement = { type, amount, reason ->
+                            val shift = activeShift
+                            if (shift != null) {
+                                coroutineScope.launch {
+                                    isRecordingAppCashMovement = true
+                                    appCashMovementError = null
+                                    val result = recordCashMovementUseCase(
+                                        shiftId = shift.id,
+                                        cashierId = shift.cashierId,
+                                        type = type,
+                                        amount = amount,
+                                        reason = reason
+                                    )
+                                    isRecordingAppCashMovement = false
+                                    if (result.isSuccess) {
+                                        showAppInflowDialog = false
+                                        showAppOutflowDialog = false
+                                        appCashMovementError = null
+                                    } else {
+                                        appCashMovementError = result.exceptionOrNull()?.message ?: "Error al registrar movimiento"
+                                    }
+                                }
+                            }
+                        },
+                        onDismiss = {
+                            showAppInflowDialog = false
+                            showAppOutflowDialog = false
+                            appCashMovementError = null
+                        }
+                    )
 
                     // Diálogo de salida cuando hay un turno de caja abierto
                     if (showExitOpenShiftDialog && activeShift != null) {

@@ -660,18 +660,6 @@ fun VentaScreen(
                             onOpenScanner = { showCameraScanner = true },
                             cartCount = cartItems.size,
                             cartTotal = total,
-                            onSellUnregisteredClick = { openUnregisteredDialog() },
-                            onCashInflowClick = { viewModel.openInflowDialog() },
-                            onCashOutflowClick = { viewModel.openOutflowDialog() },
-                            onApplyItemWholesaleClick = {
-                                if (cartItems.isNotEmpty()) {
-                                    val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
-                                    val currentItem = cartItems[currentIndex]
-                                    viewModel.toggleWholesalePriceForItem(currentItem)
-                                    reclaimSearchBarFocus()
-                                }
-                            },
-                            onApplyWholesaleClick = { toggleWholesalePrice() },
                             searchFocusRequester = searchBarFocusRequester,
                             onBarcodeScan = barcodeScanCallback,
                             onSearchKeyIntercept = handleSearchKeyIntercept
@@ -713,7 +701,17 @@ fun VentaScreen(
                             selectedCustomer = uiState.selectedCustomer,
                             onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                             onClearCustomerClick = { viewModel.clearSelectedCustomer() },
-                            isDeliveryMode = uiState.prioritizeDeliveryPrice
+                            isDeliveryMode = uiState.prioritizeDeliveryPrice,
+                            onSellUnregisteredClick = { openUnregisteredDialog() },
+                            onApplyItemWholesaleClick = {
+                                if (cartItems.isNotEmpty()) {
+                                    val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                                    val currentItem = cartItems[currentIndex]
+                                    viewModel.toggleWholesalePriceForItem(currentItem)
+                                    reclaimSearchBarFocus()
+                                }
+                            },
+                            onApplyWholesaleClick = { toggleWholesalePrice() }
                         )
                     }
                 }
@@ -795,18 +793,6 @@ fun VentaScreen(
                                 onOpenScanner = { showCameraScanner = true },
                                 cartCount = cartItems.size,
                                 cartTotal = total,
-                                onSellUnregisteredClick = { openUnregisteredDialog() },
-                                onCashInflowClick = { viewModel.openInflowDialog() },
-                                onCashOutflowClick = { viewModel.openOutflowDialog() },
-                                onApplyItemWholesaleClick = {
-                                    if (cartItems.isNotEmpty()) {
-                                        val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
-                                        val currentItem = cartItems[currentIndex]
-                                        viewModel.toggleWholesalePriceForItem(currentItem)
-                                        reclaimSearchBarFocus()
-                                    }
-                                },
-                                onApplyWholesaleClick = { toggleWholesalePrice() },
                                 searchFocusRequester = searchBarFocusRequester,
                                 onBarcodeScan = barcodeScanCallback,
                                 onSearchKeyIntercept = handleSearchKeyIntercept
@@ -864,7 +850,17 @@ fun VentaScreen(
                                 selectedCustomer = uiState.selectedCustomer,
                                 onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                                 onClearCustomerClick = { viewModel.clearSelectedCustomer() },
-                                isDeliveryMode = uiState.prioritizeDeliveryPrice
+                                isDeliveryMode = uiState.prioritizeDeliveryPrice,
+                                onSellUnregisteredClick = { openUnregisteredDialog() },
+                                onApplyItemWholesaleClick = {
+                                    if (cartItems.isNotEmpty()) {
+                                        val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                                        val currentItem = cartItems[currentIndex]
+                                        viewModel.toggleWholesalePriceForItem(currentItem)
+                                        reclaimSearchBarFocus()
+                                    }
+                                },
+                                onApplyWholesaleClick = { toggleWholesalePrice() }
                             )
                         }
                     }

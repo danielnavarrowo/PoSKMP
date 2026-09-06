@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -36,13 +35,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -94,10 +90,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.barcode_scanner
-import poskmp.shared.generated.resources.btn_cash_inflow
-import poskmp.shared.generated.resources.btn_cash_outflow
-import poskmp.shared.generated.resources.cash_inflow_hotkey
-import poskmp.shared.generated.resources.cash_outflow_hotkey
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_scanner_desc
@@ -108,8 +100,6 @@ import poskmp.shared.generated.resources.mark_as_favorite
 import poskmp.shared.generated.resources.modify
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_found
-import poskmp.shared.generated.resources.not_registered
-import poskmp.shared.generated.resources.not_registered_hotkey
 import poskmp.shared.generated.resources.remove_from_favorites
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.search
@@ -120,10 +110,6 @@ import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.tab_ticket
 import poskmp.shared.generated.resources.view_ticket_fab
-import poskmp.shared.generated.resources.wholesale_item
-import poskmp.shared.generated.resources.wholesale_item_hotkey
-import poskmp.shared.generated.resources.wholesale_ticket
-import poskmp.shared.generated.resources.wholesale_ticket_hotkey
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val SEARCH_DEBOUNCE_MILLIS = 300L
@@ -144,11 +130,6 @@ fun CatalogSection(
     onOpenScanner: (() -> Unit)? = null,
     cartCount: Int = 0,
     cartTotal: Double = 0.0,
-    onSellUnregisteredClick: () -> Unit,
-    onCashInflowClick: () -> Unit = {},
-    onCashOutflowClick: () -> Unit = {},
-    onApplyItemWholesaleClick: () -> Unit = {},
-    onApplyWholesaleClick: () -> Unit = {},
     searchFocusRequester: FocusRequester? = null,
     onBarcodeScan: ((String) -> Unit)? = null,
     onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null
@@ -942,102 +923,6 @@ fun CatalogSection(
                         }
                     }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            item {
-                SuggestionChip(
-                    onClick = onCashInflowClick,
-                    label = {
-                        Text(
-                            if (isAndroid()) stringResource(Res.string.btn_cash_inflow) else stringResource(
-                                Res.string.cash_inflow_hotkey
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                )
-            }
-            item {
-                SuggestionChip(
-                    onClick = onCashOutflowClick,
-                    label = {
-                        Text(
-                            if (isAndroid()) stringResource(Res.string.btn_cash_outflow) else stringResource(
-                                Res.string.cash_outflow_hotkey
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                )
-            }
-            item {
-                SuggestionChip(
-                    onClick = onSellUnregisteredClick,
-                    label = {
-                        Text(
-                            if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(
-                                Res.string.not_registered_hotkey
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                )
-            }
-            item {
-                SuggestionChip(
-                    onClick = onApplyItemWholesaleClick,
-                    label = {
-                        Text(
-                            if (isAndroid()) stringResource(Res.string.wholesale_item) else stringResource(
-                                Res.string.wholesale_item_hotkey
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                )
-            }
-            item {
-                SuggestionChip(
-                    onClick = onApplyWholesaleClick,
-                    label = {
-                        Text(
-                            if (isAndroid()) stringResource(Res.string.wholesale_ticket) else stringResource(
-                                Res.string.wholesale_ticket_hotkey
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                )
             }
         }
     }

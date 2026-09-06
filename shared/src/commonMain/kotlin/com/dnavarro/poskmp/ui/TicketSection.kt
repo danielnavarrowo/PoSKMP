@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -31,10 +33,16 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -86,11 +94,9 @@ import poskmp.shared.generated.resources.checkout_button
 import poskmp.shared.generated.resources.checkout_hotkey
 import poskmp.shared.generated.resources.clear_all_button
 import poskmp.shared.generated.resources.close
-import poskmp.shared.generated.resources.current_ticket_title
 import poskmp.shared.generated.resources.customer_balance_format
 import poskmp.shared.generated.resources.customer_no_debt_pending
 import poskmp.shared.generated.resources.decrease_desc
-import poskmp.shared.generated.resources.delivery_mode_active_badge
 import poskmp.shared.generated.resources.discard_held_ticket_desc
 import poskmp.shared.generated.resources.general_public_label
 import poskmp.shared.generated.resources.hold_ticket_button_desc
@@ -98,9 +104,12 @@ import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.items_count_label
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.no_customer_assigned
+import poskmp.shared.generated.resources.not_registered
+import poskmp.shared.generated.resources.not_registered_hotkey
 import poskmp.shared.generated.resources.pause
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.pieces_count_label
+import poskmp.shared.generated.resources.price
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.remove_customer_button
 import poskmp.shared.generated.resources.shopping_cart
@@ -111,6 +120,10 @@ import poskmp.shared.generated.resources.trash
 import poskmp.shared.generated.resources.undo
 import poskmp.shared.generated.resources.undo_button_desc
 import poskmp.shared.generated.resources.wholesale_badge
+import poskmp.shared.generated.resources.wholesale_item
+import poskmp.shared.generated.resources.wholesale_item_hotkey
+import poskmp.shared.generated.resources.wholesale_ticket
+import poskmp.shared.generated.resources.wholesale_ticket_hotkey
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -136,7 +149,10 @@ fun TicketSection(
     selectedCustomer: Customer? = null,
     onAssignCustomerClick: () -> Unit = {},
     onClearCustomerClick: () -> Unit = {},
-    isDeliveryMode: Boolean = false
+    isDeliveryMode: Boolean = false,
+    onSellUnregisteredClick: () -> Unit = {},
+    onApplyItemWholesaleClick: () -> Unit = {},
+    onApplyWholesaleClick: () -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -188,63 +204,164 @@ fun TicketSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (onBackClick != null) {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            painter = painterResource(Res.drawable.back),
-                            contentDescription = stringResource(Res.string.back_to_catalog_desc)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
+
+            if (onBackClick != null) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        painter = painterResource(Res.drawable.back),
+                        contentDescription = stringResource(Res.string.back_to_catalog_desc)
+                    )
                 }
-                Text(
-                    text = stringResource(Res.string.current_ticket_title),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                if (isDeliveryMode) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.delivery_mode_active_badge),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.width(4.dp))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onUndo,
-                    enabled = canUndo
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                // Producto no registrado (F9)
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Below,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey))
+                        }
+                    },
+                    state = rememberTooltipState()
                 ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.undo),
-                        contentDescription = stringResource(Res.string.undo_button_desc)
-                    )
-                }
-                IconButton(
-                    onClick = onHoldTicket,
-                    enabled = cartItems.isNotEmpty()
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.pause),
-                        contentDescription = stringResource(Res.string.hold_ticket_button_desc)
-                    )
-                }
-                if (cartItems.isNotEmpty()) {
-                    IconButton(onClick = onClearCart) {
+                    IconButton(onClick = onSellUnregisteredClick) {
                         Icon(
-                            painter = painterResource(Res.drawable.trash),
-                            contentDescription = stringResource(Res.string.clear_all_button)
+                            painter = painterResource(Res.drawable.add),
+                            contentDescription = stringResource(if (isAndroid()) Res.string.not_registered else Res.string.not_registered_hotkey)
                         )
+                    }
+                }
+
+                // Mayoreo por item (F11)
+                val currentSelectedItem = cartItems.getOrNull(selectedIndex)
+                val isItemWholesale = currentSelectedItem?.let { it.product.precio == it.product.precio_mayoreo && it.product.precio_mayoreo > 0.0 } ?: false
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Below,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(if (isAndroid()) stringResource(Res.string.wholesale_item) else stringResource(Res.string.wholesale_item_hotkey))
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    IconButton(
+                        onClick = onApplyItemWholesaleClick,
+                        enabled = cartItems.isNotEmpty()
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.price),
+                            contentDescription = stringResource(if (isAndroid()) Res.string.wholesale_item else Res.string.wholesale_item_hotkey),
+                            tint = if (isItemWholesale) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                        )
+                    }
+                }
+
+                // Mayoreo por ticket (Shift+F11)
+                val eligibleItems = cartItems.filter { it.product.precio_mayoreo > 0.0 }
+                val isTicketWholesale = eligibleItems.isNotEmpty() && eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Below,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(if (isAndroid()) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey))
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    IconButton(
+                        onClick = onApplyWholesaleClick,
+                        enabled = cartItems.isNotEmpty()
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.shopping_cart),
+                            contentDescription = stringResource(if (isAndroid()) Res.string.wholesale_ticket else Res.string.wholesale_ticket_hotkey),
+                            tint = if (isTicketWholesale) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                        )
+                    }
+                }
+
+                // Deshacer (Undo)
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Below,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(stringResource(Res.string.undo_button_desc))
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    IconButton(
+                        onClick = onUndo,
+                        enabled = canUndo
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.undo),
+                            contentDescription = stringResource(Res.string.undo_button_desc)
+                        )
+                    }
+                }
+
+                // Pausar ticket (Hold)
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Below,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(stringResource(Res.string.hold_ticket_button_desc))
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    IconButton(
+                        onClick = onHoldTicket,
+                        enabled = cartItems.isNotEmpty()
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.pause),
+                            contentDescription = stringResource(Res.string.hold_ticket_button_desc)
+                        )
+                    }
+                }
+
+                // Limpiar carrito (Clear)
+                if (cartItems.isNotEmpty()) {
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                            TooltipAnchorPosition.Below,
+                            4.dp
+                        ),
+                        tooltip = {
+                            PlainTooltip {
+                                Text(stringResource(Res.string.clear_all_button))
+                            }
+                        },
+                        state = rememberTooltipState()
+                    ) {
+                        IconButton(onClick = onClearCart) {
+                            Icon(
+                                painter = painterResource(Res.drawable.trash),
+                                contentDescription = stringResource(Res.string.clear_all_button)
+                            )
+                        }
                     }
                 }
             }
