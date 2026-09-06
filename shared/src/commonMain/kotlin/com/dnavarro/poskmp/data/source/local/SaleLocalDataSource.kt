@@ -7,6 +7,7 @@ import com.dnavarro.poskmp.db.Sales
 import com.dnavarro.poskmp.db.Sale_items
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
+import com.dnavarro.poskmp.domain.model.DeliveryComparisonMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.SalesSummary
@@ -18,6 +19,7 @@ interface SaleLocalDataSource {
     suspend fun recordSale(sale: Sales, items: List<Sale_items>): Long
     suspend fun getNextFolio(): Long
     suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long, shiftId: String? = null): SalesSummary
+    suspend fun getDeliveryComparisonBetween(startTime: Long, endTime: Long, shiftId: String? = null): DeliveryComparisonMetric
     suspend fun getSoldProductsBetween(startTime: Long, endTime: Long, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getTopSellingProductsBetween(startTime: Long, endTime: Long, limit: Long, shiftId: String? = null): List<ProductSalesMetric>
     suspend fun getLeastSellingProductsBetween(startTime: Long, endTime: Long, limit: Long, shiftId: String? = null): List<ProductSalesMetric>
@@ -57,7 +59,8 @@ class SqlDelightSaleDataSource(
                 shift_id = sale.shift_id,
                 cashier_id = sale.cashier_id,
                 cashier_name = sale.cashier_name,
-                estado = sale.estado
+                estado = sale.estado,
+                es_foranea = sale.es_foranea
             )
 
             items.forEach { item ->
@@ -102,6 +105,52 @@ class SqlDelightSaleDataSource(
             porcentajeGanancia = result.porcentaje_ganancia ?: 0.0,
             totalTicketCount = result.total_ticket_count,
             promedioTicket = result.promedio_ticket
+        )
+    }
+
+    override suspend fun getDeliveryComparisonBetween(
+        startTime: Long,
+        endTime: Long,
+        shiftId: String?
+    ): DeliveryComparisonMetric = withContext(Dispatchers.IO) {
+        val rows = queries.selectDeliveryComparisonBetween(
+            shiftId = shiftId,
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsList()
+
+        var localVentas = 0.0
+        var localGanancia = 0.0
+        var localTickets = 0L
+        var localPromedio = 0.0
+        var deliveryVentas = 0.0
+        var deliveryGanancia = 0.0
+        var deliveryTickets = 0L
+        var deliveryPromedio = 0.0
+
+        for ((es_foranea, total_ventas, total_ganancia, total_tickets, promedio_ticket) in rows) {
+            if (es_foranea == 1L) {
+                deliveryVentas = total_ventas
+                deliveryGanancia = total_ganancia
+                deliveryTickets = total_tickets
+                deliveryPromedio = promedio_ticket
+            } else {
+                localVentas = total_ventas
+                localGanancia = total_ganancia
+                localTickets = total_tickets
+                localPromedio = promedio_ticket
+            }
+        }
+
+        DeliveryComparisonMetric(
+            localVentas = localVentas,
+            localGanancia = localGanancia,
+            localTickets = localTickets,
+            localPromedio = localPromedio,
+            deliveryVentas = deliveryVentas,
+            deliveryGanancia = deliveryGanancia,
+            deliveryTickets = deliveryTickets,
+            deliveryPromedio = deliveryPromedio
         )
     }
 

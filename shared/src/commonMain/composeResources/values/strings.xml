@@ -839,4 +839,17 @@
     <string name="settings_cat_backup_subtitle">Respaldos locales y restauración de datos</string>
     <string name="settings_cat_about_title">Información y Sistema</string>
     <string name="settings_cat_about_subtitle">Actualizaciones, catálogo y reinicio</string>
+
+    <!-- Ventas a Domicilio y Comparativa Local vs Domicilio -->
+    <string name="sale_badge_delivery">A Domicilio</string>
+    <string name="sale_badge_local">En Tienda</string>
+    <string name="filter_sales_all">Todos (%1$d)</string>
+    <string name="filter_sales_local">En Tienda (%1$d)</string>
+    <string name="filter_sales_delivery">A Domicilio (%1$d)</string>
+    <string name="delivery_comparison_title">Canal de Venta: En Tienda vs A Domicilio</string>
+    <string name="delivery_comparison_empty">No hay ventas registradas en este período</string>
+    <string name="delivery_channel_local">En Tienda (Local)</string>
+    <string name="delivery_channel_delivery">A Domicilio (Entrega)</string>
+    <string name="delivery_stat_format">%1$d tickets • %2$s%% del total</string>
+    <string name="delivery_stat_profit_format">Ganancia: $%1$s • Promedio: $%2$s/ticket</string>
 </resources>

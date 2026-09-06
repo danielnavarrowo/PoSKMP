@@ -8,6 +8,7 @@ import com.dnavarro.poskmp.domain.model.CashMovementType
 import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
+import com.dnavarro.poskmp.domain.model.DeliveryComparisonMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
@@ -44,6 +45,7 @@ data class VentasUiState(
     val selectedShiftId: String? = null,
     val isLoading: Boolean = false,
     val summary: SalesSummary = SalesSummary(0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0.0),
+    val deliveryComparison: DeliveryComparisonMetric = DeliveryComparisonMetric(),
     val soldProducts: List<ProductSalesMetric> = emptyList(),
     val topSellers: List<ProductSalesMetric> = emptyList(),
     val leastSellers: List<ProductSalesMetric> = emptyList(),
@@ -353,6 +355,7 @@ class VentasViewModel(
             }
 
             val summary = getSalesSummaryUseCase.getSummary(startTime, endTime, effectiveShiftId)
+            val deliveryComparison = getSalesSummaryUseCase.getDeliveryComparison(startTime, endTime, effectiveShiftId)
             val soldProducts = getSalesSummaryUseCase.getSoldProducts(startTime, endTime, shiftId = effectiveShiftId)
             val topSellers = getSalesSummaryUseCase.getTopSellers(startTime, endTime, limit = 10, shiftId = effectiveShiftId)
             val leastSellers = getSalesSummaryUseCase.getLeastSellers(startTime, endTime, limit = 10, shiftId = effectiveShiftId)
@@ -367,6 +370,7 @@ class VentasViewModel(
                     shiftsForSelectedPeriod = shifts,
                     selectedShiftId = effectiveShiftId,
                     summary = summary,
+                    deliveryComparison = deliveryComparison,
                     soldProducts = soldProducts,
                     topSellers = topSellers,
                     leastSellers = leastSellers,

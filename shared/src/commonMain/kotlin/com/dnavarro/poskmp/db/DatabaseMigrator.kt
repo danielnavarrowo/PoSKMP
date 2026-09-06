@@ -70,6 +70,7 @@ object DatabaseMigrator {
                 cashier_id     TEXT    DEFAULT NULL,
                 cashier_name   TEXT    DEFAULT NULL,
                 estado         TEXT    NOT NULL DEFAULT 'COMPLETADA',
+                es_foranea     INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
             );
             """.trimIndent(),
@@ -175,6 +176,7 @@ object DatabaseMigrator {
         ensureColumnExists(driver, "sales", "customer_id", "TEXT DEFAULT NULL")
         ensureColumnExists(driver, "sales", "estado", "TEXT NOT NULL DEFAULT 'COMPLETADA'")
         ensureColumnExists(driver, "sales", "sync_state", "TEXT NOT NULL DEFAULT 'PENDING_INSERT'")
+        ensureColumnExists(driver, "sales", "es_foranea", "INTEGER NOT NULL DEFAULT 0")
 
         // Migrate sale_items columns
         ensureColumnExists(driver, "sale_items", "es_delivery", "INTEGER NOT NULL DEFAULT 0")
@@ -192,6 +194,7 @@ object DatabaseMigrator {
             "CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id)",
             "CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON sales(shift_id)",
             "CREATE INDEX IF NOT EXISTS idx_sales_estado ON sales(estado)",
+            "CREATE INDEX IF NOT EXISTS idx_sales_es_foranea ON sales(es_foranea)",
             "CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id)",
             "CREATE INDEX IF NOT EXISTS idx_sale_items_product_id ON sale_items(product_id)",
             "CREATE INDEX IF NOT EXISTS idx_sale_items_created_at ON sale_items(created_at)",

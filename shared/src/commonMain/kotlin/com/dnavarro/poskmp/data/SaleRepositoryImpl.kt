@@ -5,6 +5,7 @@ import com.dnavarro.poskmp.db.Sale_items
 import com.dnavarro.poskmp.db.Sales
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
+import com.dnavarro.poskmp.domain.model.DeliveryComparisonMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.Sale
@@ -35,7 +36,8 @@ class SaleRepositoryImpl(
             shift_id = sale.shiftId,
             cashier_id = sale.cashierId,
             cashier_name = sale.cashierName,
-            estado = sale.estado
+            estado = sale.estado,
+            es_foranea = if (sale.esForanea) 1L else 0L
         )
         val dbItems = items.map { item ->
             Sale_items(
@@ -60,6 +62,13 @@ class SaleRepositoryImpl(
 
     override suspend fun getSalesSummaryBetween(startTime: Long, endTime: Long, shiftId: String?): SalesSummary =
         localDataSource.getSalesSummaryBetween(startTime, endTime, shiftId)
+
+    override suspend fun getDeliveryComparisonBetween(
+        startTime: Long,
+        endTime: Long,
+        shiftId: String?
+    ): DeliveryComparisonMetric =
+        localDataSource.getDeliveryComparisonBetween(startTime, endTime, shiftId)
 
     override suspend fun getSoldProductsBetween(
         startTime: Long,
@@ -103,7 +112,8 @@ class SaleRepositoryImpl(
                 shiftId = row.shift_id,
                 cashierId = row.cashier_id,
                 cashierName = row.cashier_name,
-                estado = row.estado
+                estado = row.estado,
+                esForanea = row.es_foranea == 1L
             )
         }
     }
@@ -133,7 +143,8 @@ class SaleRepositoryImpl(
                 shiftId = row.shift_id,
                 cashierId = row.cashier_id,
                 cashierName = row.cashier_name,
-                estado = row.estado
+                estado = row.estado,
+                esForanea = row.es_foranea == 1L
             )
         }
     }
@@ -178,7 +189,8 @@ class SaleRepositoryImpl(
             shiftId = row.shift_id,
             cashierId = row.cashier_id,
             cashierName = row.cashier_name,
-            estado = row.estado
+            estado = row.estado,
+            esForanea = row.es_foranea == 1L
         )
     }
 
@@ -225,7 +237,8 @@ class SaleRepositoryImpl(
                     shiftId = it.shift_id,
                     cashierId = it.cashier_id,
                     cashierName = it.cashier_name,
-                    estado = it.estado
+                    estado = it.estado,
+                    esForanea = it.es_foranea == 1L
                 )
             }
         }

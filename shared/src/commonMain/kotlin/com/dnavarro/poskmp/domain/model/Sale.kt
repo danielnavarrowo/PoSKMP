@@ -17,7 +17,8 @@ data class Sale(
     val shiftId: String? = null,
     val cashierId: String? = null,
     val cashierName: String? = null,
-    val estado: String = "COMPLETADA"
+    val estado: String = "COMPLETADA",
+    val esForanea: Boolean = false
 ) {
     val isCancelled: Boolean get() = estado == "CANCELADA"
 }

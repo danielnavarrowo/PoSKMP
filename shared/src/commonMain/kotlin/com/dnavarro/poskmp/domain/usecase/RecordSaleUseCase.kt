@@ -22,7 +22,8 @@ class RecordSaleUseCase(
         roundTicketTotal: Boolean = false,
         shiftId: String? = null,
         cashierId: String? = null,
-        cashierName: String? = null
+        cashierName: String? = null,
+        esForanea: Boolean = false
     ): Long {
         if (cartItems.isEmpty()) return 0L
 
@@ -105,7 +106,8 @@ class RecordSaleUseCase(
             syncState = "PENDING_INSERT",
             shiftId = finalShiftId,
             cashierId = finalCashierId,
-            cashierName = finalCashierName
+            cashierName = finalCashierName,
+            esForanea = esForanea
         )
 
         return saleRepository.recordSale(sale, saleItems)

@@ -213,7 +213,8 @@ class ShiftRepositoryImpl(
                     shiftId = row.shift_id,
                     cashierId = row.cashier_id,
                     cashierName = row.cashier_name,
-                    estado = row.estado
+                    estado = row.estado,
+                    esForanea = row.es_foranea == 1L
                 )
             }
 

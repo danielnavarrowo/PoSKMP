@@ -298,26 +298,6 @@ class VentaViewModel(
         _openShiftError.value = null
     }
 
-    fun openInflowDialog() {
-        if (uiState.value.activeShift == null) {
-            _shiftActionError.value = "No hay ningún turno activo para registrar movimientos."
-            return
-        }
-        _shiftActionError.value = null
-        _showInflowDialog.value = true
-        _showOutflowDialog.value = false
-    }
-
-    fun openOutflowDialog() {
-        if (uiState.value.activeShift == null) {
-            _shiftActionError.value = "No hay ningún turno activo para registrar movimientos."
-            return
-        }
-        _shiftActionError.value = null
-        _showInflowDialog.value = false
-        _showOutflowDialog.value = true
-    }
-
     fun dismissShiftDialogs() {
         _showInflowDialog.value = false
         _showOutflowDialog.value = false
@@ -667,7 +647,8 @@ class VentaViewModel(
             cambio = cambio,
             metodoPago = metodoPago,
             customerId = effectiveCustomerId,
-            roundTicketTotal = uiState.value.roundTicketTotal
+            roundTicketTotal = uiState.value.roundTicketTotal,
+            esForanea = uiState.value.prioritizeDeliveryPrice
         )
         val isCashPayment = metodoPago == "EFECTIVO" || (metodoPago == "MIXTO" && pagoCon > 0.0)
         val shouldOpenDrawer = uiState.value.receiptSettings.openCashDrawerOnCashSale && isCashPayment

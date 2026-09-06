@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.domain.usecase
 import com.dnavarro.poskmp.data.SaleRepository
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
+import com.dnavarro.poskmp.domain.model.DeliveryComparisonMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.SalesSummary
@@ -12,6 +13,10 @@ class GetSalesSummaryUseCase(
 ) {
     suspend fun getSummary(startTime: Long, endTime: Long, shiftId: String? = null): SalesSummary {
         return saleRepository.getSalesSummaryBetween(startTime, endTime, shiftId)
+    }
+
+    suspend fun getDeliveryComparison(startTime: Long, endTime: Long, shiftId: String? = null): DeliveryComparisonMetric {
+        return saleRepository.getDeliveryComparisonBetween(startTime, endTime, shiftId)
     }
 
     suspend fun getSoldProducts(startTime: Long, endTime: Long, shiftId: String? = null): List<ProductSalesMetric> {

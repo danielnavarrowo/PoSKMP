@@ -368,8 +368,7 @@ fun PricingSettingsSection(
                 }
             }
         }
-
-        // Card: Modalidad de Venta a Domicilio (Ajuste local de este dispositivo)
+        // Card: Modalidad de Venta a Domicilio 
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer

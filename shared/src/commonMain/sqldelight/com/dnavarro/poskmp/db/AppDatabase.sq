@@ -328,6 +328,7 @@ CREATE TABLE sales (
     cashier_id     TEXT    DEFAULT NULL,
     cashier_name   TEXT    DEFAULT NULL,
     estado         TEXT    NOT NULL DEFAULT 'COMPLETADA',
+    es_foranea     INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
 );
 
@@ -335,6 +336,7 @@ CREATE INDEX idx_sales_created_at ON sales(created_at);
 CREATE INDEX idx_sales_customer_id ON sales(customer_id);
 CREATE INDEX idx_sales_shift_id ON sales(shift_id);
 CREATE INDEX idx_sales_estado ON sales(estado);
+CREATE INDEX idx_sales_es_foranea ON sales(es_foranea);
 
 CREATE TABLE sale_items (
     id              TEXT    PRIMARY KEY NOT NULL,
@@ -362,8 +364,8 @@ insertSale:
 INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
-    shift_id, cashier_id, cashier_name, estado
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    shift_id, cashier_id, cashier_name, estado, es_foranea
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectUnsyncedSales:
 SELECT * FROM sales WHERE sync_state != 'SYNCED';
@@ -375,8 +377,8 @@ upsertSyncedSale:
 INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
-    shift_id, cashier_id, cashier_name, estado
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?, ?)
+    shift_id, cashier_id, cashier_name, estado, es_foranea
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
     folio = excluded.folio,
     total = excluded.total,
@@ -393,7 +395,8 @@ ON CONFLICT(id) DO UPDATE SET
     shift_id = excluded.shift_id,
     cashier_id = excluded.cashier_id,
     cashier_name = excluded.cashier_name,
-    estado = excluded.estado;
+    estado = excluded.estado,
+    es_foranea = excluded.es_foranea;
 
 cancelSale:
 UPDATE sales
@@ -460,6 +463,20 @@ WHERE estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
 );
+
+selectDeliveryComparisonBetween:
+SELECT 
+    es_foranea,
+    COALESCE(SUM(total), 0.0) AS total_ventas,
+    COALESCE(SUM(ganancia), 0.0) AS total_ganancia,
+    COUNT(id) AS total_tickets,
+    COALESCE(AVG(total), 0.0) AS promedio_ticket
+FROM sales
+WHERE estado != 'CANCELADA' AND (
+    (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
+    OR (:shiftId IS NOT NULL AND shift_id = :shiftId)
+)
+GROUP BY es_foranea;
 
 selectTopSellingProductsBetween:
 SELECT 

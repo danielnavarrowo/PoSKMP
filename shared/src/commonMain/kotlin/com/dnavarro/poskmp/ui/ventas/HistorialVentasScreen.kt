@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -27,7 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
@@ -47,8 +51,13 @@ import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.btn_back
 import poskmp.shared.generated.resources.cancel_sale_button
 import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.delivery
 import poskmp.shared.generated.resources.empty_recent_sales_history
+import poskmp.shared.generated.resources.filter_sales_all
+import poskmp.shared.generated.resources.filter_sales_delivery
+import poskmp.shared.generated.resources.filter_sales_local
 import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.sale_badge_delivery
 import poskmp.shared.generated.resources.sale_status_cancelled
 import poskmp.shared.generated.resources.sales_history_total_summary
 import poskmp.shared.generated.resources.ticket_cashier_format
@@ -65,8 +74,19 @@ fun HistorialVentasScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var selectedFilter by remember { mutableIntStateOf(0) }
     val activeSalesCount = remember(sales) { sales.count { !it.isCancelled } }
     val totalRevenue = remember(sales) { sales.filter { !it.isCancelled }.sumOf { it.total } }
+    val localSalesCount = remember(sales) { sales.count { !it.esForanea } }
+    val deliverySalesCount = remember(sales) { sales.count { it.esForanea } }
+
+    val filteredSales = remember(sales, selectedFilter) {
+        when (selectedFilter) {
+            1 -> sales.filter { !it.esForanea }
+            2 -> sales.filter { it.esForanea }
+            else -> sales
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -166,6 +186,37 @@ fun HistorialVentasScreen(
                         }
                     }
                 }
+
+                // Filter chips row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedFilter == 0,
+                        onClick = { selectedFilter = 0 },
+                        label = { Text(stringResource(Res.string.filter_sales_all, sales.size)) }
+                    )
+                    FilterChip(
+                        selected = selectedFilter == 1,
+                        onClick = { selectedFilter = 1 },
+                        label = { Text(stringResource(Res.string.filter_sales_local, localSalesCount)) }
+                    )
+                    FilterChip(
+                        selected = selectedFilter == 2,
+                        onClick = { selectedFilter = 2 },
+                        label = { Text(stringResource(Res.string.filter_sales_delivery, deliverySalesCount)) },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(Res.drawable.delivery),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+                }
             }
 
             if (sales.isEmpty()) {
@@ -182,13 +233,27 @@ fun HistorialVentasScreen(
                         textAlign = TextAlign.Center
                     )
                 }
+            } else if (filteredSales.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay tickets que coincidan con el filtro seleccionado.",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(sales, key = { it.id }) { sale ->
+                    items(filteredSales, key = { it.id }) { sale ->
                         SaleTicketCard(
                             sale = sale,
                             onClick = { onSelectSale(sale) },
@@ -268,6 +333,31 @@ fun SaleTicketCard(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
+                            }
+                        }
+                        if (sale.esForanea) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.delivery),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = stringResource(Res.string.sale_badge_delivery),
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }

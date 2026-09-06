@@ -98,6 +98,7 @@ import com.dnavarro.poskmp.domain.model.CashMovementType
 import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
 import com.dnavarro.poskmp.domain.model.DailySalesMetric
+import com.dnavarro.poskmp.domain.model.DeliveryComparisonMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
@@ -155,8 +156,15 @@ import poskmp.shared.generated.resources.close_button
 import poskmp.shared.generated.resources.custom_range_active_format
 import poskmp.shared.generated.resources.daily_sales_avg_format
 import poskmp.shared.generated.resources.date_range_end_label
-import poskmp.shared.generated.resources.delivery_mode_active_badge
 import poskmp.shared.generated.resources.date_range_start_label
+import poskmp.shared.generated.resources.delivery
+import poskmp.shared.generated.resources.delivery_channel_delivery
+import poskmp.shared.generated.resources.delivery_channel_local
+import poskmp.shared.generated.resources.delivery_comparison_empty
+import poskmp.shared.generated.resources.delivery_comparison_title
+import poskmp.shared.generated.resources.delivery_mode_active_badge
+import poskmp.shared.generated.resources.delivery_stat_format
+import poskmp.shared.generated.resources.delivery_stat_profit_format
 import poskmp.shared.generated.resources.empty_category_sales
 import poskmp.shared.generated.resources.empty_daily_sales
 import poskmp.shared.generated.resources.empty_payment_methods
@@ -189,6 +197,7 @@ import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.reprint_receipt_button
+import poskmp.shared.generated.resources.sale_badge_delivery
 import poskmp.shared.generated.resources.sale_status_cancelled
 import poskmp.shared.generated.resources.select_date_range_title
 import poskmp.shared.generated.resources.shift_filter_label
@@ -411,19 +420,6 @@ fun VentasScreen(
                         .focusable()
                         .onPreviewKeyEvent { keyEvent ->
                             keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-                                Key.F7 -> {
-                                    if (state.activeShift != null) {
-                                        onOpenInflowDialog()
-                                        true
-                                    } else false
-                                }
-
-                                Key.F8 -> {
-                                    if (state.activeShift != null) {
-                                        onOpenOutflowDialog()
-                                        true
-                                    } else false
-                                }
 
                                 Key.F9 -> {
                                     if (state.activeShift != null) {
@@ -870,6 +866,14 @@ fun VentasScreen(
                             )
                         }
                     }
+                }
+
+                // Delivery vs Local Sales Comparison
+                item {
+                    DeliveryVsLocalComparisonCard(
+                        metric = state.deliveryComparison,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 // Botones para abrir las pantallas completas de Productos Vendidos e Historial de Ventas
@@ -1570,18 +1574,48 @@ private fun SaleDetailDialog(
                     stringResource(Res.string.ticket_detail_title, sale.folio),
                     fontWeight = FontWeight.Bold
                 )
-                if (isCancelled) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.sale_status_cancelled),
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (sale.esForanea) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.delivery),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = stringResource(Res.string.sale_badge_delivery),
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    if (isCancelled) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.sale_status_cancelled),
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -2282,6 +2316,429 @@ private fun getPaymentMethodIcon(methodName: String): DrawableResource {
         "MIXTO" -> Res.drawable.payments
         "CREDITO" -> Res.drawable.card
         else -> Res.drawable.payments
+    }
+}
+
+@Composable
+private fun DeliveryVsLocalComparisonCard(
+    metric: DeliveryComparisonMetric,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = ShapeDefaults.cardShape
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.delivery),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(Res.string.delivery_comparison_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (!metric.hasData || metric.totalVentas <= 0.0) {
+                Text(
+                    text = stringResource(Res.string.delivery_comparison_empty),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                var selectedChannel by remember { mutableStateOf<String?>(null) }
+
+                val localColor = MaterialTheme.colorScheme.primary
+                val deliveryColor = MaterialTheme.colorScheme.tertiary
+
+                val pieData = remember(metric, selectedChannel, localColor, deliveryColor) {
+                    val list = mutableListOf<Pie>()
+                    if (metric.localVentas > 0.0) {
+                        list.add(
+                            Pie(
+                                label = "local",
+                                data = metric.localVentas,
+                                color = localColor,
+                                selectedColor = localColor,
+                                selected = (selectedChannel == "local")
+                            )
+                        )
+                    }
+                    if (metric.deliveryVentas > 0.0) {
+                        list.add(
+                            Pie(
+                                label = "delivery",
+                                data = metric.deliveryVentas,
+                                color = deliveryColor,
+                                selectedColor = deliveryColor,
+                                selected = (selectedChannel == "delivery")
+                            )
+                        )
+                    }
+                    list
+                }
+
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val isWide = maxWidth >= 640.dp
+                    if (isWide) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Donut Chart
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                PieChart(
+                                    modifier = Modifier.size(230.dp),
+                                    data = pieData,
+                                    style = Pie.Style.Stroke(width = 28.dp),
+                                    spaceDegree = 2f,
+                                    selectedScale = 1.08f,
+                                    selectedPaddingDegree = 4f,
+                                    labelHelperProperties = LabelHelperProperties(enabled = false),
+                                    onPieClick = { clickedPie ->
+                                        selectedChannel = if (selectedChannel == clickedPie.label) null else clickedPie.label
+                                    }
+                                )
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(horizontal = 36.dp)
+                                ) {
+                                    when (selectedChannel) {
+                                        "local" -> {
+                                            Text(
+                                                text = stringResource(Res.string.delivery_channel_local),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${metric.localPorcentaje.toString().formatPrice()}%",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = localColor
+                                            )
+                                            Text(
+                                                text = "$${metric.localVentas.toString().formatPrice()}",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        "delivery" -> {
+                                            Text(
+                                                text = stringResource(Res.string.delivery_channel_delivery),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${metric.deliveryPorcentaje.toString().formatPrice()}%",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = deliveryColor
+                                            )
+                                            Text(
+                                                text = "$${metric.deliveryVentas.toString().formatPrice()}",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        else -> {
+                                            Text(
+                                                text = stringResource(Res.string.kpi_total_sales),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = "$${metric.totalVentas.toString().formatPrice()}",
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = "${metric.totalTickets} tickets",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Detail Breakdown List
+                            Column(
+                                modifier = Modifier.weight(1.2f),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                DeliveryChannelMetricRow(
+                                    title = stringResource(Res.string.delivery_channel_local),
+                                    icon = Res.drawable.point_of_sale,
+                                    color = localColor,
+                                    ticketsCount = metric.localTickets,
+                                    percentage = metric.localPorcentaje,
+                                    totalVentas = metric.localVentas,
+                                    ganancia = metric.localGanancia,
+                                    promedioTicket = metric.localPromedio,
+                                    isSelected = selectedChannel == "local",
+                                    onClick = {
+                                        selectedChannel = if (selectedChannel == "local") null else "local"
+                                    }
+                                )
+
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                                DeliveryChannelMetricRow(
+                                    title = stringResource(Res.string.delivery_channel_delivery),
+                                    icon = Res.drawable.delivery,
+                                    color = deliveryColor,
+                                    ticketsCount = metric.deliveryTickets,
+                                    percentage = metric.deliveryPorcentaje,
+                                    totalVentas = metric.deliveryVentas,
+                                    ganancia = metric.deliveryGanancia,
+                                    promedioTicket = metric.deliveryPromedio,
+                                    isSelected = selectedChannel == "delivery",
+                                    onClick = {
+                                        selectedChannel = if (selectedChannel == "delivery") null else "delivery"
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                PieChart(
+                                    modifier = Modifier.size(230.dp),
+                                    data = pieData,
+                                    style = Pie.Style.Stroke(width = 28.dp),
+                                    spaceDegree = 2f,
+                                    selectedScale = 1.08f,
+                                    selectedPaddingDegree = 4f,
+                                    labelHelperProperties = LabelHelperProperties(enabled = false),
+                                    onPieClick = { clickedPie ->
+                                        selectedChannel = if (selectedChannel == clickedPie.label) null else clickedPie.label
+                                    }
+                                )
+
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(horizontal = 36.dp)
+                                ) {
+                                    when (selectedChannel) {
+                                        "local" -> {
+                                            Text(
+                                                text = stringResource(Res.string.delivery_channel_local),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${metric.localPorcentaje.toString().formatPrice()}%",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = localColor
+                                            )
+                                            Text(
+                                                text = "$${metric.localVentas.toString().formatPrice()}",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        "delivery" -> {
+                                            Text(
+                                                text = stringResource(Res.string.delivery_channel_delivery),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${metric.deliveryPorcentaje.toString().formatPrice()}%",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = deliveryColor
+                                            )
+                                            Text(
+                                                text = "$${metric.deliveryVentas.toString().formatPrice()}",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        else -> {
+                                            Text(
+                                                text = stringResource(Res.string.kpi_total_sales),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = "$${metric.totalVentas.toString().formatPrice()}",
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = "${metric.totalTickets} tickets",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            DeliveryChannelMetricRow(
+                                title = stringResource(Res.string.delivery_channel_local),
+                                icon = Res.drawable.point_of_sale,
+                                color = localColor,
+                                ticketsCount = metric.localTickets,
+                                percentage = metric.localPorcentaje,
+                                totalVentas = metric.localVentas,
+                                ganancia = metric.localGanancia,
+                                promedioTicket = metric.localPromedio,
+                                isSelected = selectedChannel == "local",
+                                onClick = {
+                                    selectedChannel = if (selectedChannel == "local") null else "local"
+                                }
+                            )
+
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            DeliveryChannelMetricRow(
+                                title = stringResource(Res.string.delivery_channel_delivery),
+                                icon = Res.drawable.delivery,
+                                color = deliveryColor,
+                                ticketsCount = metric.deliveryTickets,
+                                percentage = metric.deliveryPorcentaje,
+                                totalVentas = metric.deliveryVentas,
+                                ganancia = metric.deliveryGanancia,
+                                promedioTicket = metric.deliveryPromedio,
+                                isSelected = selectedChannel == "delivery",
+                                onClick = {
+                                    selectedChannel = if (selectedChannel == "delivery") null else "delivery"
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeliveryChannelMetricRow(
+    title: String,
+    icon: DrawableResource,
+    color: Color,
+    ticketsCount: Long,
+    percentage: Double,
+    totalVentas: Double,
+    ganancia: Double,
+    promedioTicket: Double,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                color = color.copy(alpha = if (isSelected) 0.35f else 0.15f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(
+                        Res.string.delivery_stat_format,
+                        ticketsCount,
+                        percentage.toString().formatPrice()
+                    ),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = stringResource(
+                        Res.string.delivery_stat_profit_format,
+                        ganancia.toString().formatPrice(),
+                        promedioTicket.toString().formatPrice()
+                    ),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = "$${totalVentas.toString().formatPrice()}",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

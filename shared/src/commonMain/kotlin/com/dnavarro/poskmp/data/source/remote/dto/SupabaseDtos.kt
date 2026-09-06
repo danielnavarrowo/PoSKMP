@@ -91,7 +91,9 @@ data class SaleDto(
     val createdAt: Long,
     @SerialName("cashier_name")
     val cashierName: String? = null,
-    val estado: String = "COMPLETADA"
+    val estado: String = "COMPLETADA",
+    @SerialName("es_foranea")
+    val esForanea: Boolean = false
 )
 
 @Serializable
