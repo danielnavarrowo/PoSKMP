@@ -83,6 +83,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -569,23 +570,15 @@ fun VentaScreen(
                                     true
                                 }
 
-                                Key.F7 -> {
-                                    viewModel.openInflowDialog()
-                                    true
-                                }
-
-                                Key.F8 -> {
-                                    viewModel.openOutflowDialog()
-                                    true
-                                }
-
-                                Key.F9 -> {
-                                    openUnregisteredDialog()
-                                    true
+                                Key.P -> {
+                                    if (keyEvent.isCtrlPressed) {
+                                        openUnregisteredDialog()
+                                        true
+                                    } else false
                                 }
 
                                 Key.F11 -> {
-                                    if (keyEvent.isShiftPressed) {
+                                    if (keyEvent.isCtrlPressed) {
                                         viewModel.toggleWholesalePrice()
                                         true
                                     } else {
@@ -660,6 +653,7 @@ fun VentaScreen(
                             onOpenScanner = { showCameraScanner = true },
                             cartCount = cartItems.size,
                             cartTotal = total,
+                            onSellUnregisteredClick = { openUnregisteredDialog() },
                             searchFocusRequester = searchBarFocusRequester,
                             onBarcodeScan = barcodeScanCallback,
                             onSearchKeyIntercept = handleSearchKeyIntercept
@@ -702,7 +696,6 @@ fun VentaScreen(
                             onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                             onClearCustomerClick = { viewModel.clearSelectedCustomer() },
                             isDeliveryMode = uiState.prioritizeDeliveryPrice,
-                            onSellUnregisteredClick = { openUnregisteredDialog() },
                             onApplyItemWholesaleClick = {
                                 if (cartItems.isNotEmpty()) {
                                     val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
@@ -793,6 +786,7 @@ fun VentaScreen(
                                 onOpenScanner = { showCameraScanner = true },
                                 cartCount = cartItems.size,
                                 cartTotal = total,
+                                onSellUnregisteredClick = { openUnregisteredDialog() },
                                 searchFocusRequester = searchBarFocusRequester,
                                 onBarcodeScan = barcodeScanCallback,
                                 onSearchKeyIntercept = handleSearchKeyIntercept
@@ -851,7 +845,6 @@ fun VentaScreen(
                                 onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                                 onClearCustomerClick = { viewModel.clearSelectedCustomer() },
                                 isDeliveryMode = uiState.prioritizeDeliveryPrice,
-                                onSellUnregisteredClick = { openUnregisteredDialog() },
                                 onApplyItemWholesaleClick = {
                                     if (cartItems.isNotEmpty()) {
                                         val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)

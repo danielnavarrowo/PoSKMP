@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,7 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -39,7 +42,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,6 +97,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
@@ -100,6 +109,8 @@ import poskmp.shared.generated.resources.mark_as_favorite
 import poskmp.shared.generated.resources.modify
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_found
+import poskmp.shared.generated.resources.not_registered
+import poskmp.shared.generated.resources.not_registered_hotkey
 import poskmp.shared.generated.resources.remove_from_favorites
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.search
@@ -130,6 +141,7 @@ fun CatalogSection(
     onOpenScanner: (() -> Unit)? = null,
     cartCount: Int = 0,
     cartTotal: Double = 0.0,
+    onSellUnregisteredClick: () -> Unit = {},
     searchFocusRequester: FocusRequester? = null,
     onBarcodeScan: ((String) -> Unit)? = null,
     onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null
@@ -145,6 +157,29 @@ fun CatalogSection(
     val compactListState = rememberLazyListState()
     val tableListState = rememberLazyListState()
     val gridState = rememberLazyGridState()
+
+    fun resetScrollPosition() {
+        try {
+            tableListState.requestScrollToItem(0)
+            compactListState.requestScrollToItem(0)
+            gridState.requestScrollToItem(0)
+        } catch (_: Exception) {
+        }
+        coroutineScope.launch {
+            try {
+                tableListState.scrollToItem(0)
+            } catch (_: Exception) {
+            }
+            try {
+                compactListState.scrollToItem(0)
+            } catch (_: Exception) {
+            }
+            try {
+                gridState.scrollToItem(0)
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     val sortedProducts = remember(productsList, sortField, sortOrder) {
         productsList.sortedWith { p1, p2 ->
@@ -179,14 +214,23 @@ fun CatalogSection(
         sortedProducts.take(50)
     }
 
+    LaunchedEffect(displayedProducts) {
+        if (selectedCatalogIndex <= 0) {
+            resetScrollPosition()
+        }
+    }
+
     LaunchedEffect(searchQuery) {
         if (latestSearchQuery.value != searchQuery) {
             latestSearchQuery.value = searchQuery
+            selectedCatalogIndex = -1
+            resetScrollPosition()
         }
     }
 
     LaunchedEffect(latestSearchQuery.value) {
         selectedCatalogIndex = -1
+        resetScrollPosition()
         delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
         onSearchQueryChange(latestSearchQuery.value)
     }
@@ -196,15 +240,17 @@ fun CatalogSection(
             try {
                 if (useProductTable) {
                     if (isCompact) {
-                        compactListState.animateScrollToItem(selectedCatalogIndex)
+                        compactListState.scrollItemIntoView(selectedCatalogIndex)
                     } else {
-                        tableListState.animateScrollToItem(selectedCatalogIndex)
+                        tableListState.scrollItemIntoView(selectedCatalogIndex)
                     }
                 } else {
-                    gridState.animateScrollToItem(selectedCatalogIndex)
+                    gridState.scrollItemIntoView(selectedCatalogIndex)
                 }
             } catch (_: Exception) {
             }
+        } else if (selectedCatalogIndex == -1) {
+            resetScrollPosition()
         }
     }
 
@@ -229,10 +275,14 @@ fun CatalogSection(
             )
     ) {
         // Search Bar & Fast Codes
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(54.dp)
                 .background(
                     color = if (latestSearchQuery.value.isNotEmpty())
                         MaterialTheme.colorScheme.surfaceContainerLowest
@@ -300,6 +350,7 @@ fun CatalogSection(
                                         latestSearchQuery.value = ""
                                         onSearchQueryChange("")
                                         selectedCatalogIndex = -1
+                                        resetScrollPosition()
                                     }
                                     true
                                 } else if (latestSearchQuery.value.isNotEmpty() && (isUp || isDown)) {
@@ -327,6 +378,7 @@ fun CatalogSection(
                                         latestSearchQuery.value = ""
                                         onSearchQueryChange("")
                                         selectedCatalogIndex = -1
+                                        resetScrollPosition()
                                     }
                                     true
                                 } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(
@@ -341,6 +393,7 @@ fun CatalogSection(
                                     latestSearchQuery.value = ""
                                     onSearchQueryChange("")
                                     selectedCatalogIndex = -1
+                                    resetScrollPosition()
                                     if (scannedText.isNotBlank() && onBarcodeScan != null) {
                                         onBarcodeScan(scannedText)
                                     }
@@ -360,11 +413,13 @@ fun CatalogSection(
                                     latestSearchQuery.value = ""
                                     onSearchQueryChange("")
                                     selectedCatalogIndex = -1
+                                    resetScrollPosition()
                                 } else {
                                     val scannedText = latestSearchQuery.value
                                     latestSearchQuery.value = ""
                                     onSearchQueryChange("")
                                     selectedCatalogIndex = -1
+                                    resetScrollPosition()
                                     if (scannedText.isNotBlank() && onBarcodeScan != null) {
                                         onBarcodeScan(scannedText)
                                     }
@@ -377,11 +432,13 @@ fun CatalogSection(
                                     latestSearchQuery.value = ""
                                     onSearchQueryChange("")
                                     selectedCatalogIndex = -1
+                                    resetScrollPosition()
                                 } else {
                                     val scannedText = latestSearchQuery.value
                                     latestSearchQuery.value = ""
                                     onSearchQueryChange("")
                                     selectedCatalogIndex = -1
+                                    resetScrollPosition()
                                     if (scannedText.isNotBlank() && onBarcodeScan != null) {
                                         onBarcodeScan(scannedText)
                                     }
@@ -404,6 +461,7 @@ fun CatalogSection(
                             latestSearchQuery.value = ""
                             onSearchQueryChange("")
                             selectedCatalogIndex = -1
+                            resetScrollPosition()
                             if (!isAndroid()) {
                                 coroutineScope.launch {
                                     delay(50.milliseconds)
@@ -418,6 +476,38 @@ fun CatalogSection(
                         Icon(
                             painter = painterResource(Res.drawable.close),
                             contentDescription = stringResource(Res.string.clear_desc),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            Box {
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Below,
+                        4.dp
+                    ),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey))
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    IconButton(
+                        onClick = onSellUnregisteredClick,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(MaterialShapes.Cookie4Sided.toShape())
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.add),
+                            contentDescription = stringResource(if (isAndroid()) Res.string.not_registered else Res.string.not_registered_hotkey),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -457,7 +547,7 @@ fun CatalogSection(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             contentPadding = PaddingValues(bottom = 220.dp)
                         ) {
-                            itemsIndexed(displayedProducts) { index, product ->
+                            itemsIndexed(displayedProducts, key = { _, product -> product.id }) { index, product ->
                                 val shape = if (displayedProducts.size == 1) {
                                     ShapeDefaults.cardShape
                                 } else if (index == 0) {
@@ -487,6 +577,7 @@ fun CatalogSection(
                                             onSearchQueryChange("")
                                         }
                                         selectedCatalogIndex = -1
+                                        resetScrollPosition()
                                     },
                                     onLongClick = { showContextMenu = true },
                                     onSecondaryClick = { showContextMenu = true },
@@ -605,7 +696,7 @@ fun CatalogSection(
                                         verticalArrangement = Arrangement.spacedBy(2.dp),
                                         contentPadding = PaddingValues(bottom = 220.dp)
                                     ) {
-                                        itemsIndexed(displayedProducts) { index, product ->
+                                        itemsIndexed(displayedProducts, key = { _, product -> product.id }) { index, product ->
                                             val shape =
                                                 if (displayedProducts.size == 1 || index == displayedProducts.lastIndex) ShapeDefaults.bottomListItemShape
                                                 else ShapeDefaults.middleListItemShape
@@ -632,6 +723,7 @@ fun CatalogSection(
                                                         onSearchQueryChange("")
                                                     }
                                                     selectedCatalogIndex = -1
+                                                    resetScrollPosition()
                                                 },
                                                 onLongClick = { showContextMenu = true },
                                                 onSecondaryClick = { showContextMenu = true },
@@ -701,7 +793,7 @@ fun CatalogSection(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 220.dp)
                     ) {
-                        itemsIndexed(displayedProducts) { index, product ->
+                        itemsIndexed(displayedProducts, key = { _, product -> product.id }) { index, product ->
                             var showContextMenu by remember { mutableStateOf(false) }
                             val isHighlighted = selectedCatalogIndex == index
 
@@ -732,6 +824,7 @@ fun CatalogSection(
                                                 onSearchQueryChange("")
                                             }
                                             selectedCatalogIndex = -1
+                                            resetScrollPosition()
                                         },
                                         onLongClick = { showContextMenu = true }
                                     )
@@ -924,6 +1017,84 @@ fun CatalogSection(
                     }
                 }
             }
+        }
+    }
+}
+
+private suspend fun LazyListState.scrollItemIntoView(targetIndex: Int) {
+    val items = layoutInfo.visibleItemsInfo
+    if (items.isEmpty()) {
+        animateScrollToItem(targetIndex)
+        return
+    }
+    val firstVisible = items.first()
+    val lastVisible = items.last()
+
+    if (targetIndex < firstVisible.index) {
+        animateScrollToItem(targetIndex)
+        return
+    }
+
+    val visibleBottom = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
+    val existingItem = items.firstOrNull { it.index == targetIndex }
+
+    if (existingItem != null) {
+        if (existingItem.offset < layoutInfo.viewportStartOffset) {
+            animateScrollToItem(targetIndex)
+        } else if (existingItem.offset + existingItem.size > visibleBottom) {
+            val delta = (existingItem.offset + existingItem.size) - visibleBottom
+            animateScrollBy(delta.toFloat() + 4f)
+        }
+        return
+    }
+
+    if (targetIndex > lastVisible.index) {
+        if (targetIndex - lastVisible.index >= items.size) {
+            val targetFirstVisibleIndex = (targetIndex - items.size + 2).coerceAtLeast(0)
+            animateScrollToItem(targetFirstVisibleIndex)
+        } else {
+            val itemHeight = lastVisible.size.takeIf { it > 0 } ?: 48
+            val delta = (targetIndex - lastVisible.index) * itemHeight
+            animateScrollBy(delta.toFloat() + 4f)
+        }
+    }
+}
+
+private suspend fun LazyGridState.scrollItemIntoView(targetIndex: Int) {
+    val items = layoutInfo.visibleItemsInfo
+    if (items.isEmpty()) {
+        animateScrollToItem(targetIndex)
+        return
+    }
+    val firstVisible = items.first()
+    val lastVisible = items.last()
+
+    if (targetIndex < firstVisible.index) {
+        animateScrollToItem(targetIndex)
+        return
+    }
+
+    val visibleBottom = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
+    val existingItem = items.firstOrNull { it.index == targetIndex }
+
+    if (existingItem != null) {
+        if (existingItem.offset.y < layoutInfo.viewportStartOffset) {
+            animateScrollToItem(targetIndex)
+        } else if (existingItem.offset.y + existingItem.size.height > visibleBottom) {
+            val delta = (existingItem.offset.y + existingItem.size.height) - visibleBottom
+            animateScrollBy(delta.toFloat() + 4f)
+        }
+        return
+    }
+
+    if (targetIndex > lastVisible.index) {
+        if (targetIndex - lastVisible.index >= items.size) {
+            val targetFirstVisibleIndex = (targetIndex - items.size + 2).coerceAtLeast(0)
+            animateScrollToItem(targetFirstVisibleIndex)
+        } else {
+            val itemHeight = lastVisible.size.height.takeIf { it > 0 } ?: 140
+            val delta = (targetIndex - lastVisible.index) * itemHeight
+            animateScrollBy(delta.toFloat() + 4f)
         }
     }
 }

@@ -212,13 +212,13 @@
     <string name="modify">Modificar</string>
     <string name="view_ticket_fab">Ver Ticket (%1$d) • $%2$s</string>
     <string name="not_registered">No Registrado</string>
-    <string name="not_registered_hotkey">F9: No Registrado</string>
+    <string name="not_registered_hotkey">Ctrl + P: Producto común</string>
     <string name="cash_inflow_hotkey">F7: Entrada de efectivo</string>
     <string name="cash_outflow_hotkey">F8: Salida de efectivo</string>
     <string name="wholesale_item">Mayoreo a Producto</string>
     <string name="wholesale_item_hotkey">F11: Mayoreo a Producto</string>
     <string name="wholesale_ticket">Mayoreo a Ticket</string>
-    <string name="wholesale_ticket_hotkey">Shift + F11: Mayoreo a Ticket</string>
+    <string name="wholesale_ticket_hotkey">Ctrl + F11: Mayoreo a Ticket</string>
     <string name="total_without_discount_label">Total sin descuento</string>
     <string name="checkout_hotkey">F12: Cobrar</string>
 
@@ -673,7 +673,7 @@
     <string name="open_drawer_on_receipt_title">Abrir cajón de dinero en ventas en efectivo</string>
     <string name="open_drawer_on_receipt_subtitle">Abrir automáticamente el cajón de dinero al registrar una venta que incluya pago en efectivo (con o sin impresión de ticket).</string>
     <string name="open_cash_drawer_button">Abrir cajón</string>
-    <string name="open_cash_drawer_button_desktop">Abrir cajón (F6)</string>
+    <string name="open_cash_drawer_button_desktop">Abrir cajón (F9)</string>
     <string name="receipt_preview_settings_title">Vista previa del ticket</string>
     <string name="receipt_preview_settings_subtitle">Esta vista usa exactamente las líneas, el tamaño, el estilo y la fuente seleccionados para imprimir.</string>
     <string name="receipt_preview_title">Ticket de compra</string>

@@ -554,7 +554,7 @@ fun App(
                                                     true
                                                 }
 
-                                                Key.F6 -> {
+                                                Key.F9 -> {
                                                     triggerOpenCashDrawer()
                                                     true
                                                 }

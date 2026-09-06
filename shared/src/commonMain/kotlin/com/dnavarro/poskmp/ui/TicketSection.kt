@@ -104,8 +104,6 @@ import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.items_count_label
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.no_customer_assigned
-import poskmp.shared.generated.resources.not_registered
-import poskmp.shared.generated.resources.not_registered_hotkey
 import poskmp.shared.generated.resources.pause
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.pieces_count_label
@@ -150,7 +148,6 @@ fun TicketSection(
     onAssignCustomerClick: () -> Unit = {},
     onClearCustomerClick: () -> Unit = {},
     isDeliveryMode: Boolean = false,
-    onSellUnregisteredClick: () -> Unit = {},
     onApplyItemWholesaleClick: () -> Unit = {},
     onApplyWholesaleClick: () -> Unit = {}
 ) {
@@ -214,35 +211,18 @@ fun TicketSection(
                 }
                 Spacer(modifier = Modifier.width(4.dp))
             }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 modifier = Modifier.horizontalScroll(rememberScrollState())
             ) {
-                // Producto no registrado (F9)
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                        TooltipAnchorPosition.Below,
-                        4.dp
-                    ),
-                    tooltip = {
-                        PlainTooltip {
-                            Text(if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey))
-                        }
-                    },
-                    state = rememberTooltipState()
-                ) {
-                    IconButton(onClick = onSellUnregisteredClick) {
-                        Icon(
-                            painter = painterResource(Res.drawable.add),
-                            contentDescription = stringResource(if (isAndroid()) Res.string.not_registered else Res.string.not_registered_hotkey)
-                        )
-                    }
-                }
 
                 // Mayoreo por item (F11)
                 val currentSelectedItem = cartItems.getOrNull(selectedIndex)
-                val isItemWholesale = currentSelectedItem?.let { it.product.precio == it.product.precio_mayoreo && it.product.precio_mayoreo > 0.0 } ?: false
+                val isItemWholesale =
+                    currentSelectedItem?.let { it.product.precio == it.product.precio_mayoreo && it.product.precio_mayoreo > 0.0 }
+                        ?: false
                 TooltipBox(
                     positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                         TooltipAnchorPosition.Below,
@@ -250,7 +230,11 @@ fun TicketSection(
                     ),
                     tooltip = {
                         PlainTooltip {
-                            Text(if (isAndroid()) stringResource(Res.string.wholesale_item) else stringResource(Res.string.wholesale_item_hotkey))
+                            Text(
+                                if (isAndroid()) stringResource(Res.string.wholesale_item) else stringResource(
+                                    Res.string.wholesale_item_hotkey
+                                )
+                            )
                         }
                     },
                     state = rememberTooltipState()
@@ -269,7 +253,8 @@ fun TicketSection(
 
                 // Mayoreo por ticket (Shift+F11)
                 val eligibleItems = cartItems.filter { it.product.precio_mayoreo > 0.0 }
-                val isTicketWholesale = eligibleItems.isNotEmpty() && eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
+                val isTicketWholesale =
+                    eligibleItems.isNotEmpty() && eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
                 TooltipBox(
                     positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                         TooltipAnchorPosition.Below,
@@ -277,7 +262,11 @@ fun TicketSection(
                     ),
                     tooltip = {
                         PlainTooltip {
-                            Text(if (isAndroid()) stringResource(Res.string.wholesale_ticket) else stringResource(Res.string.wholesale_ticket_hotkey))
+                            Text(
+                                if (isAndroid()) stringResource(Res.string.wholesale_ticket) else stringResource(
+                                    Res.string.wholesale_ticket_hotkey
+                                )
+                            )
                         }
                     },
                     state = rememberTooltipState()
@@ -365,6 +354,7 @@ fun TicketSection(
                     }
                 }
             }
+
         }
 
         // Held Tickets Row (if any)

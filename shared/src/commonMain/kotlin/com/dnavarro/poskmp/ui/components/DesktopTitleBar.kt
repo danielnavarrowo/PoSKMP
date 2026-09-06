@@ -54,6 +54,7 @@ fun DesktopTitleBar(
                 .fillMaxWidth()
                 .wrapContentHeight()
                 .background(MaterialTheme.colorScheme.surface)
+                .padding(start = 12.dp)
         ) {
 
             // Center: Date and Time
@@ -63,7 +64,7 @@ fun DesktopTitleBar(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center),
+                    modifier = Modifier.align(Alignment.CenterStart),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
