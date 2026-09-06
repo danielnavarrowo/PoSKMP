@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1152,7 +1153,8 @@ fun App(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .navigationBarsPadding(),
+                                            .navigationBarsPadding()
+                                            .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         HorizontalFloatingToolbar(
@@ -1220,6 +1222,7 @@ fun App(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(contentPadding)
+                                    .consumeWindowInsets(contentPadding)
                             ) {
                                 NavDisplay(
                                     backStack = backStack,
