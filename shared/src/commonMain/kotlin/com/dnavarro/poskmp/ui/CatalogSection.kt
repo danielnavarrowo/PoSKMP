@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,7 +28,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,7 +45,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
@@ -56,6 +66,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +74,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -77,8 +89,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -93,24 +108,30 @@ import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
+import poskmp.shared.generated.resources.add_button
+import poskmp.shared.generated.resources.add_to_ticket
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_scanner_desc
+import poskmp.shared.generated.resources.decrease_desc
 import poskmp.shared.generated.resources.edit
 import poskmp.shared.generated.resources.empty_icon_desc
 import poskmp.shared.generated.resources.favorite_desc
+import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.mark_as_favorite
 import poskmp.shared.generated.resources.modify
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_found
 import poskmp.shared.generated.resources.not_registered
 import poskmp.shared.generated.resources.not_registered_hotkey
+import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.remove_from_favorites
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.search
@@ -121,6 +142,7 @@ import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.tab_ticket
 import poskmp.shared.generated.resources.view_ticket_fab
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val SEARCH_DEBOUNCE_MILLIS = 300L
@@ -144,7 +166,8 @@ fun CatalogSection(
     onSellUnregisteredClick: () -> Unit = {},
     searchFocusRequester: FocusRequester? = null,
     onBarcodeScan: ((String) -> Unit)? = null,
-    onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null
+    onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null,
+    onAddProductWithQuantity: ((Products, Double) -> Unit)? = null
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -179,6 +202,22 @@ fun CatalogSection(
             } catch (_: Exception) {
             }
         }
+    }
+
+    val handleAddQuantity: (Products, Double) -> Unit = { product, qty ->
+        if (onAddProductWithQuantity != null) {
+            onAddProductWithQuantity(product, qty)
+        } else {
+            repeat(qty.toInt().coerceAtLeast(1)) {
+                onProductClick(product)
+            }
+        }
+        if (latestSearchQuery.value.isNotEmpty()) {
+            latestSearchQuery.value = ""
+            onSearchQueryChange("")
+        }
+        selectedCatalogIndex = -1
+        resetScrollPosition()
     }
 
     val sortedProducts = remember(productsList, sortField, sortOrder) {
@@ -582,48 +621,14 @@ fun CatalogSection(
                                     onLongClick = { showContextMenu = true },
                                     onSecondaryClick = { showContextMenu = true },
                                     contextMenu = {
-                                        DropdownMenu(
+                                        ProductContextMenu(
                                             expanded = showContextMenu,
-                                            shape = MaterialTheme.shapes.medium,
-                                            onDismissRequest = { showContextMenu = false }
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        if (product.es_favorito == 1L) stringResource(
-                                                            Res.string.remove_from_favorites
-                                                        ) else stringResource(Res.string.mark_as_favorite)
-                                                    )
-                                                },
-                                                onClick = {
-                                                    showContextMenu = false
-                                                    onToggleFavorite(product)
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        painter = if (product.es_favorito == 1L) painterResource(
-                                                            Res.drawable.star_filled
-                                                        ) else painterResource(Res.drawable.star),
-                                                        contentDescription = stringResource(Res.string.favorite_desc),
-                                                        tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
-                                                        else MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(Res.string.modify)) },
-                                                onClick = {
-                                                    showContextMenu = false
-                                                    onModifyProduct(product)
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.edit),
-                                                        contentDescription = stringResource(Res.string.modify)
-                                                    )
-                                                }
-                                            )
-                                        }
+                                            onDismissRequest = { showContextMenu = false },
+                                            product = product,
+                                            onAddQuantity = handleAddQuantity,
+                                            onToggleFavorite = onToggleFavorite,
+                                            onModifyProduct = onModifyProduct
+                                        )
                                     }
                                 )
                             }
@@ -728,54 +733,14 @@ fun CatalogSection(
                                                 onLongClick = { showContextMenu = true },
                                                 onSecondaryClick = { showContextMenu = true },
                                                 contextMenu = {
-                                                    DropdownMenu(
+                                                    ProductContextMenu(
                                                         expanded = showContextMenu,
-                                                        shape = MaterialTheme.shapes.medium,
-                                                        onDismissRequest = {
-                                                            showContextMenu = false
-                                                        }
-                                                    ) {
-                                                        DropdownMenuItem(
-                                                            text = {
-                                                                Text(
-                                                                    if (product.es_favorito == 1L) stringResource(
-                                                                        Res.string.remove_from_favorites
-                                                                    ) else stringResource(Res.string.mark_as_favorite)
-                                                                )
-                                                            },
-                                                            onClick = {
-                                                                showContextMenu = false
-                                                                onToggleFavorite(product)
-                                                            },
-                                                            leadingIcon = {
-                                                                Icon(
-                                                                    painter = if (product.es_favorito == 1L) painterResource(
-                                                                        Res.drawable.star_filled
-                                                                    ) else painterResource(Res.drawable.star),
-                                                                    contentDescription = stringResource(
-                                                                        Res.string.favorite_desc
-                                                                    ),
-                                                                    tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
-                                                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                                                )
-                                                            }
-                                                        )
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(Res.string.modify)) },
-                                                            onClick = {
-                                                                showContextMenu = false
-                                                                onModifyProduct(product)
-                                                            },
-                                                            leadingIcon = {
-                                                                Icon(
-                                                                    painter = painterResource(Res.drawable.edit),
-                                                                    contentDescription = stringResource(
-                                                                        Res.string.modify
-                                                                    )
-                                                                )
-                                                            }
-                                                        )
-                                                    }
+                                                        onDismissRequest = { showContextMenu = false },
+                                                        product = product,
+                                                        onAddQuantity = handleAddQuantity,
+                                                        onToggleFavorite = onToggleFavorite,
+                                                        onModifyProduct = onModifyProduct
+                                                    )
                                                 }
                                             )
                                         }
@@ -919,48 +884,14 @@ fun CatalogSection(
                                         }
                                     }
 
-                                    DropdownMenu(
+                                    ProductContextMenu(
                                         expanded = showContextMenu,
-                                        shape = MaterialTheme.shapes.medium,
-                                        onDismissRequest = { showContextMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    if (product.es_favorito == 1L) stringResource(
-                                                        Res.string.remove_from_favorites
-                                                    ) else stringResource(Res.string.mark_as_favorite)
-                                                )
-                                            },
-                                            onClick = {
-                                                showContextMenu = false
-                                                onToggleFavorite(product)
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    painter = if (product.es_favorito == 1L) painterResource(
-                                                        Res.drawable.star_filled
-                                                    ) else painterResource(Res.drawable.star),
-                                                    contentDescription = stringResource(Res.string.favorite_desc),
-                                                    tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
-                                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(Res.string.modify)) },
-                                            onClick = {
-                                                showContextMenu = false
-                                                onModifyProduct(product)
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    painter = painterResource(Res.drawable.edit),
-                                                    contentDescription = stringResource(Res.string.modify)
-                                                )
-                                            }
-                                        )
-                                    }
+                                        onDismissRequest = { showContextMenu = false },
+                                        product = product,
+                                        onAddQuantity = handleAddQuantity,
+                                        onToggleFavorite = onToggleFavorite,
+                                        onModifyProduct = onModifyProduct
+                                    )
                                 }
                             }
                         }
@@ -1018,6 +949,341 @@ fun CatalogSection(
                 }
             }
         }
+    }
+
+}
+
+@Composable
+private fun RepeatingIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    content: @Composable () -> Unit
+) {
+    val currentOnClick by rememberUpdatedState(onClick)
+    val coroutineScope = rememberCoroutineScope()
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    Box(
+        modifier = modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(
+                if (isPressed && enabled) MaterialTheme.colorScheme.surfaceContainerHighest
+                else androidx.compose.ui.graphics.Color.Transparent
+            )
+            .indication(interactionSource, LocalIndication.current)
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectTapGestures(
+                    onPress = { offset ->
+                        val press = PressInteraction.Press(offset)
+                        interactionSource.emit(press)
+                        currentOnClick()
+                        val job = coroutineScope.launch {
+                            delay(400.milliseconds)
+                            var interval = 160L
+                            while (isActive) {
+                                currentOnClick()
+                                delay(interval.milliseconds)
+                                interval = (interval - 15).coerceAtLeast(35L)
+                            }
+                        }
+                        val released = tryAwaitRelease()
+                        job.cancel()
+                        if (released) {
+                            interactionSource.emit(PressInteraction.Release(press))
+                        } else {
+                            interactionSource.emit(PressInteraction.Cancel(press))
+                        }
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun ProductContextMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    product: Products,
+    onAddQuantity: (Products, Double) -> Unit,
+    onToggleFavorite: (Products) -> Unit,
+    onModifyProduct: (Products) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var quantityText by remember(expanded) {
+        mutableStateOf(
+            TextFieldValue(
+                text = "2",
+                selection = TextRange(0, 1)
+            )
+        )
+    }
+    var isInputFocused by remember(expanded) { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    val currentQty = quantityText.text.toDoubleOrNull() ?: 0.0
+    val step = if (product.por_peso == 1L) 0.5 else 1.0
+    val minLimit = if (product.por_peso == 1L) 0.1 else 1.0
+    val canDecrease = currentQty > minLimit
+
+    val decreaseStep = {
+        val current = quantityText.text.toDoubleOrNull() ?: 1.0
+        if (current > minLimit) {
+            val next = (current - step).coerceAtLeast(minLimit)
+            val formatted = if (product.por_peso == 1L) {
+                val rounded = (next * 1000.0).roundToInt() / 1000.0
+                if (rounded % 1.0 == 0.0) rounded.toInt().toString() else "$rounded"
+            } else {
+                next.toInt().toString()
+            }
+            quantityText = TextFieldValue(formatted, selection = TextRange(formatted.length))
+        }
+    }
+
+    val increaseStep = {
+        val current = quantityText.text.toDoubleOrNull() ?: 0.0
+        val next = current + step
+        val formatted = if (product.por_peso == 1L) {
+            val rounded = (next * 1000.0).roundToInt() / 1000.0
+            if (rounded % 1.0 == 0.0) rounded.toInt().toString() else "$rounded"
+        } else {
+            next.toInt().toString()
+        }
+        quantityText = TextFieldValue(formatted, selection = TextRange(formatted.length))
+    }
+
+    val submit = {
+        val qty = quantityText.text.toDoubleOrNull()
+        if (qty != null && qty > 0.0) {
+            onDismissRequest()
+            onAddQuantity(product, qty)
+        }
+    }
+
+    DropdownMenu(
+        expanded = expanded,
+        shape = MaterialTheme.shapes.medium,
+        onDismissRequest = onDismissRequest,
+        modifier = modifier.widthIn(min = 230.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.add_to_ticket),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                ) {
+                    RepeatingIconButton(
+                        onClick = decreaseStep,
+                        enabled = canDecrease
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.remove),
+                            contentDescription = stringResource(Res.string.decrease_desc),
+                            modifier = Modifier.size(16.dp),
+                            tint = if (canDecrease) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        )
+                    }
+
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .padding(horizontal = 2.dp)
+                            .clip(MaterialTheme.shapes.extraSmall)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                            .border(
+                                width = if (isInputFocused) 1.5.dp else 1.dp,
+                                color = if (isInputFocused) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                shape = MaterialTheme.shapes.extraSmall
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                try {
+                                    focusRequester.requestFocus()
+                                } catch (_: Exception) {}
+                            }
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            BasicTextField(
+                                value = quantityText,
+                                onValueChange = { newValue ->
+                                    val text = newValue.text
+                                    val isValid = if (product.por_peso == 1L) {
+                                        text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,3}$"))
+                                    } else {
+                                        text.isEmpty() || text.matches(Regex("^\\d+$"))
+                                    }
+                                    if (isValid) {
+                                        quantityText = newValue
+                                    }
+                                },
+                                modifier = Modifier
+                                    .widthIn(min = 28.dp, max = 56.dp)
+                                    .focusRequester(focusRequester)
+                                    .onFocusChanged { focusState ->
+                                        isInputFocused = focusState.isFocused
+                                        if (focusState.isFocused) {
+                                            quantityText = quantityText.copy(
+                                                selection = TextRange(0, quantityText.text.length)
+                                            )
+                                        }
+                                    }
+                                    .onPreviewKeyEvent { keyEvent ->
+                                        if (keyEvent.type == KeyEventType.KeyDown &&
+                                            (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                                        ) {
+                                            submit()
+                                            true
+                                        } else false
+                                    },
+                                textStyle = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                singleLine = true,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = if (product.por_peso == 1L) KeyboardType.Decimal else KeyboardType.Number,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { submit() }
+                                ),
+                                decorationBox = { innerTextField ->
+                                    Box(contentAlignment = Alignment.Center) {
+                                        if (quantityText.text.isEmpty()) {
+                                            Text(
+                                                text = "0",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    textAlign = TextAlign.Center,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                                )
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                }
+                            )
+
+                            if (product.por_peso == 1L) {
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    text = "Kg",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    RepeatingIconButton(
+                        onClick = increaseStep,
+                        enabled = true
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.add),
+                            contentDescription = stringResource(Res.string.increase_desc),
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                FilledTonalButton(
+                    onClick = { submit() },
+                    enabled = currentQty > 0.0,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.shopping_cart),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        DropdownMenuItem(
+            text = {
+                Text(
+                    if (product.es_favorito == 1L) stringResource(
+                        Res.string.remove_from_favorites
+                    ) else stringResource(Res.string.mark_as_favorite)
+                )
+            },
+            onClick = {
+                onDismissRequest()
+                onToggleFavorite(product)
+            },
+            leadingIcon = {
+                Icon(
+                    painter = if (product.es_favorito == 1L) painterResource(
+                        Res.drawable.star_filled
+                    ) else painterResource(Res.drawable.star),
+                    contentDescription = stringResource(Res.string.favorite_desc),
+                    tint = if (product.es_favorito == 1L) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        )
+
+        DropdownMenuItem(
+            text = { Text(stringResource(Res.string.modify)) },
+            onClick = {
+                onDismissRequest()
+                onModifyProduct(product)
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(Res.drawable.edit),
+                    contentDescription = stringResource(Res.string.modify),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        )
     }
 }
 

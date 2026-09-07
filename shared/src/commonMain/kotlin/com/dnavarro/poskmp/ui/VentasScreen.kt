@@ -580,79 +580,6 @@ fun VentasScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val presets = SalesPeriodPreset.entries
-                            Row(
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                            ) {
-                                presets.forEachIndexed { index, preset ->
-                                    val isSelected = state.selectedPeriod == preset
-                                    ToggleButton(
-                                        checked = isSelected,
-                                        onCheckedChange = { onSelectPeriod(preset) },
-                                        colors = ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                        ),
-                                        modifier = Modifier.semantics { role = Role.RadioButton },
-                                        shapes = when (index) {
-                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                            presets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                        }
-                                    ) {
-                                        Text(
-                                            text = when (preset) {
-                                                SalesPeriodPreset.HOY -> stringResource(Res.string.period_today)
-                                                SalesPeriodPreset.AYER -> stringResource(Res.string.period_yesterday)
-                                                SalesPeriodPreset.ESTA_SEMANA -> stringResource(Res.string.period_this_week)
-                                                SalesPeriodPreset.ESTE_MES -> stringResource(Res.string.period_this_month)
-                                                SalesPeriodPreset.RANGO -> stringResource(Res.string.period_range)
-                                            },
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        if (state.selectedPeriod == SalesPeriodPreset.RANGO && state.customStartDate != null && state.customEndDate != null) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                shape = MaterialTheme.shapes.small,
-                                modifier = Modifier.clickable { onOpenDateRangePicker() }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(
-                                            Res.string.custom_range_active_format,
-                                            formatDateDisplay(state.customStartDate),
-                                            formatDateDisplay(state.customEndDate)
-                                        ),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
                         // Dropdown Selector de Turnos de Caja
                         var shiftDropdownExpanded by remember { mutableStateOf(false) }
                         val selectedShift = state.shiftsForSelectedPeriod.firstOrNull { it.id == state.selectedShiftId }
@@ -757,6 +684,134 @@ fun VentasScreen(
                                     )
                                 }
                             }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val presets = SalesPeriodPreset.entries
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                            ) {
+                                presets.forEachIndexed { index, preset ->
+                                    val isSelected = state.selectedPeriod == preset
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onSelectPeriod(preset) },
+                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier.semantics { role = Role.RadioButton },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            presets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                        }
+                                    ) {
+                                        Text(
+                                            text = when (preset) {
+                                                SalesPeriodPreset.HOY -> stringResource(Res.string.period_today)
+                                                SalesPeriodPreset.AYER -> stringResource(Res.string.period_yesterday)
+                                                SalesPeriodPreset.ESTA_SEMANA -> stringResource(Res.string.period_this_week)
+                                                SalesPeriodPreset.ESTE_MES -> stringResource(Res.string.period_this_month)
+                                                SalesPeriodPreset.RANGO -> stringResource(Res.string.period_range)
+                                            },
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (state.selectedPeriod == SalesPeriodPreset.RANGO && state.customStartDate != null && state.customEndDate != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.clickable { onOpenDateRangePicker() }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(
+                                            Res.string.custom_range_active_format,
+                                            formatDateDisplay(state.customStartDate),
+                                            formatDateDisplay(state.customEndDate)
+                                        ),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    if (isCompact) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            SoldProductsNavButton(
+                                soldProductsCount = state.soldProducts.size,
+                                totalPieces = state.soldProducts.sumOf { it.totalUnidades },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.ProductosVendidos) {
+                                        subBackStack.add(VentasSubRoute.ProductosVendidos)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            SalesHistoryNavButton(
+                                salesCount = state.recentSales.size,
+                                activeSalesCount = state.recentSales.count { !it.isCancelled },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.HistorialVentas) {
+                                        subBackStack.add(VentasSubRoute.HistorialVentas)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            SoldProductsNavButton(
+                                soldProductsCount = state.soldProducts.size,
+                                totalPieces = state.soldProducts.sumOf { it.totalUnidades },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.ProductosVendidos) {
+                                        subBackStack.add(VentasSubRoute.ProductosVendidos)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            SalesHistoryNavButton(
+                                salesCount = state.recentSales.size,
+                                activeSalesCount = state.recentSales.count { !it.isCancelled },
+                                onClick = {
+                                    if (subBackStack.lastOrNull() != VentasSubRoute.HistorialVentas) {
+                                        subBackStack.add(VentasSubRoute.HistorialVentas)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
                         }
                     }
                 }
