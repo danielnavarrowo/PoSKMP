@@ -195,6 +195,7 @@ import poskmp.shared.generated.resources.period_today
 import poskmp.shared.generated.resources.period_yesterday
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.print
 import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.reprint_receipt_button
 import poskmp.shared.generated.resources.sale_badge_delivery
@@ -930,63 +931,6 @@ fun VentasScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-
-                // Botones para abrir las pantallas completas de Productos Vendidos e Historial de Ventas
-                item {
-                    if (isCompact) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            SoldProductsNavButton(
-                                soldProductsCount = state.soldProducts.size,
-                                totalPieces = state.soldProducts.sumOf { it.totalUnidades },
-                                onClick = {
-                                    if (subBackStack.lastOrNull() != VentasSubRoute.ProductosVendidos) {
-                                        subBackStack.add(VentasSubRoute.ProductosVendidos)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            SalesHistoryNavButton(
-                                salesCount = state.recentSales.size,
-                                activeSalesCount = state.recentSales.count { !it.isCancelled },
-                                onClick = {
-                                    if (subBackStack.lastOrNull() != VentasSubRoute.HistorialVentas) {
-                                        subBackStack.add(VentasSubRoute.HistorialVentas)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            SoldProductsNavButton(
-                                soldProductsCount = state.soldProducts.size,
-                                totalPieces = state.soldProducts.sumOf { it.totalUnidades },
-                                onClick = {
-                                    if (subBackStack.lastOrNull() != VentasSubRoute.ProductosVendidos) {
-                                        subBackStack.add(VentasSubRoute.ProductosVendidos)
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
-                            SalesHistoryNavButton(
-                                salesCount = state.recentSales.size,
-                                activeSalesCount = state.recentSales.count { !it.isCancelled },
-                                onClick = {
-                                    if (subBackStack.lastOrNull() != VentasSubRoute.HistorialVentas) {
-                                        subBackStack.add(VentasSubRoute.HistorialVentas)
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
             }
         }
     }
@@ -1495,7 +1439,7 @@ private fun SalesHistoryNavButton(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            painter = painterResource(Res.drawable.point_of_sale),
+                            painter = painterResource(Res.drawable.print),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.size(24.dp)

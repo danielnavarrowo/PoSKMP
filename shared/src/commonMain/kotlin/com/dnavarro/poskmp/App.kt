@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,11 +39,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationRailItem
@@ -148,12 +151,14 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.btn_cash_inflow
 import poskmp.shared.generated.resources.btn_cash_inflow_desktop
 import poskmp.shared.generated.resources.btn_cash_outflow
 import poskmp.shared.generated.resources.btn_cash_outflow_desktop
+import poskmp.shared.generated.resources.cash_in
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.money_transfer
 import poskmp.shared.generated.resources.payments
@@ -172,7 +177,9 @@ import poskmp.shared.generated.resources.open_cash_drawer_button
 import poskmp.shared.generated.resources.open_cash_drawer_button_desktop
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
+import poskmp.shared.generated.resources.print
 import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.reprint_receipt_button
 import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.supabase_last_sync_format
@@ -761,60 +768,66 @@ fun App(
                                             }
                                         }
 
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        CompositionLocalProvider(
+                                            LocalMinimumInteractiveComponentSize provides Dp.Unspecified
                                         ) {
-                                            // Sincronización Manual (Above Last Sale)
-                                            val lastSyncTimestamp = ajustesUiState.lastSyncTimestamp
-                                            if (isExpanded) {
-                                                FilledTonalButton(
-                                                    onClick = {
-                                                        if (!isSyncing) {
-                                                            coroutineScope.launch(Dispatchers.IO) {
-                                                                syncRepository.syncAll(isManual = true)
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                // Sincronización Manual (Above Last Sale)
+                                                val lastSyncTimestamp = ajustesUiState.lastSyncTimestamp
+                                                if (isExpanded) {
+                                                    FilledTonalButton(
+                                                        onClick = {
+                                                            if (!isSyncing) {
+                                                                coroutineScope.launch(Dispatchers.IO) {
+                                                                    syncRepository.syncAll(isManual = true)
+                                                                }
                                                             }
-                                                        }
-                                                        reclaimCurrentScreenFocus()
-                                                    },
-                                                    enabled = !isSyncing,
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                                                    shape = MaterialTheme.shapes.medium
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.sync),
-                                                        contentDescription = stringResource(Res.string.sync_now_button),
+                                                            reclaimCurrentScreenFocus()
+                                                        },
+                                                        enabled = !isSyncing,
                                                         modifier = Modifier
-                                                            .size(18.dp)
-                                                            .rotate(if (isSyncing) syncRotation else 0f)
-                                                    )
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text(
-                                                        text = if (isSyncing) stringResource(Res.string.supabase_status_syncing_desc) else stringResource(Res.string.sync_now_button),
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-
-                                                Spacer(modifier = Modifier.height(3.dp))
-                                                val lastSyncFormatted = if (lastSyncTimestamp > 0L) {
-                                                    formatEpochMillisToDateTime(lastSyncTimestamp)
-                                                } else {
-                                                    null
-                                                }
-                                                Text(
-                                                    text = if (lastSyncFormatted != null) {
-                                                        stringResource(Res.string.supabase_last_sync_format, lastSyncFormatted)
-                                                    } else {
-                                                        stringResource(Res.string.supabase_last_sync_never)
-                                                    },
-                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 2
-                                                )
+                                                            .fillMaxWidth()
+                                                            .defaultMinSize(minHeight = 48.dp),
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                        shape = ShapeDefaults.topListItemShape
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.sync),
+                                                            contentDescription = stringResource(Res.string.sync_now_button),
+                                                            modifier = Modifier
+                                                                .size(24.dp)
+                                                                .rotate(if (isSyncing) syncRotation else 0f)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Text(
+                                                            text = if (isSyncing) stringResource(Res.string.supabase_status_syncing_desc) else stringResource(Res.string.sync_now_button),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            maxLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            modifier = Modifier.weight(1f, fill = false)
+                                                        )
+                                                    }
+//                                                Spacer(modifier = Modifier.height(2.dp))
+//                                                val lastSyncFormatted = if (lastSyncTimestamp > 0L) {
+//                                                    formatEpochMillisToDateTime(lastSyncTimestamp)
+//                                                } else {
+//                                                    null
+//                                                }
+//                                                Text(
+//                                                    text = if (lastSyncFormatted != null) {
+//                                                        stringResource(Res.string.supabase_last_sync_format, lastSyncFormatted)
+//                                                    } else {
+//                                                        stringResource(Res.string.supabase_last_sync_never)
+//                                                    },
+//                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+//                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+//                                                    textAlign = TextAlign.Center,
+//                                                    maxLines = 2
+//                                                )
                                             } else {
                                                 FilledTonalIconButton(
                                                     onClick = {
@@ -832,7 +845,7 @@ fun App(
                                                         painter = painterResource(Res.drawable.sync),
                                                         contentDescription = stringResource(Res.string.sync_now_button),
                                                         modifier = Modifier
-                                                            .size(20.dp)
+                                                            .size(26.dp)
                                                             .rotate(if (isSyncing) syncRotation else 0f)
                                                     )
                                                 }
@@ -852,7 +865,6 @@ fun App(
                                                 )
                                             }
 
-                                            Spacer(modifier = Modifier.height(6.dp))
 
                                             // Botón para abrir cajón de dinero
                                             if (isExpanded) {
@@ -861,21 +873,24 @@ fun App(
                                                         triggerOpenCashDrawer()
                                                     },
                                                     enabled = !isOpeningDrawer,
-                                                    modifier = Modifier.fillMaxWidth(),
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .defaultMinSize(minHeight = 48.dp),
                                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                                                    shape = MaterialTheme.shapes.medium
+                                                    shape = ShapeDefaults.middleListItemShape
                                                 ) {
                                                     Icon(
                                                         painter = painterResource(Res.drawable.point_of_sale),
                                                         contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(24.dp)
                                                     )
-                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Spacer(modifier = Modifier.width(6.dp))
                                                     Text(
                                                         text = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
                                                         style = MaterialTheme.typography.labelMedium,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.weight(1f, fill = false)
                                                     )
                                                 }
                                             } else {
@@ -907,7 +922,6 @@ fun App(
                                                 }
                                             }
 
-                                            Spacer(modifier = Modifier.height(6.dp))
 
                                             // Botón para entrada de efectivo
                                             if (isExpanded) {
@@ -921,21 +935,24 @@ fun App(
                                                         reclaimCurrentScreenFocus()
                                                     },
                                                     enabled = activeShift != null,
-                                                    modifier = Modifier.fillMaxWidth(),
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .defaultMinSize(minHeight = 48.dp),
                                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                                                    shape = MaterialTheme.shapes.medium
+                                                    shape = ShapeDefaults.middleListItemShape
                                                 ) {
                                                     Icon(
-                                                        painter = painterResource(Res.drawable.payments),
+                                                        painter = painterResource(Res.drawable.cash_in),
                                                         contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(24.dp)
                                                     )
-                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Spacer(modifier = Modifier.width(6.dp))
                                                     Text(
                                                         text = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
                                                         style = MaterialTheme.typography.labelMedium,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.weight(1f, fill = false)
                                                     )
                                                 }
                                             } else {
@@ -964,7 +981,7 @@ fun App(
                                                         shape = MaterialTheme.shapes.medium
                                                     ) {
                                                         Icon(
-                                                            painter = painterResource(Res.drawable.payments),
+                                                            painter = painterResource(Res.drawable.cash_in),
                                                             contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
                                                             modifier = Modifier.size(20.dp)
                                                         )
@@ -972,7 +989,6 @@ fun App(
                                                 }
                                             }
 
-                                            Spacer(modifier = Modifier.height(6.dp))
 
                                             // Botón para salida de efectivo
                                             if (isExpanded) {
@@ -986,21 +1002,24 @@ fun App(
                                                         reclaimCurrentScreenFocus()
                                                     },
                                                     enabled = activeShift != null,
-                                                    modifier = Modifier.fillMaxWidth(),
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .defaultMinSize(minHeight = 48.dp),
                                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                                                    shape = MaterialTheme.shapes.medium
+                                                    shape = if (lastSale != null) ShapeDefaults.middleListItemShape else ShapeDefaults.bottomListItemShape
                                                 ) {
                                                     Icon(
-                                                        painter = painterResource(Res.drawable.money_transfer),
+                                                        painter = painterResource(Res.drawable.cash_in),
                                                         contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(24.dp).rotate(180f)
                                                     )
-                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Spacer(modifier = Modifier.width(6.dp))
                                                     Text(
                                                         text = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
                                                         style = MaterialTheme.typography.labelMedium,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.weight(1f, fill = false)
                                                     )
                                                 }
                                             } else {
@@ -1029,16 +1048,13 @@ fun App(
                                                         shape = MaterialTheme.shapes.medium
                                                     ) {
                                                         Icon(
-                                                            painter = painterResource(Res.drawable.money_transfer),
+                                                            painter = painterResource(Res.drawable.cash_in),
                                                             contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
-                                                            modifier = Modifier.size(20.dp)
+                                                            modifier = Modifier.size(20.dp).rotate(180f)
                                                         )
                                                     }
                                                 }
                                             }
-
-                                            Spacer(modifier = Modifier.height(6.dp))
-
                                             lastSale?.let { sale ->
                                                 // Botón de reimpresión del último ticket
                                                 if (isExpanded) {
@@ -1047,32 +1063,35 @@ fun App(
                                                             if (!isReprintingLastSale) {
                                                                 isReprintingLastSale = true
                                                                 coroutineScope.launch {
-                                                                    try {
-                                                                        reprintSaleReceiptUseCase(sale)
-                                                                    } finally {
-                                                                        delay(800.milliseconds)
-                                                                        isReprintingLastSale = false
-                                                                    }
+                                                                  try {
+                                                                      reprintSaleReceiptUseCase(sale)
+                                                                  } finally {
+                                                                      delay(800.milliseconds)
+                                                                      isReprintingLastSale = false
+                                                                  }
                                                                 }
                                                             }
                                                             reclaimCurrentScreenFocus()
                                                         },
                                                         enabled = !isReprintingLastSale,
-                                                        modifier = Modifier.fillMaxWidth(),
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .defaultMinSize(minHeight = 48.dp),
                                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                                                        shape = MaterialTheme.shapes.medium
+                                                        shape = ShapeDefaults.bottomListItemShape
                                                     ) {
                                                         Icon(
-                                                            painter = painterResource(Res.drawable.point_of_sale),
+                                                            painter = painterResource(Res.drawable.print),
                                                             contentDescription = stringResource(Res.string.reprint_receipt_button),
-                                                            modifier = Modifier.size(18.dp)
+                                                            modifier = Modifier.size(22.dp)
                                                         )
-                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Spacer(modifier = Modifier.width(6.dp))
                                                         Text(
                                                             text = stringResource(Res.string.reprint_receipt_button),
                                                             style = MaterialTheme.typography.labelMedium,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis
+                                                            maxLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            modifier = Modifier.weight(1f, fill = false)
                                                         )
                                                     }
                                                 } else {
@@ -1107,7 +1126,7 @@ fun App(
                                                             shape = MaterialTheme.shapes.medium
                                                         ) {
                                                             Icon(
-                                                                painter = painterResource(Res.drawable.point_of_sale),
+                                                                painter = painterResource(Res.drawable.print),
                                                                 contentDescription = stringResource(Res.string.reprint_receipt_button),
                                                                 modifier = Modifier.size(20.dp)
                                                             )
@@ -1116,6 +1135,7 @@ fun App(
                                                 }
                                             }
                                         }
+                                    }
                                     }
                                 }
                             } else {

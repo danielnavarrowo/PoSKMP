@@ -106,9 +106,6 @@ fun ProductFormDialog(
 ) {
     val isNew = product == null || product.id.isEmpty()
 
-    val defaultCategory = stringResource(Res.string.default_category_abarrotes)
-    val noCategoryStr = stringResource(Res.string.no_category)
-
     // Form inputs state
     var formNombre by remember(product) { mutableStateOf(product?.nombre ?: "") }
     var formBarcodes by remember(product) {
@@ -195,12 +192,12 @@ fun ProductFormDialog(
         val pieces = product?.piezas
         mutableStateOf(if (pieces == null || pieces == 0.0) "1" else if (pieces % 1.0 == 0.0) pieces.toLong().toString() else pieces.toString())
     }
-    var formCategoria by remember(product) { mutableStateOf(product?.categoria ?: defaultCategory) }
+    var formCategoria by remember(product) { mutableStateOf(product?.categoria ?: "") }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
-    val allCategories = remember(existingCategories, defaultCategory) {
-        (existingCategories + defaultCategory)
-            .filter { it.isNotBlank() && it != noCategoryStr }
+    val allCategories = remember(existingCategories) {
+        existingCategories
+            .filter { it.isNotBlank() }
             .distinct()
             .sorted()
     }
@@ -399,7 +396,7 @@ fun ProductFormDialog(
             nombre = formNombre.trim(),
             precio = finalPrice,
             costo = formCosto.toDoubleOrNull() ?: 0.0,
-            categoria = formCategoria.trim().ifEmpty { noCategoryStr },
+            categoria = formCategoria.trim(),
             activo = if (formActivo) 1L else 0L,
             por_peso = if (formPorPeso) 1L else 0L,
             precio_mayoreo = finalWholesale,

@@ -184,13 +184,11 @@ fun BulkProductModificationDialog(
     var categoryText by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val defaultCategory = stringResource(Res.string.default_category_abarrotes)
-    val noCategoryStr = stringResource(Res.string.no_category)
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
-    val allCategories = remember(existingCategories, defaultCategory) {
-        (existingCategories + defaultCategory)
-            .filter { it.isNotBlank() && it != noCategoryStr }
+    val allCategories = remember(existingCategories) {
+        existingCategories
+            .filter { it.isNotBlank() }
             .distinct()
             .sorted()
     }

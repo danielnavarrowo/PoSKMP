@@ -45,7 +45,7 @@
     <string name="supabase_server_title">Servidor Supabase</string>
     <string name="supabase_status_pending_desc">Sincronización en segundo plano pendiente</string>
     <string name="status_pending">Pendiente</string>
-    <string name="sync_now_button">Sincronizar ahora</string>
+    <string name="sync_now_button">Sincronizar</string>
     <string name="theme_section_title">Apariencia y Tema</string>
     <string name="palette_style_title">Estilo de Paleta de Colores</string>
     <string name="palette_style_subtitle">Personaliza la armonía y el comportamiento de la paleta de colores</string>
@@ -205,26 +205,25 @@
     <!-- CatalogSection -->
     <string name="search_placeholder">Buscar por nombre o categoría...</string>
     <string name="search_desc">Buscar</string>
-    <string name="empty_icon_desc">Vacio</string>
+    <string name="empty_icon_desc">Vacío</string>
     <string name="no_products_found">No se encontraron productos.</string>
     <string name="remove_from_favorites">Quitar de favoritos</string>
     <string name="mark_as_favorite">Marcar como favorito</string>
     <string name="modify">Modificar</string>
     <string name="view_ticket_fab">Ver Ticket (%1$d) • $%2$s</string>
-    <string name="not_registered">No Registrado</string>
-    <string name="not_registered_hotkey">Ctrl + P: Producto común</string>
-    <string name="cash_inflow_hotkey">F7: Entrada de efectivo</string>
-    <string name="cash_outflow_hotkey">F8: Salida de efectivo</string>
+    <string name="not_registered">Producto común</string>
+    <string name="not_registered_hotkey">Producto común (Ctrl + P)</string>
+    <string name="cash_inflow_hotkey">Entrada de efectivo (F7)</string>
+    <string name="cash_outflow_hotkey">Salida de efectivo (F8)</string>
     <string name="wholesale_item">Mayoreo a Producto</string>
-    <string name="wholesale_item_hotkey">F11: Mayoreo a Producto</string>
+    <string name="wholesale_item_hotkey">Mayoreo a Producto (F11)</string>
     <string name="wholesale_ticket">Mayoreo a Ticket</string>
-    <string name="wholesale_ticket_hotkey">Ctrl + F11: Mayoreo a Ticket</string>
+    <string name="wholesale_ticket_hotkey">Mayoreo a Ticket (Ctrl + F11)</string>
     <string name="total_without_discount_label">Total sin descuento</string>
-    <string name="checkout_hotkey">F12: Cobrar</string>
+    <string name="checkout_hotkey">Cobrar (F12)</string>
     <string name="add_to_ticket">Agregar al ticket</string>
 
     <!-- ProductFormDialog -->
-    <string name="default_category_abarrotes">Abarrotes</string>
     <string name="register_new_product_title">Registrar Nuevo Producto</string>
     <string name="modify_product_title">Modificar Producto</string>
     <string name="product_name_label">Nombre del Producto*</string>
@@ -612,7 +611,7 @@
     <string name="supabase_save_and_test_button">Guardar y Probar Conexión</string>
     <string name="supabase_status_connected_desc">Conectado y listo para sincronizar</string>
     <string name="supabase_status_unconfigured_desc">Ingresa las credenciales para sincronizar</string>
-    <string name="supabase_status_syncing_desc">Sincronizando datos con la nube...</string>
+    <string name="supabase_status_syncing_desc">Sincronizando...</string>
     <string name="supabase_status_error_desc">Error de conexión con el servidor</string>
     <string name="supabase_last_sync_never">Última sincronización: Nunca</string>
     <string name="supabase_last_sync_format">Última sincronización: %1$s</string>
@@ -724,9 +723,9 @@
     <string name="active_shift_badge">Turno activo: %1$s</string>
     <string name="no_active_shift_badge">Sin turno activo</string>
 
-    <string name="btn_cash_inflow">Entrada de efectivo</string>
+    <string name="btn_cash_inflow">Entrada</string>
     <string name="btn_cash_inflow_desktop">Entrada de efectivo (F7)</string>
-    <string name="btn_cash_outflow">Salida de efectivo</string>
+    <string name="btn_cash_outflow">Salida</string>
     <string name="btn_cash_outflow_desktop">Salida de efectivo (F8)</string>
     <string name="btn_close_shift">Cerrar turno</string>
     <string name="btn_close_shift_desktop">Cerrar turno (F9)</string>

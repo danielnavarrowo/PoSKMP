@@ -48,6 +48,8 @@ import poskmp.shared.generated.resources.checador_layout_title
 import poskmp.shared.generated.resources.default_screen_subtitle
 import poskmp.shared.generated.resources.default_screen_title
 import poskmp.shared.generated.resources.fullscreen
+import poskmp.shared.generated.resources.grid
+import poskmp.shared.generated.resources.list
 import poskmp.shared.generated.resources.pip
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
@@ -324,12 +326,12 @@ fun GeneralSettingsSection(
                             Triple(
                                 false,
                                 stringResource(Res.string.catalog_layout_grid),
-                                Res.drawable.card
+                                Res.drawable.grid
                             ),
                             Triple(
                                 true,
                                 stringResource(Res.string.catalog_layout_table),
-                                Res.drawable.products
+                                Res.drawable.list
                             )
                         )
                         catalogLayoutOptions.forEachIndexed { index, (useTableOption, label, icon) ->

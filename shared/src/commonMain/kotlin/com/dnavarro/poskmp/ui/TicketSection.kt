@@ -102,7 +102,6 @@ import poskmp.shared.generated.resources.general_public_label
 import poskmp.shared.generated.resources.hold_ticket_button_desc
 import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.items_count_label
-import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.no_customer_assigned
 import poskmp.shared.generated.resources.pause
 import poskmp.shared.generated.resources.person
@@ -276,7 +275,7 @@ fun TicketSection(
                         enabled = cartItems.isNotEmpty()
                     ) {
                         Icon(
-                            painter = painterResource(Res.drawable.shopping_cart),
+                            painter = painterResource(Res.drawable.wholesale_ticket),
                             contentDescription = stringResource(if (isAndroid()) Res.string.wholesale_ticket else Res.string.wholesale_ticket_hotkey),
                             tint = if (isTicketWholesale) MaterialTheme.colorScheme.primary else LocalContentColor.current
                         )
@@ -659,8 +658,6 @@ fun TicketSection(
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Icon(painter = painterResource(Res.drawable.money), contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isAndroid()) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey),
                     fontSize = 16.sp,

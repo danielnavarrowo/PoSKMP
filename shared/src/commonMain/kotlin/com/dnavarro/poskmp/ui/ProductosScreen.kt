@@ -118,6 +118,7 @@ import poskmp.shared.generated.resources.bulk_op_deactivate_title
 import poskmp.shared.generated.resources.bulk_op_delete_title
 import poskmp.shared.generated.resources.bulk_op_mark_as_favorite_title
 import poskmp.shared.generated.resources.bulk_op_set_profit_title
+import poskmp.shared.generated.resources.category
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
@@ -169,6 +170,8 @@ import poskmp.shared.generated.resources.sort_section_title
 import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.header_delivery_margin
 import poskmp.shared.generated.resources.header_delivery_price
+import poskmp.shared.generated.resources.percent_discount_24px
+import poskmp.shared.generated.resources.price
 import poskmp.shared.generated.resources.wholesale
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -428,7 +431,7 @@ fun ProductosScreen(
                                 },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(Res.drawable.money),
+                                        painter = painterResource(Res.drawable.price),
                                         contentDescription = null
                                     )
                                 },
@@ -443,7 +446,7 @@ fun ProductosScreen(
                                 },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(Res.drawable.edit),
+                                        painter = painterResource(Res.drawable.percent_discount_24px),
                                         contentDescription = null
                                     )
                                 },
@@ -458,7 +461,7 @@ fun ProductosScreen(
                                 },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(Res.drawable.products),
+                                        painter = painterResource(Res.drawable.category),
                                         contentDescription = null
                                     )
                                 },
