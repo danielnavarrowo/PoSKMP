@@ -776,8 +776,44 @@ fun App(
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                                             ) {
-                                                // Sincronización Manual (Above Last Sale)
                                                 val lastSyncTimestamp = ajustesUiState.lastSyncTimestamp
+                                                if(isExpanded) {
+                                                    val lastSyncFormatted = if (lastSyncTimestamp > 0L) {
+                                                        formatEpochMillisToDateTime(lastSyncTimestamp)
+                                                    } else {
+                                                        null
+                                                    }
+                                                    Text(
+                                                        text = if (lastSyncFormatted != null) {
+                                                            stringResource(Res.string.supabase_last_sync_format, lastSyncFormatted)
+                                                        } else {
+                                                            stringResource(Res.string.supabase_last_sync_never)
+                                                        },
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                                        textAlign = TextAlign.Center,
+                                                        maxLines = 2
+                                                    )
+                                                } else {
+                                                    val shortSyncText = if (lastSyncTimestamp > 0L) {
+                                                        formatTimeOnly(lastSyncTimestamp)
+                                                    } else {
+                                                        "--:--"
+                                                    }
+                                                    Text(
+                                                        text = shortSyncText,
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                                        textAlign = TextAlign.Center,
+                                                        maxLines = 1
+                                                    )
+                                                }
+
+
+
+
+
+
                                                 if (isExpanded) {
                                                     FilledTonalButton(
                                                         onClick = {
@@ -792,42 +828,31 @@ fun App(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .defaultMinSize(minHeight = 48.dp),
-                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                        contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
                                                         shape = ShapeDefaults.topListItemShape
                                                     ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.sync),
-                                                            contentDescription = stringResource(Res.string.sync_now_button),
-                                                            modifier = Modifier
-                                                                .size(24.dp)
-                                                                .rotate(if (isSyncing) syncRotation else 0f)
-                                                        )
-                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Box(
+                                                            modifier = Modifier.size(24.dp),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.sync),
+                                                                contentDescription = stringResource(Res.string.sync_now_button),
+                                                                modifier = Modifier
+                                                                    .size(24.dp)
+                                                                    .rotate(if (isSyncing) syncRotation else 0f)
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
                                                             text = if (isSyncing) stringResource(Res.string.supabase_status_syncing_desc) else stringResource(Res.string.sync_now_button),
                                                             style = MaterialTheme.typography.labelMedium,
                                                             maxLines = 2,
                                                             overflow = TextOverflow.Ellipsis,
-                                                            modifier = Modifier.weight(1f, fill = false)
+                                                            modifier = Modifier.weight(1f)
                                                         )
                                                     }
-//                                                Spacer(modifier = Modifier.height(2.dp))
-//                                                val lastSyncFormatted = if (lastSyncTimestamp > 0L) {
-//                                                    formatEpochMillisToDateTime(lastSyncTimestamp)
-//                                                } else {
-//                                                    null
-//                                                }
-//                                                Text(
-//                                                    text = if (lastSyncFormatted != null) {
-//                                                        stringResource(Res.string.supabase_last_sync_format, lastSyncFormatted)
-//                                                    } else {
-//                                                        stringResource(Res.string.supabase_last_sync_never)
-//                                                    },
-//                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-//                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-//                                                    textAlign = TextAlign.Center,
-//                                                    maxLines = 2
-//                                                )
+
                                             } else {
                                                 FilledTonalIconButton(
                                                     onClick = {
@@ -849,20 +874,6 @@ fun App(
                                                             .rotate(if (isSyncing) syncRotation else 0f)
                                                     )
                                                 }
-
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                val shortSyncText = if (lastSyncTimestamp > 0L) {
-                                                    formatTimeOnly(lastSyncTimestamp)
-                                                } else {
-                                                    "--:--"
-                                                }
-                                                Text(
-                                                    text = shortSyncText,
-                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1
-                                                )
                                             }
 
 
@@ -876,21 +887,26 @@ fun App(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .defaultMinSize(minHeight = 48.dp),
-                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                    contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
                                                     shape = ShapeDefaults.middleListItemShape
                                                 ) {
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.point_of_sale),
-                                                        contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                        modifier = Modifier.size(24.dp)
-                                                    )
-                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Box(
+                                                        modifier = Modifier.size(24.dp),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.point_of_sale),
+                                                            contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(8.dp))
                                                     Text(
                                                         text = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
                                                         style = MaterialTheme.typography.labelMedium,
                                                         maxLines = 2,
                                                         overflow = TextOverflow.Ellipsis,
-                                                        modifier = Modifier.weight(1f, fill = false)
+                                                        modifier = Modifier.weight(1f)
                                                     )
                                                 }
                                             } else {
@@ -938,21 +954,26 @@ fun App(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .defaultMinSize(minHeight = 48.dp),
-                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                    contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
                                                     shape = ShapeDefaults.middleListItemShape
                                                 ) {
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.cash_in),
-                                                        contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
-                                                        modifier = Modifier.size(24.dp)
-                                                    )
-                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Box(
+                                                        modifier = Modifier.size(24.dp),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.cash_in),
+                                                            contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(8.dp))
                                                     Text(
                                                         text = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
                                                         style = MaterialTheme.typography.labelMedium,
                                                         maxLines = 2,
                                                         overflow = TextOverflow.Ellipsis,
-                                                        modifier = Modifier.weight(1f, fill = false)
+                                                        modifier = Modifier.weight(1f)
                                                     )
                                                 }
                                             } else {
@@ -1005,21 +1026,26 @@ fun App(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .defaultMinSize(minHeight = 48.dp),
-                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                    contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
                                                     shape = if (lastSale != null) ShapeDefaults.middleListItemShape else ShapeDefaults.bottomListItemShape
                                                 ) {
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.cash_in),
-                                                        contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
-                                                        modifier = Modifier.size(24.dp).rotate(180f)
-                                                    )
-                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Box(
+                                                        modifier = Modifier.size(24.dp),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.cash_in),
+                                                            contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
+                                                            modifier = Modifier.size(24.dp).rotate(180f)
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(8.dp))
                                                     Text(
                                                         text = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
                                                         style = MaterialTheme.typography.labelMedium,
                                                         maxLines = 2,
                                                         overflow = TextOverflow.Ellipsis,
-                                                        modifier = Modifier.weight(1f, fill = false)
+                                                        modifier = Modifier.weight(1f)
                                                     )
                                                 }
                                             } else {
@@ -1077,21 +1103,26 @@ fun App(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .defaultMinSize(minHeight = 48.dp),
-                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                                        contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
                                                         shape = ShapeDefaults.bottomListItemShape
                                                     ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.print),
-                                                            contentDescription = stringResource(Res.string.reprint_receipt_button),
-                                                            modifier = Modifier.size(22.dp)
-                                                        )
-                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Box(
+                                                            modifier = Modifier.size(24.dp),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.print),
+                                                                contentDescription = stringResource(Res.string.reprint_receipt_button),
+                                                                modifier = Modifier.size(22.dp)
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
                                                             text = stringResource(Res.string.reprint_receipt_button),
                                                             style = MaterialTheme.typography.labelMedium,
                                                             maxLines = 2,
                                                             overflow = TextOverflow.Ellipsis,
-                                                            modifier = Modifier.weight(1f, fill = false)
+                                                            modifier = Modifier.weight(1f)
                                                         )
                                                     }
                                                 } else {

@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -547,9 +548,9 @@ fun TicketSection(
 
             // Selector / Asignación de Cliente
             Surface(
-                shape = MaterialTheme.shapes.medium,
+                shape = ShapeDefaults.topListItemShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -622,13 +623,13 @@ fun TicketSection(
                     if (selectedCustomer != null) {
                         IconButton(
                             onClick = onClearCustomerClick,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 painter = painterResource(Res.drawable.close),
                                 contentDescription = stringResource(Res.string.remove_customer_button),
                                 tint = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(4.dp))
@@ -646,21 +647,19 @@ fun TicketSection(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
+            FilledTonalButton(
                 onClick = onCheckout,
                 enabled = cartItems.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 ),
-                shape = MaterialTheme.shapes.medium,
+                shape = ShapeDefaults.bottomListItemShape,
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Text(
                     text = if (isAndroid()) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey),
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold
                 )
             }
