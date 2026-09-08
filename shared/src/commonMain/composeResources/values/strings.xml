@@ -45,7 +45,7 @@
     <string name="supabase_server_title">Servidor Supabase</string>
     <string name="supabase_status_pending_desc">Sincronización en segundo plano pendiente</string>
     <string name="status_pending">Pendiente</string>
-    <string name="sync_now_button">Sincronizar</string>
+    <string name="sync_now_button">Sincronizar en la nube</string>
     <string name="theme_section_title">Apariencia y Tema</string>
     <string name="palette_style_title">Estilo de Paleta de Colores</string>
     <string name="palette_style_subtitle">Personaliza la armonía y el comportamiento de la paleta de colores</string>
@@ -678,7 +678,7 @@
     <string name="receipt_preview_settings_subtitle">Esta vista usa exactamente las líneas, el tamaño, el estilo y la fuente seleccionados para imprimir.</string>
     <string name="receipt_preview_title">Ticket de compra</string>
     <string name="print_receipt_button">Imprimir ticket</string>
-    <string name="reprint_receipt_button">Reimprimir ticket</string>
+    <string name="reprint_receipt_button">Reimprimir ticket de última compra</string>
     <string name="receipt_printed">Ticket enviado a la impresora.</string>
     <string name="receipt_print_error">No se pudo imprimir el ticket. Revisa la impresora e inténtalo de nuevo.</string>
 

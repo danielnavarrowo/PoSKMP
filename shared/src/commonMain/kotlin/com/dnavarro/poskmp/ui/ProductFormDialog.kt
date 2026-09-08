@@ -14,11 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,6 +108,7 @@ fun ProductFormDialog(
     roundProductPrices: Boolean = false
 ) {
     val isNew = product == null || product.id.isEmpty()
+    val focusManager = LocalFocusManager.current
 
     // Form inputs state
     var formNombre by remember(product) { mutableStateOf(product?.nombre ?: "") }
@@ -409,39 +413,33 @@ fun ProductFormDialog(
         onSave(p)
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier
-            .widthIn(min = 340.dp, max = 640.dp)
-            .fillMaxWidth(0.92f)
-            .then(
-            if (!isAndroid()) {
-                Modifier.onPreviewKeyEvent { keyEvent ->
-                    if (keyEvent.type == KeyEventType.KeyDown) {
-                        val isEnter = keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
-                        val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                        isEnter && isCtrlOrMeta && if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
-                            submitForm()
-                            true
-                        } else false
-                    } else false
-                }
-            } else Modifier
-        ),
-        shape = ShapeDefaults.cardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        title = {
+    val isNameValid = formNombre.trim().isNotEmpty()
+
+    val confirmButtonContent: @Composable () -> Unit = {
+        Button(
+            onClick = { submitForm() },
+            enabled = isNameValid && isPriceValid && barcodeValidationError == null && !isValidatingBarcode,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            shape = MaterialTheme.shapes.small
+        ) {
             Text(
-                text = if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
-                fontWeight = FontWeight.Bold
+                if (isAndroid()) {
+                    if (isNew) stringResource(Res.string.save_button) else stringResource(Res.string.save_changes_button)
+                } else {
+                    if (isNew) stringResource(Res.string.save_button_desktop) else stringResource(Res.string.save_changes_button_desktop)
+                }
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
+        }
+    }
+
+    val dismissButtonContent: @Composable () -> Unit = {
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+
+    @Composable
+    fun FormFields() {
                 OutlinedTextField(
                     value = formNombre,
                     onValueChange = { formNombre = it },
@@ -453,6 +451,13 @@ fun ProductFormDialog(
                             } else Modifier
                         ),
                     label = { Text(stringResource(Res.string.product_name_label), style = MaterialTheme.typography.labelLarge) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Next) }
+                    ),
                     singleLine = true
                 )
 
@@ -496,8 +501,15 @@ fun ProductFormDialog(
                                 }
                             }
                         },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { addBarcodeFromInput() }),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                if (barcodeInput.trim().isNotEmpty()) {
+                                    addBarcodeFromInput()
+                                }
+                                focusManager.moveFocus(FocusDirection.Next)
+                            }
+                        ),
                         singleLine = true
                     )
 
@@ -582,7 +594,8 @@ fun ProductFormDialog(
                         modifier = Modifier.weight(1f),
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.cost_label), style = MaterialTheme.typography.labelLarge) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                     OutlinedTextField(
@@ -594,7 +607,8 @@ fun ProductFormDialog(
                         },
                         modifier = Modifier.weight(1f),
                         label = { Text(stringResource(Res.string.product_pieces_label), style = MaterialTheme.typography.labelLarge) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                 }
@@ -617,7 +631,8 @@ fun ProductFormDialog(
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.retail_price_required_label), style = MaterialTheme.typography.labelLarge) },
                         isError = retailPriceError != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                     OutlinedTextField(
@@ -637,7 +652,8 @@ fun ProductFormDialog(
                         suffix = { Text("%", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.retail_margin_label), style = MaterialTheme.typography.labelLarge) },
                         isError = retailPriceError != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                 }
@@ -672,7 +688,8 @@ fun ProductFormDialog(
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.wholesale_price), style = MaterialTheme.typography.labelLarge) },
                         isError = wholesalePriceError != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                     OutlinedTextField(
@@ -692,7 +709,8 @@ fun ProductFormDialog(
                         suffix = { Text("%", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.wholesale_margin_label), style = MaterialTheme.typography.labelLarge) },
                         isError = wholesalePriceError != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                 }
@@ -727,7 +745,8 @@ fun ProductFormDialog(
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.delivery_price), style = MaterialTheme.typography.labelLarge) },
                         isError = deliveryPriceError != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                     OutlinedTextField(
@@ -747,7 +766,8 @@ fun ProductFormDialog(
                         suffix = { Text("%", fontWeight = FontWeight.Bold) },
                         label = { Text(stringResource(Res.string.delivery_margin_label), style = MaterialTheme.typography.labelLarge) },
                         isError = deliveryPriceError != null,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
                         singleLine = true
                     )
                 }
@@ -783,6 +803,16 @@ fun ProductFormDialog(
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
                         },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                categoryDropdownExpanded = false
+                                focusManager.clearFocus()
+                            }
+                        ),
                         singleLine = true
                     )
                     if (filteredCategories.isNotEmpty() || (formCategoria.trim().isNotEmpty() && !allCategories.any { it.equals(formCategoria.trim(), ignoreCase = true) })) {
@@ -875,32 +905,93 @@ fun ProductFormDialog(
                     Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
                     Text(stringResource(Res.string.mark_as_favorite_label), style = MaterialTheme.typography.labelLarge)
                 }
-            }
-        },
-        confirmButton = {
-            val isNameValid = formNombre.trim().isNotEmpty()
+    }
 
-            Button(
-                onClick = { submitForm() },
-                enabled = isNameValid && isPriceValid && barcodeValidationError == null && !isValidatingBarcode,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = MaterialTheme.shapes.small
+    if (isAndroid()) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 16.dp)
             ) {
                 Text(
-                    if (isAndroid()) {
-                        if (isNew) stringResource(Res.string.save_button) else stringResource(Res.string.save_changes_button)
-                    } else {
-                        if (isNew) stringResource(Res.string.save_button_desktop) else stringResource(Res.string.save_changes_button_desktop)
-                    }
+                    text = if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FormFields()
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    dismissButtonContent()
+                    Spacer(modifier = Modifier.width(8.dp))
+                    confirmButtonContent()
+                }
             }
         }
-    )
+    } else {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+            modifier = Modifier
+                .widthIn(min = 340.dp, max = 640.dp)
+                .fillMaxWidth(0.92f)
+                .then(
+                    Modifier.onPreviewKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            val isEnter = keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
+                            val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                            isEnter && isCtrlOrMeta && if (formNombre.trim().isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode) {
+                                submitForm()
+                                true
+                            } else false
+                        } else false
+                    }
+                ),
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            title = {
+                Text(
+                    text = if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FormFields()
+                }
+            },
+            confirmButton = confirmButtonContent,
+            dismissButton = dismissButtonContent
+        )
+    }
 
     if (showCameraScanner) {
         PlatformBarcodeScanner(

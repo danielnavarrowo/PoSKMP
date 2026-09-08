@@ -876,69 +876,6 @@ fun App(
                                                 }
                                             }
 
-
-                                            // Botón para abrir cajón de dinero
-                                            if (isExpanded) {
-                                                FilledTonalButton(
-                                                    onClick = {
-                                                        triggerOpenCashDrawer()
-                                                    },
-                                                    enabled = !isOpeningDrawer,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .defaultMinSize(minHeight = 48.dp),
-                                                    contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-                                                    shape = ShapeDefaults.middleListItemShape
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier.size(24.dp),
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.point_of_sale),
-                                                            contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                            modifier = Modifier.size(24.dp)
-                                                        )
-                                                    }
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text(
-                                                        text = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        maxLines = 2,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        modifier = Modifier.weight(1f)
-                                                    )
-                                                }
-                                            } else {
-                                                TooltipBox(
-                                                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                                                        TooltipAnchorPosition.Above,
-                                                        4.dp
-                                                    ),
-                                                    tooltip = {
-                                                        PlainTooltip {
-                                                            Text(stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button))
-                                                        }
-                                                    },
-                                                    state = rememberTooltipState()
-                                                ) {
-                                                    FilledTonalIconButton(
-                                                        onClick = {
-                                                            triggerOpenCashDrawer()
-                                                        },
-                                                        enabled = !isOpeningDrawer,
-                                                        shape = MaterialTheme.shapes.medium
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.point_of_sale),
-                                                            contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                            modifier = Modifier.size(20.dp)
-                                                        )
-                                                    }
-                                                }
-                                            }
-
-
                                             // Botón para entrada de efectivo
                                             if (isExpanded) {
                                                 FilledTonalButton(
@@ -1027,7 +964,7 @@ fun App(
                                                         .fillMaxWidth()
                                                         .defaultMinSize(minHeight = 48.dp),
                                                     contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-                                                    shape = if (lastSale != null) ShapeDefaults.middleListItemShape else ShapeDefaults.bottomListItemShape
+                                                    shape = ShapeDefaults.middleListItemShape
                                                 ) {
                                                     Box(
                                                         modifier = Modifier.size(24.dp),
@@ -1081,7 +1018,70 @@ fun App(
                                                     }
                                                 }
                                             }
-                                            lastSale?.let { sale ->
+
+                                                // Botón para abrir cajón de dinero
+                                                if (isExpanded) {
+                                                    FilledTonalButton(
+                                                        onClick = {
+                                                            triggerOpenCashDrawer()
+                                                        },
+                                                        enabled = !isOpeningDrawer,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .defaultMinSize(minHeight = 48.dp),
+                                                        contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+                                                        shape = if (lastSale != null) ShapeDefaults.middleListItemShape else ShapeDefaults.bottomListItemShape
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier.size(24.dp),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.point_of_sale),
+                                                                contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                                modifier = Modifier.size(24.dp)
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                            text = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            maxLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                    }
+                                                } else {
+                                                    TooltipBox(
+                                                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                            TooltipAnchorPosition.Above,
+                                                            4.dp
+                                                        ),
+                                                        tooltip = {
+                                                            PlainTooltip {
+                                                                Text(stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button))
+                                                            }
+                                                        },
+                                                        state = rememberTooltipState()
+                                                    ) {
+                                                        FilledTonalIconButton(
+                                                            onClick = {
+                                                                triggerOpenCashDrawer()
+                                                            },
+                                                            enabled = !isOpeningDrawer,
+                                                            shape = MaterialTheme.shapes.medium
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.point_of_sale),
+                                                                contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
+
+                                                lastSale?.let { sale ->
                                                 // Botón de reimpresión del último ticket
                                                 if (isExpanded) {
                                                     FilledTonalButton(
