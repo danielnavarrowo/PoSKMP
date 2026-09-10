@@ -39,7 +39,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -110,6 +109,7 @@ import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.di.initKoin
 import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
+import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
 import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
 import com.dnavarro.poskmp.navigation.AppRoute
 import com.dnavarro.poskmp.navigation.navSavedStateConfig
@@ -131,7 +131,6 @@ import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.components.DesktopTitleBar
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
-import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
 import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
@@ -151,7 +150,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import poskmp.shared.generated.resources.Res
-import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.btn_cash_inflow
@@ -160,8 +158,6 @@ import poskmp.shared.generated.resources.btn_cash_outflow
 import poskmp.shared.generated.resources.btn_cash_outflow_desktop
 import poskmp.shared.generated.resources.cash_in
 import poskmp.shared.generated.resources.check
-import poskmp.shared.generated.resources.money_transfer
-import poskmp.shared.generated.resources.payments
 import poskmp.shared.generated.resources.exit_backup_sync_dialog_title
 import poskmp.shared.generated.resources.exit_backup_sync_error
 import poskmp.shared.generated.resources.exit_backup_sync_step_backup
@@ -179,7 +175,6 @@ import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.print
 import poskmp.shared.generated.resources.products
-import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.reprint_receipt_button
 import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.supabase_last_sync_format

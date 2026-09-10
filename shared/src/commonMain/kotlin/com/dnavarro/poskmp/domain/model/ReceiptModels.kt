@@ -1,7 +1,6 @@
 package com.dnavarro.poskmp.domain.model
 
-enum class PrinterType(
-) {
+enum class PrinterType {
     THERMAL_80MM
 }
 

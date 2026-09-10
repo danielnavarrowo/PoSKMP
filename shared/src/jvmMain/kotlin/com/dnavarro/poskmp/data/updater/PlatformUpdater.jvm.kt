@@ -246,45 +246,45 @@ actual object PlatformUpdater {
         val currentPid = ProcessHandle.current().pid()
         val scriptFile = File(updateWorkDir, "update.ps1")
 
-        val psScript = """
+        val psScript = $$"""
             param(
-                [int]${'$'}ProcessId,
-                [string]${'$'}SourcePath,
-                [string]${'$'}TargetPath,
-                [string]${'$'}ExecutablePath,
-                [string]${'$'}WorkDir
+                [int]$ProcessId,
+                [string]$SourcePath,
+                [string]$TargetPath,
+                [string]$ExecutablePath,
+                [string]$WorkDir
             )
 
             try {
-                ${'$'}proc = Get-Process -Id ${'$'}ProcessId -ErrorAction SilentlyContinue
-                if (${'$'}proc) {
-                    ${'$'}proc.WaitForExit(15000)
+                $proc = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+                if ($proc) {
+                    $proc.WaitForExit(15000)
                 }
             } catch {}
 
             Start-Sleep -Milliseconds 600
 
-            ${'$'}maxRetries = 10
-            ${'$'}retryCount = 0
-            ${'$'}copied = ${'$'}false
+            $maxRetries = 10
+            $retryCount = 0
+            $copied = $false
 
-            while (-not ${'$'}copied -and ${'$'}retryCount -lt ${'$'}maxRetries) {
+            while (-not $copied -and $retryCount -lt $maxRetries) {
                 try {
-                    Copy-Item -Path "${'$'}SourcePath\*" -Destination "${'$'}TargetPath" -Recurse -Force -ErrorAction Stop
-                    ${'$'}copied = ${'$'}true
+                    Copy-Item -Path "$SourcePath\*" -Destination "$TargetPath" -Recurse -Force -ErrorAction Stop
+                    $copied = $true
                 } catch {
-                    ${'$'}retryCount++
+                    $retryCount++
                     Start-Sleep -Milliseconds 500
                 }
             }
 
-            if (Test-Path "${'$'}ExecutablePath") {
-                Start-Process -FilePath "${'$'}ExecutablePath" -WorkingDirectory "${'$'}TargetPath"
+            if (Test-Path "$ExecutablePath") {
+                Start-Process -FilePath "$ExecutablePath" -WorkingDirectory "$TargetPath"
             }
 
             Start-Sleep -Seconds 3
             try {
-                Remove-Item -Path "${'$'}WorkDir" -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item -Path "$WorkDir" -Recurse -Force -ErrorAction SilentlyContinue
             } catch {}
         """.trimIndent()
 

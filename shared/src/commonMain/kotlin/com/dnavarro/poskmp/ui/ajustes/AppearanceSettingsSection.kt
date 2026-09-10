@@ -113,7 +113,6 @@ import poskmp.shared.generated.resources.reset_scale_button
 import poskmp.shared.generated.resources.seed_color_subtitle
 import poskmp.shared.generated.resources.seed_color_title
 import poskmp.shared.generated.resources.star
-import poskmp.shared.generated.resources.theme_section_title
 
 data class PresetColorItem(
     val color: Color,

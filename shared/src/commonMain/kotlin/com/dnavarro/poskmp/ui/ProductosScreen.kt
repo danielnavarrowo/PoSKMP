@@ -149,13 +149,11 @@ import poskmp.shared.generated.resources.header_retail_margin
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.header_total_sales
 import poskmp.shared.generated.resources.header_wholesale_margin
-import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.new_product_button_desktop
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
 import poskmp.shared.generated.resources.product_admin_title
-import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.reset_filters
 import poskmp.shared.generated.resources.sad_face
