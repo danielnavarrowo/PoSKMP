@@ -89,14 +89,6 @@ fun GeneralSettingsSection(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = "Comportamiento general",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Pantalla Principal al Abrir
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(

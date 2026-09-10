@@ -319,20 +319,20 @@ fun SyncSettingsSection(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Sync Now & Full Sync Buttons
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = onSyncNow,
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = isConfigured && syncState != SyncStateEnum.SYNCING,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.weight(1f)
+                        shape = MaterialTheme.shapes.small
                     ) {
                         if (syncState == SyncStateEnum.SYNCING) {
                             ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
@@ -355,7 +355,8 @@ fun SyncSettingsSection(
                     OutlinedButton(
                         onClick = onForceFullSync,
                         enabled = isConfigured && syncState != SyncStateEnum.SYNCING,
-                        shape = MaterialTheme.shapes.small
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.restore),
@@ -375,7 +376,8 @@ fun SyncSettingsSection(
                             showAuditLogsDialog = true
                         },
                         enabled = isConfigured,
-                        shape = MaterialTheme.shapes.small
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.analytics),

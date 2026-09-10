@@ -64,7 +64,7 @@ fun CashierManagementSection(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        shape = MaterialTheme.shapes.medium,
+        shape = ShapeDefaults.cardShape,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -95,21 +95,6 @@ fun CashierManagementSection(
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                FilledTonalButton(
-                    onClick = {
-                        onClearMessage()
-                        isAddingNew = true
-                    },
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.add),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(stringResource(Res.string.add_cashier_button), fontSize = 13.sp)
-                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -259,6 +244,23 @@ fun CashierManagementSection(
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(16.dp))
+                            FilledTonalButton(
+                    onClick = {
+                        onClearMessage()
+                        isAddingNew = true
+                    },
+                    shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.align(Alignment.End)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.add),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(stringResource(Res.string.add_cashier_button), fontSize = 13.sp)
+                }
         }
     }
 

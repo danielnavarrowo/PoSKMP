@@ -189,15 +189,6 @@ fun AppearanceSettingsSection(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = stringResource(Res.string.theme_section_title),
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Row 1: Dynamic Color Toggle (Android Only)
                 if (isAndroid()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
