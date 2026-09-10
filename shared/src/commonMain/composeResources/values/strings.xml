@@ -852,4 +852,10 @@
     <string name="delivery_channel_delivery">A Domicilio (Entrega)</string>
     <string name="delivery_stat_format">%1$d tickets • %2$s%% del total</string>
     <string name="delivery_stat_profit_format">Ganancia: $%1$s • Promedio: $%2$s/ticket</string>
+
+    <!-- Calculadora -->
+    <string name="calculator_title">Calculadora</string>
+    <string name="calculator_button">Calculadora</string>
+    <string name="calculator_button_desktop">Calculadora (F6)</string>
+    <string name="calculator_copied">Resultado copiado al portapapeles</string>
 </resources>

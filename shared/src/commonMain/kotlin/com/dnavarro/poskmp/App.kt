@@ -120,6 +120,7 @@ import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.AjustesScreen
+import com.dnavarro.poskmp.ui.CalculatorDialog
 import com.dnavarro.poskmp.ui.ChecadorDialog
 import com.dnavarro.poskmp.ui.ChecadorScreen
 import com.dnavarro.poskmp.ui.ClientesScreen
@@ -156,6 +157,9 @@ import poskmp.shared.generated.resources.btn_cash_inflow
 import poskmp.shared.generated.resources.btn_cash_inflow_desktop
 import poskmp.shared.generated.resources.btn_cash_outflow
 import poskmp.shared.generated.resources.btn_cash_outflow_desktop
+import poskmp.shared.generated.resources.calculate
+import poskmp.shared.generated.resources.calculator_button
+import poskmp.shared.generated.resources.calculator_button_desktop
 import poskmp.shared.generated.resources.cash_in
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.exit_backup_sync_dialog_title
@@ -390,6 +394,7 @@ fun App(
             val currentRoute = (backStack.lastOrNull() as? AppRoute) ?: defaultRoute
             val currentScreen = currentRoute.toScreen()
             var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
+            var showCalculatorDialog by rememberSaveable { mutableStateOf(false) }
 
             fun navigateTo(route: AppRoute) {
                 hasUserNavigated = true
@@ -463,6 +468,7 @@ fun App(
             val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
 
             val isChecadorDialog = ajustesUiState.isChecadorDialog
+            val isChecadorFullScreen = currentScreen == Screen.CHECADOR && !isChecadorDialog
             val useDynamicColor = ajustesUiState.useDynamicColor
             val seedColor = ajustesUiState.seedColor
             val isAmoled = ajustesUiState.isAmoled
@@ -506,7 +512,7 @@ fun App(
                     Column(
                         modifier = modifier.fillMaxSize()
                     ) {
-                        if (!isAndroid()) {
+                        if (!isAndroid() && !isChecadorFullScreen) {
                             DesktopTitleBar(
                                 dateTimeText = desktopDateTimeText,
                                 lastSale = lastSale,
@@ -554,6 +560,14 @@ fun App(
                                                 Key.F5 -> {
                                                     navigateTo(AppRoute.Clientes)
                                                     clientesRefocusTrigger++
+                                                    true
+                                                }
+
+                                                Key.F6 -> {
+                                                    showCalculatorDialog = !showCalculatorDialog
+                                                    if (!showCalculatorDialog) {
+                                                        reclaimCurrentScreenFocus()
+                                                    }
                                                     true
                                                 }
 
@@ -693,7 +707,7 @@ fun App(
                         }
                     }
 
-                    val showNavLayout = !(currentScreen == Screen.CHECADOR && !isChecadorDialog)
+                    val showNavLayout = !isChecadorFullScreen
                     val navigationLayoutType = if (showNavLayout) navigationSuiteTypeForWidth(appMaxWidth) else NavigationSuiteType.None
 
                     LaunchedEffect(currentScreen, isChecadorDialog) {
@@ -870,6 +884,66 @@ fun App(
                                                     )
                                                 }
                                             }
+                                                if (isExpanded) {
+                                                    FilledTonalButton(
+                                                        onClick = {
+                                                            showCalculatorDialog = true
+                                                            reclaimCurrentScreenFocus()
+                                                        },
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .defaultMinSize(minHeight = 48.dp),
+                                                        contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+                                                        shape = ShapeDefaults.middleListItemShape
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier.size(24.dp),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.calculate),
+                                                                contentDescription = stringResource(if (isDesktop) Res.string.calculator_button_desktop else Res.string.calculator_button),
+                                                                modifier = Modifier.size(24.dp)
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                            text = stringResource(if (isDesktop) Res.string.calculator_button_desktop else Res.string.calculator_button),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            maxLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                    }
+                                                } else {
+                                                    TooltipBox(
+                                                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                            TooltipAnchorPosition.Above,
+                                                            4.dp
+                                                        ),
+                                                        tooltip = {
+                                                            PlainTooltip {
+                                                                Text(stringResource(if (isDesktop) Res.string.calculator_button_desktop else Res.string.calculator_button))
+                                                            }
+                                                        },
+                                                        state = rememberTooltipState()
+                                                    ) {
+                                                        FilledTonalIconButton(
+                                                            onClick = {
+                                                                showCalculatorDialog = true
+                                                                reclaimCurrentScreenFocus()
+                                                            },
+                                                            shape = MaterialTheme.shapes.medium
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.calculate),
+                                                                contentDescription = stringResource(if (isDesktop) Res.string.calculator_button_desktop else Res.string.calculator_button),
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
 
                                             // Botón para entrada de efectivo
                                             if (isExpanded) {
@@ -1383,6 +1457,14 @@ fun App(
                         onDismiss = { showPriceCheckerDialog = false },
                         repository = repository,
                         showExtraPrices = ajustesUiState.showExtraPricesChecador
+                    )
+
+                    CalculatorDialog(
+                        showDialog = showCalculatorDialog,
+                        onDismiss = {
+                            showCalculatorDialog = false
+                            reclaimCurrentScreenFocus()
+                        }
                     )
 
                     if (isExiting && autoBackupEnabled && !isAndroid() && activeShift == null && exitStep != ExitProgressStep.IDLE) {

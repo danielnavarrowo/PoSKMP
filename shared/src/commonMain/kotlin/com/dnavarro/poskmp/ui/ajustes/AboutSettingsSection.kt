@@ -1,6 +1,8 @@
 package com.dnavarro.poskmp.ui.ajustes
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +54,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.app_icon
 import poskmp.shared.generated.resources.app_up_to_date
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.check_updates_button
@@ -114,22 +117,13 @@ fun AboutSettingsSection(
                 modifier = Modifier.padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
+                Image(
+                    painter = painterResource(Res.drawable.app_icon),
+                    contentDescription = null,
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.shapes.small
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.settings),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                        .size(52.dp)
+                        .background(Color.Transparent, RoundedCornerShape(32.dp))
+                )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(

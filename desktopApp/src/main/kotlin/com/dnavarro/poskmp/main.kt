@@ -34,7 +34,7 @@ fun main() {
 
     application {
         val windowState = rememberWindowState(
-            placement = WindowPlacement.Maximized
+            placement = WindowPlacement.Fullscreen
         )
         var isClosing by remember { mutableStateOf(false) }
 
