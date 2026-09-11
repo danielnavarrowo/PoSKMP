@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.products (
 
 CREATE INDEX IF NOT EXISTS idx_products_updated_at ON public.products(updated_at);
 CREATE INDEX IF NOT EXISTS idx_products_activo ON public.products(activo);
+CREATE INDEX IF NOT EXISTS idx_products_codigos ON public.products(codigos);
 
 -- 2. TABLA: customers (Directorio de Clientes)
 CREATE TABLE IF NOT EXISTS public.customers (
@@ -282,6 +283,82 @@ AFTER INSERT OR UPDATE OR DELETE ON public.store_settings
 FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
 
 -- =========================================================================
+-- 12. CONTROL DE CONCURRENCIA: Prevenir sobreescritura de datos obsoletos
+-- =========================================================================
+-- Si un cliente sin conexión o desactualizado envía datos antiguos, este trigger
+-- rechaza la sobreescritura manteniendo el registro más reciente en la nube.
+CREATE OR REPLACE FUNCTION public.prevent_stale_data_overwrite()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.updated_at <= OLD.updated_at THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_products ON public.products;
+CREATE TRIGGER trg_prevent_stale_products
+BEFORE UPDATE ON public.products
+FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_customers ON public.customers;
+CREATE TRIGGER trg_prevent_stale_customers
+BEFORE UPDATE ON public.customers
+FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_cashiers ON public.cashiers;
+CREATE TRIGGER trg_prevent_stale_cashiers
+BEFORE UPDATE ON public.cashiers
+FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_store_settings ON public.store_settings;
+CREATE TRIGGER trg_prevent_stale_store_settings
+BEFORE UPDATE ON public.store_settings
+FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+-- =========================================================================
+-- 13. INTEGRIDAD DE DATOS: Prevenir duplicidad de códigos de barras activos
+-- =========================================================================
+CREATE OR REPLACE FUNCTION public.fn_check_duplicate_barcode()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_code TEXT;
+    v_dup_id TEXT;
+    v_dup_name TEXT;
+BEGIN
+    IF NEW.activo AND NEW.codigos IS NOT NULL AND NEW.codigos != '[]' AND NEW.codigos != '' THEN
+        BEGIN
+            FOR v_code IN SELECT json_array_elements_text(NEW.codigos::json)
+            LOOP
+                IF v_code IS NOT NULL AND TRIM(v_code) != '' THEN
+                    SELECT id, nombre INTO v_dup_id, v_dup_name
+                    FROM public.products
+                    WHERE id != NEW.id
+                      AND activo = true
+                      AND codigos::jsonb ? v_code
+                    LIMIT 1;
+
+                    IF v_dup_id IS NOT NULL THEN
+                        RAISE EXCEPTION 'Código de barras duplicado: "%" ya está asignado al producto activo "%" (ID: %)', v_code, v_dup_name, v_dup_id;
+                    END IF;
+                END IF;
+            END LOOP;
+        EXCEPTION
+            WHEN invalid_text_representation THEN
+                NULL;
+        END;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_check_duplicate_barcode ON public.products;
+CREATE TRIGGER trg_check_duplicate_barcode
+BEFORE INSERT OR UPDATE ON public.products
+FOR EACH ROW EXECUTE FUNCTION public.fn_check_duplicate_barcode();
+
+-- =========================================================================
 -- SCRIPT DE MIGRACIÓN PARA BASES DE DATOS SUPABASE EXISTENTES
 -- =========================================================================
 -- Si ya tenías creada tu base de datos en Supabase, ejecuta este bloque para actualizarla:
@@ -459,4 +536,66 @@ CREATE TRIGGER trg_audit_sales AFTER INSERT OR UPDATE OR DELETE ON public.sales 
 
 DROP TRIGGER IF EXISTS trg_audit_store_settings ON public.store_settings;
 CREATE TRIGGER trg_audit_store_settings AFTER INSERT OR UPDATE OR DELETE ON public.store_settings FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
+
+-- Control de concurrencia (evitar sobreescritura de datos obsoletos en sincronización):
+CREATE OR REPLACE FUNCTION public.prevent_stale_data_overwrite()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.updated_at <= OLD.updated_at THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_products ON public.products;
+CREATE TRIGGER trg_prevent_stale_products BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_customers ON public.customers;
+CREATE TRIGGER trg_prevent_stale_customers BEFORE UPDATE ON public.customers FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_cashiers ON public.cashiers;
+CREATE TRIGGER trg_prevent_stale_cashiers BEFORE UPDATE ON public.cashiers FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_store_settings ON public.store_settings;
+CREATE TRIGGER trg_prevent_stale_store_settings BEFORE UPDATE ON public.store_settings FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+-- Integridad de códigos de barras (índice y prevención de duplicados activos):
+CREATE INDEX IF NOT EXISTS idx_products_codigos ON public.products(codigos);
+
+CREATE OR REPLACE FUNCTION public.fn_check_duplicate_barcode()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_code TEXT;
+    v_dup_id TEXT;
+    v_dup_name TEXT;
+BEGIN
+    IF NEW.activo AND NEW.codigos IS NOT NULL AND NEW.codigos != '[]' AND NEW.codigos != '' THEN
+        BEGIN
+            FOR v_code IN SELECT json_array_elements_text(NEW.codigos::json)
+            LOOP
+                IF v_code IS NOT NULL AND TRIM(v_code) != '' THEN
+                    SELECT id, nombre INTO v_dup_id, v_dup_name
+                    FROM public.products
+                    WHERE id != NEW.id
+                      AND activo = true
+                      AND codigos::jsonb ? v_code
+                    LIMIT 1;
+
+                    IF v_dup_id IS NOT NULL THEN
+                        RAISE EXCEPTION 'Código de barras duplicado: "%" ya está asignado al producto activo "%" (ID: %)', v_code, v_dup_name, v_dup_id;
+                    END IF;
+                END IF;
+            END LOOP;
+        EXCEPTION
+            WHEN invalid_text_representation THEN
+                NULL;
+        END;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_check_duplicate_barcode ON public.products;
+CREATE TRIGGER trg_check_duplicate_barcode BEFORE INSERT OR UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.fn_check_duplicate_barcode();
 */

@@ -330,7 +330,7 @@ class SyncRepositoryImpl(
             queries.transaction {
                 for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, precioDelivery, esFavorito, piezas, updatedAt) in remoteProducts) {
                     val local = queries.selectProductById(id).executeAsOneOrNull()
-                    if (local == null || updatedAt >= local.updated_at || local.sync_state == "SYNCED") {
+                    if (local == null || updatedAt >= local.updated_at) {
                         queries.upsertSyncedProduct(
                             id = id,
                             codigos = codigos,
@@ -360,7 +360,7 @@ class SyncRepositoryImpl(
             queries.transaction {
                 for ((id, nombre, telefono, direccion, notas, limiteCredito, siempreMayoreo, activo, createdAt, updatedAt) in remoteCustomers) {
                     val local = queries.selectCustomerById(id).executeAsOneOrNull()
-                    if (local == null || updatedAt >= local.updated_at || local.sync_state == "SYNCED") {
+                    if (local == null || updatedAt >= local.updated_at) {
                         queries.upsertSyncedCustomer(
                             id = id,
                             nombre = nombre,
@@ -410,7 +410,7 @@ class SyncRepositoryImpl(
             queries.transaction {
                 for ((id, nombre, pin, activo, createdAt, updatedAt) in remoteCashiers) {
                     val local = queries.selectCashierById(id).executeAsOneOrNull()
-                    if (local == null || updatedAt >= local.updated_at || local.sync_state == "SYNCED") {
+                    if (local == null || updatedAt >= local.updated_at) {
                         queries.upsertSyncedCashier(
                             id = id,
                             nombre = nombre,
