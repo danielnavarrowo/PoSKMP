@@ -26,7 +26,23 @@ class MainActivity : ComponentActivity() {
         initKoin()
 
         setContent {
-            App()
+            App(
+                onDarkThemeChanged = { darkTheme ->
+                    enableEdgeToEdge(
+                        statusBarStyle = SystemBarStyle.auto(
+                            Color.TRANSPARENT,
+                            Color.TRANSPARENT,
+                            detectDarkMode = { darkTheme }
+                        ),
+                        navigationBarStyle = SystemBarStyle.auto(
+                            Color.TRANSPARENT,
+                            Color.TRANSPARENT,
+                            detectDarkMode = { darkTheme }
+                        )
+                    )
+                    window.isNavigationBarContrastEnforced = false
+                }
+            )
         }
     }
 }

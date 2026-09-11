@@ -64,6 +64,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -234,7 +235,8 @@ fun App(
     onCancelExit: () -> Unit = {},
     onExitCompleted: () -> Unit = {},
     onMinimize: (() -> Unit)? = null,
-    onClose: (() -> Unit)? = null
+    onClose: (() -> Unit)? = null,
+    onDarkThemeChanged: ((Boolean) -> Unit)? = null
 ) {
     initKoin()
 
@@ -485,6 +487,11 @@ fun App(
                 DarkModeConfig.SYSTEM -> systemInDark
                 DarkModeConfig.LIGHT -> false
                 DarkModeConfig.DARK -> true
+            }
+
+            DisposableEffect(darkTheme) {
+                onDarkThemeChanged?.invoke(darkTheme)
+                onDispose {}
             }
 
             val currentDensity = LocalDensity.current

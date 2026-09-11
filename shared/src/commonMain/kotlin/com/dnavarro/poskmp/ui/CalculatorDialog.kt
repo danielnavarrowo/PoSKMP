@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -420,7 +421,7 @@ fun CalculatorDialog(
                         onClick = { onNegate() },
                         modifier = Modifier.weight(1f),
                         containerColor = actionContainer,
-                        contentColor = actionContent
+                        contentColor = actionContent,
                     )
                     CalcButton(
                         text = "%",
@@ -552,7 +553,8 @@ private fun CalcButton(
             text = text,
             fontSize = fontSize,
             fontWeight = fontWeight,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            fontFamily = FontFamily.Monospace
         )
     }
 }

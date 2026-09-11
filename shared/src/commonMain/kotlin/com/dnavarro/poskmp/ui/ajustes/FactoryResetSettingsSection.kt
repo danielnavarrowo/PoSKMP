@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,11 +32,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.cancel
-import poskmp.shared.generated.resources.danger_zone_section_subtitle
 import poskmp.shared.generated.resources.danger_zone_section_title
 import poskmp.shared.generated.resources.delete
 import poskmp.shared.generated.resources.factory_reset_button
@@ -89,22 +88,15 @@ fun FactoryResetSettingsSection(
                     color = MaterialTheme.colorScheme.error
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(Res.string.danger_zone_section_subtitle),
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Action row
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                Column(modifier = Modifier.padding(end = 16.dp)) {
                     Text(
                         text = stringResource(Res.string.factory_reset_title),
                         fontWeight = FontWeight.SemiBold,
@@ -126,7 +118,8 @@ fun FactoryResetSettingsSection(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError
                     ),
-                    shape = MaterialTheme.shapes.small
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isResettingApp) {
                         CircularProgressIndicator(

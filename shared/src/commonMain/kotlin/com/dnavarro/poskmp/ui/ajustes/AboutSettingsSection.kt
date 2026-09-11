@@ -2,7 +2,6 @@ package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
@@ -47,6 +46,7 @@ import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.ImportProductsDialog
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.saveFile
@@ -59,15 +59,14 @@ import poskmp.shared.generated.resources.app_up_to_date
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.check_updates_button
 import poskmp.shared.generated.resources.checking_updates
+import poskmp.shared.generated.resources.download
 import poskmp.shared.generated.resources.download_and_install_button
 import poskmp.shared.generated.resources.downloading_update
-import poskmp.shared.generated.resources.download
 import poskmp.shared.generated.resources.export_button
 import poskmp.shared.generated.resources.export_success_message
 import poskmp.shared.generated.resources.import_button
 import poskmp.shared.generated.resources.installing_update
 import poskmp.shared.generated.resources.no_compatible_asset
-import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.sync
 import poskmp.shared.generated.resources.system_info_title
 import poskmp.shared.generated.resources.system_version

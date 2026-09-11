@@ -4,6 +4,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.graphics.Color
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.DynamicMaterialExpressiveTheme
@@ -25,10 +29,17 @@ fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+    val currentContent by rememberUpdatedState(content)
+    val movableContent = remember {
+        movableContentOf {
+            currentContent()
+        }
+    }
+
     if (useDynamicColor && isAndroid()) {
         SystemDynamicTheme(
             darkTheme = darkTheme,
-            content = content
+            content = movableContent
         )
     } else {
         DynamicMaterialExpressiveTheme(
@@ -39,7 +50,7 @@ fun AppTheme(
             isDark = darkTheme,
             animate = true,
             style = paletteStyle,
-            content = content
+            content = movableContent
         )
     }
 }
