@@ -44,7 +44,8 @@ fun main() {
             },
             state = windowState,
             title = "Punto de Venta",
-            icon = painterResource(Res.drawable.app_icon)
+            icon = painterResource(Res.drawable.app_icon),
+            undecorated = true
         ) {
             App(
                 isExiting = isClosing,
