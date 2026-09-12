@@ -61,7 +61,7 @@ class RecordSaleUseCase(
             total += itemSubtotal
             totalOriginal += itemOrigSubtotal
             totalCosto += itemCost
-            totalItemsCount += qty
+            totalItemsCount += if (cartItem.product.por_peso == 1L) 1.0 else qty
 
             SaleItem(
                 id = generateUUID(),

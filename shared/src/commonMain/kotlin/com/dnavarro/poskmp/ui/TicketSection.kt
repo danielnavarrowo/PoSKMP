@@ -476,7 +476,7 @@ fun TicketSection(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             val productCount = cartItems.size
-            val piecesCount = cartItems.sumOf { it.quantity }
+            val piecesCount = cartItems.sumOf { if (it.product.por_peso == 1L) 1.0 else it.quantity }
             val formattedPieces = if (piecesCount % 1.0 == 0.0) {
                 piecesCount.toInt().toString()
             } else {

@@ -39,7 +39,8 @@ object ReceiptFormatter {
             change = sale.cambio,
             paymentMethod = sale.metodoPago,
             customerName = customerName,
-            settings = settings
+            settings = settings,
+            overrideTotalPieces = sale.totalItems
         )
     }
 
@@ -52,7 +53,8 @@ object ReceiptFormatter {
         change: Double,
         paymentMethod: String,
         customerName: String?,
-        settings: ReceiptSettings
+        settings: ReceiptSettings,
+        overrideTotalPieces: Double? = null
     ): ReceiptDocument {
         val baseCharsPer80mm = when {
             settings.fontSize >= 25 -> 16
@@ -123,7 +125,7 @@ object ReceiptFormatter {
 
         // 4. Products and Pieces count
         val totalProducts = items.size
-        val totalPieces = items.sumOf { it.quantity }
+        val totalPieces = overrideTotalPieces ?: items.sumOf { if (it.isWeightBased) 1.0 else it.quantity }
         val formattedPieces = if (totalPieces % 1.0 == 0.0) {
             totalPieces.toInt().toString()
         } else {

@@ -17,7 +17,7 @@ data class HeldTicket(
     val total: Double
         get() = items.sumOf { it.product.precio * it.quantity }
     val totalItemsCount: Double
-        get() = items.sumOf { it.quantity }
+        get() = items.sumOf { if (it.product.por_peso == 1L) 1.0 else it.quantity }
 }
 
 /**
