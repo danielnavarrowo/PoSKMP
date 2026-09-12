@@ -49,6 +49,7 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
@@ -149,6 +150,7 @@ import poskmp.shared.generated.resources.header_retail_margin
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.header_total_sales
 import poskmp.shared.generated.resources.header_wholesale_margin
+import poskmp.shared.generated.resources.info
 import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.new_product_button_desktop
 import poskmp.shared.generated.resources.no_category
@@ -268,24 +270,26 @@ fun ProductosScreen(
             }
 
             Key.F10 -> {
-                viewModel.onShowProductDialog(
-                    Products(
-                        id = "",
-                        codigos = "[]",
-                        nombre = "",
-                        precio = 0.0,
-                        costo = 0.0,
-                        categoria = "",
-                        activo = 1L,
-                        por_peso = 0L,
-                        precio_mayoreo = 0.0,
-                        es_favorito = 0L,
-                        piezas = 1.0,
-                        precio_delivery = 0.0,
-                        updated_at = 0L,
-                        sync_state = ""
+                if (uiState.canEditProducts) {
+                    viewModel.onShowProductDialog(
+                        Products(
+                            id = "",
+                            codigos = "[]",
+                            nombre = "",
+                            precio = 0.0,
+                            costo = 0.0,
+                            categoria = "",
+                            activo = 1L,
+                            por_peso = 0L,
+                            precio_mayoreo = 0.0,
+                            es_favorito = 0L,
+                            piezas = 1.0,
+                            precio_delivery = 0.0,
+                            updated_at = 0L,
+                            sync_state = ""
+                        )
                     )
-                )
+                }
                 true
             }
 
@@ -385,7 +389,7 @@ fun ProductosScreen(
                 ) {
                     // Menu FAB for Bulk Operations (Appears ABOVE when products are selected)
                     AnimatedVisibility(
-                        visible = selectedProductIds.isNotEmpty(),
+                        visible = uiState.canEditProducts && selectedProductIds.isNotEmpty(),
                         enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
                                 scaleIn(
                                     initialScale = 0.8f,
@@ -516,36 +520,38 @@ fun ProductosScreen(
                     }
 
                     if (isAndroid()) {
-                        FloatingActionButton(
-                            onClick = {
-                                viewModel.onShowProductDialog(
-                                    Products(
-                                        id = "",
-                                        codigos = "[]",
-                                        nombre = "",
-                                        precio = 0.0,
-                                        costo = 0.0,
-                                        categoria = "",
-                                        activo = 1L,
-                                        por_peso = 0L,
-                                        precio_mayoreo = 0.0,
-                                        es_favorito = 0L,
-                                        piezas = 1.0,
-                                        precio_delivery = 0.0,
-                                        updated_at = 0L,
-                                        sync_state = ""
+                        if (uiState.canEditProducts) {
+                            FloatingActionButton(
+                                onClick = {
+                                    viewModel.onShowProductDialog(
+                                        Products(
+                                            id = "",
+                                            codigos = "[]",
+                                            nombre = "",
+                                            precio = 0.0,
+                                            costo = 0.0,
+                                            categoria = "",
+                                            activo = 1L,
+                                            por_peso = 0L,
+                                            precio_mayoreo = 0.0,
+                                            es_favorito = 0L,
+                                            piezas = 1.0,
+                                            precio_delivery = 0.0,
+                                            updated_at = 0L,
+                                            sync_state = ""
+                                        )
                                     )
+                                },
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.add),
+                                    contentDescription = stringResource(Res.string.new_product_button)
                                 )
-                            },
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.add),
-                                contentDescription = stringResource(Res.string.new_product_button)
-                            )
+                            }
+                            Spacer(modifier.height(16.dp))
                         }
-                        Spacer(modifier.height(16.dp))
 
                         if (isCompact) {
                             ExtendedFloatingActionButton(
@@ -579,74 +585,76 @@ fun ProductosScreen(
                             )
                         }
                     } else {
-                        if (isCompact) {
-                            ExtendedFloatingActionButton(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                                onClick = {
-                                    viewModel.onShowProductDialog(
-                                        Products(
-                                            id = "",
-                                            codigos = "[]",
-                                            nombre = "",
-                                            precio = 0.0,
-                                            costo = 0.0,
-                                            categoria = "",
-                                            activo = 1L,
-                                            por_peso = 0L,
-                                            precio_mayoreo = 0.0,
-                                            es_favorito = 0L,
-                                            piezas = 1.0,
-                                            precio_delivery = 0.0,
-                                            updated_at = 0L,
-                                            sync_state = ""
+                        if (uiState.canEditProducts) {
+                            if (isCompact) {
+                                ExtendedFloatingActionButton(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    onClick = {
+                                        viewModel.onShowProductDialog(
+                                            Products(
+                                                id = "",
+                                                codigos = "[]",
+                                                nombre = "",
+                                                precio = 0.0,
+                                                costo = 0.0,
+                                                categoria = "",
+                                                activo = 1L,
+                                                por_peso = 0L,
+                                                precio_mayoreo = 0.0,
+                                                es_favorito = 0L,
+                                                piezas = 1.0,
+                                                precio_delivery = 0.0,
+                                                updated_at = 0L,
+                                                sync_state = ""
+                                            )
                                         )
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.add),
-                                        contentDescription = null
-                                    )
-                                },
-                                text = {
-                                    Text(stringResource(Res.string.new_product_button_desktop))
-                                }
-                            )
-                        } else {
-                            LargeExtendedFloatingActionButton(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                                onClick = {
-                                    viewModel.onShowProductDialog(
-                                        Products(
-                                            id = "",
-                                            codigos = "[]",
-                                            nombre = "",
-                                            precio = 0.0,
-                                            costo = 0.0,
-                                            categoria = "",
-                                            activo = 1L,
-                                            por_peso = 0L,
-                                            precio_mayoreo = 0.0,
-                                            es_favorito = 0L,
-                                            piezas = 1.0,
-                                            precio_delivery = 0.0,
-                                            updated_at = 0L,
-                                            sync_state = ""
+                                    },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.add),
+                                            contentDescription = null
                                         )
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.add),
-                                        contentDescription = null
-                                    )
-                                },
-                                text = {
-                                    Text(stringResource(Res.string.new_product_button_desktop))
-                                }
-                            )
+                                    },
+                                    text = {
+                                        Text(stringResource(Res.string.new_product_button_desktop))
+                                    }
+                                )
+                            } else {
+                                LargeExtendedFloatingActionButton(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    onClick = {
+                                        viewModel.onShowProductDialog(
+                                            Products(
+                                                id = "",
+                                                codigos = "[]",
+                                                nombre = "",
+                                                precio = 0.0,
+                                                costo = 0.0,
+                                                categoria = "",
+                                                activo = 1L,
+                                                por_peso = 0L,
+                                                precio_mayoreo = 0.0,
+                                                es_favorito = 0L,
+                                                piezas = 1.0,
+                                                precio_delivery = 0.0,
+                                                updated_at = 0L,
+                                                sync_state = ""
+                                            )
+                                        )
+                                    },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.add),
+                                            contentDescription = null
+                                        )
+                                    },
+                                    text = {
+                                        Text(stringResource(Res.string.new_product_button_desktop))
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -832,7 +840,33 @@ fun ProductosScreen(
 
 
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        if (!uiState.canEditProducts) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.info),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "Catálogo en modo solo lectura. Esta terminal no realiza modificaciones en los productos ni sincroniza cambios de catálogo a la nube.",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
                         // PRODUCTS TABLE
                         Card(
@@ -1017,7 +1051,8 @@ fun ProductosScreen(
                     defaultRetailMarginPercentage = uiState.defaultRetailMargin,
                     defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
                     defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
-                    roundProductPrices = uiState.roundProductPrices
+                    roundProductPrices = uiState.roundProductPrices,
+                    readOnly = !uiState.canEditProducts
                 )
             }
 

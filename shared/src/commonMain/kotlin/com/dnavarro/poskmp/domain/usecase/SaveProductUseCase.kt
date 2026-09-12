@@ -16,25 +16,48 @@ class SaveProductUseCase(
     suspend operator fun invoke(product: Products) {
         val now = currentTimeMillis()
         val parsedCodes = parseBarcodes(product.codigos)
-        val existingProductByBarcode = if (product.id.isBlank() && parsedCodes.isNotEmpty()) {
+
+        // 1. Check if this product already exists in the local database by its ID
+        val existingById = if (product.id.isNotBlank()) {
+            repository.getProductById(product.id)
+        } else {
+            null
+        }
+
+        // 2. If not found by ID and barcodes are provided, check if a product with this barcode already exists
+        val existingByBarcode = if (existingById == null && parsedCodes.isNotEmpty()) {
             repository.findConflictingProductForBarcodes(parsedCodes)?.second
         } else {
             null
         }
 
-        val formattedId = when {
+        // 3. Resolve canonical ID
+        val finalId = when {
+            existingById != null -> existingById.id
+            existingByBarcode != null -> existingByBarcode.id
             product.id.isNotBlank() -> product.id
-            existingProductByBarcode != null -> existingProductByBarcode.id
             else -> generateUUID()
         }
 
+        // 4. Determine if this is a brand new product
+        val isBrandNew = existingById == null && existingByBarcode == null
+
+        // 5. Determine sync state: preserve PENDING_INSERT if it was never pushed to remote yet
+        val syncState = if (isBrandNew) {
+            "PENDING_INSERT"
+        } else {
+            val previousSyncState = existingById?.sync_state ?: existingByBarcode?.sync_state
+            if (previousSyncState == "PENDING_INSERT") "PENDING_INSERT" else "PENDING_UPDATE"
+        }
+
         val updatedProduct = product.copy(
-            id = formattedId,
+            id = finalId,
             updated_at = now,
-            sync_state = if (product.id.isBlank() && existingProductByBarcode == null) "PENDING_INSERT" else "PENDING_UPDATE"
+            sync_state = syncState
         )
 
-        if (product.id.isBlank() && existingProductByBarcode == null && repository.getProductById(formattedId) == null) {
+        // 6. Insert new product or update existing
+        if (isBrandNew || repository.getProductById(finalId) == null) {
             repository.insertProduct(updatedProduct)
         } else {
             repository.updateProduct(updatedProduct)

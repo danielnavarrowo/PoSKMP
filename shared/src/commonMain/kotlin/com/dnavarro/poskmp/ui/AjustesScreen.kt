@@ -58,6 +58,7 @@ import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.domain.model.Cashier
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.ajustes.AboutSettingsSection
@@ -166,6 +167,10 @@ fun AjustesScreen(
         onTestAndSaveSupabaseConnection = { url, key -> viewModel.testAndSaveConnection(url, key) },
         onSyncNow = { viewModel.syncNow() },
         onForceFullSync = { viewModel.syncNow(forceFullSync = true) },
+        deviceRole = uiState.deviceRole,
+        onDeviceRoleChange = { viewModel.setDeviceRole(it) },
+        terminalPrefix = uiState.terminalPrefix,
+        onTerminalPrefixChange = { viewModel.setTerminalPrefix(it) },
         currentVersion = uiState.currentVersion,
         isCheckingUpdates = uiState.isCheckingUpdates,
         updateCheckResult = uiState.updateCheckResult,
@@ -263,6 +268,10 @@ fun AjustesScreen(
     onTestAndSaveSupabaseConnection: (url: String, key: String) -> Unit = { _, _ -> },
     onSyncNow: () -> Unit = {},
     onForceFullSync: () -> Unit = {},
+    deviceRole: DeviceRole = DeviceRole.ADMIN,
+    onDeviceRoleChange: (DeviceRole) -> Unit = {},
+    terminalPrefix: String = "",
+    onTerminalPrefixChange: (String) -> Unit = {},
     currentVersion: String = AppConstants.APP_VERSION,
     isCheckingUpdates: Boolean = false,
     updateCheckResult: UpdateCheckResult? = null,
@@ -637,7 +646,11 @@ fun AjustesScreen(
                                     remoteAuditLogs = remoteAuditLogs,
                                     isLoadingAuditLogs = isLoadingAuditLogs,
                                     auditLogsError = auditLogsError,
-                                    onFetchRemoteAuditLogs = onFetchRemoteAuditLogs
+                                    onFetchRemoteAuditLogs = onFetchRemoteAuditLogs,
+                                    deviceRole = deviceRole,
+                                    onDeviceRoleChange = onDeviceRoleChange,
+                                    terminalPrefix = terminalPrefix,
+                                    onTerminalPrefixChange = onTerminalPrefixChange
                                 )
                             }
 

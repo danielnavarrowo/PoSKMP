@@ -105,7 +105,8 @@ fun ProductFormDialog(
     defaultRetailMarginPercentage: Double = 0.0,
     defaultWholesaleMarginPercentage: Double = 0.0,
     defaultDeliveryMarginPercentage: Double = 0.0,
-    roundProductPrices: Boolean = false
+    roundProductPrices: Boolean = false,
+    readOnly: Boolean = false
 ) {
     val isNew = product == null || product.id.isEmpty()
     val focusManager = LocalFocusManager.current
@@ -383,6 +384,7 @@ fun ProductFormDialog(
     }
 
     fun submitForm() {
+        if (readOnly) return
         val id = product?.id?.ifEmpty { generateUUID() } ?: generateUUID()
         val finalBarcodes = (formBarcodes + parseBarcodes(barcodeInput)).distinct()
         val formattedCodes = finalBarcodes.encodeToJsonBarcodes()
@@ -416,25 +418,27 @@ fun ProductFormDialog(
     val isNameValid = formNombre.trim().isNotEmpty()
 
     val confirmButtonContent: @Composable () -> Unit = {
-        Button(
-            onClick = { submitForm() },
-            enabled = isNameValid && isPriceValid && barcodeValidationError == null && !isValidatingBarcode,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = MaterialTheme.shapes.small
-        ) {
-            Text(
-                if (isAndroid()) {
-                    if (isNew) stringResource(Res.string.save_button) else stringResource(Res.string.save_changes_button)
-                } else {
-                    if (isNew) stringResource(Res.string.save_button_desktop) else stringResource(Res.string.save_changes_button_desktop)
-                }
-            )
+        if (!readOnly) {
+            Button(
+                onClick = { submitForm() },
+                enabled = isNameValid && isPriceValid && barcodeValidationError == null && !isValidatingBarcode,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = MaterialTheme.shapes.small
+            ) {
+                Text(
+                    if (isAndroid()) {
+                        if (isNew) stringResource(Res.string.save_button) else stringResource(Res.string.save_changes_button)
+                    } else {
+                        if (isNew) stringResource(Res.string.save_button_desktop) else stringResource(Res.string.save_changes_button_desktop)
+                    }
+                )
+            }
         }
     }
 
     val dismissButtonContent: @Composable () -> Unit = {
         TextButton(onClick = onDismiss) {
-            Text(stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(if (readOnly) "Cerrar" else stringResource(Res.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 
@@ -923,7 +927,7 @@ fun ProductFormDialog(
                     .padding(bottom = 16.dp)
             ) {
                 Text(
-                    text = if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
+                    text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -976,7 +980,7 @@ fun ProductFormDialog(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             title = {
                 Text(
-                    text = if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
+                    text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(Res.string.modify_product_title),
                     fontWeight = FontWeight.Bold
                 )
             },

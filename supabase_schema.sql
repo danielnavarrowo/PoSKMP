@@ -359,6 +359,109 @@ BEFORE INSERT OR UPDATE ON public.products
 FOR EACH ROW EXECUTE FUNCTION public.fn_check_duplicate_barcode();
 
 -- =========================================================================
+-- 14. ROW LEVEL SECURITY (RLS) - SEGURIDAD Y CONTROL DE ACCESO POR LLAVES (anon vs service_role)
+-- =========================================================================
+-- En Supabase:
+-- - La llave 'service_role' (Admin / Caja Principal) tiene privilegios de superusuario y salta (BYPASS) RLS automáticamente.
+-- - La llave 'anon' (Cajas Secundarias y Checadores) queda restringida por las siguientes políticas:
+--   * products, store_settings, cashiers: Solo lectura (SELECT). No pueden alterar catálogo ni ajustes.
+--   * deleted_records, remote_audit_logs: Solo lectura (SELECT).
+--   * sales, sale_items: Lectura e Inserción/Actualización (SELECT, INSERT, UPDATE) para registrar ventas,
+--     pero eliminación bloqueada (sin DELETE para anon).
+--   * customers, customer_payments, shifts, cash_movements: Operación completa (SELECT, INSERT, UPDATE).
+
+-- A) products (Catálogo de Productos - Solo lectura para cajas secundarias y checadores)
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "products_select_anon" ON public.products;
+CREATE POLICY "products_select_anon" ON public.products FOR SELECT TO anon USING (true);
+
+-- B) store_settings (Ajustes de Negocio y Reglas - Solo lectura para terminales)
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "store_settings_select_anon" ON public.store_settings;
+CREATE POLICY "store_settings_select_anon" ON public.store_settings FOR SELECT TO anon USING (true);
+
+-- C) cashiers (Directorio de Cajeros - Solo lectura para terminales)
+ALTER TABLE public.cashiers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cashiers_select_anon" ON public.cashiers;
+CREATE POLICY "cashiers_select_anon" ON public.cashiers FOR SELECT TO anon USING (true);
+
+-- D) deleted_records (Bajas / Tombstones - Solo lectura para que terminales apliquen bajas locales)
+ALTER TABLE public.deleted_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "deleted_records_select_anon" ON public.deleted_records;
+CREATE POLICY "deleted_records_select_anon" ON public.deleted_records FOR SELECT TO anon USING (true);
+
+-- E) remote_audit_logs (Bitácora de Auditoría Remota - Solo lectura)
+ALTER TABLE public.remote_audit_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "remote_audit_logs_select_anon" ON public.remote_audit_logs;
+CREATE POLICY "remote_audit_logs_select_anon" ON public.remote_audit_logs FOR SELECT TO anon USING (true);
+
+-- F) sales (Ventas / Tickets - Inserción y actualización para upsert, sin eliminación)
+ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "sales_select_anon" ON public.sales;
+CREATE POLICY "sales_select_anon" ON public.sales FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "sales_insert_anon" ON public.sales;
+CREATE POLICY "sales_insert_anon" ON public.sales FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "sales_update_anon" ON public.sales;
+CREATE POLICY "sales_update_anon" ON public.sales FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- G) sale_items (Partidas de Venta - Inserción y actualización para upsert, sin eliminación)
+ALTER TABLE public.sale_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "sale_items_select_anon" ON public.sale_items;
+CREATE POLICY "sale_items_select_anon" ON public.sale_items FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "sale_items_insert_anon" ON public.sale_items;
+CREATE POLICY "sale_items_insert_anon" ON public.sale_items FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "sale_items_update_anon" ON public.sale_items;
+CREATE POLICY "sale_items_update_anon" ON public.sale_items FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- H) customers (Directorio de Clientes)
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "customers_select_anon" ON public.customers;
+CREATE POLICY "customers_select_anon" ON public.customers FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "customers_insert_anon" ON public.customers;
+CREATE POLICY "customers_insert_anon" ON public.customers FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "customers_update_anon" ON public.customers;
+CREATE POLICY "customers_update_anon" ON public.customers FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- I) customer_payments (Abonos a Deuda)
+ALTER TABLE public.customer_payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "customer_payments_select_anon" ON public.customer_payments;
+CREATE POLICY "customer_payments_select_anon" ON public.customer_payments FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "customer_payments_insert_anon" ON public.customer_payments;
+CREATE POLICY "customer_payments_insert_anon" ON public.customer_payments FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "customer_payments_update_anon" ON public.customer_payments;
+CREATE POLICY "customer_payments_update_anon" ON public.customer_payments FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- J) shifts (Turnos de Caja y Cortes)
+ALTER TABLE public.shifts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "shifts_select_anon" ON public.shifts;
+CREATE POLICY "shifts_select_anon" ON public.shifts FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "shifts_insert_anon" ON public.shifts;
+CREATE POLICY "shifts_insert_anon" ON public.shifts FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "shifts_update_anon" ON public.shifts;
+CREATE POLICY "shifts_update_anon" ON public.shifts FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- K) cash_movements (Movimientos de Caja)
+ALTER TABLE public.cash_movements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cash_movements_select_anon" ON public.cash_movements;
+CREATE POLICY "cash_movements_select_anon" ON public.cash_movements FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "cash_movements_insert_anon" ON public.cash_movements;
+CREATE POLICY "cash_movements_insert_anon" ON public.cash_movements FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "cash_movements_update_anon" ON public.cash_movements;
+CREATE POLICY "cash_movements_update_anon" ON public.cash_movements FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- =========================================================================
 -- SCRIPT DE MIGRACIÓN PARA BASES DE DATOS SUPABASE EXISTENTES
 -- =========================================================================
 -- Si ya tenías creada tu base de datos en Supabase, ejecuta este bloque para actualizarla:
@@ -598,4 +701,73 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_check_duplicate_barcode ON public.products;
 CREATE TRIGGER trg_check_duplicate_barcode BEFORE INSERT OR UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.fn_check_duplicate_barcode();
+
+-- Habilitar Row Level Security (RLS) y Políticas para anon / service_role:
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "products_select_anon" ON public.products;
+CREATE POLICY "products_select_anon" ON public.products FOR SELECT TO anon USING (true);
+
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "store_settings_select_anon" ON public.store_settings;
+CREATE POLICY "store_settings_select_anon" ON public.store_settings FOR SELECT TO anon USING (true);
+
+ALTER TABLE public.cashiers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cashiers_select_anon" ON public.cashiers;
+CREATE POLICY "cashiers_select_anon" ON public.cashiers FOR SELECT TO anon USING (true);
+
+ALTER TABLE public.deleted_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "deleted_records_select_anon" ON public.deleted_records;
+CREATE POLICY "deleted_records_select_anon" ON public.deleted_records FOR SELECT TO anon USING (true);
+
+ALTER TABLE public.remote_audit_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "remote_audit_logs_select_anon" ON public.remote_audit_logs;
+CREATE POLICY "remote_audit_logs_select_anon" ON public.remote_audit_logs FOR SELECT TO anon USING (true);
+
+ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "sales_select_anon" ON public.sales;
+CREATE POLICY "sales_select_anon" ON public.sales FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "sales_insert_anon" ON public.sales;
+CREATE POLICY "sales_insert_anon" ON public.sales FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "sales_update_anon" ON public.sales;
+CREATE POLICY "sales_update_anon" ON public.sales FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE public.sale_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "sale_items_select_anon" ON public.sale_items;
+CREATE POLICY "sale_items_select_anon" ON public.sale_items FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "sale_items_insert_anon" ON public.sale_items;
+CREATE POLICY "sale_items_insert_anon" ON public.sale_items FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "sale_items_update_anon" ON public.sale_items;
+CREATE POLICY "sale_items_update_anon" ON public.sale_items FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "customers_select_anon" ON public.customers;
+CREATE POLICY "customers_select_anon" ON public.customers FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "customers_insert_anon" ON public.customers;
+CREATE POLICY "customers_insert_anon" ON public.customers FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "customers_update_anon" ON public.customers;
+CREATE POLICY "customers_update_anon" ON public.customers FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE public.customer_payments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "customer_payments_select_anon" ON public.customer_payments;
+CREATE POLICY "customer_payments_select_anon" ON public.customer_payments FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "customer_payments_insert_anon" ON public.customer_payments;
+CREATE POLICY "customer_payments_insert_anon" ON public.customer_payments FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "customer_payments_update_anon" ON public.customer_payments;
+CREATE POLICY "customer_payments_update_anon" ON public.customer_payments FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE public.shifts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "shifts_select_anon" ON public.shifts;
+CREATE POLICY "shifts_select_anon" ON public.shifts FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "shifts_insert_anon" ON public.shifts;
+CREATE POLICY "shifts_insert_anon" ON public.shifts FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "shifts_update_anon" ON public.shifts;
+CREATE POLICY "shifts_update_anon" ON public.shifts FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE public.cash_movements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cash_movements_select_anon" ON public.cash_movements;
+CREATE POLICY "cash_movements_select_anon" ON public.cash_movements FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "cash_movements_insert_anon" ON public.cash_movements;
+CREATE POLICY "cash_movements_insert_anon" ON public.cash_movements FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "cash_movements_update_anon" ON public.cash_movements;
+CREATE POLICY "cash_movements_update_anon" ON public.cash_movements FOR UPDATE TO anon USING (true) WITH CHECK (true);
 */

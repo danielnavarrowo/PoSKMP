@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -33,6 +34,7 @@ import kotlinx.coroutines.withContext
 
 import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 
 private data class DisplayState(
@@ -51,7 +53,8 @@ private data class ProductSettingsConfig(
     val defaultWholesaleMargin: Double,
     val defaultDeliveryMargin: Double,
     val isRoundingEnabled: Boolean,
-    val roundProductPrices: Boolean
+    val roundProductPrices: Boolean,
+    val canEditProducts: Boolean
 )
 
 private data class ProductExtraState(
@@ -127,18 +130,22 @@ class ProductosViewModel(
             ProductExtraState(visibleColumns, salesStats, syncState)
         },
         combine(
-            settingsRepository.defaultRetailMarginFlow,
-            settingsRepository.defaultWholesaleMarginFlow,
-            settingsRepository.defaultDeliveryMarginFlow,
+            combine(
+                settingsRepository.defaultRetailMarginFlow,
+                settingsRepository.defaultWholesaleMarginFlow,
+                settingsRepository.defaultDeliveryMarginFlow
+            ) { retail, wholesale, delivery -> Triple(retail, wholesale, delivery) },
             settingsRepository.isRoundingEnabledFlow,
-            settingsRepository.roundProductPricesFlow
-        ) { retail, wholesale, delivery, isRounding, roundPrices ->
+            settingsRepository.roundProductPricesFlow,
+            settingsRepository.deviceRoleFlow
+        ) { (retail, wholesale, delivery), isRounding, roundPrices, role ->
             ProductSettingsConfig(
                 defaultRetailMargin = retail,
                 defaultWholesaleMargin = wholesale,
                 defaultDeliveryMargin = delivery,
                 isRoundingEnabled = isRounding,
-                roundProductPrices = roundPrices
+                roundProductPrices = roundPrices,
+                canEditProducts = role == DeviceRole.ADMIN
             )
         }
     ) { (query, products, display), extra, settings ->
@@ -160,7 +167,8 @@ class ProductosViewModel(
             defaultWholesaleMargin = settings.defaultWholesaleMargin,
             defaultDeliveryMargin = settings.defaultDeliveryMargin,
             roundProductPrices = settings.isRoundingEnabled && settings.roundProductPrices,
-            isSyncing = extra.syncState == SyncStateEnum.SYNCING
+            isSyncing = extra.syncState == SyncStateEnum.SYNCING,
+            canEditProducts = settings.canEditProducts
         )
     }.stateIn(
         scope = viewModelScope,
@@ -259,6 +267,8 @@ class ProductosViewModel(
 
     fun saveProduct(product: Products) {
         viewModelScope.launch {
+            val role = settingsRepository.deviceRoleFlow.first()
+            if (role != DeviceRole.ADMIN) return@launch
             saveProductUseCase(product)
             _displayState.update { it.copy(showProductDialogFor = null) }
             launch(Dispatchers.IO) {
@@ -268,10 +278,12 @@ class ProductosViewModel(
     }
 
     fun applyBulkModification(modification: BulkProductModification) {
-        val state = uiState.value
-        val selectedIds = _displayState.value.selectedProductIds
-        val total = selectedIds.size
         viewModelScope.launch {
+            val role = settingsRepository.deviceRoleFlow.first()
+            if (role != DeviceRole.ADMIN) return@launch
+            val state = uiState.value
+            val selectedIds = _displayState.value.selectedProductIds
+            val total = selectedIds.size
             _displayState.update {
                 it.copy(
                     bulkModificationProgress = BulkProgressState(

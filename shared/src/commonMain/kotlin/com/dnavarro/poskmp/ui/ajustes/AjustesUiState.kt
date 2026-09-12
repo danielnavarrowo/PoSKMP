@@ -2,6 +2,7 @@ package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.ui.graphics.Color
 import com.dnavarro.poskmp.domain.model.Cashier
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
@@ -18,6 +19,8 @@ import com.dnavarro.poskmp.util.AppConstants
  * UI State for Settings screen.
  */
 data class AjustesUiState(
+    val deviceRole: DeviceRole = DeviceRole.ADMIN,
+    val terminalPrefix: String = "",
     val useDynamicColor: Boolean = isAndroid(),
     val seedColor: Color = Color(0xFF0061A4),
     val isAmoled: Boolean = false,

@@ -96,7 +96,8 @@ object ReceiptFormatter {
 
         // 2. Receipt metadata
         centered("TICKET DE COMPRA", emphasized = true)
-        keyValue("Folio", folio.toString(), emphasized = true)
+        val folioDisplay = if (settings.terminalPrefix.isNotBlank()) "${settings.terminalPrefix}-$folio" else folio.toString()
+        keyValue("Folio", folioDisplay, emphasized = true)
         keyValue("Fecha", formatEpochMillisToDateTime(createdAt))
         customerName?.trim()?.takeIf { it.isNotEmpty() }?.let { keyValue("Cliente", it) }
         lines += ReceiptLine("-".repeat(width))

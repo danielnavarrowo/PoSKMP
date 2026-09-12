@@ -27,7 +27,8 @@ data class ReceiptSettings(
     val fontSize: Int = 12,
     val feedLines: Int = 3,
     val footerMessage: String = "",
-    val openCashDrawerOnCashSale: Boolean = false
+    val openCashDrawerOnCashSale: Boolean = false,
+    val terminalPrefix: String = ""
 )
 
 data class ReceiptItem(

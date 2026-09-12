@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -88,6 +90,7 @@ import poskmp.shared.generated.resources.cost_label
 import poskmp.shared.generated.resources.delivery_price_label
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
+import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.per_kg_suffix
 import poskmp.shared.generated.resources.pieces_count_label
 import poskmp.shared.generated.resources.price_checker_title
@@ -592,6 +595,8 @@ fun ChecadorScreen(
     showExtraPrices: Boolean = false,
     currentDateText: String = "",
     currentTimeText: String = "",
+    onNavigateToAjustes: (() -> Unit)? = null,
+    onOpenScanner: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var barcodeInputValue by remember {
@@ -606,6 +611,14 @@ fun ChecadorScreen(
 
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
+
+    val requestOpenScanner = {
+        if (onOpenScanner != null) {
+            onOpenScanner()
+        } else {
+            showCameraScanner = true
+        }
+    }
 
     fun performSearch() {
         val code = barcodeInputValue.text.trim()
@@ -640,7 +653,7 @@ fun ChecadorScreen(
 
     // Persistent focus loop: ensure focus is always kept on the barcode input field
     LaunchedEffect(Unit) {
-        if (isCameraScannerAvailable()) {
+        if (onOpenScanner == null && isCameraScannerAvailable()) {
             showCameraScanner = true
         }
         while (isActive) {
@@ -652,7 +665,7 @@ fun ChecadorScreen(
         }
     }
 
-    if (showCameraScanner && isAndroid() && isCameraScannerAvailable()) {
+    if (onOpenScanner == null && showCameraScanner && isAndroid() && isCameraScannerAvailable()) {
         PlatformBarcodeScanner(
             onScanResult = { scannedCode ->
                 scope.launch {
@@ -719,6 +732,22 @@ fun ChecadorScreen(
                     .alpha(0.01f)
                     .focusRequester(focusRequester)
             )
+
+            if (onNavigateToAjustes != null) {
+                IconButton(
+                    onClick = onNavigateToAjustes,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .alpha(0.5f)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.settings),
+                        contentDescription = "Ajustes",
+                        tint = Color.White
+                    )
+                }
+            }
 
             Column(
                 modifier = Modifier
@@ -878,8 +907,32 @@ fun ChecadorScreen(
                                         painter = painterResource(Res.drawable.barcode_scanner),
                                         contentDescription = null,
                                         tint = Color.White,
-                                        modifier = Modifier.size(256.dp)
+                                        modifier = Modifier
+                                            .size(256.dp)
+                                            .then(
+                                                if (isAndroid() && isCameraScannerAvailable()) {
+                                                    Modifier.clickable { requestOpenScanner() }
+                                                } else Modifier
+                                            )
                                     )
+
+                                    if (isAndroid() && isCameraScannerAvailable()) {
+                                        Button(
+                                            onClick = requestOpenScanner,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.barcode_scanner),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(stringResource(Res.string.scan_with_camera_desc))
+                                        }
+                                    }
 
                                     // Visual input field for on-screen typing if needed
                                     BasicTextField(

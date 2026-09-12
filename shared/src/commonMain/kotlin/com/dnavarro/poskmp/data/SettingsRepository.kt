@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.model.DEFAULT_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
@@ -70,7 +71,11 @@ interface SettingsRepository {
     val backupDirectoryPathFlow: Flow<String>
     val businessSettingsUpdatedAtFlow: Flow<Long>
     val receiptSettingsFlow: Flow<ReceiptSettings>
+    val deviceRoleFlow: Flow<DeviceRole>
+    val terminalPrefixFlow: Flow<String>
 
+    suspend fun setDeviceRole(role: DeviceRole)
+    suspend fun setTerminalPrefix(prefix: String)
     suspend fun setUseDynamicColor(useDynamic: Boolean)
     suspend fun setSeedColor(color: Color)
     suspend fun setIsAmoled(isAmoled: Boolean)
@@ -175,6 +180,21 @@ class SettingsRepositoryImpl(
         val OPEN_CASH_DRAWER_ON_RECEIPT = booleanPreferencesKey("open_cash_drawer_on_receipt")
         val OPEN_CASH_DRAWER_ON_CASH_SALE = booleanPreferencesKey("open_cash_drawer_on_cash_sale")
         val PRODUCT_TABLE_VISIBLE_COLUMNS = stringSetPreferencesKey("product_table_visible_columns")
+        val DEVICE_ROLE = stringPreferencesKey("device_role")
+        val TERMINAL_PREFIX = stringPreferencesKey("terminal_prefix")
+    }
+
+    override val deviceRoleFlow: Flow<DeviceRole> = dataStore.data.map { preferences ->
+        val roleName = preferences[PreferenceKeys.DEVICE_ROLE] ?: DeviceRole.ADMIN.name
+        try {
+            DeviceRole.valueOf(roleName)
+        } catch (_: Exception) {
+            DeviceRole.ADMIN
+        }
+    }
+
+    override val terminalPrefixFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.TERMINAL_PREFIX] ?: ""
     }
 
     override val businessSettingsUpdatedAtFlow: Flow<Long> = dataStore.data.map { preferences ->
@@ -350,16 +370,30 @@ class SettingsRepositoryImpl(
                 openCashDrawerOnCashSale = openCashDrawerOnCashSale
             )
         },
-        dataStore.data.map { it[PreferenceKeys.PRINTER_ID] }
-    ) { storeInfoList, printerSettings, printerId ->
+        dataStore.data.map { it[PreferenceKeys.PRINTER_ID] },
+        dataStore.data.map { it[PreferenceKeys.TERMINAL_PREFIX] ?: "" }
+    ) { storeInfoList, printerSettings, printerId, terminalPrefix ->
         printerSettings.copy(
             storeName = storeInfoList[0],
             storeAddress = storeInfoList[1],
             storePhone = storeInfoList[2],
             transferClabe = storeInfoList[3],
             transferBeneficiary = storeInfoList[4],
-            printerId = printerId
+            printerId = printerId,
+            terminalPrefix = terminalPrefix
         )
+    }
+
+    override suspend fun setDeviceRole(role: DeviceRole) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DEVICE_ROLE] = role.name
+        }
+    }
+
+    override suspend fun setTerminalPrefix(prefix: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.TERMINAL_PREFIX] = prefix.trim()
+        }
     }
 
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {

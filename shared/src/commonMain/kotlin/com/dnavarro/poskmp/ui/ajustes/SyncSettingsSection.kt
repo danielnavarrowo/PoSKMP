@@ -12,17 +12,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,18 +37,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.analytics
+import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.restore
 import poskmp.shared.generated.resources.supabase_auto_sync_subtitle
 import poskmp.shared.generated.resources.supabase_auto_sync_title
@@ -73,6 +86,7 @@ import poskmp.shared.generated.resources.sync
 import poskmp.shared.generated.resources.sync_now_button
 import poskmp.shared.generated.resources.warning
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SyncSettingsSection(
     supabaseUrl: String,
@@ -91,10 +105,15 @@ fun SyncSettingsSection(
     isLoadingAuditLogs: Boolean = false,
     auditLogsError: String? = null,
     onFetchRemoteAuditLogs: () -> Unit = {},
+    deviceRole: DeviceRole = DeviceRole.ADMIN,
+    onDeviceRoleChange: (DeviceRole) -> Unit = {},
+    terminalPrefix: String = "",
+    onTerminalPrefixChange: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var localSupabaseUrl by remember(supabaseUrl) { mutableStateOf(supabaseUrl) }
     var localSupabaseKey by remember(supabaseKey) { mutableStateOf(supabaseKey) }
+    var localTerminalPrefix by remember(terminalPrefix) { mutableStateOf(terminalPrefix) }
     var isKeyVisible by remember { mutableStateOf(false) }
     var showAuditLogsDialog by remember { mutableStateOf(false) }
 
@@ -102,6 +121,147 @@ fun SyncSettingsSection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // Card: Rol de este Dispositivo y Terminal
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "Rol de este Dispositivo",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Define los permisos de escritura hacia la nube y el modo de operación de esta terminal.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Selector de Rol con ToggleButtons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val roles = listOf(
+                        Triple(DeviceRole.ADMIN, "Admin", Res.drawable.person),
+                        Triple(DeviceRole.POS_CLIENT, "Caja / Terminal", Res.drawable.point_of_sale),
+                        Triple(DeviceRole.CHECKER_ONLY, "Solo Checador", Res.drawable.barcode_scanner)
+                    )
+                    roles.forEachIndexed { index, (role, label, iconRes) ->
+                        val isSelected = deviceRole == role
+                        ToggleButton(
+                            checked = isSelected,
+                            onCheckedChange = { onDeviceRoleChange(role) },
+                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { this.role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                roles.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Explicación contextual del rol activo
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(
+                                when (deviceRole) {
+                                    DeviceRole.ADMIN -> Res.drawable.check
+                                    DeviceRole.POS_CLIENT -> Res.drawable.point_of_sale
+                                    DeviceRole.CHECKER_ONLY -> Res.drawable.barcode_scanner
+                                }
+                            ),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = when (deviceRole) {
+                                DeviceRole.ADMIN -> "Terminal Administrador: Puede crear o editar productos, categorías, cajeros y registrar ventas. Los cambios de catálogo y ajustes se sincronizan a la nube."
+                                DeviceRole.POS_CLIENT -> "Terminal de Caja: Registra ventas, clientes y pagos hacia la nube. El catálogo de productos y cajeros son de solo lectura y se sincronizan desde el Administrador para evitar inconsistencias."
+                                DeviceRole.CHECKER_ONLY -> "Terminal de Consulta: Solo muestra el verificador de precios. No realiza ventas ni sube información a la base de datos remota."
+                            },
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    thickness = 1.dp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Prefijo de Terminal / Folio
+                OutlinedTextField(
+                    value = localTerminalPrefix,
+                    onValueChange = {
+                        val formatted = it.trim().uppercase()
+                        localTerminalPrefix = formatted
+                        onTerminalPrefixChange(formatted)
+                    },
+                    label = { Text("Prefijo de Terminal") },
+                    placeholder = { Text("Ej. C1, C2, CAJA-1, MOVIL") },
+                    supportingText = {
+                        Text(
+                            "Opcional. Se antepone al folio del ticket (ej. C1-1001) para identificar fácilmente en qué terminal se realizó la venta.",
+                            fontSize = 11.sp
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer

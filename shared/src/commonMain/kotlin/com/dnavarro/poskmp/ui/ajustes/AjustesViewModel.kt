@@ -10,6 +10,8 @@ import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.data.updater.UpdateRepository
+import com.dnavarro.poskmp.domain.model.Cashier
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
@@ -193,12 +195,27 @@ class AjustesViewModel(
 
     private val _receiptFlow = repository.receiptSettingsFlow
 
+    private data class DeviceTerminalState(
+        val role: DeviceRole = DeviceRole.ADMIN,
+        val terminalPrefix: String = ""
+    )
+
+    private val _deviceTerminalFlow = combine(
+        repository.deviceRoleFlow,
+        repository.terminalPrefixFlow
+    ) { role, prefix ->
+        DeviceTerminalState(role, prefix)
+    }
+
     private val _baseUiState = combine(
         _themeFlow,
         _behaviorFlow,
-        _receiptFlow
-    ) { themeState, behaviorState, receiptSettings ->
+        _receiptFlow,
+        _deviceTerminalFlow
+    ) { themeState, behaviorState, receiptSettings, deviceTerminal ->
         themeState.copy(
+            deviceRole = deviceTerminal.role,
+            terminalPrefix = deviceTerminal.terminalPrefix,
             defaultScreen = behaviorState.defaultScreen,
             isChecadorDialog = behaviorState.isChecadorDialog,
             showExtraPricesChecador = behaviorState.showExtraPricesChecador,
@@ -260,6 +277,18 @@ class AjustesViewModel(
             backupDirectoryPath = backupRepository.getDefaultBackupDirectoryPath()
         )
     )
+
+    fun setDeviceRole(role: DeviceRole) {
+        viewModelScope.launch {
+            repository.setDeviceRole(role)
+        }
+    }
+
+    fun setTerminalPrefix(prefix: String) {
+        viewModelScope.launch {
+            repository.setTerminalPrefix(prefix)
+        }
+    }
 
     fun setUseDynamicColor(useDynamic: Boolean) {
         viewModelScope.launch {

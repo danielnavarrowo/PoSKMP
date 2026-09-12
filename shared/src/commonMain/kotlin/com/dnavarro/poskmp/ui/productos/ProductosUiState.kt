@@ -81,7 +81,8 @@ data class ProductosUiState(
     val defaultDeliveryMargin: Double = 0.0,
     val roundProductPrices: Boolean = false,
     val isLoading: Boolean = false,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    val canEditProducts: Boolean = true
 ) {
     val availableCategories: List<String>
         get() = rawProducts.mapNotNull { it.categoria }.filter { it.isNotBlank() }.distinct().sorted()

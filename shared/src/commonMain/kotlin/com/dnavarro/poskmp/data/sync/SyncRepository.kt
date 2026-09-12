@@ -2,6 +2,7 @@ package com.dnavarro.poskmp.data.sync
 
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSource
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.data.source.remote.dto.CashierDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
@@ -88,13 +89,18 @@ class SyncRepositoryImpl(
             var totalPushed = 0
             var totalPulled = 0
 
+            val deviceRole = settingsRepository.deviceRoleFlow.first()
+            val canPushCatalogAndSettings = deviceRole == DeviceRole.ADMIN
+            val canPushSalesAndPayments = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
+
             // ----------------------------------------------------
             // 1. FASE PUSH (Subir datos locales pendientes)
             // ----------------------------------------------------
 
-            // A) Productos
-            val unsyncedProducts = queries.selectUnsyncedProducts().executeAsList()
-            if (unsyncedProducts.isNotEmpty()) {
+            // A) Productos (Solo ADMIN puede sincronizar catálogo hacia la nube)
+            if (canPushCatalogAndSettings) {
+                val unsyncedProducts = queries.selectUnsyncedProducts().executeAsList()
+                if (unsyncedProducts.isNotEmpty()) {
                 val productDtos = unsyncedProducts.map { p ->
                     ProductDto(
                         id = p.id,
@@ -121,199 +127,212 @@ class SyncRepositoryImpl(
                         queries.updateProductSyncState(sync_state = "SYNCED", id = id)
                     }
                 }
-                totalPushed += unsyncedProducts.size
+                    totalPushed += unsyncedProducts.size
+                }
             }
 
-            // B) Clientes
-            val unsyncedCustomers = queries.selectUnsyncedCustomers().executeAsList()
-            if (unsyncedCustomers.isNotEmpty()) {
-                val customerDtos = unsyncedCustomers.map { c ->
-                    CustomerDto(
-                        id = c.id,
-                        nombre = c.nombre,
-                        telefono = c.telefono,
-                        direccion = c.direccion,
-                        notas = c.notas,
-                        limiteCredito = c.limite_credito,
-                        siempreMayoreo = c.siempre_mayoreo == 1L,
-                        activo = c.activo == 1L,
-                        createdAt = c.created_at,
-                        updatedAt = c.updated_at
-                    )
-                }
-                val pushResult = remoteDataSource.pushCustomers(url, key, customerDtos)
-                if (pushResult.isFailure) {
-                    throw pushResult.exceptionOrNull() ?: Exception("Error al subir clientes")
-                }
-                queries.transaction {
-                    for ((id) in unsyncedCustomers) {
-                        queries.updateCustomerSyncState(sync_state = "SYNCED", id = id)
-                    }
-                }
-                totalPushed += unsyncedCustomers.size
-            }
-
-            // C) Abonos de Clientes
-            val unsyncedPayments = queries.selectUnsyncedCustomerPayments().executeAsList()
-            if (unsyncedPayments.isNotEmpty()) {
-                val paymentDtos = unsyncedPayments.map { cp ->
-                    CustomerPaymentDto(
-                        id = cp.id,
-                        customerId = cp.customer_id,
-                        monto = cp.monto,
-                        metodoPago = cp.metodo_pago,
-                        notas = cp.notas,
-                        createdAt = cp.created_at
-                    )
-                }
-                val pushResult = remoteDataSource.pushCustomerPayments(url, key, paymentDtos)
-                if (pushResult.isFailure) {
-                    throw pushResult.exceptionOrNull() ?: Exception("Error al subir abonos")
-                }
-                queries.transaction {
-                    for ((id) in unsyncedPayments) {
-                        queries.updateCustomerPaymentSyncState(sync_state = "SYNCED", id = id)
-                    }
-                }
-                totalPushed += unsyncedPayments.size
-            }
-
-            // D) Cajeros
-            val unsyncedCashiers = queries.selectUnsyncedCashiers().executeAsList()
-            if (unsyncedCashiers.isNotEmpty()) {
-                val cashierDtos = unsyncedCashiers.map { c ->
-                    CashierDto(
-                        id = c.id,
-                        nombre = c.nombre,
-                        pin = c.pin,
-                        activo = c.activo == 1L,
-                        createdAt = c.created_at,
-                        updatedAt = c.updated_at
-                    )
-                }
-                val pushCashierResult = remoteDataSource.pushCashiers(url, key, cashierDtos)
-                if (pushCashierResult.isFailure) {
-                    throw pushCashierResult.exceptionOrNull() ?: Exception("Error al subir cajeros")
-                }
-                queries.transaction {
-                    for ((id) in unsyncedCashiers) {
-                        queries.updateCashierSyncState(sync_state = "SYNCED", id = id)
-                    }
-                }
-                totalPushed += unsyncedCashiers.size
-            }
-
-            // E) Ventas y Partidas de Ventas
-            val unsyncedSales = queries.selectUnsyncedSales().executeAsList()
-            if (unsyncedSales.isNotEmpty()) {
-                val saleDtos = unsyncedSales.map { s ->
-                    SaleDto(
-                        id = s.id,
-                        folio = s.folio,
-                        total = s.total,
-                        totalOriginal = s.total_original,
-                        totalCosto = s.total_costo,
-                        ganancia = s.ganancia,
-                        pagoCon = s.pago_con,
-                        cambio = s.cambio,
-                        metodoPago = s.metodo_pago,
-                        totalItems = s.total_items,
-                        customerId = s.customer_id,
-                        createdAt = s.created_at,
-                        cashierName = s.cashier_name,
-                        estado = s.estado,
-                        esForanea = s.es_foranea == 1L
-                    )
-                }
-                val pushSaleResult = remoteDataSource.pushSales(url, key, saleDtos)
-                if (pushSaleResult.isFailure) {
-                    throw pushSaleResult.exceptionOrNull() ?: Exception("Error al subir ventas")
-                }
-
-                // Subir las partidas asociadas
-                val allSaleItems = mutableListOf<SaleItemDto>()
-                for ((id) in unsyncedSales) {
-                    val items = queries.selectItemsBySaleId(id).executeAsList()
-                    allSaleItems.addAll(items.map { item ->
-                        SaleItemDto(
-                            id = item.id,
-                            saleId = item.sale_id,
-                            productId = item.product_id,
-                            productNombre = item.product_nombre,
-                            cantidad = item.cantidad,
-                            precioUnitario = item.precio_unitario,
-                            costoUnitario = item.costo_unitario,
-                            subtotal = item.subtotal,
-                            ganancia = item.ganancia,
-                            esMayoreo = item.es_mayoreo == 1L,
-                            esDelivery = item.es_delivery == 1L,
-                            createdAt = item.created_at
+            // B) Clientes (ADMIN y POS_CLIENT pueden sincronizar clientes)
+            if (canPushSalesAndPayments) {
+                val unsyncedCustomers = queries.selectUnsyncedCustomers().executeAsList()
+                if (unsyncedCustomers.isNotEmpty()) {
+                    val customerDtos = unsyncedCustomers.map { c ->
+                        CustomerDto(
+                            id = c.id,
+                            nombre = c.nombre,
+                            telefono = c.telefono,
+                            direccion = c.direccion,
+                            notas = c.notas,
+                            limiteCredito = c.limite_credito,
+                            siempreMayoreo = c.siempre_mayoreo == 1L,
+                            activo = c.activo == 1L,
+                            createdAt = c.created_at,
+                            updatedAt = c.updated_at
                         )
-                    })
-                }
-
-                if (allSaleItems.isNotEmpty()) {
-                    val pushItemsResult = remoteDataSource.pushSaleItems(url, key, allSaleItems)
-                    if (pushItemsResult.isFailure) {
-                        throw pushItemsResult.exceptionOrNull() ?: Exception("Error al subir partidas de venta")
                     }
+                    val pushResult = remoteDataSource.pushCustomers(url, key, customerDtos)
+                    if (pushResult.isFailure) {
+                        throw pushResult.exceptionOrNull() ?: Exception("Error al subir clientes")
+                    }
+                    queries.transaction {
+                        for ((id) in unsyncedCustomers) {
+                            queries.updateCustomerSyncState(sync_state = "SYNCED", id = id)
+                        }
+                    }
+                    totalPushed += unsyncedCustomers.size
                 }
+            }
 
-                queries.transaction {
+            // C) Abonos de Clientes (ADMIN y POS_CLIENT pueden sincronizar abonos)
+            if (canPushSalesAndPayments) {
+                val unsyncedPayments = queries.selectUnsyncedCustomerPayments().executeAsList()
+                if (unsyncedPayments.isNotEmpty()) {
+                    val paymentDtos = unsyncedPayments.map { cp ->
+                        CustomerPaymentDto(
+                            id = cp.id,
+                            customerId = cp.customer_id,
+                            monto = cp.monto,
+                            metodoPago = cp.metodo_pago,
+                            notas = cp.notas,
+                            createdAt = cp.created_at
+                        )
+                    }
+                    val pushResult = remoteDataSource.pushCustomerPayments(url, key, paymentDtos)
+                    if (pushResult.isFailure) {
+                        throw pushResult.exceptionOrNull() ?: Exception("Error al subir abonos")
+                    }
+                    queries.transaction {
+                        for ((id) in unsyncedPayments) {
+                            queries.updateCustomerPaymentSyncState(sync_state = "SYNCED", id = id)
+                        }
+                    }
+                    totalPushed += unsyncedPayments.size
+                }
+            }
+
+            // D) Cajeros (Solo ADMIN puede modificar y subir cajeros)
+            if (canPushCatalogAndSettings) {
+                val unsyncedCashiers = queries.selectUnsyncedCashiers().executeAsList()
+                if (unsyncedCashiers.isNotEmpty()) {
+                    val cashierDtos = unsyncedCashiers.map { c ->
+                        CashierDto(
+                            id = c.id,
+                            nombre = c.nombre,
+                            pin = c.pin,
+                            activo = c.activo == 1L,
+                            createdAt = c.created_at,
+                            updatedAt = c.updated_at
+                        )
+                    }
+                    val pushCashierResult = remoteDataSource.pushCashiers(url, key, cashierDtos)
+                    if (pushCashierResult.isFailure) {
+                        throw pushCashierResult.exceptionOrNull() ?: Exception("Error al subir cajeros")
+                    }
+                    queries.transaction {
+                        for ((id) in unsyncedCashiers) {
+                            queries.updateCashierSyncState(sync_state = "SYNCED", id = id)
+                        }
+                    }
+                    totalPushed += unsyncedCashiers.size
+                }
+            }
+
+            // E) Ventas y Partidas de Ventas (ADMIN y POS_CLIENT pueden registrar y subir ventas)
+            if (canPushSalesAndPayments) {
+                val unsyncedSales = queries.selectUnsyncedSales().executeAsList()
+                if (unsyncedSales.isNotEmpty()) {
+                    val saleDtos = unsyncedSales.map { s ->
+                        SaleDto(
+                            id = s.id,
+                            folio = s.folio,
+                            total = s.total,
+                            totalOriginal = s.total_original,
+                            totalCosto = s.total_costo,
+                            ganancia = s.ganancia,
+                            pagoCon = s.pago_con,
+                            cambio = s.cambio,
+                            metodoPago = s.metodo_pago,
+                            totalItems = s.total_items,
+                            customerId = s.customer_id,
+                            createdAt = s.created_at,
+                            cashierName = s.cashier_name,
+                            estado = s.estado,
+                            esForanea = s.es_foranea == 1L
+                        )
+                    }
+                    val pushSaleResult = remoteDataSource.pushSales(url, key, saleDtos)
+                    if (pushSaleResult.isFailure) {
+                        throw pushSaleResult.exceptionOrNull() ?: Exception("Error al subir ventas")
+                    }
+
+                    // Subir las partidas asociadas
+                    val allSaleItems = mutableListOf<SaleItemDto>()
                     for ((id) in unsyncedSales) {
-                        queries.updateSaleSyncState(sync_state = "SYNCED", id = id)
+                        val items = queries.selectItemsBySaleId(id).executeAsList()
+                        allSaleItems.addAll(items.map { item ->
+                            SaleItemDto(
+                                id = item.id,
+                                saleId = item.sale_id,
+                                productId = item.product_id,
+                                productNombre = item.product_nombre,
+                                cantidad = item.cantidad,
+                                precioUnitario = item.precio_unitario,
+                                costoUnitario = item.costo_unitario,
+                                subtotal = item.subtotal,
+                                ganancia = item.ganancia,
+                                esMayoreo = item.es_mayoreo == 1L,
+                                esDelivery = item.es_delivery == 1L,
+                                createdAt = item.created_at
+                            )
+                        })
                     }
+
+                    if (allSaleItems.isNotEmpty()) {
+                        val pushItemsResult = remoteDataSource.pushSaleItems(url, key, allSaleItems)
+                        if (pushItemsResult.isFailure) {
+                            throw pushItemsResult.exceptionOrNull() ?: Exception("Error al subir partidas de venta")
+                        }
+                    }
+
+                    queries.transaction {
+                        for ((id) in unsyncedSales) {
+                            queries.updateSaleSyncState(sync_state = "SYNCED", id = id)
+                        }
+                    }
+                    totalPushed += unsyncedSales.size
                 }
-                totalPushed += unsyncedSales.size
             }
 
-            // F) Ajustes de Negocio (Márgenes, Redondeo, Datos de Tienda, Políticas)
-            val localSettingsUpdatedAt = settingsRepository.businessSettingsUpdatedAtFlow.first()
-            val lastSyncForPush = settingsRepository.lastSyncTimestampFlow.first()
-            if (localSettingsUpdatedAt > lastSyncForPush || localSettingsUpdatedAt > 0L) {
-                val receiptSettings = settingsRepository.receiptSettingsFlow.first()
-                val storeSettingsDto = StoreSettingsDto(
-                    id = "default",
-                    storeName = receiptSettings.storeName,
-                    storeAddress = receiptSettings.storeAddress,
-                    storePhone = receiptSettings.storePhone,
-                    receiptFooter = receiptSettings.footerMessage,
-                    defaultRetailMargin = settingsRepository.defaultRetailMarginFlow.first(),
-                    defaultWholesaleMargin = settingsRepository.defaultWholesaleMarginFlow.first(),
-                    defaultDeliveryMargin = settingsRepository.defaultDeliveryMarginFlow.first(),
-                    isRoundingEnabled = settingsRepository.isRoundingEnabledFlow.first(),
-                    roundProductPrices = settingsRepository.roundProductPricesFlow.first(),
-                    roundTicketTotal = settingsRepository.roundTicketTotalFlow.first(),
-                    disallowCardPaymentOnWholesale = settingsRepository.disallowCardPaymentOnWholesaleFlow.first(),
-                    updatedAt = if (localSettingsUpdatedAt > 0L) localSettingsUpdatedAt else currentTimeMillis()
-                )
-                val pushSettingsResult = remoteDataSource.pushStoreSettings(url, key, storeSettingsDto)
-                if (pushSettingsResult.isFailure) {
-                    throw pushSettingsResult.exceptionOrNull() ?: Exception("Error al subir ajustes de negocio")
+            // F) Ajustes de Negocio (Márgenes, Redondeo, Datos de Tienda, Políticas - Solo ADMIN)
+            if (canPushCatalogAndSettings) {
+                val localSettingsUpdatedAt = settingsRepository.businessSettingsUpdatedAtFlow.first()
+                val lastSyncForPush = settingsRepository.lastSyncTimestampFlow.first()
+                if (localSettingsUpdatedAt > lastSyncForPush || localSettingsUpdatedAt > 0L) {
+                    val receiptSettings = settingsRepository.receiptSettingsFlow.first()
+                    val storeSettingsDto = StoreSettingsDto(
+                        id = "default",
+                        storeName = receiptSettings.storeName,
+                        storeAddress = receiptSettings.storeAddress,
+                        storePhone = receiptSettings.storePhone,
+                        receiptFooter = receiptSettings.footerMessage,
+                        defaultRetailMargin = settingsRepository.defaultRetailMarginFlow.first(),
+                        defaultWholesaleMargin = settingsRepository.defaultWholesaleMarginFlow.first(),
+                        defaultDeliveryMargin = settingsRepository.defaultDeliveryMarginFlow.first(),
+                        isRoundingEnabled = settingsRepository.isRoundingEnabledFlow.first(),
+                        roundProductPrices = settingsRepository.roundProductPricesFlow.first(),
+                        roundTicketTotal = settingsRepository.roundTicketTotalFlow.first(),
+                        disallowCardPaymentOnWholesale = settingsRepository.disallowCardPaymentOnWholesaleFlow.first(),
+                        updatedAt = if (localSettingsUpdatedAt > 0L) localSettingsUpdatedAt else currentTimeMillis()
+                    )
+                    val pushSettingsResult = remoteDataSource.pushStoreSettings(url, key, storeSettingsDto)
+                    if (pushSettingsResult.isFailure) {
+                        throw pushSettingsResult.exceptionOrNull() ?: Exception("Error al subir ajustes de negocio")
+                    }
                 }
             }
 
-            // G) Eliminaciones Locales (Tombstones)
-            val pendingDeletes = queries.selectDeletedSyncRecords().executeAsList()
-            if (pendingDeletes.isNotEmpty()) {
-                val deleteDtos = pendingDeletes.map { DeletedRecordDto(it.id, it.entity_type, it.deleted_at) }
-                for ((id, entity_type) in pendingDeletes) {
-                    when (entity_type) {
-                        "PRODUCT" -> remoteDataSource.deleteRemoteProduct(url, key, id)
-                        "CUSTOMER" -> remoteDataSource.deleteRemoteCustomer(url, key, id)
-                        "PAYMENT" -> remoteDataSource.deleteRemoteCustomerPayment(url, key, id)
+            // G) Eliminaciones Locales (Tombstones - Solo ADMIN puede eliminar remotamente)
+            if (canPushCatalogAndSettings) {
+                val pendingDeletes = queries.selectDeletedSyncRecords().executeAsList()
+                if (pendingDeletes.isNotEmpty()) {
+                    val deleteDtos = pendingDeletes.map { DeletedRecordDto(it.id, it.entity_type, it.deleted_at) }
+                    for ((id, entity_type) in pendingDeletes) {
+                        when (entity_type) {
+                            "PRODUCT" -> remoteDataSource.deleteRemoteProduct(url, key, id)
+                            "CUSTOMER" -> remoteDataSource.deleteRemoteCustomer(url, key, id)
+                            "PAYMENT" -> remoteDataSource.deleteRemoteCustomerPayment(url, key, id)
+                        }
                     }
-                }
-                val pushDeletesResult = remoteDataSource.pushDeletedRecords(url, key, deleteDtos)
-                if (pushDeletesResult.isFailure) {
-                    throw pushDeletesResult.exceptionOrNull() ?: Exception("Error al registrar eliminaciones remotas")
-                }
-                queries.transaction {
-                    for ((id) in pendingDeletes) {
-                        queries.deleteDeletedSyncRecord(id)
+                    val pushDeletesResult = remoteDataSource.pushDeletedRecords(url, key, deleteDtos)
+                    if (pushDeletesResult.isFailure) {
+                        throw pushDeletesResult.exceptionOrNull() ?: Exception("Error al registrar eliminaciones remotas")
                     }
+                    queries.transaction {
+                        for ((id) in pendingDeletes) {
+                            queries.deleteDeletedSyncRecord(id)
+                        }
+                    }
+                    totalPushed += pendingDeletes.size
                 }
-                totalPushed += pendingDeletes.size
             }
 
             // ----------------------------------------------------
