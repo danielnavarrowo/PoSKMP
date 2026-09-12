@@ -39,7 +39,7 @@ import kotlinx.coroutines.Dispatchers
 @OptIn(ExperimentalCoroutinesApi::class)
 class VentaViewModel(
     private val repository: ProductRepository,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     private val getProductsUseCase: GetProductsUseCase = GetProductsUseCase(repository),
     private val findProductByBarcodeUseCase: FindProductByBarcodeUseCase = FindProductByBarcodeUseCase(repository),
     private val saveProductUseCase: SaveProductUseCase = SaveProductUseCase(repository),
@@ -199,30 +199,47 @@ class VentaViewModel(
         },
         combine(
             combine(
-                settingsRepository.isRoundingEnabledFlow,
-                settingsRepository.roundProductPricesFlow,
-                settingsRepository.roundTicketTotalFlow,
-                settingsRepository.disallowCardPaymentOnWholesaleFlow,
-                settingsRepository.prioritizeDeliveryPriceFlow
-            ) { isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
-                VentaRoundingConfig(
+                combine(
+                    settingsRepository.isRoundingEnabledFlow,
+                    settingsRepository.roundProductPricesFlow,
+                    settingsRepository.roundTicketTotalFlow,
+                    settingsRepository.disallowCardPaymentOnWholesaleFlow,
+                    settingsRepository.prioritizeDeliveryPriceFlow
+                ) { isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
+                    Tuple5(isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+                },
+                combine(
+                    settingsRepository.autoWholesaleByQuantityFlow,
+                    settingsRepository.autoWholesaleQuantityThresholdFlow,
+                    settingsRepository.autoWholesaleByTicketTotalFlow,
+                    settingsRepository.autoWholesaleTicketTotalThresholdFlow
+                ) { autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold ->
+                    Tuple4(autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold)
+                }
+            ) { (isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
+                (autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold) ->
+                VentaPricingConfig(
                     isRoundingEnabled = isRoundingEnabled,
                     roundProductPrices = roundProductPrices,
                     roundTicketTotal = roundTicketTotal,
                     disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
-                    prioritizeDeliveryPrice = prioritizeDeliveryPrice
+                    prioritizeDeliveryPrice = prioritizeDeliveryPrice,
+                    autoWholesaleByQuantity = autoWholesaleByQuantity,
+                    autoWholesaleQuantityThreshold = autoWholesaleQuantityThreshold,
+                    autoWholesaleByTicketTotal = autoWholesaleByTicketTotal,
+                    autoWholesaleTicketTotalThreshold = autoWholesaleTicketTotalThreshold
                 )
             },
             settingsRepository.receiptSettingsFlow,
             _shiftFlow
-        ) { roundingSettings, receiptSettings, shiftState ->
-            Triple(roundingSettings, receiptSettings, shiftState)
+        ) { pricingSettings, receiptSettings, shiftState ->
+            Triple(pricingSettings, receiptSettings, shiftState)
         },
         syncRepository.syncState
     ) { (q, products, cat, cart, held),
         catalogConfig,
         receiptDialogState,
-        (roundingSettings, receiptSettings, shiftState),
+        (pricingSettings, receiptSettings, shiftState),
         syncState ->
         val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
         val filteredCust = if (cQuery.isBlank()) {
@@ -246,11 +263,15 @@ class VentaViewModel(
             defaultRetailMargin = catalogConfig.defaultRetailMargin,
             defaultWholesaleMargin = catalogConfig.defaultWholesaleMargin,
             defaultDeliveryMargin = catalogConfig.defaultDeliveryMargin,
-            isRoundingEnabled = roundingSettings.isRoundingEnabled,
-            roundProductPrices = roundingSettings.isRoundingEnabled && roundingSettings.roundProductPrices,
-            roundTicketTotal = roundingSettings.isRoundingEnabled && roundingSettings.roundTicketTotal,
-            disallowCardPaymentOnWholesale = roundingSettings.disallowCardPaymentOnWholesale,
-            prioritizeDeliveryPrice = roundingSettings.prioritizeDeliveryPrice,
+            isRoundingEnabled = pricingSettings.isRoundingEnabled,
+            roundProductPrices = pricingSettings.isRoundingEnabled && pricingSettings.roundProductPrices,
+            roundTicketTotal = pricingSettings.isRoundingEnabled && pricingSettings.roundTicketTotal,
+            disallowCardPaymentOnWholesale = pricingSettings.disallowCardPaymentOnWholesale,
+            prioritizeDeliveryPrice = pricingSettings.prioritizeDeliveryPrice,
+            autoWholesaleByQuantity = pricingSettings.autoWholesaleByQuantity,
+            autoWholesaleQuantityThreshold = pricingSettings.autoWholesaleQuantityThreshold,
+            autoWholesaleByTicketTotal = pricingSettings.autoWholesaleByTicketTotal,
+            autoWholesaleTicketTotalThreshold = pricingSettings.autoWholesaleTicketTotalThreshold,
             useProductTableInCatalog = catalogConfig.useProductTableInCatalog,
             swapVentaLayoutOrder = catalogConfig.swapVentaLayoutOrder,
             customers = catalogConfig.customers,
@@ -280,6 +301,32 @@ class VentaViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VentaUiState()
     )
+
+    init {
+        viewModelScope.launch {
+            combine(
+                settingsRepository.autoWholesaleByQuantityFlow,
+                settingsRepository.autoWholesaleQuantityThresholdFlow,
+                settingsRepository.autoWholesaleByTicketTotalFlow,
+                settingsRepository.autoWholesaleTicketTotalThresholdFlow
+            ) { byQty, qtyThreshold, byTotal, totalThreshold ->
+                Tuple4(byQty, qtyThreshold, byTotal, totalThreshold)
+            }.collect { (byQty, qtyThreshold, byTotal, totalThreshold) ->
+                if (_cartItems.value.isNotEmpty()) {
+                    val updated = applyAutoWholesale(
+                        items = _cartItems.value,
+                        autoWholesaleByQty = byQty,
+                        quantityThreshold = qtyThreshold,
+                        autoWholesaleByTotal = byTotal,
+                        totalThreshold = totalThreshold
+                    )
+                    if (updated != _cartItems.value) {
+                        _cartItems.value = updated
+                    }
+                }
+            }
+        }
+    }
 
     fun openShift(cashierId: String, pin: String, initialCash: Double, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
@@ -361,12 +408,16 @@ class VentaViewModel(
         val swapVentaLayoutOrder: Boolean = false
     )
 
-    private data class VentaRoundingConfig(
+    private data class VentaPricingConfig(
         val isRoundingEnabled: Boolean = false,
         val roundProductPrices: Boolean = false,
         val roundTicketTotal: Boolean = false,
         val disallowCardPaymentOnWholesale: Boolean = false,
-        val prioritizeDeliveryPrice: Boolean = false
+        val prioritizeDeliveryPrice: Boolean = false,
+        val autoWholesaleByQuantity: Boolean = false,
+        val autoWholesaleQuantityThreshold: Int = 3,
+        val autoWholesaleByTicketTotal: Boolean = false,
+        val autoWholesaleTicketTotalThreshold: Double = 0.0
     )
 
     private fun pushCartHistory() {
@@ -398,10 +449,15 @@ class VentaViewModel(
         _selectedCustomer.value = customer
         _showCustomerDialog.value = false
 
-        if (customer?.siempreMayoreo == true) {
-            applyCustomerWholesalePricing(enable = true)
-        } else if (previousCustomer?.siempreMayoreo == true && (customer == null || !customer.siempreMayoreo)) {
-            applyCustomerWholesalePricing(enable = false)
+        if (customer?.siempreMayoreo != previousCustomer?.siempreMayoreo) {
+            val updated = applyAutoWholesale(
+                items = _cartItems.value,
+                isWholesaleCustomer = customer?.siempreMayoreo == true
+            )
+            if (updated != _cartItems.value) {
+                pushCartHistory()
+                _cartItems.value = updated
+            }
         }
     }
 
@@ -409,23 +465,52 @@ class VentaViewModel(
         val previousCustomer = _selectedCustomer.value
         _selectedCustomer.value = null
         if (previousCustomer?.siempreMayoreo == true) {
-            applyCustomerWholesalePricing(enable = false)
+            val updated = applyAutoWholesale(
+                items = _cartItems.value,
+                isWholesaleCustomer = false
+            )
+            if (updated != _cartItems.value) {
+                pushCartHistory()
+                _cartItems.value = updated
+            }
         }
     }
 
-    private fun applyCustomerWholesalePricing(enable: Boolean) {
-        val currentList = _cartItems.value
-        val updated = currentList.map { item ->
+    private fun applyAutoWholesale(
+        items: List<CartItem>,
+        autoWholesaleByQty: Boolean = uiState.value.autoWholesaleByQuantity,
+        quantityThreshold: Int = uiState.value.autoWholesaleQuantityThreshold,
+        autoWholesaleByTotal: Boolean = uiState.value.autoWholesaleByTicketTotal,
+        totalThreshold: Double = uiState.value.autoWholesaleTicketTotalThreshold,
+        isWholesaleCustomer: Boolean = _selectedCustomer.value?.siempreMayoreo == true
+    ): List<CartItem> {
+        if (items.isEmpty()) return items
+
+        val baseTicketTotal = items.sumOf {
+            val unitBasePrice = if (it.originalPrice > 0.0) it.originalPrice else it.product.precio
+            unitBasePrice * it.quantity
+        }
+        val qualifiesByTicketTotal = autoWholesaleByTotal && totalThreshold > 0.0 && baseTicketTotal >= totalThreshold
+
+        return items.map { item ->
             if (item.product.precio_mayoreo > 0.0) {
-                val targetPrice = if (enable) item.product.precio_mayoreo else item.originalPrice
-                item.copy(product = item.product.copy(precio = targetPrice))
+                val qualifiesByQuantity = autoWholesaleByQty && quantityThreshold > 0 && item.quantity >= quantityThreshold
+                val shouldBeWholesale = isWholesaleCustomer || qualifiesByTicketTotal || qualifiesByQuantity
+
+                val targetPrice = when {
+                    shouldBeWholesale -> item.product.precio_mayoreo
+                    item.isManualWholesale == true -> item.product.precio_mayoreo
+                    else -> item.originalPrice
+                }
+
+                if (item.product.precio != targetPrice) {
+                    item.copy(product = item.product.copy(precio = targetPrice))
+                } else {
+                    item
+                }
             } else {
                 item
             }
-        }
-        if (updated != currentList) {
-            pushCartHistory()
-            _cartItems.value = updated
         }
     }
 
@@ -452,38 +537,29 @@ class VentaViewModel(
                 currentList.removeAt(existingIndex)
             } else {
                 currentList[existingIndex] = currentItem.copy(
-                    quantity = roundedQty
+                    quantity = roundedQty,
+                    isManualWholesale = null
                 )
             }
         } else if (quantity > 0.0) {
             pushCartHistory()
             val roundedQty = (quantity * 1000.0).roundToInt() / 1000.0
-            val isWholesaleCustomer = _selectedCustomer.value?.siempreMayoreo == true
             val prioritizeDelivery = uiState.value.prioritizeDeliveryPrice
             val basePrice = if (prioritizeDelivery && product.precio_delivery > 0.0) {
                 product.precio_delivery
             } else {
                 product.precio
             }
-            val effectivePrice = if (isWholesaleCustomer && product.precio_mayoreo > 0.0) {
-                product.precio_mayoreo
-            } else {
-                basePrice
-            }
-            val productToCart = if (effectivePrice != product.precio) {
-                product.copy(precio = effectivePrice)
-            } else {
-                product
-            }
             currentList.add(
                 CartItem(
-                    product = productToCart,
+                    product = product.copy(precio = basePrice),
                     quantity = roundedQty,
-                    originalPrice = basePrice
+                    originalPrice = basePrice,
+                    isManualWholesale = null
                 )
             )
         }
-        _cartItems.value = currentList
+        _cartItems.value = applyAutoWholesale(currentList)
     }
 
     fun setProductQuantityInCart(product: Products, qty: Double) {
@@ -496,35 +572,35 @@ class VentaViewModel(
             if (roundedQty <= 0.0) {
                 currentList.removeAt(existingIndex)
             } else {
-                currentList[existingIndex] = currentList[existingIndex].copy(quantity = roundedQty)
+                currentList[existingIndex] = currentList[existingIndex].copy(
+                    quantity = roundedQty,
+                    isManualWholesale = null
+                )
             }
         } else if (roundedQty > 0.0) {
             pushCartHistory()
-            val isWholesaleCustomer = _selectedCustomer.value?.siempreMayoreo == true
-            val effectivePrice = if (isWholesaleCustomer && product.precio_mayoreo > 0.0) {
-                product.precio_mayoreo
+            val prioritizeDelivery = uiState.value.prioritizeDeliveryPrice
+            val basePrice = if (prioritizeDelivery && product.precio_delivery > 0.0) {
+                product.precio_delivery
             } else {
                 product.precio
             }
-            val productToCart = if (effectivePrice != product.precio) {
-                product.copy(precio = effectivePrice)
-            } else {
-                product
-            }
             currentList.add(
                 CartItem(
-                    product = productToCart,
+                    product = product.copy(precio = basePrice),
                     quantity = roundedQty,
-                    originalPrice = product.precio
+                    originalPrice = basePrice,
+                    isManualWholesale = null
                 )
             )
         }
-        _cartItems.value = currentList
+        _cartItems.value = applyAutoWholesale(currentList)
     }
 
     fun removeCartItem(item: CartItem) {
         pushCartHistory()
-        _cartItems.value = _cartItems.value.filterNot { it.product.id == item.product.id }
+        val remaining = _cartItems.value.filterNot { it.product.id == item.product.id }
+        _cartItems.value = applyAutoWholesale(remaining)
     }
 
     fun clearCart() {
@@ -542,11 +618,14 @@ class VentaViewModel(
 
         pushCartHistory()
         val allWholesale = eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
+        val newWholesaleState = !allWholesale
         _cartItems.value = currentList.map { item ->
             if (item.product.precio_mayoreo > 0.0) {
-                val targetPrice = if (allWholesale) item.originalPrice else item.product.precio_mayoreo
-                val newProduct = item.product.copy(precio = targetPrice)
-                item.copy(product = newProduct)
+                val targetPrice = if (newWholesaleState) item.product.precio_mayoreo else item.originalPrice
+                item.copy(
+                    product = item.product.copy(precio = targetPrice),
+                    isManualWholesale = newWholesaleState
+                )
             } else {
                 item
             }
@@ -562,11 +641,15 @@ class VentaViewModel(
         pushCartHistory()
         val targetItem = currentList[index]
         val isCurrentlyWholesale = targetItem.product.precio == targetItem.product.precio_mayoreo
-        val targetPrice = if (isCurrentlyWholesale) targetItem.originalPrice else targetItem.product.precio_mayoreo
+        val newWholesaleState = !isCurrentlyWholesale
+        val targetPrice = if (newWholesaleState) targetItem.product.precio_mayoreo else targetItem.originalPrice
 
         val updatedProduct = targetItem.product.copy(precio = targetPrice)
         val updatedList = currentList.toMutableList()
-        updatedList[index] = targetItem.copy(product = updatedProduct)
+        updatedList[index] = targetItem.copy(
+            product = updatedProduct,
+            isManualWholesale = newWholesaleState
+        )
         _cartItems.value = updatedList
     }
 

@@ -104,7 +104,11 @@ class AjustesViewModel(
         val roundProductPrices: Boolean = false,
         val roundTicketTotal: Boolean = false,
         val disallowCardPaymentOnWholesale: Boolean = false,
-        val prioritizeDeliveryPrice: Boolean = false
+        val prioritizeDeliveryPrice: Boolean = false,
+        val autoWholesaleByQuantity: Boolean = false,
+        val autoWholesaleQuantityThreshold: Int = 3,
+        val autoWholesaleByTicketTotal: Boolean = false,
+        val autoWholesaleTicketTotalThreshold: Double = 0.0
     )
 
     private val _behaviorFlow = combine(
@@ -133,9 +137,18 @@ class AjustesViewModel(
                 repository.prioritizeDeliveryPriceFlow
             ) { roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
                 Tuple4(roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+            },
+            combine(
+                repository.autoWholesaleByQuantityFlow,
+                repository.autoWholesaleQuantityThresholdFlow,
+                repository.autoWholesaleByTicketTotalFlow,
+                repository.autoWholesaleTicketTotalThresholdFlow
+            ) { autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold ->
+                Tuple4(autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold)
             }
         ) { (defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled),
-            (roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice) ->
+            (roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
+            (autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold) ->
             BehaviorPricingState(
                 defaultRetailMargin = defaultRetailMargin,
                 defaultWholesaleMargin = defaultWholesaleMargin,
@@ -144,7 +157,11 @@ class AjustesViewModel(
                 roundProductPrices = roundProductPrices,
                 roundTicketTotal = roundTicketTotal,
                 disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
-                prioritizeDeliveryPrice = prioritizeDeliveryPrice
+                prioritizeDeliveryPrice = prioritizeDeliveryPrice,
+                autoWholesaleByQuantity = autoWholesaleByQuantity,
+                autoWholesaleQuantityThreshold = autoWholesaleQuantityThreshold,
+                autoWholesaleByTicketTotal = autoWholesaleByTicketTotal,
+                autoWholesaleTicketTotalThreshold = autoWholesaleTicketTotalThreshold
             )
         },
         combine(
@@ -183,6 +200,10 @@ class AjustesViewModel(
             roundTicketTotal = pricingState.roundTicketTotal,
             disallowCardPaymentOnWholesale = pricingState.disallowCardPaymentOnWholesale,
             prioritizeDeliveryPrice = pricingState.prioritizeDeliveryPrice,
+            autoWholesaleByQuantity = pricingState.autoWholesaleByQuantity,
+            autoWholesaleQuantityThreshold = pricingState.autoWholesaleQuantityThreshold,
+            autoWholesaleByTicketTotal = pricingState.autoWholesaleByTicketTotal,
+            autoWholesaleTicketTotalThreshold = pricingState.autoWholesaleTicketTotalThreshold,
             supabaseUrl = supabaseUrl,
             supabaseKey = supabaseKey,
             lastSyncTimestamp = lastSyncTimestamp,
@@ -229,6 +250,10 @@ class AjustesViewModel(
             roundTicketTotal = behaviorState.roundTicketTotal,
             disallowCardPaymentOnWholesale = behaviorState.disallowCardPaymentOnWholesale,
             prioritizeDeliveryPrice = behaviorState.prioritizeDeliveryPrice,
+            autoWholesaleByQuantity = behaviorState.autoWholesaleByQuantity,
+            autoWholesaleQuantityThreshold = behaviorState.autoWholesaleQuantityThreshold,
+            autoWholesaleByTicketTotal = behaviorState.autoWholesaleByTicketTotal,
+            autoWholesaleTicketTotalThreshold = behaviorState.autoWholesaleTicketTotalThreshold,
             supabaseUrl = behaviorState.supabaseUrl,
             supabaseKey = behaviorState.supabaseKey,
             lastSyncTimestamp = behaviorState.lastSyncTimestamp,
@@ -421,6 +446,30 @@ class AjustesViewModel(
     fun setPrioritizeDeliveryPrice(enabled: Boolean) {
         viewModelScope.launch {
             repository.setPrioritizeDeliveryPrice(enabled)
+        }
+    }
+
+    fun setAutoWholesaleByQuantity(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setAutoWholesaleByQuantity(enabled)
+        }
+    }
+
+    fun setAutoWholesaleQuantityThreshold(threshold: Int) {
+        viewModelScope.launch {
+            repository.setAutoWholesaleQuantityThreshold(threshold)
+        }
+    }
+
+    fun setAutoWholesaleByTicketTotal(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setAutoWholesaleByTicketTotal(enabled)
+        }
+    }
+
+    fun setAutoWholesaleTicketTotalThreshold(threshold: Double) {
+        viewModelScope.launch {
+            repository.setAutoWholesaleTicketTotalThreshold(threshold)
         }
     }
 

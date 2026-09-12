@@ -32,6 +32,15 @@ import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.ui.components.SyncedSettingBadge
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.auto_wholesale_by_quantity_subtitle
+import poskmp.shared.generated.resources.auto_wholesale_by_quantity_title
+import poskmp.shared.generated.resources.auto_wholesale_by_total_subtitle
+import poskmp.shared.generated.resources.auto_wholesale_by_total_title
+import poskmp.shared.generated.resources.auto_wholesale_pieces_suffix
+import poskmp.shared.generated.resources.auto_wholesale_quantity_threshold_label
+import poskmp.shared.generated.resources.auto_wholesale_section_subtitle
+import poskmp.shared.generated.resources.auto_wholesale_section_title
+import poskmp.shared.generated.resources.auto_wholesale_total_threshold_label
 import poskmp.shared.generated.resources.default_margins_section_subtitle
 import poskmp.shared.generated.resources.default_margins_section_title
 import poskmp.shared.generated.resources.delivery_margin_label
@@ -72,6 +81,14 @@ fun PricingSettingsSection(
     onDisallowCardPaymentOnWholesaleChange: (Boolean) -> Unit,
     prioritizeDeliveryPrice: Boolean,
     onPrioritizeDeliveryPriceChange: (Boolean) -> Unit,
+    autoWholesaleByQuantity: Boolean = false,
+    onAutoWholesaleByQuantityChange: (Boolean) -> Unit = {},
+    autoWholesaleQuantityThreshold: Int = 3,
+    onAutoWholesaleQuantityThresholdChange: (Int) -> Unit = {},
+    autoWholesaleByTicketTotal: Boolean = false,
+    onAutoWholesaleByTicketTotalChange: (Boolean) -> Unit = {},
+    autoWholesaleTicketTotalThreshold: Double = 0.0,
+    onAutoWholesaleTicketTotalThresholdChange: (Double) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var retailMarginText by remember(defaultRetailMargin) {
@@ -87,6 +104,14 @@ fun PricingSettingsSection(
     var deliveryMarginText by remember(defaultDeliveryMargin) {
         mutableStateOf(if (defaultDeliveryMargin > 0.0) {
             if (defaultDeliveryMargin % 1.0 == 0.0) defaultDeliveryMargin.toLong().toString() else defaultDeliveryMargin.toString()
+        } else "")
+    }
+    var quantityThresholdText by remember(autoWholesaleQuantityThreshold) {
+        mutableStateOf(if (autoWholesaleQuantityThreshold > 0) autoWholesaleQuantityThreshold.toString() else "")
+    }
+    var ticketTotalThresholdText by remember(autoWholesaleTicketTotalThreshold) {
+        mutableStateOf(if (autoWholesaleTicketTotalThreshold > 0.0) {
+            if (autoWholesaleTicketTotalThreshold % 1.0 == 0.0) autoWholesaleTicketTotalThreshold.toLong().toString() else autoWholesaleTicketTotalThreshold.toString()
         } else "")
     }
 
@@ -415,6 +440,140 @@ fun PricingSettingsSection(
                         checked = prioritizeDeliveryPrice,
                         onCheckedChange = onPrioritizeDeliveryPriceChange
                     )
+                }
+            }
+        }
+
+        // Card: Mayoreo Automático
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = stringResource(Res.string.auto_wholesale_section_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(Res.string.auto_wholesale_section_subtitle),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Trigger 1: Por cantidad de piezas de un producto
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.auto_wholesale_by_quantity_title),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.auto_wholesale_by_quantity_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = autoWholesaleByQuantity,
+                        onCheckedChange = onAutoWholesaleByQuantityChange
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = autoWholesaleByQuantity,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        OutlinedTextField(
+                            value = quantityThresholdText,
+                            onValueChange = { input ->
+                                if (input.isEmpty() || input.matches(Regex("^\\d+$"))) {
+                                    quantityThresholdText = input
+                                    onAutoWholesaleQuantityThresholdChange(input.toIntOrNull() ?: 0)
+                                }
+                            },
+                            label = { Text(stringResource(Res.string.auto_wholesale_quantity_threshold_label)) },
+                            suffix = { Text(stringResource(Res.string.auto_wholesale_pieces_suffix), fontWeight = FontWeight.Medium) },
+                            placeholder = { Text("3") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(0.5f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    thickness = 1.dp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Trigger 2: Por monto total del ticket
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.auto_wholesale_by_total_title),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.auto_wholesale_by_total_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = autoWholesaleByTicketTotal,
+                        onCheckedChange = onAutoWholesaleByTicketTotalChange
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = autoWholesaleByTicketTotal,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        OutlinedTextField(
+                            value = ticketTotalThresholdText,
+                            onValueChange = { input ->
+                                if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                    ticketTotalThresholdText = input
+                                    onAutoWholesaleTicketTotalThresholdChange(input.toDoubleOrNull() ?: 0.0)
+                                }
+                            },
+                            label = { Text(stringResource(Res.string.auto_wholesale_total_threshold_label)) },
+                            prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                            placeholder = { Text("1000") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(0.5f)
+                        )
+                    }
                 }
             }
         }

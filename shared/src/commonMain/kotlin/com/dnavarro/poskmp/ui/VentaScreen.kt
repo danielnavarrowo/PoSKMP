@@ -98,11 +98,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -180,7 +182,9 @@ import poskmp.shared.generated.resources.quantity_weight_label
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
+import poskmp.shared.generated.resources.total_label
 import poskmp.shared.generated.resources.total_to_pay_label
+import poskmp.shared.generated.resources.total_without_discount_label
 import poskmp.shared.generated.resources.transfer_beneficiary_label
 import poskmp.shared.generated.resources.transfer_clabe_label
 import poskmp.shared.generated.resources.transfer_info_title
@@ -194,7 +198,8 @@ import kotlin.time.Duration.Companion.milliseconds
 data class CartItem(
     val product: Products,
     var quantity: Double,
-    val originalPrice: Double = product.precio
+    val originalPrice: Double = product.precio,
+    val isManualWholesale: Boolean? = null
 )
 
 @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
@@ -1504,23 +1509,54 @@ fun VentaScreen(
                         }
                     }
 
-                    Row(
+                    val totalWithoutDiscount = cartItems.sumOf { it.originalPrice * it.quantity }
+                    val hasDiscount = cartItems.any { it.product.precio < it.originalPrice }
+
+                    Column(
                         modifier = Modifier.fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small)
                             .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            stringResource(Res.string.total_to_pay_label),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "$${total.toString().formatPrice()}",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.ExtraBold,
-                            style = MaterialTheme.typography.displaySmall
-                        )
+                        if (hasDiscount) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    stringResource(Res.string.total_without_discount_label),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    "$${totalWithoutDiscount.toString().formatPrice()}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    style = TextStyle(textDecoration = TextDecoration.LineThrough)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                stringResource(Res.string.total_label),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                "$${total.toString().formatPrice()}",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
                     }
 
                     // Conditional payment fields based on PaymentMethod

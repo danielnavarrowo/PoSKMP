@@ -61,6 +61,10 @@ interface SettingsRepository {
     val roundTicketTotalFlow: Flow<Boolean>
     val disallowCardPaymentOnWholesaleFlow: Flow<Boolean>
     val prioritizeDeliveryPriceFlow: Flow<Boolean>
+    val autoWholesaleByQuantityFlow: Flow<Boolean>
+    val autoWholesaleQuantityThresholdFlow: Flow<Int>
+    val autoWholesaleByTicketTotalFlow: Flow<Boolean>
+    val autoWholesaleTicketTotalThresholdFlow: Flow<Double>
     val productTableVisibleColumnsFlow: Flow<Set<String>>
     val supabaseUrlFlow: Flow<String>
     val supabaseKeyFlow: Flow<String>
@@ -98,6 +102,10 @@ interface SettingsRepository {
     suspend fun setRoundTicketTotal(enabled: Boolean)
     suspend fun setDisallowCardPaymentOnWholesale(disallow: Boolean)
     suspend fun setPrioritizeDeliveryPrice(prioritize: Boolean)
+    suspend fun setAutoWholesaleByQuantity(enabled: Boolean)
+    suspend fun setAutoWholesaleQuantityThreshold(threshold: Int)
+    suspend fun setAutoWholesaleByTicketTotal(enabled: Boolean)
+    suspend fun setAutoWholesaleTicketTotalThreshold(threshold: Double)
     suspend fun setProductTableVisibleColumns(columns: Set<String>)
     suspend fun toggleProductTableColumn(columnName: String, defaultColumns: Set<String> = DEFAULT_PRODUCT_TABLE_COLUMN_NAMES)
     suspend fun setBusinessSettings(
@@ -158,6 +166,10 @@ class SettingsRepositoryImpl(
         val ROUND_TICKET_TOTAL = booleanPreferencesKey("round_ticket_total")
         val DISALLOW_CARD_PAYMENT_ON_WHOLESALE = booleanPreferencesKey("disallow_card_payment_on_wholesale")
         val PRIORITIZE_DELIVERY_PRICE = booleanPreferencesKey("prioritize_delivery_price")
+        val AUTO_WHOLESALE_BY_QUANTITY = booleanPreferencesKey("auto_wholesale_by_quantity")
+        val AUTO_WHOLESALE_QUANTITY_THRESHOLD = intPreferencesKey("auto_wholesale_quantity_threshold")
+        val AUTO_WHOLESALE_BY_TICKET_TOTAL = booleanPreferencesKey("auto_wholesale_by_ticket_total")
+        val AUTO_WHOLESALE_TICKET_TOTAL_THRESHOLD = doublePreferencesKey("auto_wholesale_ticket_total_threshold")
         val SUPABASE_URL = stringPreferencesKey("supabase_url")
         val SUPABASE_KEY = stringPreferencesKey("supabase_key")
         val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
@@ -300,6 +312,22 @@ class SettingsRepositoryImpl(
 
     override val prioritizeDeliveryPriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.PRIORITIZE_DELIVERY_PRICE] ?: false
+    }
+
+    override val autoWholesaleByQuantityFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.AUTO_WHOLESALE_BY_QUANTITY] ?: false
+    }
+
+    override val autoWholesaleQuantityThresholdFlow: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.AUTO_WHOLESALE_QUANTITY_THRESHOLD] ?: 3
+    }
+
+    override val autoWholesaleByTicketTotalFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.AUTO_WHOLESALE_BY_TICKET_TOTAL] ?: false
+    }
+
+    override val autoWholesaleTicketTotalThresholdFlow: Flow<Double> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.AUTO_WHOLESALE_TICKET_TOTAL_THRESHOLD] ?: 0.0
     }
 
     override val productTableVisibleColumnsFlow: Flow<Set<String>> = dataStore.data.map { preferences ->
@@ -521,6 +549,30 @@ class SettingsRepositoryImpl(
     override suspend fun setPrioritizeDeliveryPrice(prioritize: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.PRIORITIZE_DELIVERY_PRICE] = prioritize
+        }
+    }
+
+    override suspend fun setAutoWholesaleByQuantity(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.AUTO_WHOLESALE_BY_QUANTITY] = enabled
+        }
+    }
+
+    override suspend fun setAutoWholesaleQuantityThreshold(threshold: Int) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.AUTO_WHOLESALE_QUANTITY_THRESHOLD] = threshold
+        }
+    }
+
+    override suspend fun setAutoWholesaleByTicketTotal(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.AUTO_WHOLESALE_BY_TICKET_TOTAL] = enabled
+        }
+    }
+
+    override suspend fun setAutoWholesaleTicketTotalThreshold(threshold: Double) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.AUTO_WHOLESALE_TICKET_TOTAL_THRESHOLD] = threshold
         }
     }
 

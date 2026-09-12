@@ -601,6 +601,17 @@
     <string name="prioritize_delivery_price_subtitle">En este dispositivo, los productos con precio a domicilio configurado se cobrarán a ese precio por defecto en la venta</string>
     <string name="delivery_mode_active_badge">Domicilio</string>
 
+    <!-- Automatic Wholesale Settings Strings -->
+    <string name="auto_wholesale_section_title">Mayoreo Automático</string>
+    <string name="auto_wholesale_section_subtitle">Aplica automáticamente el precio de mayoreo en la venta en curso según las siguientes reglas</string>
+    <string name="auto_wholesale_by_quantity_title">Por cantidad de piezas de un producto</string>
+    <string name="auto_wholesale_by_quantity_subtitle">Aplica precio de mayoreo a un producto automáticamente si alcanza o supera esta cantidad de piezas</string>
+    <string name="auto_wholesale_quantity_threshold_label">Piezas mínimas</string>
+    <string name="auto_wholesale_by_total_title">Por monto total del ticket</string>
+    <string name="auto_wholesale_by_total_subtitle">Aplica precio de mayoreo a toda la venta si el total acumulado en el ticket alcanza o supera este monto</string>
+    <string name="auto_wholesale_total_threshold_label">Monto mínimo del ticket</string>
+    <string name="auto_wholesale_pieces_suffix">piezas</string>
+
     <!-- Supabase Cloud Sync Settings Strings -->
     <string name="supabase_section_title">Sincronización en la Nube (Supabase)</string>
     <string name="supabase_section_subtitle">Conecta tu punto de venta a Supabase para sincronizar catálogos, clientes y ventas entre dispositivos</string>
