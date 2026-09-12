@@ -110,6 +110,9 @@ import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.di.initKoin
 import com.dnavarro.poskmp.domain.model.DeviceRole
+import com.dnavarro.poskmp.domain.model.Sale
+import com.dnavarro.poskmp.domain.model.SaleItem
+import com.dnavarro.poskmp.domain.usecase.CancelSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
 import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
@@ -123,10 +126,12 @@ import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.AjustesScreen
 import com.dnavarro.poskmp.ui.CalculatorDialog
+import com.dnavarro.poskmp.ui.CancelSaleConfirmationDialog
 import com.dnavarro.poskmp.ui.ChecadorDialog
 import com.dnavarro.poskmp.ui.ChecadorScreen
 import com.dnavarro.poskmp.ui.ClientesScreen
 import com.dnavarro.poskmp.ui.ProductosScreen
+import com.dnavarro.poskmp.ui.SaleDetailDialog
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.ui.VentaScreen
 import com.dnavarro.poskmp.ui.VentasScreen
@@ -483,7 +488,11 @@ fun App(
             val appScale = ajustesUiState.appScale
 
             val saleRepository = koinInject<SaleRepository>()
+            val cancelSaleUseCase = koinInject<CancelSaleUseCase>()
             val lastSale by saleRepository.getLastSale().collectAsStateWithLifecycle(initialValue = null)
+            var selectedLastSaleForDetail by remember { mutableStateOf<Pair<Sale, List<SaleItem>>?>(null) }
+            var lastSaleToCancel by remember { mutableStateOf<Sale?>(null) }
+            var isCancellingLastSale by remember { mutableStateOf(false) }
 
             val systemInDark = isSystemInDarkTheme()
             val darkTheme = when (darkModeConfig) {
@@ -526,6 +535,14 @@ fun App(
                             DesktopTitleBar(
                                 dateTimeText = desktopDateTimeText,
                                 lastSale = lastSale,
+                                onLastSaleClick = {
+                                    lastSale?.let { sale ->
+                                        coroutineScope.launch {
+                                            val items = saleRepository.getItemsBySaleId(sale.id)
+                                            selectedLastSaleForDetail = Pair(sale, items)
+                                        }
+                                    }
+                                },
                                 onMinimize = { onMinimize?.invoke() },
                                 onClose = { onClose?.invoke() }
                             )
@@ -1725,6 +1742,53 @@ fun App(
                             onDismiss = {
                                 showExitCloseShiftDialog = false
                                 onCancelExit()
+                            }
+                        )
+                    }
+
+                    // Diálogo de detalle de la última venta (invocado desde DesktopTitleBar)
+                    selectedLastSaleForDetail?.let { (sale, items) ->
+                        SaleDetailDialog(
+                            sale = sale,
+                            items = items,
+                            onDismiss = {
+                                selectedLastSaleForDetail = null
+                                reclaimCurrentScreenFocus()
+                            },
+                            onCancelSale = {
+                                lastSaleToCancel = sale
+                            },
+                            onReprintReceipt = {
+                                coroutineScope.launch {
+                                    reprintSaleReceiptUseCase(sale)
+                                }
+                            }
+                        )
+                    }
+
+                    // Diálogo de confirmación para cancelar última venta
+                    lastSaleToCancel?.let { sale ->
+                        CancelSaleConfirmationDialog(
+                            sale = sale,
+                            isCancelling = isCancellingLastSale,
+                            onConfirm = {
+                                coroutineScope.launch {
+                                    isCancellingLastSale = true
+                                    try {
+                                        val result = cancelSaleUseCase(sale.id)
+                                        if (result.isSuccess) {
+                                            selectedLastSaleForDetail = null
+                                            lastSaleToCancel = null
+                                        }
+                                    } finally {
+                                        isCancellingLastSale = false
+                                        reclaimCurrentScreenFocus()
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                lastSaleToCancel = null
+                                reclaimCurrentScreenFocus()
                             }
                         )
                     }

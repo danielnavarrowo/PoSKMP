@@ -961,80 +961,11 @@ fun VentasScreen(
 
     // Cancel Sale Confirmation Dialog
     state.saleToCancel?.let { sale ->
-        val cancelConfirmButtonFocusRequester = remember { FocusRequester() }
-
-        LaunchedEffect(sale) {
-            if (!isAndroid()) {
-                delay(100.milliseconds)
-                try {
-                    cancelConfirmButtonFocusRequester.requestFocus()
-                } catch (_: Exception) {}
-            }
-        }
-
-        AlertDialog(
-            onDismissRequest = {
-                if (!state.isCancellingSale) onDismissCancelSaleDialog()
-            },
-            modifier = Modifier
-                .widthIn(max = 440.dp)
-                .fillMaxWidth()
-                .then(
-                if (!isAndroid()) {
-                    Modifier
-                        .focusable()
-                        .onPreviewKeyEvent { keyEvent ->
-                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-                                Key.Enter, Key.NumPadEnter -> {
-                                    if (!state.isCancellingSale) {
-                                        onConfirmCancelSale(sale)
-                                        true
-                                    } else false
-                                }
-                                else -> false
-                            }
-                        }
-                } else Modifier
-            ),
-            shape = ShapeDefaults.cardShape,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            title = {
-                Text(
-                    text = stringResource(Res.string.cancel_sale_confirm_title),
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(Res.string.cancel_sale_confirm_message, sale.folio),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                androidx.compose.material3.Button(
-                    onClick = { onConfirmCancelSale(sale) },
-                    enabled = !state.isCancellingSale,
-                    modifier = if (!isAndroid()) Modifier.focusRequester(cancelConfirmButtonFocusRequester) else Modifier,
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    )
-                ) {
-                    Text(
-                        if (isAndroid()) stringResource(Res.string.cancel_sale_confirm_action)
-                        else "${stringResource(Res.string.cancel_sale_confirm_action)} (Enter)",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = onDismissCancelSaleDialog,
-                    enabled = !state.isCancellingSale
-                ) {
-                    Text(stringResource(Res.string.cancel_sale_keep_action))
-                }
-            }
+        CancelSaleConfirmationDialog(
+            sale = sale,
+            isCancelling = state.isCancellingSale,
+            onConfirm = { onConfirmCancelSale(sale) },
+            onDismiss = onDismissCancelSaleDialog
         )
     }
 
@@ -1519,7 +1450,7 @@ private fun KpiCard(
 }
 
 @Composable
-private fun SaleDetailDialog(
+internal fun SaleDetailDialog(
     sale: Sale,
     items: List<SaleItem>,
     onDismiss: () -> Unit,
@@ -1758,6 +1689,90 @@ private fun SaleDetailDialog(
                         else "${stringResource(Res.string.close_button)} (Enter)"
                     )
                 }
+            }
+        }
+    )
+}
+
+@Composable
+internal fun CancelSaleConfirmationDialog(
+    sale: Sale,
+    isCancelling: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val cancelConfirmButtonFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(sale) {
+        if (!isAndroid()) {
+            delay(100.milliseconds)
+            try {
+                cancelConfirmButtonFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = {
+            if (!isCancelling) onDismiss()
+        },
+        modifier = Modifier
+            .widthIn(max = 440.dp)
+            .fillMaxWidth()
+            .then(
+                if (!isAndroid()) {
+                    Modifier
+                        .focusable()
+                        .onPreviewKeyEvent { keyEvent ->
+                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                Key.Enter, Key.NumPadEnter -> {
+                                    if (!isCancelling) {
+                                        onConfirm()
+                                        true
+                                    } else false
+                                }
+                                else -> false
+                            }
+                        }
+                } else Modifier
+            ),
+        shape = ShapeDefaults.cardShape,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        title = {
+            Text(
+                text = stringResource(Res.string.cancel_sale_confirm_title),
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(Res.string.cancel_sale_confirm_message, sale.folio),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.Button(
+                onClick = onConfirm,
+                enabled = !isCancelling,
+                modifier = if (!isAndroid()) Modifier.focusRequester(cancelConfirmButtonFocusRequester) else Modifier,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text(
+                    if (isAndroid()) stringResource(Res.string.cancel_sale_confirm_action)
+                    else "${stringResource(Res.string.cancel_sale_confirm_action)} (Enter)",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isCancelling
+            ) {
+                Text(stringResource(Res.string.cancel_sale_keep_action))
             }
         }
     )

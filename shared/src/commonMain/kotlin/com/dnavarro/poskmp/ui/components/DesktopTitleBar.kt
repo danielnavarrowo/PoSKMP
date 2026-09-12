@@ -37,6 +37,7 @@ import poskmp.shared.generated.resources.last_sale_title
 import poskmp.shared.generated.resources.last_sale_total
 import poskmp.shared.generated.resources.minimize_window
 import poskmp.shared.generated.resources.restore
+import poskmp.shared.generated.resources.ticket_detail_title
 
 /**
  * Title bar for desktop full screen mode with centered date/time, last sale info, and minimize / close window buttons.
@@ -45,6 +46,7 @@ import poskmp.shared.generated.resources.restore
 fun DesktopTitleBar(
     dateTimeText: String = "",
     lastSale: Sale? = null,
+    onLastSaleClick: (() -> Unit)? = null,
     onMinimize: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -78,44 +80,55 @@ fun DesktopTitleBar(
             ) {
                 // Última Venta Info
                 lastSale?.let { sale ->
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+                        tooltip = {
+                            PlainTooltip {
+                                Text(stringResource(Res.string.ticket_detail_title, sale.folio))
+                            }
+                        },
+                        state = rememberTooltipState()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Surface(
+                            onClick = { onLastSaleClick?.invoke() },
+                            enabled = onLastSaleClick != null,
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ) {
-                            Text(
-                                text = stringResource(Res.string.last_sale_title) + ":",
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            Text(
-                                text = stringResource(Res.string.last_sale_total, sale.total.toString().formatPrice()),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-                            )
-                            Text(
-                                text = stringResource(Res.string.last_sale_paid, sale.pagoCon.toString().formatPrice()),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-                            )
-                            Text(
-                                text = stringResource(Res.string.last_sale_change, sale.cambio.toString().formatPrice()),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black,
-
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.last_sale_title) + ":",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Text(
+                                    text = stringResource(Res.string.last_sale_total, sale.total.toString().formatPrice()),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Text(
+                                    text = "•",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                                )
+                                Text(
+                                    text = stringResource(Res.string.last_sale_paid, sale.pagoCon.toString().formatPrice()),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Text(
+                                    text = "•",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                                )
+                                Text(
+                                    text = stringResource(Res.string.last_sale_change, sale.cambio.toString().formatPrice()),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Black,
+                                )
+                            }
                         }
                     }
                 }
