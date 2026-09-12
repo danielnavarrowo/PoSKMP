@@ -104,15 +104,7 @@ object ReceiptFormatter {
 
         // 3. Items List
         items.forEach { item ->
-            val hasWholesale = item.isWholesale || (item.originalUnitPrice > item.unitPrice + 0.001)
-            val displayName = if (hasWholesale) {
-                "${item.name.trim().ifEmpty { "Producto" }} (MAY)"
-            } else if (item.isDelivery) {
-                "${item.name.trim().ifEmpty { "Producto" }} (DOM)"
-            } else {
-                item.name.trim().ifEmpty { "Producto" }
-            }
-
+            val displayName = item.name.trim().ifEmpty { "Producto" }
             val quantity = formatQuantity(item.quantity, item.isWeightBased)
             val fullLeftText = "$quantity $displayName"
             val priceText = "$${item.subtotal.toString().formatPrice()}"

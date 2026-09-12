@@ -12,6 +12,7 @@ import com.dnavarro.poskmp.domain.model.ProductSalesStats
 
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.matchesBarcode
+import com.dnavarro.poskmp.util.matchesSearch
 import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 
@@ -61,13 +62,16 @@ class SqlDelightProductDataSource(
 
     override fun searchProducts(query: String, activeOnly: Boolean): Flow<List<Products>> {
         val trimmed = query.trim()
-        val normalized = normalizeBarcode(trimmed)
-        val q = if (activeOnly) {
-            queries.searchActiveProducts(query = trimmed, normalizedQuery = normalized)
-        } else {
-            queries.searchProducts(query = trimmed, normalizedQuery = normalized)
+        val sourceFlow = if (activeOnly) queries.selectActiveProducts() else queries.selectAllProducts()
+        if (trimmed.isEmpty()) {
+            return sourceFlow.asFlow().mapToList(Dispatchers.IO)
         }
-        return q.asFlow().mapToList(Dispatchers.IO)
+        val normalized = normalizeBarcode(trimmed)
+        return sourceFlow.asFlow().mapToList(Dispatchers.IO).map { products ->
+            products.filter { product ->
+                product.matchesSearch(trimmed, normalized)
+            }
+        }
     }
 
     override suspend fun getProductById(id: String): Products? = withContext(Dispatchers.IO) {

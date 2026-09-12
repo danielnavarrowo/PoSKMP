@@ -18,6 +18,7 @@ import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.matchesSearchQuery
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -227,11 +228,11 @@ class VentaViewModel(
         val filteredCust = if (cQuery.isBlank()) {
             catalogConfig.customers
         } else {
-            val query = cQuery.trim().lowercase()
+            val query = cQuery.trim()
             catalogConfig.customers.filter {
-                it.nombre.lowercase().contains(query) ||
-                it.telefono.lowercase().contains(query) ||
-                it.direccion.lowercase().contains(query)
+                it.nombre.matchesSearchQuery(query) ||
+                it.telefono.matchesSearchQuery(query) ||
+                it.direccion.matchesSearchQuery(query)
             }
         }
 

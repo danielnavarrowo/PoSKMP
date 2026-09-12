@@ -36,6 +36,8 @@ import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
+import com.dnavarro.poskmp.util.matchesBarcode
+import com.dnavarro.poskmp.util.parseBarcodes
 
 private data class DisplayState(
     val sortField: ProductSortField = ProductSortField.NOMBRE,
@@ -332,5 +334,17 @@ class ProductosViewModel(
 
     suspend fun validateBarcodes(codes: List<String>, excludeProductId: String?): Pair<String, Products>? {
         return repository.findConflictingProductForBarcodes(codes, excludeProductId)
+    }
+
+    suspend fun findProductByBarcode(barcode: String): Products? = withContext(Dispatchers.Default) {
+        val trimmed = barcode.trim()
+        if (trimmed.isEmpty()) return@withContext null
+        uiState.value.rawProducts.firstOrNull { product ->
+            product.parseBarcodes().matchesBarcode(trimmed) || product.id == trimmed
+        } ?: withContext(Dispatchers.IO) {
+            repository.getAllProductsList().firstOrNull { product ->
+                product.parseBarcodes().matchesBarcode(trimmed) || product.id == trimmed
+            }
+        }
     }
 }

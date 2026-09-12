@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -88,6 +90,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -253,11 +256,36 @@ fun ProductosScreen(
         }
     }
 
+    val onConfirmSearchOrBarcode: () -> Boolean = {
+        if (selectedProductIndex in sortedProducts.indices) {
+            viewModel.onShowProductDialog(sortedProducts[selectedProductIndex])
+            true
+        } else {
+            val trimmed = searchQuery.trim()
+            if (trimmed.isNotEmpty()) {
+                coroutineScope.launch {
+                    val matchingProduct = viewModel.findProductByBarcode(trimmed)
+                    if (matchingProduct != null) {
+                        viewModel.onSearchQueryChanged("")
+                        selectedProductIndex = -1
+                        selectionAnchorIndex = -1
+                        viewModel.onShowProductDialog(matchingProduct)
+                    }
+                }
+                true
+            } else false
+        }
+    }
+
     val handleKeyNavigation: (KeyEvent) -> Boolean = { keyEvent ->
         keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
             Key.Escape -> {
                 if (searchQuery.isNotEmpty()) {
                     viewModel.onSearchQueryChanged("")
+                    selectedProductIndex = -1
+                    selectionAnchorIndex = -1
+                    true
+                } else if (selectedProductIndex != -1) {
                     selectedProductIndex = -1
                     selectionAnchorIndex = -1
                     true
@@ -349,13 +377,7 @@ fun ProductosScreen(
             }
 
             Key.Enter, Key.NumPadEnter -> {
-                if (selectedProductIndex in sortedProducts.indices) {
-                    viewModel.onShowProductDialog(sortedProducts[selectedProductIndex])
-                    true
-                } else if (sortedProducts.isNotEmpty()) {
-                    viewModel.onShowProductDialog(sortedProducts[0])
-                    true
-                } else false
+                onConfirmSearchOrBarcode()
             }
 
             else -> false
@@ -772,11 +794,18 @@ fun ProductosScreen(
                                                 .fillMaxWidth()
                                                 .then(
                                                     if (!isAndroid()) {
-                                                        Modifier
-                                                            .focusRequester(searchBarFocusRequester)
-                                                            .onPreviewKeyEvent(handleKeyNavigation)
+                                                        Modifier.focusRequester(searchBarFocusRequester)
                                                     } else Modifier
-                                                ),
+                                                )
+                                                .onPreviewKeyEvent(handleKeyNavigation),
+                                            keyboardOptions = KeyboardOptions(
+                                                imeAction = ImeAction.Search
+                                            ),
+                                            keyboardActions = KeyboardActions(
+                                                onSearch = {
+                                                    onConfirmSearchOrBarcode()
+                                                }
+                                            ),
                                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 textAlign = TextAlign.Start
@@ -1078,7 +1107,17 @@ fun ProductosScreen(
                         showCameraScanner = false
                         val code = scannedCode.trim()
                         if (code.isNotEmpty()) {
-                            viewModel.onSearchQueryChanged(code)
+                            coroutineScope.launch {
+                                val matched = viewModel.findProductByBarcode(code)
+                                if (matched != null) {
+                                    viewModel.onSearchQueryChanged("")
+                                    selectedProductIndex = -1
+                                    selectionAnchorIndex = -1
+                                    viewModel.onShowProductDialog(matched)
+                                } else {
+                                    viewModel.onSearchQueryChanged(code)
+                                }
+                            }
                         }
                     },
                     onClose = { showCameraScanner = false }

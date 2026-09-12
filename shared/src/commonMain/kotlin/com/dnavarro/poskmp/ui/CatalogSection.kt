@@ -874,12 +874,12 @@ fun CatalogSection(
                                                 .align(Alignment.TopEnd)
                                                 .padding(8.dp)
                                                 .clip(MaterialShapes.Cookie12Sided.toShape())
-                                                .size(28.dp)
+                                                .size(24.dp)
                                         ) {
                                             Icon(
                                                 painter = painterResource(Res.drawable.star_filled),
                                                 contentDescription = stringResource(Res.string.favorite_desc),
-                                                modifier = Modifier.size(18.dp)
+                                                modifier = Modifier.fillMaxSize()
                                             )
                                         }
                                     }

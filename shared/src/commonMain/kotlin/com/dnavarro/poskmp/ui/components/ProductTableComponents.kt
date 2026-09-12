@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -278,12 +279,12 @@ fun ProductTableRow(
                                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                                     modifier = Modifier
                                         .clip(MaterialShapes.Cookie12Sided.toShape())
-                                        .size(28.dp)
+                                        .size(24.dp)
                                 ) {
                                     Icon(
                                         painter = painterResource(Res.drawable.star_filled),
                                         contentDescription = stringResource(Res.string.favorite_desc),
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.fillMaxSize()
                                     )
                                 }
                             }
@@ -294,12 +295,12 @@ fun ProductTableRow(
                                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                                     modifier = Modifier
                                         .clip(MaterialShapes.Sunny.toShape())
-                                        .size(28.dp)
+                                        .size(24.dp)
                                 ) {
                                     Icon(
                                         painter = painterResource(Res.drawable.disabled),
                                         contentDescription = stringResource(Res.string.status_inactive),
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.fillMaxSize()
                                     )
                                 }
                             }
@@ -537,12 +538,12 @@ fun ProductSimpleCard(
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                                 modifier = Modifier
                                     .clip(MaterialShapes.Cookie12Sided.toShape())
-                                    .size(28.dp)
+                                    .size(24.dp)
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.star_filled),
                                     contentDescription = stringResource(Res.string.favorite_desc),
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.fillMaxSize()
                                 )
                             }
                         }
@@ -552,12 +553,12 @@ fun ProductSimpleCard(
                                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier
                                     .clip(MaterialShapes.Sunny.toShape())
-                                    .size(28.dp)
+                                    .size(24.dp)
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.disabled),
                                     contentDescription = stringResource(Res.string.status_inactive),
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.fillMaxSize()
                                 )
                             }
                         }

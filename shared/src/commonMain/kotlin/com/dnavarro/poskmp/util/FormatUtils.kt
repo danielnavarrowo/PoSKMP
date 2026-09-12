@@ -229,3 +229,68 @@ fun List<String>?.matchesBarcode(targetBarcode: String?): Boolean {
     return !(this.isNullOrEmpty() || targetBarcode.isNullOrBlank()) && this.any { code -> isBarcodeMatch(code, targetBarcode) }
 }
 
+/**
+ * Normalizes a string for diacritics/accent-insensitive search (e.g. "Piñata" -> "pinata", "Café" -> "cafe").
+ * Maps accented vowels to their plain versions, and 'ñ' to 'n' for fuzzy matching.
+ */
+fun String.normalizeForSearch(): String {
+    val sb = StringBuilder(this.length)
+    for (ch in this.lowercase()) {
+        val replacement = when (ch) {
+            'á', 'à', 'ä', 'â' -> 'a'
+            'é', 'è', 'ë', 'ê' -> 'e'
+            'í', 'ì', 'ï', 'î' -> 'i'
+            'ó', 'ò', 'ö', 'ô' -> 'o'
+            'ú', 'ù', 'ü', 'û' -> 'u'
+            'ñ' -> 'n'
+            else -> ch
+        }
+        sb.append(replacement)
+    }
+    return sb.toString()
+}
+
+/**
+ * Checks if this string contains [query], ignoring case (including Unicode like ñ/Ñ) and optional accents/diacritics.
+ */
+fun String?.matchesSearchQuery(query: String): Boolean {
+    if (this.isNullOrBlank() || query.isBlank()) return false
+    val trimmedQuery = query.trim()
+    if (trimmedQuery.isEmpty()) return false
+    // 1. Direct Unicode case-insensitive match (e.g., "PIÑATA" matches "Piñata")
+    if (this.contains(trimmedQuery, ignoreCase = true)) return true
+    // 2. Diacritics-insensitive match (e.g., "pinata" matches "Piñata", "cafe" matches "Café")
+    return this.normalizeForSearch().contains(trimmedQuery.normalizeForSearch())
+}
+
+/**
+ * Evaluates whether a product matches a search query across its name, category, barcodes, and ID.
+ * Fully case-insensitive (including Spanish ñ/Ñ) and accent-tolerant.
+ */
+fun com.dnavarro.poskmp.db.Products.matchesSearch(query: String, normalizedBarcode: String = ""): Boolean {
+    val trimmed = query.trim()
+    if (trimmed.isEmpty()) return true
+
+    // 1. Direct match on full query
+    if (this.nombre.matchesSearchQuery(trimmed)) return true
+    if (!this.categoria.isNullOrBlank() && this.categoria.matchesSearchQuery(trimmed)) return true
+    if (this.codigos.contains(trimmed, ignoreCase = true)) return true
+    if (normalizedBarcode.isNotEmpty() && this.codigos.contains(normalizedBarcode, ignoreCase = true)) return true
+    if (this.parseBarcodes().matchesBarcode(trimmed)) return true
+    if (this.id.equals(trimmed, ignoreCase = true)) return true
+
+    // 2. Multi-word token match (e.g. "piñata chica" or "chica piñata")
+    val tokens = trimmed.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+    if (tokens.size > 1) {
+        val matchesAllTokens = tokens.all { token ->
+            this.nombre.matchesSearchQuery(token) ||
+            (!this.categoria.isNullOrBlank() && this.categoria.matchesSearchQuery(token)) ||
+            this.codigos.contains(token, ignoreCase = true) ||
+            this.parseBarcodes().matchesBarcode(token)
+        }
+        if (matchesAllTokens) return true
+    }
+
+    return false
+}
+

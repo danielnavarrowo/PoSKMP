@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
+import com.dnavarro.poskmp.util.matchesSearchQuery
 import kotlinx.coroutines.Dispatchers
 
 @OptIn(FlowPreview::class)
@@ -45,11 +46,11 @@ class ClientesViewModel(
         val filtered = if (query.isBlank()) {
             customerList
         } else {
-            val q = query.trim().lowercase()
+            val q = query.trim()
             customerList.filter {
-                it.nombre.lowercase().contains(q) ||
-                it.telefono.lowercase().contains(q) ||
-                it.direccion.lowercase().contains(q)
+                it.nombre.matchesSearchQuery(q) ||
+                it.telefono.matchesSearchQuery(q) ||
+                it.direccion.matchesSearchQuery(q)
             }
         }
 
