@@ -16,8 +16,10 @@ import kotlinx.coroutines.withContext
 
 interface ShiftLocalDataSource {
     fun getActiveShiftFlow(): Flow<Shifts?>
+    fun getShiftByIdFlow(id: String): Flow<Shifts?>
     suspend fun getActiveShift(): Shifts?
     suspend fun getShiftById(id: String): Shifts?
+    suspend fun getOpenShiftByCashierId(cashierId: String): Shifts?
     suspend fun getAllShifts(): List<Shifts>
     suspend fun getShiftsBetween(startTime: Long, endTime: Long): List<Shifts>
     suspend fun insertShift(shift: Shifts)
@@ -55,12 +57,19 @@ class SqlDelightShiftDataSource(
     override fun getActiveShiftFlow(): Flow<Shifts?> =
         queries.selectActiveShift().asFlow().mapToOneOrNull(Dispatchers.IO)
 
+    override fun getShiftByIdFlow(id: String): Flow<Shifts?> =
+        queries.selectShiftById(id).asFlow().mapToOneOrNull(Dispatchers.IO)
+
     override suspend fun getActiveShift(): Shifts? = withContext(Dispatchers.IO) {
         queries.selectActiveShift().executeAsOneOrNull()
     }
 
     override suspend fun getShiftById(id: String): Shifts? = withContext(Dispatchers.IO) {
         queries.selectShiftById(id).executeAsOneOrNull()
+    }
+
+    override suspend fun getOpenShiftByCashierId(cashierId: String): Shifts? = withContext(Dispatchers.IO) {
+        queries.selectOpenShiftByCashierId(cashierId).executeAsOneOrNull()
     }
 
     override suspend fun getAllShifts(): List<Shifts> = withContext(Dispatchers.IO) {

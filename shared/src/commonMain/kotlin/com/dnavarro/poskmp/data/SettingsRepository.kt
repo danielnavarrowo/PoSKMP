@@ -77,7 +77,9 @@ interface SettingsRepository {
     val receiptSettingsFlow: Flow<ReceiptSettings>
     val deviceRoleFlow: Flow<DeviceRole>
     val terminalPrefixFlow: Flow<String>
+    val localActiveShiftIdFlow: Flow<String?>
 
+    suspend fun setLocalActiveShiftId(shiftId: String?)
     suspend fun setDeviceRole(role: DeviceRole)
     suspend fun setTerminalPrefix(prefix: String)
     suspend fun setUseDynamicColor(useDynamic: Boolean)
@@ -194,6 +196,11 @@ class SettingsRepositoryImpl(
         val PRODUCT_TABLE_VISIBLE_COLUMNS = stringSetPreferencesKey("product_table_visible_columns")
         val DEVICE_ROLE = stringPreferencesKey("device_role")
         val TERMINAL_PREFIX = stringPreferencesKey("terminal_prefix")
+        val LOCAL_ACTIVE_SHIFT_ID = stringPreferencesKey("local_active_shift_id")
+    }
+
+    override val localActiveShiftIdFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.LOCAL_ACTIVE_SHIFT_ID]
     }
 
     override val deviceRoleFlow: Flow<DeviceRole> = dataStore.data.map { preferences ->
@@ -410,6 +417,16 @@ class SettingsRepositoryImpl(
             printerId = printerId,
             terminalPrefix = terminalPrefix
         )
+    }
+
+    override suspend fun setLocalActiveShiftId(shiftId: String?) {
+        dataStore.edit { preferences ->
+            if (shiftId.isNullOrBlank()) {
+                preferences.remove(PreferenceKeys.LOCAL_ACTIVE_SHIFT_ID)
+            } else {
+                preferences[PreferenceKeys.LOCAL_ACTIVE_SHIFT_ID] = shiftId
+            }
+        }
     }
 
     override suspend fun setDeviceRole(role: DeviceRole) {

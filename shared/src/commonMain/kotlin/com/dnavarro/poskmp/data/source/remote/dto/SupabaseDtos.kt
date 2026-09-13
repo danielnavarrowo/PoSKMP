@@ -93,7 +93,46 @@ data class SaleDto(
     val cashierName: String? = null,
     val estado: String = "COMPLETADA",
     @SerialName("es_foranea")
-    val esForanea: Boolean = false
+    val esForanea: Boolean = false,
+    @SerialName("shift_id")
+    val shiftId: String? = null
+)
+
+@Serializable
+data class ShiftDto(
+    val id: String,
+    @SerialName("cashier_id")
+    val cashierId: String,
+    @SerialName("cashier_name")
+    val cashierName: String,
+    @SerialName("start_time")
+    val startTime: Long,
+    @SerialName("end_time")
+    val endTime: Long? = null,
+    @SerialName("initial_cash")
+    val initialCash: Double = 0.0,
+    @SerialName("final_cash_expected")
+    val finalCashExpected: Double? = null,
+    @SerialName("final_cash_counted")
+    val finalCashCounted: Double? = null,
+    val difference: Double? = null,
+    val notes: String? = null,
+    @SerialName("is_closed")
+    val isClosed: Boolean = false
+)
+
+@Serializable
+data class CashMovementDto(
+    val id: String,
+    @SerialName("shift_id")
+    val shiftId: String,
+    @SerialName("cashier_id")
+    val cashierId: String,
+    val tipo: String,
+    val monto: Double,
+    val motivo: String,
+    @SerialName("created_at")
+    val createdAt: Long
 )
 
 @Serializable

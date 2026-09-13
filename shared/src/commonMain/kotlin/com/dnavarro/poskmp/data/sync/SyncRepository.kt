@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.data.sync
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.data.source.remote.SupabaseRemoteDataSource
 import com.dnavarro.poskmp.domain.model.DeviceRole
+import com.dnavarro.poskmp.data.source.remote.dto.CashMovementDto
 import com.dnavarro.poskmp.data.source.remote.dto.CashierDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
@@ -11,6 +12,7 @@ import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
+import com.dnavarro.poskmp.data.source.remote.dto.ShiftDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
 import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.util.currentTimeMillis
@@ -216,7 +218,65 @@ class SyncRepositoryImpl(
                 }
             }
 
-            // E) Ventas y Partidas de Ventas (ADMIN y POS_CLIENT pueden registrar y subir ventas)
+            // E1) Turnos de Caja (ADMIN y POS_CLIENT pueden registrar y subir turnos)
+            if (canPushSalesAndPayments) {
+                val unsyncedShifts = queries.selectUnsyncedShifts().executeAsList()
+                if (unsyncedShifts.isNotEmpty()) {
+                    val shiftDtos = unsyncedShifts.map { sh ->
+                        ShiftDto(
+                            id = sh.id,
+                            cashierId = sh.cashier_id,
+                            cashierName = sh.cashier_name,
+                            startTime = sh.start_time,
+                            endTime = sh.end_time,
+                            initialCash = sh.initial_cash,
+                            finalCashExpected = sh.final_cash_expected,
+                            finalCashCounted = sh.final_cash_counted,
+                            difference = sh.difference,
+                            notes = sh.notes,
+                            isClosed = sh.is_closed == 1L
+                        )
+                    }
+                    val pushShiftResult = remoteDataSource.pushShifts(url, key, shiftDtos)
+                    if (pushShiftResult.isFailure) {
+                        throw pushShiftResult.exceptionOrNull() ?: Exception("Error al subir turnos de caja")
+                    }
+                    queries.transaction {
+                        for ((id) in unsyncedShifts) {
+                            queries.updateShiftSyncState(sync_state = "SYNCED", id = id)
+                        }
+                    }
+                    totalPushed += unsyncedShifts.size
+                }
+
+                // E2) Movimientos de Caja
+                val unsyncedMovements = queries.selectUnsyncedCashMovements().executeAsList()
+                if (unsyncedMovements.isNotEmpty()) {
+                    val movementDtos = unsyncedMovements.map { m ->
+                        CashMovementDto(
+                            id = m.id,
+                            shiftId = m.shift_id,
+                            cashierId = m.cashier_id,
+                            tipo = m.tipo,
+                            monto = m.monto,
+                            motivo = m.motivo,
+                            createdAt = m.created_at
+                        )
+                    }
+                    val pushMovementsResult = remoteDataSource.pushCashMovements(url, key, movementDtos)
+                    if (pushMovementsResult.isFailure) {
+                        throw pushMovementsResult.exceptionOrNull() ?: Exception("Error al subir movimientos de caja")
+                    }
+                    queries.transaction {
+                        for ((id) in unsyncedMovements) {
+                            queries.updateCashMovementSyncState(sync_state = "SYNCED", id = id)
+                        }
+                    }
+                    totalPushed += unsyncedMovements.size
+                }
+            }
+
+            // E3) Ventas y Partidas de Ventas (ADMIN y POS_CLIENT pueden registrar y subir ventas)
             if (canPushSalesAndPayments) {
                 val unsyncedSales = queries.selectUnsyncedSales().executeAsList()
                 if (unsyncedSales.isNotEmpty()) {
@@ -236,7 +296,8 @@ class SyncRepositoryImpl(
                             createdAt = s.created_at,
                             cashierName = s.cashier_name,
                             estado = s.estado,
-                            esForanea = s.es_foranea == 1L
+                            esForanea = s.es_foranea == 1L,
+                            shiftId = s.shift_id
                         )
                     }
                     val pushSaleResult = remoteDataSource.pushSales(url, key, saleDtos)
@@ -443,18 +504,78 @@ class SyncRepositoryImpl(
             }
             totalPulled += remoteCashiers.size
 
-            // E) Ventas y Partidas Remotas
+            // E1) Turnos de Caja Remotos
+            val pulledShiftsResult = remoteDataSource.pullShifts(url, key, lastSync)
+            if (pulledShiftsResult.isFailure) {
+                throw pulledShiftsResult.exceptionOrNull() ?: Exception("Error al descargar turnos de caja")
+            }
+            val remoteShifts = pulledShiftsResult.getOrDefault(emptyList())
+            queries.transaction {
+                for ((id, cashierId, cashierName, startTime, endTime, initialCash, finalCashExpected, finalCashCounted, difference, notes, isClosed) in remoteShifts) {
+                    val cashierExists = queries.selectCashierById(cashierId).executeAsOneOrNull() != null
+                    if (cashierExists) {
+                        queries.upsertSyncedShift(
+                            id = id,
+                            cashier_id = cashierId,
+                            cashier_name = cashierName,
+                            start_time = startTime,
+                            end_time = endTime,
+                            initial_cash = initialCash,
+                            final_cash_expected = finalCashExpected,
+                            final_cash_counted = finalCashCounted,
+                            difference = difference,
+                            notes = notes,
+                            is_closed = if (isClosed) 1L else 0L
+                        )
+                    }
+                }
+            }
+            totalPulled += remoteShifts.size
+
+            // E2) Movimientos de Caja Remotos
+            val pulledMovementsResult = remoteDataSource.pullCashMovements(url, key, lastSync)
+            if (pulledMovementsResult.isFailure) {
+                throw pulledMovementsResult.exceptionOrNull() ?: Exception("Error al descargar movimientos de caja")
+            }
+            val remoteMovements = pulledMovementsResult.getOrDefault(emptyList())
+            queries.transaction {
+                for ((id, shiftId, cashierId, tipo, monto, motivo, createdAt) in remoteMovements) {
+                    val shiftExists = queries.selectShiftById(shiftId).executeAsOneOrNull() != null
+                    val cashierExists = queries.selectCashierById(cashierId).executeAsOneOrNull() != null
+                    if (shiftExists && cashierExists) {
+                        queries.upsertSyncedCashMovement(
+                            id = id,
+                            shift_id = shiftId,
+                            cashier_id = cashierId,
+                            tipo = tipo,
+                            monto = monto,
+                            motivo = motivo,
+                            created_at = createdAt
+                        )
+                    }
+                }
+            }
+            totalPulled += remoteMovements.size
+
+            // E3) Ventas y Partidas Remotas
             val pulledSalesResult = remoteDataSource.pullSales(url, key, lastSync)
             if (pulledSalesResult.isFailure) {
                 throw pulledSalesResult.exceptionOrNull() ?: Exception("Error al descargar ventas")
             }
             val remoteSales = pulledSalesResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado, esForanea) in remoteSales) {
+                for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado, esForanea, shiftId) in remoteSales) {
                     val validCustomerId = if (customerId != null && queries.selectCustomerById(
                             customerId
                         ).executeAsOneOrNull() != null) {
                         customerId
+                    } else {
+                        null
+                    }
+                    val validShiftId = if (shiftId != null && queries.selectShiftById(
+                            shiftId
+                        ).executeAsOneOrNull() != null) {
+                        shiftId
                     } else {
                         null
                     }
@@ -471,7 +592,7 @@ class SyncRepositoryImpl(
                         total_items = totalItems,
                         customer_id = validCustomerId,
                         created_at = createdAt,
-                        shift_id = null,
+                        shift_id = validShiftId,
                         cashier_id = null,
                         cashier_name = cashierName,
                         estado = estado,

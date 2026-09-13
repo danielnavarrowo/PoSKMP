@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.data.source.remote
 
+import com.dnavarro.poskmp.data.source.remote.dto.CashMovementDto
 import com.dnavarro.poskmp.data.source.remote.dto.CashierDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerDto
 import com.dnavarro.poskmp.data.source.remote.dto.CustomerPaymentDto
@@ -8,6 +9,7 @@ import com.dnavarro.poskmp.data.source.remote.dto.ProductDto
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleDto
 import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
+import com.dnavarro.poskmp.data.source.remote.dto.ShiftDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -39,6 +41,10 @@ interface SupabaseRemoteDataSource {
     suspend fun pullCustomerPayments(url: String, key: String, sinceTimestamp: Long): Result<List<CustomerPaymentDto>>
     suspend fun pushCashiers(url: String, key: String, cashiers: List<CashierDto>): Result<Unit>
     suspend fun pullCashiers(url: String, key: String, sinceTimestamp: Long): Result<List<CashierDto>>
+    suspend fun pushShifts(url: String, key: String, shifts: List<ShiftDto>): Result<Unit>
+    suspend fun pullShifts(url: String, key: String, sinceTimestamp: Long): Result<List<ShiftDto>>
+    suspend fun pushCashMovements(url: String, key: String, movements: List<CashMovementDto>): Result<Unit>
+    suspend fun pullCashMovements(url: String, key: String, sinceTimestamp: Long): Result<List<CashMovementDto>>
     suspend fun pushSales(url: String, key: String, sales: List<SaleDto>): Result<Unit>
     suspend fun pullSales(url: String, key: String, sinceTimestamp: Long): Result<List<SaleDto>>
     suspend fun pushSaleItems(url: String, key: String, items: List<SaleItemDto>): Result<Unit>
@@ -283,6 +289,74 @@ class SupabaseRemoteDataSourceImpl(
                 "order=updated_at.asc"
             }
             val list: List<CashierDto> = fetchAllPaged(cleanUrl, key, "cashiers", query)
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pushShifts(
+        url: String,
+        key: String,
+        shifts: List<ShiftDto>
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (shifts.isEmpty()) return@withContext Result.success(Unit)
+        try {
+            val cleanUrl = normalizeUrl(url)
+            pushInChunks(cleanUrl, key, "shifts", shifts)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pullShifts(
+        url: String,
+        key: String,
+        sinceTimestamp: Long
+    ): Result<List<ShiftDto>> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val query = if (sinceTimestamp > 0) {
+                "or=(is_closed.eq.false,end_time.gt.$sinceTimestamp,start_time.gt.$sinceTimestamp)&order=start_time.asc"
+            } else {
+                "order=start_time.asc"
+            }
+            val list: List<ShiftDto> = fetchAllPaged(cleanUrl, key, "shifts", query)
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pushCashMovements(
+        url: String,
+        key: String,
+        movements: List<CashMovementDto>
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        if (movements.isEmpty()) return@withContext Result.success(Unit)
+        try {
+            val cleanUrl = normalizeUrl(url)
+            pushInChunks(cleanUrl, key, "cash_movements", movements)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun pullCashMovements(
+        url: String,
+        key: String,
+        sinceTimestamp: Long
+    ): Result<List<CashMovementDto>> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = normalizeUrl(url)
+            val query = if (sinceTimestamp > 0) {
+                "created_at=gt.$sinceTimestamp&order=created_at.asc"
+            } else {
+                "order=created_at.asc"
+            }
+            val list: List<CashMovementDto> = fetchAllPaged(cleanUrl, key, "cash_movements", query)
             Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)

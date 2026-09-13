@@ -763,6 +763,33 @@ UPDATE shifts
 SET end_time = ?, final_cash_expected = ?, final_cash_counted = ?, difference = ?, notes = ?, is_closed = 1, sync_state = 'PENDING_UPDATE'
 WHERE id = ?;
 
+selectOpenShiftByCashierId:
+SELECT * FROM shifts WHERE cashier_id = ? AND is_closed = 0 LIMIT 1;
+
+selectUnsyncedShifts:
+SELECT * FROM shifts WHERE sync_state != 'SYNCED';
+
+updateShiftSyncState:
+UPDATE shifts SET sync_state = ? WHERE id = ?;
+
+upsertSyncedShift:
+INSERT INTO shifts (
+    id, cashier_id, cashier_name, start_time, end_time,
+    initial_cash, final_cash_expected, final_cash_counted, difference, notes, is_closed, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED')
+ON CONFLICT(id) DO UPDATE SET
+    cashier_id = excluded.cashier_id,
+    cashier_name = excluded.cashier_name,
+    start_time = excluded.start_time,
+    end_time = excluded.end_time,
+    initial_cash = excluded.initial_cash,
+    final_cash_expected = excluded.final_cash_expected,
+    final_cash_counted = excluded.final_cash_counted,
+    difference = excluded.difference,
+    notes = excluded.notes,
+    is_closed = excluded.is_closed,
+    sync_state = 'SYNCED';
+
 deleteAllShifts:
 DELETE FROM shifts;
 
@@ -774,6 +801,25 @@ insertCashMovement:
 INSERT INTO cash_movements (
     id, shift_id, cashier_id, tipo, monto, motivo, created_at, sync_state
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+selectUnsyncedCashMovements:
+SELECT * FROM cash_movements WHERE sync_state != 'SYNCED';
+
+updateCashMovementSyncState:
+UPDATE cash_movements SET sync_state = ? WHERE id = ?;
+
+upsertSyncedCashMovement:
+INSERT INTO cash_movements (
+    id, shift_id, cashier_id, tipo, monto, motivo, created_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, 'SYNCED')
+ON CONFLICT(id) DO UPDATE SET
+    shift_id = excluded.shift_id,
+    cashier_id = excluded.cashier_id,
+    tipo = excluded.tipo,
+    monto = excluded.monto,
+    motivo = excluded.motivo,
+    created_at = excluded.created_at,
+    sync_state = 'SYNCED';
 
 sumMovementsByShiftAndType:
 SELECT COALESCE(SUM(monto), 0.0) AS total FROM cash_movements WHERE shift_id = ? AND tipo = ?;

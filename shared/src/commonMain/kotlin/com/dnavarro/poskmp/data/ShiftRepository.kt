@@ -17,6 +17,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+
 interface ShiftRepository {
     val activeShiftFlow: Flow<CashierShift?>
     suspend fun getActiveShift(): CashierShift?
@@ -43,14 +48,41 @@ interface ShiftRepository {
 }
 
 class ShiftRepositoryImpl(
-    private val localDataSource: ShiftLocalDataSource
+    private val localDataSource: ShiftLocalDataSource,
+    private val settingsRepository: SettingsRepository
 ) : ShiftRepository {
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override val activeShiftFlow: Flow<CashierShift?> =
-        localDataSource.getActiveShiftFlow().map { it?.toDomain() }
+        settingsRepository.localActiveShiftIdFlow.flatMapLatest { localShiftId ->
+            if (localShiftId.isNullOrBlank()) {
+                flowOf(null)
+            } else {
+                localDataSource.getShiftByIdFlow(localShiftId).map { shift ->
+                    if (shift != null && shift.is_closed == 0L) shift.toDomain() else null
+                }
+            }
+        }
 
-    override suspend fun getActiveShift(): CashierShift? =
-        localDataSource.getActiveShift()?.toDomain()
+    override suspend fun getActiveShift(): CashierShift? = withContext(Dispatchers.IO) {
+        val localShiftId = settingsRepository.localActiveShiftIdFlow.first()
+        if (!localShiftId.isNullOrBlank()) {
+            val shift = localDataSource.getShiftById(localShiftId)
+            if (shift != null && shift.is_closed == 0L) {
+                return@withContext shift.toDomain()
+            }
+            settingsRepository.setLocalActiveShiftId(null)
+            return@withContext null
+        }
+
+        // Fallback para turno local previo creado offline antes de sincronizar
+        val fallback = localDataSource.getActiveShift()
+        if (fallback != null && fallback.sync_state == "PENDING_INSERT") {
+            settingsRepository.setLocalActiveShiftId(fallback.id)
+            return@withContext fallback.toDomain()
+        }
+        null
+    }
 
     override suspend fun getShiftById(id: String): CashierShift? =
         localDataSource.getShiftById(id)?.toDomain()
@@ -70,13 +102,18 @@ class ShiftRepositoryImpl(
 
     override suspend fun openShift(cashierId: String, initialCash: Double): Result<CashierShift> = withContext(Dispatchers.IO) {
         try {
-            val existing = localDataSource.getActiveShift()
+            val existing = getActiveShift()
             if (existing != null) {
-                return@withContext Result.failure(IllegalStateException("Ya existe un turno activo."))
+                return@withContext Result.failure(IllegalStateException("Ya existe un turno activo en este equipo."))
             }
 
             val cashier = localDataSource.getCashierById(cashierId)
                 ?: return@withContext Result.failure(IllegalArgumentException("Cajero no encontrado."))
+
+            val openShiftForCashier = localDataSource.getOpenShiftByCashierId(cashierId)
+            if (openShiftForCashier != null) {
+                return@withContext Result.failure(IllegalStateException("El cajero ${cashier.nombre} ya tiene un turno abierto."))
+            }
 
             val now = currentTimeMillis()
             val newShift = Shifts(
@@ -94,6 +131,7 @@ class ShiftRepositoryImpl(
                 sync_state = "PENDING_INSERT"
             )
             localDataSource.insertShift(newShift)
+            settingsRepository.setLocalActiveShiftId(newShift.id)
             Result.success(newShift.toDomain())
         } catch (e: Exception) {
             Result.failure(e)
@@ -128,6 +166,11 @@ class ShiftRepositoryImpl(
                 difference = difference,
                 notes = notes
             )
+
+            val currentLocalShiftId = settingsRepository.localActiveShiftIdFlow.first()
+            if (currentLocalShiftId == shiftId) {
+                settingsRepository.setLocalActiveShiftId(null)
+            }
 
             val updated = localDataSource.getShiftById(shiftId)?.toDomain()
                 ?: return@withContext Result.failure(IllegalStateException("Error al recuperar el turno cerrado."))
