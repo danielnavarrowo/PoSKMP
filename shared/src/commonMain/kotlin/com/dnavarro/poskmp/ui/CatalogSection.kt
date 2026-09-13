@@ -242,6 +242,12 @@ fun CatalogSection(
                 ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
                 ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
                 ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
+                ProductSortField.FECHA_CREACION -> {
+                    val c1 = if (p1.created_at > 0L) p1.created_at else p1.updated_at
+                    val c2 = if (p2.created_at > 0L) p2.created_at else p2.updated_at
+                    c1.compareTo(c2)
+                }
+                ProductSortField.FECHA_ACTUALIZACION -> p1.updated_at.compareTo(p2.updated_at)
                 else -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
             }
 

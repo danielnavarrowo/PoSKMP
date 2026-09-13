@@ -112,10 +112,6 @@ data class ProductosUiState(
                     matchesCategory && matchesFavorite && matchesStatus
                 }
                 .sortedWith { p1, p2 ->
-                    val f1 = p1.es_favorito == 1L
-                    val f2 = p2.es_favorito == 1L
-                    if (f1 != f2) return@sortedWith if (f1) -1 else 1
-
                     val primaryComp = when (sortField) {
                         ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
                         ProductSortField.CODIGO -> {
@@ -153,6 +149,14 @@ data class ProductosUiState(
                             val d1 = salesStats[p1.id]?.ultimaVenta ?: 0L
                             val d2 = salesStats[p2.id]?.ultimaVenta ?: 0L
                             d1.compareTo(d2)
+                        }
+                        ProductSortField.FECHA_CREACION -> {
+                            val c1 = if (p1.created_at > 0L) p1.created_at else p1.updated_at
+                            val c2 = if (p2.created_at > 0L) p2.created_at else p2.updated_at
+                            c1.compareTo(c2)
+                        }
+                        ProductSortField.FECHA_ACTUALIZACION -> {
+                            p1.updated_at.compareTo(p2.updated_at)
                         }
                     }
 

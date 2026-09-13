@@ -409,6 +409,7 @@ fun ProductFormDialog(
             es_favorito = if (formEsFavorito) 1L else 0L,
             piezas = formPiezas.toDoubleOrNull() ?: 1.0,
             precio_delivery = finalDelivery,
+            created_at = if (product != null && product.created_at > 0L) product.created_at else currentTimeMillis(),
             updated_at = currentTimeMillis(),
             sync_state = if (isNew) "PENDING_INSERT" else "PENDING_UPDATE"
         )

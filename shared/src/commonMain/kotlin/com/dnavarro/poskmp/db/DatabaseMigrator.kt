@@ -155,8 +155,13 @@ object DatabaseMigrator {
         ensureColumnExists(driver, "products", "es_favorito", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "por_peso", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "categoria", "TEXT DEFAULT 'Sin categoria'")
+        ensureColumnExists(driver, "products", "created_at", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "updated_at", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "sync_state", "TEXT NOT NULL DEFAULT 'SYNCED'")
+
+        try {
+            driver.execute(null, "UPDATE products SET created_at = updated_at WHERE created_at = 0 AND updated_at > 0;", 0)
+        } catch (_: Exception) {}
 
         // Migrate customers columns
         ensureColumnExists(driver, "customers", "siempre_mayoreo", "INTEGER NOT NULL DEFAULT 0")
@@ -186,6 +191,8 @@ object DatabaseMigrator {
             "CREATE INDEX IF NOT EXISTS idx_products_activo ON products(activo)",
             "CREATE INDEX IF NOT EXISTS idx_products_es_favorito ON products(es_favorito)",
             "CREATE INDEX IF NOT EXISTS idx_products_categoria ON products(categoria)",
+            "CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_products_updated_at ON products(updated_at)",
             "CREATE INDEX IF NOT EXISTS idx_customers_activo ON customers(activo)",
             "CREATE INDEX IF NOT EXISTS idx_customers_nombre ON customers(nombre)",
             "CREATE INDEX IF NOT EXISTS idx_customer_payments_customer_id ON customer_payments(customer_id)",

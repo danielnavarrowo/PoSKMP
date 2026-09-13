@@ -14,6 +14,7 @@ CREATE TABLE products (
     precio_delivery REAL   NOT NULL DEFAULT 0,
     
     -- Sync fields
+    created_at     INTEGER NOT NULL DEFAULT 0, -- Unix epoch millisecond timestamp
     updated_at     INTEGER NOT NULL, -- Unix epoch millisecond timestamp
     sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT' -- 'SYNCED', 'PENDING_INSERT', 'PENDING_UPDATE', 'PENDING_DELETE'
 );
@@ -36,8 +37,8 @@ insertProduct:
 INSERT INTO products (
     id, codigos, nombre, precio, costo, 
     categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery,
-    updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
     codigos = excluded.codigos,
     nombre = excluded.nombre,
@@ -50,6 +51,7 @@ ON CONFLICT(id) DO UPDATE SET
     es_favorito = excluded.es_favorito,
     piezas = excluded.piezas,
     precio_delivery = excluded.precio_delivery,
+    created_at = CASE WHEN products.created_at > 0 THEN products.created_at ELSE excluded.created_at END,
     updated_at = excluded.updated_at,
     sync_state = excluded.sync_state;
 
@@ -57,7 +59,7 @@ updateProduct:
 UPDATE products
 SET codigos = ?, nombre = ?, precio = ?, costo = ?, 
     categoria = ?, activo = ?, por_peso = ?, precio_mayoreo = ?, es_favorito = ?, piezas = ?, precio_delivery = ?,
-    updated_at = ?, sync_state = ?
+    created_at = ?, updated_at = ?, sync_state = ?
 WHERE id = ?;
 
 deleteProductSoft:
@@ -85,8 +87,8 @@ upsertSyncedProduct:
 INSERT INTO products (
     id, codigos, nombre, precio, costo, 
     categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery,
-    updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED')
+    created_at, updated_at, sync_state
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED')
 ON CONFLICT(id) DO UPDATE SET
     codigos = excluded.codigos,
     nombre = excluded.nombre,
@@ -99,6 +101,7 @@ ON CONFLICT(id) DO UPDATE SET
     es_favorito = excluded.es_favorito,
     piezas = excluded.piezas,
     precio_delivery = excluded.precio_delivery,
+    created_at = CASE WHEN products.created_at > 0 THEN products.created_at ELSE excluded.created_at END,
     updated_at = excluded.updated_at,
     sync_state = 'SYNCED';
 

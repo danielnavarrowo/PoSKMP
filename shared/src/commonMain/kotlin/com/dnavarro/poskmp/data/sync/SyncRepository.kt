@@ -411,6 +411,7 @@ class SyncRepositoryImpl(
                 for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, precioDelivery, esFavorito, piezas, updatedAt) in remoteProducts) {
                     val local = queries.selectProductById(id).executeAsOneOrNull()
                     if (local == null || updatedAt >= local.updated_at) {
+                        val effectiveCreatedAt = local?.created_at?.takeIf { it > 0L } ?: updatedAt
                         queries.upsertSyncedProduct(
                             id = id,
                             codigos = codigos,
@@ -424,6 +425,7 @@ class SyncRepositoryImpl(
                             precio_delivery = precioDelivery,
                             es_favorito = if (esFavorito) 1L else 0L,
                             piezas = piezas,
+                            created_at = effectiveCreatedAt,
                             updated_at = updatedAt
                         )
                     }

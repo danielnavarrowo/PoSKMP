@@ -268,6 +268,7 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
                 es_favorito = esFavorito,
                 piezas = piezas,
                 precio_delivery = precioDelivery,
+                created_at = currentTimeMillis(),
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )
@@ -435,6 +436,7 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
                 es_favorito = esFavorito,
                 piezas = piezas,
                 precio_delivery = precioDelivery,
+                created_at = currentTimeMillis(),
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )
@@ -530,6 +532,7 @@ private fun parseJsonContent(content: ByteArray): List<Products> {
                 es_favorito = esFavorito,
                 piezas = piezas,
                 precio_delivery = precioDelivery,
+                created_at = currentTimeMillis(),
                 updated_at = currentTimeMillis(),
                 sync_state = "PENDING_INSERT"
             )

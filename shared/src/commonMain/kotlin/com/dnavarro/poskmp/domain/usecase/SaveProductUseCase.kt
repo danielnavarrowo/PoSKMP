@@ -50,8 +50,17 @@ class SaveProductUseCase(
             if (previousSyncState == "PENDING_INSERT") "PENDING_INSERT" else "PENDING_UPDATE"
         }
 
+        val createdAt = when {
+            isBrandNew -> if (product.created_at > 0L) product.created_at else now
+            existingById?.created_at != null && existingById.created_at > 0L -> existingById.created_at
+            existingByBarcode?.created_at != null && existingByBarcode.created_at > 0L -> existingByBarcode.created_at
+            product.created_at > 0L -> product.created_at
+            else -> existingById?.updated_at ?: existingByBarcode?.updated_at ?: now
+        }
+
         val updatedProduct = product.copy(
             id = finalId,
+            created_at = createdAt,
             updated_at = now,
             sync_state = syncState
         )

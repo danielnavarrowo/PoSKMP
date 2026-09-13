@@ -290,6 +290,8 @@
     <string name="sort_order_section_title">Dirección de orden</string>
     <string name="sort_order_asc">Ascendente</string>
     <string name="sort_order_desc">Descendente</string>
+    <string name="sort_field_created_at">Fecha de creación</string>
+    <string name="sort_field_updated_at">Fecha de actualización</string>
     <string name="filter_section_title">Filtros</string>
     <string name="filter_category_title">Categoría</string>
     <string name="filter_category_all">Todas</string>

@@ -2023,6 +2023,7 @@ fun VentaScreen(
                             es_favorito = 0L,
                             piezas = 1.0,
                             precio_delivery = 0.0,
+                            created_at = currentTimeMillis(),
                             updated_at = currentTimeMillis(),
                             sync_state = "PENDING_INSERT"
                         )
@@ -2147,6 +2148,7 @@ fun VentaScreen(
                                 es_favorito = 0L,
                                 piezas = 1.0,
                                 precio_delivery = 0.0,
+                                created_at = currentTimeMillis(),
                                 updated_at = currentTimeMillis(),
                                 sync_state = "PENDING_INSERT"
                             )

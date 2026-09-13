@@ -170,6 +170,8 @@ import poskmp.shared.generated.resources.sort_order_asc
 import poskmp.shared.generated.resources.sort_order_desc
 import poskmp.shared.generated.resources.sort_order_section_title
 import poskmp.shared.generated.resources.sort_section_title
+import poskmp.shared.generated.resources.sort_field_created_at
+import poskmp.shared.generated.resources.sort_field_updated_at
 import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.header_delivery_margin
 import poskmp.shared.generated.resources.header_delivery_price
@@ -179,7 +181,7 @@ import poskmp.shared.generated.resources.wholesale
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class ProductSortField {
-    CODIGO, NOMBRE, CATEGORIA, PIEZAS, PRECIO, COSTO, MAYOREO, DOMICILIO, MARGEN_VENTA, MARGEN_MAYOREO, MARGEN_DOMICILIO, VENTAS_TOTALES, ULTIMA_VENTA
+    CODIGO, NOMBRE, CATEGORIA, PIEZAS, PRECIO, COSTO, MAYOREO, DOMICILIO, MARGEN_VENTA, MARGEN_MAYOREO, MARGEN_DOMICILIO, VENTAS_TOTALES, ULTIMA_VENTA, FECHA_CREACION, FECHA_ACTUALIZACION
 }
 
 enum class ProductSortOrder {
@@ -313,6 +315,7 @@ fun ProductosScreen(
                             es_favorito = 0L,
                             piezas = 1.0,
                             precio_delivery = 0.0,
+                            created_at = 0L,
                             updated_at = 0L,
                             sync_state = ""
                         )
@@ -559,6 +562,7 @@ fun ProductosScreen(
                                             es_favorito = 0L,
                                             piezas = 1.0,
                                             precio_delivery = 0.0,
+                                            created_at = 0L,
                                             updated_at = 0L,
                                             sync_state = ""
                                         )
@@ -627,6 +631,7 @@ fun ProductosScreen(
                                                 es_favorito = 0L,
                                                 piezas = 1.0,
                                                 precio_delivery = 0.0,
+                                                created_at = 0L,
                                                 updated_at = 0L,
                                                 sync_state = ""
                                             )
@@ -661,6 +666,7 @@ fun ProductosScreen(
                                                 es_favorito = 0L,
                                                 piezas = 1.0,
                                                 precio_delivery = 0.0,
+                                                created_at = 0L,
                                                 updated_at = 0L,
                                                 sync_state = ""
                                             )
@@ -870,6 +876,7 @@ fun ProductosScreen(
 
 
                         if (!uiState.canEditProducts) {
+                            Spacer(modifier = Modifier.height(16.dp))
                             Surface(
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 shape = MaterialTheme.shapes.small,
@@ -1256,7 +1263,9 @@ fun ProductFilterAndSortBottomSheet(
                                 ProductSortField.MARGEN_MAYOREO to stringResource(Res.string.header_wholesale_margin),
                                 ProductSortField.MARGEN_DOMICILIO to stringResource(Res.string.header_delivery_margin),
                                 ProductSortField.VENTAS_TOTALES to stringResource(Res.string.header_total_sales),
-                                ProductSortField.ULTIMA_VENTA to stringResource(Res.string.header_last_sale)
+                                ProductSortField.ULTIMA_VENTA to stringResource(Res.string.header_last_sale),
+                                ProductSortField.FECHA_CREACION to stringResource(Res.string.sort_field_created_at),
+                                ProductSortField.FECHA_ACTUALIZACION to stringResource(Res.string.sort_field_updated_at)
                             )
                             options.forEach { (field, label) ->
                                 FilterChip(
