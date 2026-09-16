@@ -209,25 +209,43 @@ class VentaViewModel(
                     Tuple5(isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
                 },
                 combine(
-                    settingsRepository.autoWholesaleByQuantityFlow,
-                    settingsRepository.autoWholesaleQuantityThresholdFlow,
-                    settingsRepository.autoWholesaleByTicketTotalFlow,
-                    settingsRepository.autoWholesaleTicketTotalThresholdFlow
-                ) { autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold ->
-                    Tuple4(autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold)
+                    combine(
+                        settingsRepository.autoWholesaleByQuantityFlow,
+                        settingsRepository.autoWholesaleQuantityThresholdFlow,
+                        settingsRepository.autoWholesaleByTicketTotalFlow,
+                        settingsRepository.autoWholesaleTicketTotalThresholdFlow,
+                        settingsRepository.autoLookupBarcodeProductsFlow
+                    ) { autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold, autoLookupBarcodeProducts ->
+                        Tuple5(autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold, autoLookupBarcodeProducts)
+                    },
+                    combine(
+                        settingsRepository.geminiGroundingEnabledFlow,
+                        settingsRepository.geminiApiKeyFlow,
+                        settingsRepository.googleSearchEngineIdFlow,
+                        settingsRepository.googleSearchApiKeyFlow
+                    ) { geminiEnabled, geminiKey, searchEngineId, searchApiKey ->
+                        VentaAiAndSearch(geminiEnabled, geminiKey, searchEngineId, searchApiKey)
+                    }
+                ) { autoWholesale, aiSearch ->
+                    Pair(autoWholesale, aiSearch)
                 }
             ) { (isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
-                (autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold) ->
+                (autoWholesale, aiSearch) ->
                 VentaPricingConfig(
                     isRoundingEnabled = isRoundingEnabled,
                     roundProductPrices = roundProductPrices,
                     roundTicketTotal = roundTicketTotal,
                     disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
                     prioritizeDeliveryPrice = prioritizeDeliveryPrice,
-                    autoWholesaleByQuantity = autoWholesaleByQuantity,
-                    autoWholesaleQuantityThreshold = autoWholesaleQuantityThreshold,
-                    autoWholesaleByTicketTotal = autoWholesaleByTicketTotal,
-                    autoWholesaleTicketTotalThreshold = autoWholesaleTicketTotalThreshold
+                    autoWholesaleByQuantity = autoWholesale.a,
+                    autoWholesaleQuantityThreshold = autoWholesale.b,
+                    autoWholesaleByTicketTotal = autoWholesale.c,
+                    autoWholesaleTicketTotalThreshold = autoWholesale.d,
+                    autoLookupBarcodeProducts = autoWholesale.e,
+                    geminiGroundingEnabled = aiSearch.geminiEnabled,
+                    geminiApiKey = aiSearch.geminiKey,
+                    googleSearchEngineId = aiSearch.googleSearchEngineId,
+                    googleSearchApiKey = aiSearch.googleSearchApiKey
                 )
             },
             settingsRepository.receiptSettingsFlow,
@@ -272,6 +290,11 @@ class VentaViewModel(
             autoWholesaleQuantityThreshold = pricingSettings.autoWholesaleQuantityThreshold,
             autoWholesaleByTicketTotal = pricingSettings.autoWholesaleByTicketTotal,
             autoWholesaleTicketTotalThreshold = pricingSettings.autoWholesaleTicketTotalThreshold,
+            autoLookupBarcodeProducts = pricingSettings.autoLookupBarcodeProducts,
+            geminiGroundingEnabled = pricingSettings.geminiGroundingEnabled,
+            geminiApiKey = pricingSettings.geminiApiKey,
+            googleSearchEngineId = pricingSettings.googleSearchEngineId,
+            googleSearchApiKey = pricingSettings.googleSearchApiKey,
             useProductTableInCatalog = catalogConfig.useProductTableInCatalog,
             swapVentaLayoutOrder = catalogConfig.swapVentaLayoutOrder,
             customers = catalogConfig.customers,
@@ -397,6 +420,7 @@ class VentaViewModel(
         val d: D,
         val e: E
     )
+
     private data class VentaCatalogConfig(
         val canUndo: Boolean = false,
         val defaultRetailMargin: Double = 0.0,
@@ -408,6 +432,13 @@ class VentaViewModel(
         val swapVentaLayoutOrder: Boolean = false
     )
 
+    private data class VentaAiAndSearch(
+        val geminiEnabled: Boolean,
+        val geminiKey: String,
+        val googleSearchEngineId: String,
+        val googleSearchApiKey: String
+    )
+
     private data class VentaPricingConfig(
         val isRoundingEnabled: Boolean = false,
         val roundProductPrices: Boolean = false,
@@ -417,7 +448,12 @@ class VentaViewModel(
         val autoWholesaleByQuantity: Boolean = false,
         val autoWholesaleQuantityThreshold: Int = 3,
         val autoWholesaleByTicketTotal: Boolean = false,
-        val autoWholesaleTicketTotalThreshold: Double = 0.0
+        val autoWholesaleTicketTotalThreshold: Double = 0.0,
+        val autoLookupBarcodeProducts: Boolean = true,
+        val geminiGroundingEnabled: Boolean = false,
+        val geminiApiKey: String = "",
+        val googleSearchEngineId: String = "",
+        val googleSearchApiKey: String = ""
     )
 
     private fun pushCartHistory() {

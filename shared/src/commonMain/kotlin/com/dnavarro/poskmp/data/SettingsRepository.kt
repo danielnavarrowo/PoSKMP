@@ -65,6 +65,11 @@ interface SettingsRepository {
     val autoWholesaleQuantityThresholdFlow: Flow<Int>
     val autoWholesaleByTicketTotalFlow: Flow<Boolean>
     val autoWholesaleTicketTotalThresholdFlow: Flow<Double>
+    val autoLookupBarcodeProductsFlow: Flow<Boolean>
+    val geminiGroundingEnabledFlow: Flow<Boolean>
+    val geminiApiKeyFlow: Flow<String>
+    val googleSearchEngineIdFlow: Flow<String>
+    val googleSearchApiKeyFlow: Flow<String>
     val productTableVisibleColumnsFlow: Flow<Set<String>>
     val supabaseUrlFlow: Flow<String>
     val supabaseKeyFlow: Flow<String>
@@ -108,6 +113,11 @@ interface SettingsRepository {
     suspend fun setAutoWholesaleQuantityThreshold(threshold: Int)
     suspend fun setAutoWholesaleByTicketTotal(enabled: Boolean)
     suspend fun setAutoWholesaleTicketTotalThreshold(threshold: Double)
+    suspend fun setAutoLookupBarcodeProducts(enabled: Boolean)
+    suspend fun setGeminiGroundingEnabled(enabled: Boolean)
+    suspend fun setGeminiApiKey(apiKey: String)
+    suspend fun setGoogleSearchEngineId(id: String)
+    suspend fun setGoogleSearchApiKey(key: String)
     suspend fun setProductTableVisibleColumns(columns: Set<String>)
     suspend fun toggleProductTableColumn(columnName: String, defaultColumns: Set<String> = DEFAULT_PRODUCT_TABLE_COLUMN_NAMES)
     suspend fun setBusinessSettings(
@@ -172,6 +182,11 @@ class SettingsRepositoryImpl(
         val AUTO_WHOLESALE_QUANTITY_THRESHOLD = intPreferencesKey("auto_wholesale_quantity_threshold")
         val AUTO_WHOLESALE_BY_TICKET_TOTAL = booleanPreferencesKey("auto_wholesale_by_ticket_total")
         val AUTO_WHOLESALE_TICKET_TOTAL_THRESHOLD = doublePreferencesKey("auto_wholesale_ticket_total_threshold")
+        val AUTO_LOOKUP_BARCODE_PRODUCTS = booleanPreferencesKey("auto_lookup_barcode_products")
+        val GEMINI_GROUNDING_ENABLED = booleanPreferencesKey("gemini_grounding_enabled")
+        val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
+        val GOOGLE_SEARCH_ENGINE_ID = stringPreferencesKey("google_search_engine_id")
+        val GOOGLE_SEARCH_API_KEY = stringPreferencesKey("google_search_api_key")
         val SUPABASE_URL = stringPreferencesKey("supabase_url")
         val SUPABASE_KEY = stringPreferencesKey("supabase_key")
         val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
@@ -335,6 +350,26 @@ class SettingsRepositoryImpl(
 
     override val autoWholesaleTicketTotalThresholdFlow: Flow<Double> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.AUTO_WHOLESALE_TICKET_TOTAL_THRESHOLD] ?: 0.0
+    }
+
+    override val autoLookupBarcodeProductsFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.AUTO_LOOKUP_BARCODE_PRODUCTS] ?: true
+    }
+
+    override val geminiGroundingEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.GEMINI_GROUNDING_ENABLED] ?: false
+    }
+
+    override val geminiApiKeyFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.GEMINI_API_KEY] ?: ""
+    }
+
+    override val googleSearchEngineIdFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.GOOGLE_SEARCH_ENGINE_ID] ?: ""
+    }
+
+    override val googleSearchApiKeyFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.GOOGLE_SEARCH_API_KEY] ?: ""
     }
 
     override val productTableVisibleColumnsFlow: Flow<Set<String>> = dataStore.data.map { preferences ->
@@ -590,6 +625,36 @@ class SettingsRepositoryImpl(
     override suspend fun setAutoWholesaleTicketTotalThreshold(threshold: Double) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.AUTO_WHOLESALE_TICKET_TOTAL_THRESHOLD] = threshold
+        }
+    }
+
+    override suspend fun setAutoLookupBarcodeProducts(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.AUTO_LOOKUP_BARCODE_PRODUCTS] = enabled
+        }
+    }
+
+    override suspend fun setGeminiGroundingEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.GEMINI_GROUNDING_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun setGeminiApiKey(apiKey: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.GEMINI_API_KEY] = apiKey.trim()
+        }
+    }
+
+    override suspend fun setGoogleSearchEngineId(id: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.GOOGLE_SEARCH_ENGINE_ID] = id.trim()
+        }
+    }
+
+    override suspend fun setGoogleSearchApiKey(key: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.GOOGLE_SEARCH_API_KEY] = key.trim()
         }
     }
 

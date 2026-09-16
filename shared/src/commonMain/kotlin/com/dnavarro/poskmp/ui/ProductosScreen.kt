@@ -1084,10 +1084,16 @@ fun ProductosScreen(
                         viewModel.validateBarcodes(codes, showProductDialogFor.id.ifEmpty { null })
                     },
                     existingCategories = uiState.availableCategories,
+                    existingProducts = uiState.rawProducts,
                     defaultRetailMarginPercentage = uiState.defaultRetailMargin,
                     defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
                     defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
                     roundProductPrices = uiState.roundProductPrices,
+                    autoLookupBarcodeProducts = uiState.autoLookupBarcodeProducts,
+                    geminiGroundingEnabled = uiState.geminiGroundingEnabled,
+                    geminiApiKey = uiState.geminiApiKey,
+                    googleSearchEngineId = uiState.googleSearchEngineId,
+                    googleSearchApiKey = uiState.googleSearchApiKey,
                     readOnly = !uiState.canEditProducts
                 )
             }

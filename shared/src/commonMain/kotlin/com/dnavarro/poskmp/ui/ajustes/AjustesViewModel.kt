@@ -4,22 +4,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SettingsRepository
-import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.backup.BackupRepository
+import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
+import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.data.updater.UpdateRepository
-import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
-import com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase
-import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
 import com.dnavarro.poskmp.domain.usecase.DeleteCashierUseCase
+import com.dnavarro.poskmp.domain.usecase.GetCashiersUseCase
 import com.dnavarro.poskmp.domain.usecase.ResetAppToFactoryDefaultsUseCase
+import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
-import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -96,6 +95,13 @@ class AjustesViewModel(
         )
     }
 
+    private data class AiAndSearchState(
+        val geminiGroundingEnabled: Boolean,
+        val geminiApiKey: String,
+        val googleSearchEngineId: String,
+        val googleSearchApiKey: String
+    )
+
     private data class BehaviorPricingState(
         val defaultRetailMargin: Double = 0.0,
         val defaultWholesaleMargin: Double = 0.0,
@@ -108,7 +114,12 @@ class AjustesViewModel(
         val autoWholesaleByQuantity: Boolean = false,
         val autoWholesaleQuantityThreshold: Int = 3,
         val autoWholesaleByTicketTotal: Boolean = false,
-        val autoWholesaleTicketTotalThreshold: Double = 0.0
+        val autoWholesaleTicketTotalThreshold: Double = 0.0,
+        val autoLookupBarcodeProducts: Boolean = true,
+        val geminiGroundingEnabled: Boolean = false,
+        val geminiApiKey: String = "",
+        val googleSearchEngineId: String = "",
+        val googleSearchApiKey: String = ""
     )
 
     private val _behaviorFlow = combine(
@@ -139,16 +150,29 @@ class AjustesViewModel(
                 Tuple4(roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
             },
             combine(
-                repository.autoWholesaleByQuantityFlow,
-                repository.autoWholesaleQuantityThresholdFlow,
-                repository.autoWholesaleByTicketTotalFlow,
-                repository.autoWholesaleTicketTotalThresholdFlow
-            ) { autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold ->
-                Tuple4(autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold)
+                combine(
+                    repository.autoWholesaleByQuantityFlow,
+                    repository.autoWholesaleQuantityThresholdFlow,
+                    repository.autoWholesaleByTicketTotalFlow,
+                    repository.autoWholesaleTicketTotalThresholdFlow,
+                    repository.autoLookupBarcodeProductsFlow
+                ) { autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold, autoLookupBarcodeProducts ->
+                    Tuple5(autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold, autoLookupBarcodeProducts)
+                },
+                combine(
+                    repository.geminiGroundingEnabledFlow,
+                    repository.geminiApiKeyFlow,
+                    repository.googleSearchEngineIdFlow,
+                    repository.googleSearchApiKeyFlow
+                ) { geminiGroundingEnabled, geminiApiKey, googleSearchEngineId, googleSearchApiKey ->
+                    AiAndSearchState(geminiGroundingEnabled, geminiApiKey, googleSearchEngineId, googleSearchApiKey)
+                }
+            ) { autoWholesaleTuple, aiState ->
+                Pair(autoWholesaleTuple, aiState)
             }
         ) { (defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled),
             (roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
-            (autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold) ->
+            (autoWholesaleTuple, aiState) ->
             BehaviorPricingState(
                 defaultRetailMargin = defaultRetailMargin,
                 defaultWholesaleMargin = defaultWholesaleMargin,
@@ -158,10 +182,15 @@ class AjustesViewModel(
                 roundTicketTotal = roundTicketTotal,
                 disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
                 prioritizeDeliveryPrice = prioritizeDeliveryPrice,
-                autoWholesaleByQuantity = autoWholesaleByQuantity,
-                autoWholesaleQuantityThreshold = autoWholesaleQuantityThreshold,
-                autoWholesaleByTicketTotal = autoWholesaleByTicketTotal,
-                autoWholesaleTicketTotalThreshold = autoWholesaleTicketTotalThreshold
+                autoWholesaleByQuantity = autoWholesaleTuple.a,
+                autoWholesaleQuantityThreshold = autoWholesaleTuple.b,
+                autoWholesaleByTicketTotal = autoWholesaleTuple.c,
+                autoWholesaleTicketTotalThreshold = autoWholesaleTuple.d,
+                autoLookupBarcodeProducts = autoWholesaleTuple.e,
+                geminiGroundingEnabled = aiState.geminiGroundingEnabled,
+                geminiApiKey = aiState.geminiApiKey,
+                googleSearchEngineId = aiState.googleSearchEngineId,
+                googleSearchApiKey = aiState.googleSearchApiKey
             )
         },
         combine(
@@ -204,6 +233,11 @@ class AjustesViewModel(
             autoWholesaleQuantityThreshold = pricingState.autoWholesaleQuantityThreshold,
             autoWholesaleByTicketTotal = pricingState.autoWholesaleByTicketTotal,
             autoWholesaleTicketTotalThreshold = pricingState.autoWholesaleTicketTotalThreshold,
+            autoLookupBarcodeProducts = pricingState.autoLookupBarcodeProducts,
+            geminiGroundingEnabled = pricingState.geminiGroundingEnabled,
+            geminiApiKey = pricingState.geminiApiKey,
+            googleSearchEngineId = pricingState.googleSearchEngineId,
+            googleSearchApiKey = pricingState.googleSearchApiKey,
             supabaseUrl = supabaseUrl,
             supabaseKey = supabaseKey,
             lastSyncTimestamp = lastSyncTimestamp,
@@ -254,6 +288,11 @@ class AjustesViewModel(
             autoWholesaleQuantityThreshold = behaviorState.autoWholesaleQuantityThreshold,
             autoWholesaleByTicketTotal = behaviorState.autoWholesaleByTicketTotal,
             autoWholesaleTicketTotalThreshold = behaviorState.autoWholesaleTicketTotalThreshold,
+            autoLookupBarcodeProducts = behaviorState.autoLookupBarcodeProducts,
+            geminiGroundingEnabled = behaviorState.geminiGroundingEnabled,
+            geminiApiKey = behaviorState.geminiApiKey,
+            googleSearchEngineId = behaviorState.googleSearchEngineId,
+            googleSearchApiKey = behaviorState.googleSearchApiKey,
             supabaseUrl = behaviorState.supabaseUrl,
             supabaseKey = behaviorState.supabaseKey,
             lastSyncTimestamp = behaviorState.lastSyncTimestamp,
@@ -470,6 +509,36 @@ class AjustesViewModel(
     fun setAutoWholesaleTicketTotalThreshold(threshold: Double) {
         viewModelScope.launch {
             repository.setAutoWholesaleTicketTotalThreshold(threshold)
+        }
+    }
+
+    fun setAutoLookupBarcodeProducts(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setAutoLookupBarcodeProducts(enabled)
+        }
+    }
+
+    fun setGeminiGroundingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setGeminiGroundingEnabled(enabled)
+        }
+    }
+
+    fun setGeminiApiKey(apiKey: String) {
+        viewModelScope.launch {
+            repository.setGeminiApiKey(apiKey)
+        }
+    }
+
+    fun setGoogleSearchEngineId(engineId: String) {
+        viewModelScope.launch {
+            repository.setGoogleSearchEngineId(engineId)
+        }
+    }
+
+    fun setGoogleSearchApiKey(apiKey: String) {
+        viewModelScope.launch {
+            repository.setGoogleSearchApiKey(apiKey)
         }
     }
 

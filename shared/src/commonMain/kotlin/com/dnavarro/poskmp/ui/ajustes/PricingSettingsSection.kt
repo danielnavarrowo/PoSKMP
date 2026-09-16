@@ -29,9 +29,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import com.dnavarro.poskmp.ui.components.SyncedSettingBadge
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.enable_gemini_grounding_subtitle
+import poskmp.shared.generated.resources.enable_gemini_grounding_title
+import poskmp.shared.generated.resources.gemini_api_key_helper
+import poskmp.shared.generated.resources.gemini_api_key_label
+import poskmp.shared.generated.resources.gemini_api_key_placeholder
+import poskmp.shared.generated.resources.gemini_api_key_warning
+import poskmp.shared.generated.resources.gemini_grounding_section_subtitle
+import poskmp.shared.generated.resources.gemini_grounding_section_title
+import poskmp.shared.generated.resources.google_search_engine_id_helper
+import poskmp.shared.generated.resources.google_search_engine_id_label
+import poskmp.shared.generated.resources.google_search_engine_id_placeholder
+import poskmp.shared.generated.resources.google_search_api_key_helper
+import poskmp.shared.generated.resources.google_search_api_key_label
+import poskmp.shared.generated.resources.google_search_api_key_placeholder
+import poskmp.shared.generated.resources.supabase_hide_key
+import poskmp.shared.generated.resources.supabase_show_key
 import poskmp.shared.generated.resources.auto_wholesale_by_quantity_subtitle
 import poskmp.shared.generated.resources.auto_wholesale_by_quantity_title
 import poskmp.shared.generated.resources.auto_wholesale_by_total_subtitle
@@ -61,6 +80,10 @@ import poskmp.shared.generated.resources.round_ticket_total_subtitle
 import poskmp.shared.generated.resources.round_ticket_total_title
 import poskmp.shared.generated.resources.rounding_section_subtitle
 import poskmp.shared.generated.resources.rounding_section_title
+import poskmp.shared.generated.resources.barcode_lookup_section_title
+import poskmp.shared.generated.resources.barcode_lookup_section_subtitle
+import poskmp.shared.generated.resources.enable_barcode_lookup_title
+import poskmp.shared.generated.resources.enable_barcode_lookup_subtitle
 import poskmp.shared.generated.resources.wholesale_margin_label
 
 @Composable
@@ -89,8 +112,23 @@ fun PricingSettingsSection(
     onAutoWholesaleByTicketTotalChange: (Boolean) -> Unit = {},
     autoWholesaleTicketTotalThreshold: Double = 0.0,
     onAutoWholesaleTicketTotalThresholdChange: (Double) -> Unit = {},
+    autoLookupBarcodeProducts: Boolean = true,
+    onAutoLookupBarcodeProductsChange: (Boolean) -> Unit = {},
+    geminiGroundingEnabled: Boolean = false,
+    onGeminiGroundingEnabledChange: (Boolean) -> Unit = {},
+    geminiApiKey: String = "",
+    onGeminiApiKeyChange: (String) -> Unit = {},
+    googleSearchEngineId: String = "",
+    onGoogleSearchEngineIdChange: (String) -> Unit = {},
+    googleSearchApiKey: String = "",
+    onGoogleSearchApiKeyChange: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var localGeminiApiKey by remember(geminiApiKey) { mutableStateOf(geminiApiKey) }
+    var isApiKeyVisible by remember { mutableStateOf(false) }
+    var localGoogleSearchEngineId by remember(googleSearchEngineId) { mutableStateOf(googleSearchEngineId) }
+    var localGoogleSearchApiKey by remember(googleSearchApiKey) { mutableStateOf(googleSearchApiKey) }
+    var isSearchApiKeyVisible by remember { mutableStateOf(false) }
     var retailMarginText by remember(defaultRetailMargin) {
         mutableStateOf(if (defaultRetailMargin > 0.0) {
             if (defaultRetailMargin % 1.0 == 0.0) defaultRetailMargin.toLong().toString() else defaultRetailMargin.toString()
@@ -572,6 +610,196 @@ fun PricingSettingsSection(
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.fillMaxWidth(0.5f)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Card: Catálogo Global de Productos (Open Food Facts)
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = stringResource(Res.string.barcode_lookup_section_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(Res.string.barcode_lookup_section_subtitle),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.enable_barcode_lookup_title),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.enable_barcode_lookup_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = autoLookupBarcodeProducts,
+                        onCheckedChange = onAutoLookupBarcodeProductsChange
+                    )
+                }
+            }
+        }
+
+        // Card: Inteligencia Artificial y Búsqueda Web (Gemini 3.5 Flash Lite)
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = stringResource(Res.string.gemini_grounding_section_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(Res.string.gemini_grounding_section_subtitle),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.enable_gemini_grounding_title),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.enable_gemini_grounding_subtitle),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = geminiGroundingEnabled,
+                        onCheckedChange = onGeminiGroundingEnabledChange
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = geminiGroundingEnabled,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                        val isSuspiciousKey = localGeminiApiKey.isNotBlank() && 
+                            !localGeminiApiKey.trim().startsWith("AIzaSy") && 
+                            !localGeminiApiKey.trim().startsWith("AQ.")
+                        OutlinedTextField(
+                            value = localGeminiApiKey,
+                            onValueChange = {
+                                localGeminiApiKey = it
+                                onGeminiApiKeyChange(it)
+                            },
+                            label = { Text(stringResource(Res.string.gemini_api_key_label)) },
+                            placeholder = { Text(stringResource(Res.string.gemini_api_key_placeholder)) },
+                            supportingText = {
+                                if (isSuspiciousKey) {
+                                    Text(
+                                        text = stringResource(Res.string.gemini_api_key_warning),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                } else {
+                                    Text(stringResource(Res.string.gemini_api_key_helper))
+                                }
+                            },
+                            isError = isSuspiciousKey,
+                            singleLine = true,
+                            visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                TextButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
+                                    Text(
+                                        text = stringResource(if (isApiKeyVisible) Res.string.supabase_hide_key else Res.string.supabase_show_key),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = localGoogleSearchEngineId,
+                            onValueChange = {
+                                localGoogleSearchEngineId = it
+                                onGoogleSearchEngineIdChange(it)
+                            },
+                            label = { Text(stringResource(Res.string.google_search_engine_id_label)) },
+                            placeholder = { Text(stringResource(Res.string.google_search_engine_id_placeholder)) },
+                            supportingText = {
+                                Text(stringResource(Res.string.google_search_engine_id_helper))
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = localGoogleSearchApiKey,
+                            onValueChange = {
+                                localGoogleSearchApiKey = it
+                                onGoogleSearchApiKeyChange(it)
+                            },
+                            label = { Text(stringResource(Res.string.google_search_api_key_label)) },
+                            placeholder = { Text(stringResource(Res.string.google_search_api_key_placeholder)) },
+                            supportingText = {
+                                Text(stringResource(Res.string.google_search_api_key_helper))
+                            },
+                            singleLine = true,
+                            visualTransformation = if (isSearchApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                TextButton(onClick = { isSearchApiKeyVisible = !isSearchApiKeyVisible }) {
+                                    Text(
+                                        text = stringResource(if (isSearchApiKeyVisible) Res.string.supabase_hide_key else Res.string.supabase_show_key),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

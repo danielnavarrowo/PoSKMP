@@ -347,7 +347,7 @@ class SyncRepositoryImpl(
             if (canPushCatalogAndSettings) {
                 val localSettingsUpdatedAt = settingsRepository.businessSettingsUpdatedAtFlow.first()
                 val lastSyncForPush = settingsRepository.lastSyncTimestampFlow.first()
-                if (localSettingsUpdatedAt > lastSyncForPush || localSettingsUpdatedAt > 0L) {
+                if (localSettingsUpdatedAt > lastSyncForPush) {
                     val receiptSettings = settingsRepository.receiptSettingsFlow.first()
                     val storeSettingsDto = StoreSettingsDto(
                         id = "default",
@@ -368,6 +368,7 @@ class SyncRepositoryImpl(
                     if (pushSettingsResult.isFailure) {
                         throw pushSettingsResult.exceptionOrNull() ?: Exception("Error al subir ajustes de negocio")
                     }
+                    totalPushed++
                 }
             }
 
@@ -676,7 +677,8 @@ class SyncRepositoryImpl(
             }
 
             // Guardar marca de tiempo de sincronización exitosa
-            val now = currentTimeMillis()
+            val currentSettingsUpdated = settingsRepository.businessSettingsUpdatedAtFlow.first()
+            val now = maxOf(currentTimeMillis(), currentSettingsUpdated)
             settingsRepository.setLastSyncTimestamp(now)
 
             _syncState.value = SyncStateEnum.SUCCESS

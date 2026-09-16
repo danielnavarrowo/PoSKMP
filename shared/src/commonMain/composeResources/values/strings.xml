@@ -233,6 +233,8 @@
     <string name="cost_label">Costo</string>
     <string name="wholesale">Mayoreo</string>
     <string name="category_label">Categoría</string>
+    <string name="category_auto_suggested_hint">Sugerida automáticamente según el nombre</string>
+    <string name="suggested_categories_title">Sugerencias de categoría:</string>
     <string name="active_label">Activo</string>
     <string name="sell_by_weight_label">Venta p/ Peso</string>
     <string name="mark_as_favorite_label">Marcar como Favorito</string>
@@ -613,6 +615,33 @@
     <string name="auto_wholesale_by_total_subtitle">Aplica precio de mayoreo a toda la venta si el total acumulado en el ticket alcanza o supera este monto</string>
     <string name="auto_wholesale_total_threshold_label">Monto mínimo del ticket</string>
     <string name="auto_wholesale_pieces_suffix">piezas</string>
+
+    <!-- Global Barcode Lookup Settings Strings -->
+    <string name="barcode_lookup_section_title">Catálogo Global de Productos</string>
+    <string name="barcode_lookup_section_subtitle">Consulta automática en Open Food Facts al registrar códigos de barras</string>
+    <string name="enable_barcode_lookup_title">Autocompletar producto por código de barras</string>
+    <string name="enable_barcode_lookup_subtitle">Busca el nombre comercial y sugiere la categoría automáticamente al ingresar o escanear un código de barras nuevo</string>
+    <string name="barcode_lookup_in_progress">Buscando datos del producto en Open Food Facts...</string>
+
+    <!-- Gemini Web Search Grounding Settings Strings -->
+    <string name="gemini_grounding_section_title">Inteligencia Artificial y Búsqueda Web</string>
+    <string name="gemini_grounding_section_subtitle">Identifica marcas comerciales y nombres de fantasía usando Gemini con Google Search Grounding</string>
+    <string name="enable_gemini_grounding_title">Búsqueda Web con IA (Gemini 3.5 Flash Lite)</string>
+    <string name="enable_gemini_grounding_subtitle">Busca información en tiempo real en Google Search para deducir la categoría exacta de productos y marcas de fantasía</string>
+    <string name="gemini_api_key_label">Clave de API de Gemini</string>
+    <string name="gemini_api_key_placeholder">AQ... o AIzaSy...</string>
+    <string name="gemini_api_key_helper">Puedes obtener una clave gratuita en Google AI Studio (aistudio.google.com)</string>
+    <string name="gemini_lookup_in_progress">Consultando Gemini y Google Search...</string>
+    <string name="gemini_lookup_action">Consultar con IA</string>
+    <string name="gemini_suggestion_badge">IA Grounding</string>
+    <string name="off_suggestion_badge">Open Food Facts</string>
+    <string name="gemini_api_key_warning">Las claves de Gemini API suelen iniciar con \"AQ.\" o \"AIzaSy\". Verifica haber copiado la clave completa desde aistudio.google.com.</string>
+    <string name="google_search_engine_id_label">ID del Buscador de Google (cx)</string>
+    <string name="google_search_engine_id_placeholder">ej. 017576662512468239146:omuauf_lfve o similar</string>
+    <string name="google_search_engine_id_helper">Crea un buscador gratis en programmablesearchengine.google.com con \"Buscar en toda la Web\" activado (100 búsquedas/día gratis).</string>
+    <string name="google_search_api_key_label">API Key de Google Search (Opcional)</string>
+    <string name="google_search_api_key_placeholder">Dejar vacío para usar la API Key de Gemini</string>
+    <string name="google_search_api_key_helper">Si tu API Key de Gemini no tiene permisos para Custom Search API en Google Cloud, ingresa aquí una API Key independiente.</string>
 
     <!-- Supabase Cloud Sync Settings Strings -->
     <string name="supabase_section_title">Sincronización en la Nube (Supabase)</string>

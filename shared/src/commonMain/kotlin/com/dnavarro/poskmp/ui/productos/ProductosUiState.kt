@@ -80,6 +80,11 @@ data class ProductosUiState(
     val defaultWholesaleMargin: Double = 0.0,
     val defaultDeliveryMargin: Double = 0.0,
     val roundProductPrices: Boolean = false,
+    val autoLookupBarcodeProducts: Boolean = true,
+    val geminiGroundingEnabled: Boolean = false,
+    val geminiApiKey: String = "",
+    val googleSearchEngineId: String = "",
+    val googleSearchApiKey: String = "",
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
     val canEditProducts: Boolean = true

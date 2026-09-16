@@ -183,7 +183,6 @@ import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.save_unregistered_to_db
 import poskmp.shared.generated.resources.sell_unregistered_title
 import poskmp.shared.generated.resources.total_label
-import poskmp.shared.generated.resources.total_to_pay_label
 import poskmp.shared.generated.resources.total_without_discount_label
 import poskmp.shared.generated.resources.transfer_beneficiary_label
 import poskmp.shared.generated.resources.transfer_clabe_label
@@ -2187,10 +2186,16 @@ fun VentaScreen(
                 showProductDialogFor = null
             },
             existingCategories = categories,
+            existingProducts = uiState.activeProducts,
             defaultRetailMarginPercentage = uiState.defaultRetailMargin,
             defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
             defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
-            roundProductPrices = uiState.roundProductPrices
+            roundProductPrices = uiState.roundProductPrices,
+            autoLookupBarcodeProducts = uiState.autoLookupBarcodeProducts,
+            geminiGroundingEnabled = uiState.geminiGroundingEnabled,
+            geminiApiKey = uiState.geminiApiKey,
+            googleSearchEngineId = uiState.googleSearchEngineId,
+            googleSearchApiKey = uiState.googleSearchApiKey
         )
     }
 

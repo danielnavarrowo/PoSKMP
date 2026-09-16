@@ -50,12 +50,25 @@ private data class DisplayState(
     val selectedProductIds: Set<String> = emptySet(),
     val bulkModificationProgress: BulkProgressState? = null
 )
+private data class BarcodeAndAiSettings(
+    val autoLookupBarcodeProducts: Boolean,
+    val geminiGroundingEnabled: Boolean,
+    val geminiApiKey: String,
+    val googleSearchEngineId: String,
+    val googleSearchApiKey: String
+)
+
 private data class ProductSettingsConfig(
     val defaultRetailMargin: Double,
     val defaultWholesaleMargin: Double,
     val defaultDeliveryMargin: Double,
     val isRoundingEnabled: Boolean,
     val roundProductPrices: Boolean,
+    val autoLookupBarcodeProducts: Boolean,
+    val geminiGroundingEnabled: Boolean,
+    val geminiApiKey: String,
+    val googleSearchEngineId: String,
+    val googleSearchApiKey: String,
     val canEditProducts: Boolean
 )
 
@@ -139,14 +152,28 @@ class ProductosViewModel(
             ) { retail, wholesale, delivery -> Triple(retail, wholesale, delivery) },
             settingsRepository.isRoundingEnabledFlow,
             settingsRepository.roundProductPricesFlow,
+            combine(
+                settingsRepository.autoLookupBarcodeProductsFlow,
+                settingsRepository.geminiGroundingEnabledFlow,
+                settingsRepository.geminiApiKeyFlow,
+                settingsRepository.googleSearchEngineIdFlow,
+                settingsRepository.googleSearchApiKeyFlow
+            ) { autoLookup, geminiEnabled, geminiKey, searchEngineId, searchApiKey ->
+                BarcodeAndAiSettings(autoLookup, geminiEnabled, geminiKey, searchEngineId, searchApiKey)
+            },
             settingsRepository.deviceRoleFlow
-        ) { (retail, wholesale, delivery), isRounding, roundPrices, role ->
+        ) { (retail, wholesale, delivery), isRounding, roundPrices, aiSettings, role ->
             ProductSettingsConfig(
                 defaultRetailMargin = retail,
                 defaultWholesaleMargin = wholesale,
                 defaultDeliveryMargin = delivery,
                 isRoundingEnabled = isRounding,
                 roundProductPrices = roundPrices,
+                autoLookupBarcodeProducts = aiSettings.autoLookupBarcodeProducts,
+                geminiGroundingEnabled = aiSettings.geminiGroundingEnabled,
+                geminiApiKey = aiSettings.geminiApiKey,
+                googleSearchEngineId = aiSettings.googleSearchEngineId,
+                googleSearchApiKey = aiSettings.googleSearchApiKey,
                 canEditProducts = role == DeviceRole.ADMIN
             )
         }
@@ -169,6 +196,11 @@ class ProductosViewModel(
             defaultWholesaleMargin = settings.defaultWholesaleMargin,
             defaultDeliveryMargin = settings.defaultDeliveryMargin,
             roundProductPrices = settings.isRoundingEnabled && settings.roundProductPrices,
+            autoLookupBarcodeProducts = settings.autoLookupBarcodeProducts,
+            geminiGroundingEnabled = settings.geminiGroundingEnabled,
+            geminiApiKey = settings.geminiApiKey,
+            googleSearchEngineId = settings.googleSearchEngineId,
+            googleSearchApiKey = settings.googleSearchApiKey,
             isSyncing = extra.syncState == SyncStateEnum.SYNCING,
             canEditProducts = settings.canEditProducts
         )
