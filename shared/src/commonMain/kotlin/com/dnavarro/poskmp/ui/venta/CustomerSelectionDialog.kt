@@ -32,7 +32,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.dnavarro.poskmp.util.resetScroll
+import com.dnavarro.poskmp.util.scrollItemIntoView
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -91,6 +94,7 @@ fun CustomerSelectionDialog(
     var highlightedIndex by remember(customers) { mutableIntStateOf(initialHighlightIndex) }
     val searchBarFocusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
@@ -104,8 +108,19 @@ fun CustomerSelectionDialog(
     LaunchedEffect(highlightedIndex) {
         if (highlightedIndex in 0..customers.size) {
             try {
-                listState.animateScrollToItem(highlightedIndex)
+                listState.scrollItemIntoView(highlightedIndex)
             } catch (_: Exception) {}
+        }
+    }
+
+    LaunchedEffect(searchQuery) {
+        highlightedIndex = 0
+        listState.resetScroll(coroutineScope)
+    }
+
+    LaunchedEffect(customers) {
+        if (highlightedIndex <= 0) {
+            listState.resetScroll(coroutineScope)
         }
     }
 
@@ -219,6 +234,7 @@ fun CustomerSelectionDialog(
                             IconButton(onClick = {
                                 onSearchQueryChange("")
                                 highlightedIndex = 0
+                                listState.resetScroll(coroutineScope)
                             }) {
                                 Icon(
                                     painter = painterResource(Res.drawable.close),

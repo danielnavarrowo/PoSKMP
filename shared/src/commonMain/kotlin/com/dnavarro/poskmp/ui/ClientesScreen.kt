@@ -1,6 +1,8 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,7 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -41,8 +45,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -65,8 +71,11 @@ import com.dnavarro.poskmp.ui.clientes.ClientesUiState
 import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.clientes.CustomerFormDialog
 import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
+import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.resetScroll
+import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -172,6 +181,8 @@ fun ClientesContent(
 ) {
     val searchBarFocusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    var selectedCustomerIndex by remember(state.filteredClientes) { mutableIntStateOf(-1) }
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
@@ -215,11 +226,39 @@ fun ClientesContent(
         }
     }
 
+    LaunchedEffect(selectedCustomerIndex) {
+        if (selectedCustomerIndex in state.filteredClientes.indices) {
+            try {
+                listState.scrollItemIntoView(selectedCustomerIndex + 2)
+            } catch (_: Exception) {
+            }
+        } else if (selectedCustomerIndex == -1) {
+            listState.resetScroll(coroutineScope)
+        }
+    }
+
+    LaunchedEffect(state.searchQuery) {
+        selectedCustomerIndex = -1
+        listState.resetScroll(coroutineScope)
+    }
+
+    LaunchedEffect(state.filteredClientes) {
+        if (selectedCustomerIndex <= 0) {
+            listState.resetScroll(coroutineScope)
+        }
+    }
+
     fun handleKeyNavigation(keyEvent: androidx.compose.ui.input.key.KeyEvent): Boolean {
         return keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
             Key.Escape -> {
                 if (state.searchQuery.isNotEmpty()) {
                     onSearchQueryChange("")
+                    selectedCustomerIndex = -1
+                    listState.resetScroll(coroutineScope)
+                    true
+                } else if (selectedCustomerIndex != -1) {
+                    selectedCustomerIndex = -1
+                    listState.resetScroll(coroutineScope)
                     true
                 } else false
             }
@@ -232,6 +271,35 @@ fun ClientesContent(
             Key.F10 -> {
                 onOpenCreateCustomer()
                 true
+            }
+
+            Key.DirectionDown -> {
+                if (state.filteredClientes.isNotEmpty()) {
+                    if (selectedCustomerIndex < state.filteredClientes.lastIndex) {
+                        selectedCustomerIndex++
+                    } else {
+                        selectedCustomerIndex = state.filteredClientes.lastIndex
+                    }
+                    true
+                } else false
+            }
+
+            Key.DirectionUp -> {
+                state.filteredClientes.isNotEmpty() && if (selectedCustomerIndex > 0) {
+                    selectedCustomerIndex--
+                    true
+                } else if (selectedCustomerIndex == 0) {
+                    selectedCustomerIndex = -1
+                    listState.resetScroll(coroutineScope)
+                    true
+                } else false
+            }
+
+            Key.Enter, Key.NumPadEnter -> {
+                if (selectedCustomerIndex in state.filteredClientes.indices) {
+                    onOpenEditCustomer(state.filteredClientes[selectedCustomerIndex])
+                    true
+                } else false
             }
 
             else -> false
@@ -353,6 +421,8 @@ fun ClientesContent(
                         if (state.searchQuery.isNotEmpty()) {
                             IconButton(onClick = {
                                 onSearchQueryChange("")
+                                selectedCustomerIndex = -1
+                                listState.resetScroll(coroutineScope)
                                 reclaimSearchBarFocus()
                             }) {
                                 Icon(
@@ -367,28 +437,56 @@ fun ClientesContent(
                     shape = MaterialTheme.shapes.extraLarge
                 )
 
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = if (isCompact) 88.dp else 128.dp)
-                ) {
-                    // KPI Cards Grid
-                    item {
-                        if (isCompact) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                CustomerKpiCard(
-                                    title = stringResource(Res.string.kpi_total_customers),
-                                    value = "${state.debtSummary.totalClientes}",
-                                    subtitle = stringResource(Res.string.kpi_active_customers_count, state.debtSummary.totalClientes),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = if (isCompact) 88.dp else 128.dp)
+                    ) {
+                        // KPI Cards Grid
+                        item {
+                            if (isCompact) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    CustomerKpiCard(
+                                        title = stringResource(Res.string.kpi_total_customers),
+                                        value = "${state.debtSummary.totalClientes}",
+                                        subtitle = stringResource(Res.string.kpi_active_customers_count, state.debtSummary.totalClientes),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        CustomerKpiCard(
+                                            title = stringResource(Res.string.kpi_total_debt),
+                                            value = "$${state.debtSummary.totalDeudaAcumulada.toString().formatPrice()}",
+                                            subtitle = stringResource(Res.string.kpi_debt_accumulated),
+                                            isError = state.debtSummary.totalDeudaAcumulada > 0.0,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        CustomerKpiCard(
+                                            title = stringResource(Res.string.kpi_debtors_count),
+                                            value = "${state.debtSummary.clientesConDeuda}",
+                                            subtitle = stringResource(Res.string.kpi_debtors_stat, state.debtSummary.clientesConDeuda),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            } else {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
+                                    CustomerKpiCard(
+                                        title = stringResource(Res.string.kpi_total_customers),
+                                        value = "${state.debtSummary.totalClientes}",
+                                        subtitle = stringResource(Res.string.kpi_active_customers_count, state.debtSummary.totalClientes),
+                                        modifier = Modifier.weight(1f)
+                                    )
                                     CustomerKpiCard(
                                         title = stringResource(Res.string.kpi_total_debt),
                                         value = "$${state.debtSummary.totalDeudaAcumulada.toString().formatPrice()}",
@@ -404,92 +502,80 @@ fun ClientesContent(
                                     )
                                 }
                             }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                CustomerKpiCard(
-                                    title = stringResource(Res.string.kpi_total_customers),
-                                    value = "${state.debtSummary.totalClientes}",
-                                    subtitle = stringResource(Res.string.kpi_active_customers_count, state.debtSummary.totalClientes),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CustomerKpiCard(
-                                    title = stringResource(Res.string.kpi_total_debt),
-                                    value = "$${state.debtSummary.totalDeudaAcumulada.toString().formatPrice()}",
-                                    subtitle = stringResource(Res.string.kpi_debt_accumulated),
-                                    isError = state.debtSummary.totalDeudaAcumulada > 0.0,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                CustomerKpiCard(
-                                    title = stringResource(Res.string.kpi_debtors_count),
-                                    value = "${state.debtSummary.clientesConDeuda}",
-                                    subtitle = stringResource(Res.string.kpi_debtors_stat, state.debtSummary.clientesConDeuda),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
                         }
-                    }
 
-                    // Customers List Header
-                    item {
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-
-                    // Empty States or Customer Items
-                    if (state.filteredClientes.isEmpty()) {
+                        // Customers List Header
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.padding(horizontal = 24.dp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+
+                        // Empty States or Customer Items
+                        if (state.filteredClientes.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.person),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(56.dp)
-                                    )
-                                    Text(
-                                        text = if (state.searchQuery.isNotBlank()) {
-                                            stringResource(Res.string.empty_customers_search, state.searchQuery)
-                                        } else {
-                                            stringResource(Res.string.empty_customers_title)
-                                        },
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    if (state.searchQuery.isBlank()) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.padding(horizontal = 24.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.person),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(56.dp)
+                                        )
                                         Text(
-                                            text = stringResource(Res.string.empty_customers_subtitle),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            text = if (state.searchQuery.isNotBlank()) {
+                                                stringResource(Res.string.empty_customers_search, state.searchQuery)
+                                            } else {
+                                                stringResource(Res.string.empty_customers_title)
+                                            },
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             textAlign = TextAlign.Center
                                         )
+                                        if (state.searchQuery.isBlank()) {
+                                            Text(
+                                                text = stringResource(Res.string.empty_customers_subtitle),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        items(state.filteredClientes, key = { it.id }) { customer ->
-                            CustomerListItem(
-                                customer = customer,
-                                onOpenStatement = { onOpenAccountStatement(customer) },
-                                onOpenPayment = { onOpenRecordPayment(customer) },
-                                onEdit = { onOpenEditCustomer(customer) },
-                                onDelete = { onOpenDeleteConfirm(customer) }
-                            )
+                        } else {
+                            itemsIndexed(state.filteredClientes, key = { _, customer -> customer.id }) { index, customer ->
+                                val isSelected = index == selectedCustomerIndex
+                                CustomerListItem(
+                                    customer = customer,
+                                    isSelected = isSelected,
+                                    onClick = {
+                                        selectedCustomerIndex = index
+                                    },
+                                    onOpenStatement = { onOpenAccountStatement(customer) },
+                                    onOpenPayment = { onOpenRecordPayment(customer) },
+                                    onEdit = { onOpenEditCustomer(customer) },
+                                    onDelete = { onOpenDeleteConfirm(customer) }
+                                )
+                            }
                         }
                     }
+
+                    AppVerticalScrollbar(
+                        state = listState,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .padding(vertical = 4.dp, horizontal = 2.dp)
+                    )
                 }
             }
         }
@@ -652,6 +738,8 @@ private fun CustomerKpiCard(
 @Composable
 private fun CustomerListItem(
     customer: Customer,
+    isSelected: Boolean = false,
+    onClick: (() -> Unit)? = null,
     onOpenStatement: () -> Unit,
     onOpenPayment: () -> Unit,
     onEdit: () -> Unit,
@@ -660,9 +748,22 @@ private fun CustomerListItem(
     val hasDebt = customer.saldoDeudor > 0.0
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, ShapeDefaults.cardShape)
+                else Modifier
+            )
+            .then(
+                if (onClick != null) Modifier.clickable(onClick = onClick)
+                else Modifier
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            }
         ),
         shape = ShapeDefaults.cardShape
     ) {

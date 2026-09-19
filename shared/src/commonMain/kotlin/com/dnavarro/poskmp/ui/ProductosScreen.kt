@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -98,6 +99,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.ui.components.ProductSimpleCard
 import com.dnavarro.poskmp.ui.components.ProductTableHeaderRow
 import com.dnavarro.poskmp.ui.components.ProductTableRow
@@ -108,6 +110,8 @@ import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.resetScroll
+import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -252,9 +256,23 @@ fun ProductosScreen(
     LaunchedEffect(selectedProductIndex) {
         if (selectedProductIndex in sortedProducts.indices) {
             try {
-                listState.animateScrollToItem(selectedProductIndex)
+                listState.scrollItemIntoView(selectedProductIndex)
             } catch (_: Exception) {
             }
+        } else if (selectedProductIndex == -1) {
+            listState.resetScroll(coroutineScope)
+        }
+    }
+
+    LaunchedEffect(searchQuery) {
+        selectedProductIndex = -1
+        selectionAnchorIndex = -1
+        listState.resetScroll(coroutineScope)
+    }
+
+    LaunchedEffect(sortedProducts) {
+        if (selectedProductIndex <= 0) {
+            listState.resetScroll(coroutineScope)
         }
     }
 
@@ -271,6 +289,7 @@ fun ProductosScreen(
                         viewModel.onSearchQueryChanged("")
                         selectedProductIndex = -1
                         selectionAnchorIndex = -1
+                        listState.resetScroll(coroutineScope)
                         viewModel.onShowProductDialog(matchingProduct)
                     }
                 }
@@ -286,10 +305,12 @@ fun ProductosScreen(
                     viewModel.onSearchQueryChanged("")
                     selectedProductIndex = -1
                     selectionAnchorIndex = -1
+                    listState.resetScroll(coroutineScope)
                     true
                 } else if (selectedProductIndex != -1) {
                     selectedProductIndex = -1
                     selectionAnchorIndex = -1
+                    listState.resetScroll(coroutineScope)
                     true
                 } else false
             }
@@ -828,6 +849,7 @@ fun ProductosScreen(
                                                 viewModel.onSearchQueryChanged("")
                                                 selectedProductIndex = -1
                                                 selectionAnchorIndex = -1
+                                                listState.resetScroll(coroutineScope)
                                                 reclaimSearchBarFocus()
                                             }
                                         ) {
@@ -935,39 +957,50 @@ fun ProductosScreen(
                             } else {
                                 if (isCompact) {
                                     // Mobile Compact List
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                                        contentPadding = PaddingValues(bottom = 156.dp)
-                                    ) {
-                                        itemsIndexed(sortedProducts) { index, product ->
-                                            val shape = if (sortedProducts.size == 1) {
-                                                ShapeDefaults.cardShape
-                                            } else if (index == 0) {
-                                                ShapeDefaults.topListItemShape
-                                            } else if (index == sortedProducts.lastIndex) {
-                                                ShapeDefaults.bottomListItemShape
-                                            } else {
-                                                ShapeDefaults.middleListItemShape
-                                            }
-                                            val isSelected = product.id in selectedProductIds
-                                            ProductSimpleCard(
-                                                product = product,
-                                                shape = shape,
-                                                isSelected = isSelected,
-                                                showCheckbox = false,
-                                                onClick = {
-                                                    if (selectedProductIds.isNotEmpty()) {
-                                                        viewModel.onToggleSelectProduct(product.id)
-                                                    } else {
-                                                        viewModel.onShowProductDialog(product)
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    viewModel.onToggleSelectProduct(product.id)
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        LazyColumn(
+                                            state = listState,
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                            contentPadding = PaddingValues(bottom = 156.dp)
+                                        ) {
+                                            itemsIndexed(sortedProducts) { index, product ->
+                                                val shape = if (sortedProducts.size == 1) {
+                                                    ShapeDefaults.cardShape
+                                                } else if (index == 0) {
+                                                    ShapeDefaults.topListItemShape
+                                                } else if (index == sortedProducts.lastIndex) {
+                                                    ShapeDefaults.bottomListItemShape
+                                                } else {
+                                                    ShapeDefaults.middleListItemShape
                                                 }
-                                            )
+                                                val isSelected = product.id in selectedProductIds
+                                                ProductSimpleCard(
+                                                    product = product,
+                                                    shape = shape,
+                                                    isSelected = isSelected,
+                                                    showCheckbox = false,
+                                                    onClick = {
+                                                        if (selectedProductIds.isNotEmpty()) {
+                                                            viewModel.onToggleSelectProduct(product.id)
+                                                        } else {
+                                                            viewModel.onShowProductDialog(product)
+                                                        }
+                                                    },
+                                                    onLongClick = {
+                                                        viewModel.onToggleSelectProduct(product.id)
+                                                    }
+                                                )
+                                            }
                                         }
+
+                                        AppVerticalScrollbar(
+                                            state = listState,
+                                            modifier = Modifier
+                                                .align(Alignment.CenterEnd)
+                                                .fillMaxHeight()
+                                                .padding(vertical = 4.dp, horizontal = 2.dp)
+                                        )
                                     }
                                 } else {
                                     // Desktop Table Layout
@@ -1026,42 +1059,52 @@ fun ProductosScreen(
                                             onResizeColumn = resizeColumn
                                         )
 
-                                        LazyColumn(
-                                            state = listState,
-                                            modifier = Modifier.fillMaxSize(),
-                                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                                            contentPadding = PaddingValues(bottom = if (isAndroid()) 160.dp else 192.dp)
-                                        ) {
-                                            itemsIndexed(sortedProducts) { index, product ->
-                                                val shape =
-                                                    if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
-                                                    else ShapeDefaults.middleListItemShape
-                                                val isHighlighted = selectedProductIndex == index
+                                        Box(modifier = Modifier.fillMaxSize()) {
+                                            LazyColumn(
+                                                state = listState,
+                                                modifier = Modifier.fillMaxSize(),
+                                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                                contentPadding = PaddingValues(bottom = if (isAndroid()) 160.dp else 192.dp)
+                                            ) {
+                                                itemsIndexed(sortedProducts) { index, product ->
+                                                    val shape =
+                                                        if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
+                                                        else ShapeDefaults.middleListItemShape
+                                                    val isHighlighted = selectedProductIndex == index
 
-                                                ProductTableRow(
-                                                    product = product,
-                                                    visibleColumns = activeColumns,
-                                                    columnWeights = columnWeights,
-                                                    totalDefaultWeight = totalDefaultWeight,
-                                                    shape = shape,
-                                                    isHighlighted = isHighlighted,
-                                                    showCheckbox = true,
-                                                    isChecked = product.id in selectedProductIds,
-                                                    onCheckedChange = {
-                                                        selectedProductIndex = index
-                                                        selectionAnchorIndex = index
-                                                        viewModel.onToggleSelectProduct(product.id)
-                                                    },
-                                                    salesStats = uiState.salesStats,
-                                                    defaultRetailMargin = uiState.defaultRetailMargin,
-                                                    defaultWholesaleMargin = uiState.defaultWholesaleMargin,
-                                                    onClick = {
-                                                        selectedProductIndex = index
-                                                        selectionAnchorIndex = index
-                                                        viewModel.onShowProductDialog(product)
-                                                    }
-                                                )
+                                                    ProductTableRow(
+                                                        product = product,
+                                                        visibleColumns = activeColumns,
+                                                        columnWeights = columnWeights,
+                                                        totalDefaultWeight = totalDefaultWeight,
+                                                        shape = shape,
+                                                        isHighlighted = isHighlighted,
+                                                        showCheckbox = true,
+                                                        isChecked = product.id in selectedProductIds,
+                                                        onCheckedChange = {
+                                                            selectedProductIndex = index
+                                                            selectionAnchorIndex = index
+                                                            viewModel.onToggleSelectProduct(product.id)
+                                                        },
+                                                        salesStats = uiState.salesStats,
+                                                        defaultRetailMargin = uiState.defaultRetailMargin,
+                                                        defaultWholesaleMargin = uiState.defaultWholesaleMargin,
+                                                        onClick = {
+                                                            selectedProductIndex = index
+                                                            selectionAnchorIndex = index
+                                                            viewModel.onShowProductDialog(product)
+                                                        }
+                                                    )
+                                                }
                                             }
+
+                                            AppVerticalScrollbar(
+                                                state = listState,
+                                                modifier = Modifier
+                                                    .align(Alignment.CenterEnd)
+                                                    .fillMaxHeight()
+                                                    .padding(vertical = 4.dp, horizontal = 2.dp)
+                                            )
                                         }
                                     }
                                 }

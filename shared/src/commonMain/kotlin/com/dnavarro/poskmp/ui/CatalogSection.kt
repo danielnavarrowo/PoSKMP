@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,9 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -107,6 +104,7 @@ import com.dnavarro.poskmp.ui.productos.ProductTableColumn
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -1293,80 +1291,3 @@ private fun ProductContextMenu(
     }
 }
 
-private suspend fun LazyListState.scrollItemIntoView(targetIndex: Int) {
-    val items = layoutInfo.visibleItemsInfo
-    if (items.isEmpty()) {
-        animateScrollToItem(targetIndex)
-        return
-    }
-    val firstVisible = items.first()
-    val lastVisible = items.last()
-
-    if (targetIndex < firstVisible.index) {
-        animateScrollToItem(targetIndex)
-        return
-    }
-
-    val visibleBottom = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
-    val existingItem = items.firstOrNull { it.index == targetIndex }
-
-    if (existingItem != null) {
-        if (existingItem.offset < layoutInfo.viewportStartOffset) {
-            animateScrollToItem(targetIndex)
-        } else if (existingItem.offset + existingItem.size > visibleBottom) {
-            val delta = (existingItem.offset + existingItem.size) - visibleBottom
-            animateScrollBy(delta.toFloat() + 4f)
-        }
-        return
-    }
-
-    if (targetIndex > lastVisible.index) {
-        if (targetIndex - lastVisible.index >= items.size) {
-            val targetFirstVisibleIndex = (targetIndex - items.size + 2).coerceAtLeast(0)
-            animateScrollToItem(targetFirstVisibleIndex)
-        } else {
-            val itemHeight = lastVisible.size.takeIf { it > 0 } ?: 48
-            val delta = (targetIndex - lastVisible.index) * itemHeight
-            animateScrollBy(delta.toFloat() + 4f)
-        }
-    }
-}
-
-private suspend fun LazyGridState.scrollItemIntoView(targetIndex: Int) {
-    val items = layoutInfo.visibleItemsInfo
-    if (items.isEmpty()) {
-        animateScrollToItem(targetIndex)
-        return
-    }
-    val firstVisible = items.first()
-    val lastVisible = items.last()
-
-    if (targetIndex < firstVisible.index) {
-        animateScrollToItem(targetIndex)
-        return
-    }
-
-    val visibleBottom = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
-    val existingItem = items.firstOrNull { it.index == targetIndex }
-
-    if (existingItem != null) {
-        if (existingItem.offset.y < layoutInfo.viewportStartOffset) {
-            animateScrollToItem(targetIndex)
-        } else if (existingItem.offset.y + existingItem.size.height > visibleBottom) {
-            val delta = (existingItem.offset.y + existingItem.size.height) - visibleBottom
-            animateScrollBy(delta.toFloat() + 4f)
-        }
-        return
-    }
-
-    if (targetIndex > lastVisible.index) {
-        if (targetIndex - lastVisible.index >= items.size) {
-            val targetFirstVisibleIndex = (targetIndex - items.size + 2).coerceAtLeast(0)
-            animateScrollToItem(targetFirstVisibleIndex)
-        } else {
-            val itemHeight = lastVisible.size.height.takeIf { it > 0 } ?: 140
-            val delta = (targetIndex - lastVisible.index) * itemHeight
-            animateScrollBy(delta.toFloat() + 4f)
-        }
-    }
-}
