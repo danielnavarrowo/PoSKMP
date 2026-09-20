@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -549,7 +550,7 @@ fun TicketSection(
             Surface(
                 shape = ShapeDefaults.topListItemShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.fillMaxWidth().height(48.dp)
+                modifier = Modifier.fillMaxWidth().requiredHeight(56.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -654,7 +655,7 @@ fun TicketSection(
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 ),
                 shape = ShapeDefaults.bottomListItemShape,
-                modifier = Modifier.fillMaxWidth().height(48.dp)
+                modifier = Modifier.fillMaxWidth().requiredHeight(56.dp)
             ) {
                 Text(
                     text = if (isAndroid()) stringResource(Res.string.checkout_button) else stringResource(Res.string.checkout_hotkey),

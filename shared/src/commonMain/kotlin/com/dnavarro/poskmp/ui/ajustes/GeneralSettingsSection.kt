@@ -89,7 +89,7 @@ fun GeneralSettingsSection(
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = stringResource(Res.string.default_screen_title),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -178,7 +178,7 @@ fun GeneralSettingsSection(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = stringResource(Res.string.checador_layout_title),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -269,7 +269,7 @@ fun GeneralSettingsSection(
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
                         text = stringResource(Res.string.show_extra_prices_checador_title),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -299,7 +299,7 @@ fun GeneralSettingsSection(
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = stringResource(Res.string.catalog_layout_title),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -389,7 +389,7 @@ fun GeneralSettingsSection(
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
                         text = stringResource(Res.string.swap_venta_layout_order_title),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )

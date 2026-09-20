@@ -71,15 +71,13 @@ val AppTypography: Typography
         ),
         bodyLarge = TYPOGRAPHY.bodyLarge.copy(
             fontFamily = googleFlexBody,
-            fontWeight = FontWeight.W300
         ),
         bodyMedium = TYPOGRAPHY.bodyMedium.copy(
             fontFamily = googleFlexBody,
-            fontWeight = FontWeight.W300
         ),
         bodySmall = TYPOGRAPHY.bodySmall.copy(
             fontFamily = googleFlexBody,
-            fontWeight = FontWeight.W200
+            fontWeight = FontWeight.W300
         ),
         labelLarge = TYPOGRAPHY.labelLarge.copy(
             fontFamily = googleFlexLabel,

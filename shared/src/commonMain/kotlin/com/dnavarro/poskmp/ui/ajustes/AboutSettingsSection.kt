@@ -123,7 +123,7 @@ fun AboutSettingsSection(
                 Column {
                     Text(
                         text = stringResource(Res.string.system_info_title),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -149,7 +149,7 @@ fun AboutSettingsSection(
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = "Gestión del Catálogo",
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -274,7 +274,7 @@ fun AboutSettingsSection(
                         Text(
                             text = stringResource(Res.string.updates_section_title),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))

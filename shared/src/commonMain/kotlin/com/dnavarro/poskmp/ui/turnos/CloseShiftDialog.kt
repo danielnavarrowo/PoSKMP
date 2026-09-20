@@ -166,7 +166,7 @@ fun CloseShiftDialog(
                 // Card 1: Balance de Efectivo en Caja
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = MaterialTheme.shapes.medium,
+                    shape = ShapeDefaults.cardShape,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -232,7 +232,7 @@ fun CloseShiftDialog(
                 // Card 2: Otros medios de pago y total ventas
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = MaterialTheme.shapes.medium,
+                    shape = ShapeDefaults.cardShape,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(

@@ -416,7 +416,7 @@ fun PrinterSettingsSection(
                 ) {
                     Text(
                         text = stringResource(Res.string.paper_width_label),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -448,7 +448,7 @@ fun PrinterSettingsSection(
                 ) {
                     Text(
                         text = stringResource(Res.string.receipt_font_size_label),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -480,7 +480,7 @@ fun PrinterSettingsSection(
                 ) {
                     Text(
                         text = stringResource(Res.string.receipt_feed_lines_label),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -509,7 +509,7 @@ fun PrinterSettingsSection(
                 ) {
                     Text(
                         text = stringResource(Res.string.receipt_footer_label),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -551,7 +551,7 @@ fun PrinterSettingsSection(
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
                         text = stringResource(Res.string.open_drawer_on_receipt_title),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -580,7 +580,7 @@ fun PrinterSettingsSection(
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     text = stringResource(Res.string.receipt_preview_settings_title),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )

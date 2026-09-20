@@ -179,7 +179,7 @@ fun PricingSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.disallow_card_on_wholesale_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -213,7 +213,7 @@ fun PricingSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.prioritize_delivery_price_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -246,7 +246,7 @@ fun PricingSettingsSection(
                     ) {
                         Text(
                             text = stringResource(Res.string.default_margins_section_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -344,7 +344,7 @@ fun PricingSettingsSection(
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
                         text = stringResource(Res.string.enable_rounding_title),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -385,7 +385,7 @@ fun PricingSettingsSection(
                         Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                             Text(
                                 text = stringResource(Res.string.round_product_prices_title),
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -420,7 +420,7 @@ fun PricingSettingsSection(
                         Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                             Text(
                                 text = stringResource(Res.string.round_ticket_total_title),
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -468,7 +468,7 @@ fun PricingSettingsSection(
                         Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                             Text(
                                 text = stringResource(Res.string.auto_wholesale_by_quantity_title),
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -533,6 +533,7 @@ fun PricingSettingsSection(
                         Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                             Text(
                                 text = stringResource(Res.string.auto_wholesale_by_total_title),
+                                fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -607,7 +608,7 @@ fun PricingSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.enable_barcode_lookup_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -643,6 +644,7 @@ fun PricingSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.enable_gemini_grounding_title),
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )

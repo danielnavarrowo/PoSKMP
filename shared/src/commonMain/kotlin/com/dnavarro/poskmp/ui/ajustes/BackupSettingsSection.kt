@@ -121,7 +121,7 @@ fun BackupSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.auto_backup_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -150,7 +150,7 @@ fun BackupSettingsSection(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = stringResource(Res.string.backup_path_label),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -219,7 +219,7 @@ fun BackupSettingsSection(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Copia Manual y Estado",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )

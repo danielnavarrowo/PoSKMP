@@ -131,7 +131,7 @@ fun SyncSettingsSection(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Rol de este Dispositivo",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -246,7 +246,7 @@ fun SyncSettingsSection(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Prefijo de Terminal",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -491,7 +491,7 @@ fun SyncSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.supabase_auto_sync_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -520,7 +520,7 @@ fun SyncSettingsSection(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Acciones de Sincronización",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )

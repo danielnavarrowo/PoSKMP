@@ -1340,7 +1340,7 @@ fun VentaScreen(
         AlertDialog(
             onDismissRequest = { showCheckoutDialog = false },
             modifier = Modifier
-                .widthIn(max = 520.dp)
+                .widthIn(max = 720.dp)
                 .fillMaxWidth()
                 .then(
                 if (!isAndroid()) {

@@ -195,7 +195,7 @@ fun AppearanceSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.dynamic_color_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -227,7 +227,7 @@ fun AppearanceSettingsSection(
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
                 Text(
                     text = stringResource(Res.string.dark_mode_title),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -292,7 +292,7 @@ fun AppearanceSettingsSection(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = label,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     style = MaterialTheme.typography.bodySmall,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -321,7 +321,7 @@ fun AppearanceSettingsSection(
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.app_scale_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -424,7 +424,7 @@ fun AppearanceSettingsSection(
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
                         text = stringResource(Res.string.amoled_mode_title),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -463,7 +463,7 @@ fun AppearanceSettingsSection(
                     Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
                         Text(
                             text = stringResource(Res.string.seed_color_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -531,7 +531,7 @@ fun AppearanceSettingsSection(
                     Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
                         Text(
                             text = stringResource(Res.string.palette_style_title),
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )

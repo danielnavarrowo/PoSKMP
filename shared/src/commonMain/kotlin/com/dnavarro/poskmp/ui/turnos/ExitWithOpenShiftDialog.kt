@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -138,7 +139,7 @@ fun ExitWithOpenShiftDialog(
                             ExitProgressStep.FAILURE -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
                             else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                         },
-                        shape = MaterialTheme.shapes.medium,
+                        shape = ShapeDefaults.cardShape,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -209,15 +210,16 @@ fun ExitWithOpenShiftDialog(
                 }
 
                 Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = onPerformCutAndExit,
                         enabled = !isWaitingToExit,
-                        shape = MaterialTheme.shapes.small,
+                        shape = ShapeDefaults.topListItemShape,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .requiredHeight(56.dp)
                             .then(if (!isAndroid()) Modifier.focusRequester(closeShiftButtonFocusRequester) else Modifier)
                     ) {
                         Text(
@@ -229,8 +231,8 @@ fun ExitWithOpenShiftDialog(
                     FilledTonalButton(
                         onClick = onExitLeavingShiftOpen,
                         enabled = !isWaitingToExit,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.fillMaxWidth()
+                        shape = ShapeDefaults.middleListItemShape,
+                        modifier = Modifier.fillMaxWidth().requiredHeight(56.dp)
                     ) {
                         if (isWaitingToExit) {
                             CircularProgressIndicator(
@@ -248,8 +250,8 @@ fun ExitWithOpenShiftDialog(
                     OutlinedButton(
                         onClick = onCancel,
                         enabled = !isWaitingToExit,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.fillMaxWidth()
+                        shape = ShapeDefaults.bottomListItemShape,
+                        modifier = Modifier.fillMaxWidth().requiredHeight(56.dp)
                     ) {
                         Text(stringResource(Res.string.exit_dialog_cancel_button))
                     }

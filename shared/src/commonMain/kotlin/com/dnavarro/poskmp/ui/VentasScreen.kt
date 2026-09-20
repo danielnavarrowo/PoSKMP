@@ -51,6 +51,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -63,6 +64,7 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -478,103 +480,102 @@ fun VentasScreen(
                     }
                 }
 
-                // Shift Actions Card (Entrada, Salida, Cerrar turno)
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                if(state.activeShift != null) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                            shape = ShapeDefaults.cardShape,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.person),
-                                        contentDescription = null,
-                                        tint = if (state.activeShift != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Text(
-                                        text = if (state.activeShift != null) {
-                                            stringResource(Res.string.active_shift_badge, state.activeShift.cashierName)
-                                        } else {
-                                            stringResource(Res.string.no_active_shift_badge)
-                                        },
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (state.activeShift != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            // 3 Action Buttons: Entrada, Salida, Cerrar Turno
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                androidx.compose.material3.FilledTonalButton(
-                                    onClick = onOpenInflowDialog,
-                                    enabled = state.activeShift != null,
-                                    shape = MaterialTheme.shapes.small,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
-                                        else stringResource(Res.string.btn_cash_inflow_desktop),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.person),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Text(
+                                            text = stringResource(Res.string.active_shift_badge, state.activeShift.cashierName),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
 
-                                androidx.compose.material3.FilledTonalButton(
-                                    onClick = onOpenOutflowDialog,
-                                    enabled = state.activeShift != null,
-                                    shape = MaterialTheme.shapes.small,
-                                    modifier = Modifier.weight(1f)
+                                // 3 Action Buttons: Entrada, Salida, Cerrar Turno
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
-                                        else stringResource(Res.string.btn_cash_outflow_desktop),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
-                                }
+                                    androidx.compose.material3.FilledTonalButton(
+                                        onClick = onOpenInflowDialog,
+                                        enabled = true,
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
+                                            else stringResource(Res.string.btn_cash_inflow_desktop),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
 
-                                androidx.compose.material3.Button(
-                                    onClick = onOpenCloseShiftDialog,
-                                    enabled = state.activeShift != null,
-                                    shape = MaterialTheme.shapes.small,
-                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
-                                        else stringResource(Res.string.btn_close_shift_desktop),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
+                                    androidx.compose.material3.FilledTonalButton(
+                                        onClick = onOpenOutflowDialog,
+                                        enabled = true,
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
+                                            else stringResource(Res.string.btn_cash_outflow_desktop),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
+
+                                    androidx.compose.material3.Button(
+                                        onClick = onOpenCloseShiftDialog,
+                                        enabled = true,
+                                        shape = MaterialTheme.shapes.small,
+                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
+                                            else stringResource(Res.string.btn_close_shift_desktop),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                // Shift Actions Card (Entrada, Salida, Cerrar turno)
+
                 // Period Filter Selector
                 item {
                     Column(
@@ -1277,7 +1278,7 @@ private fun SoldProductsNavButton(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = MaterialTheme.shapes.medium,
+        shape = ShapeDefaults.cardShape,
         modifier = modifier
     ) {
         Row(
@@ -1293,15 +1294,15 @@ private fun SoldProductsNavButton(
                 modifier = Modifier.weight(1f)
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialShapes.Bun.toShape(),
                     modifier = Modifier.size(44.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             painter = painterResource(Res.drawable.products),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1348,7 +1349,7 @@ private fun SalesHistoryNavButton(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = MaterialTheme.shapes.medium,
+        shape = ShapeDefaults.cardShape,
         modifier = modifier
     ) {
         Row(
@@ -1365,7 +1366,7 @@ private fun SalesHistoryNavButton(
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = MaterialTheme.shapes.small,
+                    shape = MaterialShapes.Arch.toShape(),
                     modifier = Modifier.size(44.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -1417,7 +1418,7 @@ private fun KpiCard(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        shape = MaterialTheme.shapes.medium
+        shape = ShapeDefaults.cardShape
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -2090,7 +2091,7 @@ private fun PaymentMethodMetricRow(
         ) {
             Surface(
                 color = color.copy(alpha = if (isSelected) 0.35f else 0.15f),
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialShapes.Slanted.toShape(),
                 modifier = Modifier.size(32.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -2703,7 +2704,7 @@ private fun DeliveryChannelMetricRow(
         ) {
             Surface(
                 color = color.copy(alpha = if (isSelected) 0.35f else 0.15f),
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialShapes.Pill.toShape(),
                 modifier = Modifier.size(36.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
