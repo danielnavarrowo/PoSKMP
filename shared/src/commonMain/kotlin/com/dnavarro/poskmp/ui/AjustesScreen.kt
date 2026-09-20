@@ -200,6 +200,7 @@ fun AjustesScreen(
         onDownloadAndInstallUpdate = { viewModel.downloadAndInstallUpdate(it) },
         onDismissUpdateResult = { viewModel.dismissUpdateResult() },
         cashiers = uiState.cashiers,
+        currentDeviceId = uiState.currentDeviceId,
         isSavingCashier = uiState.isSavingCashier,
         isDeletingCashier = uiState.isDeletingCashier,
         cashierActionError = uiState.cashierActionError,
@@ -319,6 +320,7 @@ fun AjustesScreen(
     onDownloadAndInstallUpdate: (ReleaseAsset) -> Unit = {},
     onDismissUpdateResult: () -> Unit = {},
     cashiers: List<Cashier> = emptyList(),
+    currentDeviceId: String = "",
     isSavingCashier: Boolean = false,
     isDeletingCashier: Boolean = false,
     cashierActionError: String? = null,
@@ -684,6 +686,7 @@ fun AjustesScreen(
                             AjustesCategory.CAJEROS -> {
                                 CashierManagementSection(
                                     cashiers = cashiers,
+                                    currentDeviceId = currentDeviceId,
                                     isSaving = isSavingCashier,
                                     isDeleting = isDeletingCashier,
                                     actionError = cashierActionError,

@@ -309,7 +309,7 @@ fun CatalogSection(
         modifier = modifier
             .fillMaxSize()
             .widthIn(min = 320.dp)
-            .padding(16.dp)
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
             .then(
                 if (isAndroid()) {
                     Modifier

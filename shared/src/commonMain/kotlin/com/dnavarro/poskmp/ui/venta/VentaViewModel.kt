@@ -116,10 +116,21 @@ class VentaViewModel(
         }
     }
 
+    private val _deviceCashiersFlow = combine(
+        getCashiersUseCase(),
+        settingsRepository.deviceIdFlow
+    ) { cashiers, deviceId ->
+        if (deviceId.isBlank()) {
+            cashiers
+        } else {
+            cashiers.filter { it.deviceId == deviceId }
+        }
+    }
+
     private val _shiftFlow = combine(
         combine(
             _activeShiftFlow,
-            getCashiersUseCase(),
+            _deviceCashiersFlow,
             _isOpeningShift,
             _openShiftError
         ) { activeShift, cashiers, isOpening, error ->
@@ -326,6 +337,11 @@ class VentaViewModel(
     )
 
     init {
+        viewModelScope.launch {
+            try {
+                settingsRepository.getOrCreateDeviceId()
+            } catch (_: Exception) {}
+        }
         viewModelScope.launch {
             combine(
                 settingsRepository.autoWholesaleByQuantityFlow,

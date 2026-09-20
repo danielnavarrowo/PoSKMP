@@ -202,7 +202,8 @@ class SyncRepositoryImpl(
                             pin = c.pin,
                             activo = c.activo == 1L,
                             createdAt = c.created_at,
-                            updatedAt = c.updated_at
+                            updatedAt = c.updated_at,
+                            deviceId = c.device_id
                         )
                     }
                     val pushCashierResult = remoteDataSource.pushCashiers(url, key, cashierDtos)
@@ -491,7 +492,7 @@ class SyncRepositoryImpl(
             }
             val remoteCashiers = pulledCashiersResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, nombre, pin, activo, createdAt, updatedAt) in remoteCashiers) {
+                for ((id, nombre, pin, activo, createdAt, updatedAt, deviceId) in remoteCashiers) {
                     val local = queries.selectCashierById(id).executeAsOneOrNull()
                     if (local == null || updatedAt >= local.updated_at) {
                         queries.upsertSyncedCashier(
@@ -500,7 +501,8 @@ class SyncRepositoryImpl(
                             pin = pin,
                             activo = if (activo) 1L else 0L,
                             created_at = createdAt,
-                            updated_at = updatedAt
+                            updated_at = updatedAt,
+                            device_id = deviceId
                         )
                     }
                 }

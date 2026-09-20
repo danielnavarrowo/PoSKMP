@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS public.cashiers (
     pin        TEXT NOT NULL DEFAULT '0000',
     activo     BOOLEAN NOT NULL DEFAULT true,
     created_at BIGINT NOT NULL,
-    updated_at BIGINT NOT NULL
+    updated_at BIGINT NOT NULL,
+    device_id  TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_cashiers_activo ON public.cashiers(activo);
@@ -472,8 +473,10 @@ CREATE TABLE IF NOT EXISTS public.cashiers (
     pin        TEXT NOT NULL DEFAULT '0000',
     activo     BOOLEAN NOT NULL DEFAULT true,
     created_at BIGINT NOT NULL,
-    updated_at BIGINT NOT NULL
+    updated_at BIGINT NOT NULL,
+    device_id  TEXT
 );
+ALTER TABLE public.cashiers ADD COLUMN IF NOT EXISTS device_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_cashiers_activo ON public.cashiers(activo);
 
 CREATE TABLE IF NOT EXISTS public.shifts (

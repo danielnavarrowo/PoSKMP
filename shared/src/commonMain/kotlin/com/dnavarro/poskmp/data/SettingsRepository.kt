@@ -5,27 +5,31 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import com.dnavarro.poskmp.theme.DarkModeConfig
-import com.dnavarro.poskmp.domain.model.DeviceRole
-import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.model.DEFAULT_PAPER_WIDTH_MM
-import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
+import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.MAX_PAPER_WIDTH_MM
+import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
+import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
-import com.dnavarro.poskmp.util.currentTimeMillis
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-
-import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.doublePreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
+import kotlinx.coroutines.launch
 
 val DEFAULT_PRODUCT_TABLE_COLUMN_NAMES: Set<String> = setOf(
     "NOMBRE",
@@ -83,7 +87,9 @@ interface SettingsRepository {
     val deviceRoleFlow: Flow<DeviceRole>
     val terminalPrefixFlow: Flow<String>
     val localActiveShiftIdFlow: Flow<String?>
+    val deviceIdFlow: Flow<String>
 
+    suspend fun getOrCreateDeviceId(): String
     suspend fun setLocalActiveShiftId(shiftId: String?)
     suspend fun setDeviceRole(role: DeviceRole)
     suspend fun setTerminalPrefix(prefix: String)
@@ -212,6 +218,33 @@ class SettingsRepositoryImpl(
         val DEVICE_ROLE = stringPreferencesKey("device_role")
         val TERMINAL_PREFIX = stringPreferencesKey("terminal_prefix")
         val LOCAL_ACTIVE_SHIFT_ID = stringPreferencesKey("local_active_shift_id")
+        val DEVICE_ID = stringPreferencesKey("device_id")
+    }
+
+    override val deviceIdFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.DEVICE_ID] ?: ""
+    }
+
+    override suspend fun getOrCreateDeviceId(): String {
+        val existing = dataStore.data.map { it[PreferenceKeys.DEVICE_ID] }.first()
+        if (!existing.isNullOrBlank()) {
+            return existing
+        }
+        val generated = generateUUID()
+        dataStore.edit { preferences ->
+            if (preferences[PreferenceKeys.DEVICE_ID].isNullOrBlank()) {
+                preferences[PreferenceKeys.DEVICE_ID] = generated
+            }
+        }
+        return dataStore.data.map { it[PreferenceKeys.DEVICE_ID] }.first() ?: generated
+    }
+
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                getOrCreateDeviceId()
+            } catch (_: Exception) {}
+        }
     }
 
     override val localActiveShiftIdFlow: Flow<String?> = dataStore.data.map { preferences ->

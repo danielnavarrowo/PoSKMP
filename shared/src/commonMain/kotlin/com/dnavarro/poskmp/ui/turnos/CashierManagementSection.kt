@@ -49,6 +49,7 @@ import poskmp.shared.generated.resources.*
 @Composable
 fun CashierManagementSection(
     cashiers: List<Cashier>,
+    currentDeviceId: String = "",
     isSaving: Boolean,
     isDeleting: Boolean,
     actionError: String?,
@@ -169,6 +170,7 @@ fun CashierManagementSection(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     cashiers.forEach { cashier ->
+                        val isFromThisDevice = cashier.deviceId.isNullOrBlank() || (currentDeviceId.isNotEmpty() && cashier.deviceId == currentDeviceId)
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shape = ShapeDefaults.middleListItemShape,
@@ -184,54 +186,88 @@ fun CashierManagementSection(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        color = if (isFromThisDevice) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                                         shape = MaterialShapes.Cookie12Sided.toShape(),
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
                                             painter = painterResource(Res.drawable.person),
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            tint = if (isFromThisDevice) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(6.dp)
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = cashier.nombre,
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
+                                    Column {
+                                        Text(
+                                            text = cashier.nombre,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        if (!isFromThisDevice) {
+                                            Text(
+                                                text = stringResource(Res.string.cashier_other_device_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(
-                                        onClick = {
-                                            onClearMessage()
-                                            editingCashier = cashier
+                                if (isFromThisDevice) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                onClearMessage()
+                                                editingCashier = cashier
+                                            }
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.edit),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
                                         }
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.edit),
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
 
-                                    IconButton(
-                                        onClick = {
-                                            onClearMessage()
-                                            deletingCashier = cashier
-                                        },
-                                        enabled = cashiers.size > 1
+                                        IconButton(
+                                            onClick = {
+                                                onClearMessage()
+                                                deletingCashier = cashier
+                                            },
+                                            enabled = cashiers.size > 1
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.delete),
+                                                contentDescription = null,
+                                                tint = if (cashiers.size > 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                        shape = MaterialTheme.shapes.small
                                     ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.delete),
-                                            contentDescription = null,
-                                            tint = if (cashiers.size > 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.info),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Text(
+                                                text = stringResource(Res.string.cashier_read_only_badge),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
                             }

@@ -77,5 +77,6 @@ data class AjustesUiState(
     val resetAppSuccess: String? = null,
     val remoteAuditLogs: List<RemoteAuditLogDto> = emptyList(),
     val isLoadingAuditLogs: Boolean = false,
-    val auditLogsError: String? = null
+    val auditLogsError: String? = null,
+    val currentDeviceId: String = ""
 )

@@ -65,7 +65,9 @@ data class CashierDto(
     @SerialName("created_at")
     val createdAt: Long,
     @SerialName("updated_at")
-    val updatedAt: Long
+    val updatedAt: Long,
+    @SerialName("device_id")
+    val deviceId: String? = null
 )
 
 @Serializable

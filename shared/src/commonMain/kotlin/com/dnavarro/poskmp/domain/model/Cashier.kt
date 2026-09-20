@@ -6,5 +6,6 @@ data class Cashier(
     val pin: String = "0000",
     val activo: Boolean = true,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val deviceId: String? = null
 )

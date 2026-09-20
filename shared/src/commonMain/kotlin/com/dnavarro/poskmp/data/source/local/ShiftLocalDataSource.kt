@@ -39,6 +39,7 @@ interface ShiftLocalDataSource {
     suspend fun countActiveCashiers(): Long
     suspend fun insertCashier(cashier: Cashiers)
     suspend fun deactivateCashier(id: String, updatedAt: Long)
+    suspend fun claimCashiersWithoutDevice(deviceId: String)
 
     suspend fun insertCashMovement(movement: Cash_movements)
     fun getMovementsByShiftIdFlow(shiftId: String): Flow<List<Cash_movements>>
@@ -142,7 +143,8 @@ class SqlDelightShiftDataSource(
             activo = cashier.activo,
             created_at = cashier.created_at,
             updated_at = cashier.updated_at,
-            sync_state = cashier.sync_state
+            sync_state = cashier.sync_state,
+            device_id = cashier.device_id
         )
     }
 
@@ -151,6 +153,10 @@ class SqlDelightShiftDataSource(
             updated_at = updatedAt,
             id = id
         )
+    }
+
+    override suspend fun claimCashiersWithoutDevice(deviceId: String): Unit = withContext(Dispatchers.IO) {
+        queries.claimCashiersWithoutDevice(deviceId = deviceId)
     }
 
     override suspend fun insertCashMovement(movement: Cash_movements): Unit = withContext(Dispatchers.IO) {

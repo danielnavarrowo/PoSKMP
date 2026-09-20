@@ -106,7 +106,8 @@ object DatabaseMigrator {
                 activo     INTEGER NOT NULL DEFAULT 1,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL,
-                sync_state TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+                sync_state TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+                device_id  TEXT    DEFAULT NULL
             );
             """.trimIndent(),
             """
@@ -185,6 +186,9 @@ object DatabaseMigrator {
 
         // Migrate sale_items columns
         ensureColumnExists(driver, "sale_items", "es_delivery", "INTEGER NOT NULL DEFAULT 0")
+
+        // Migrate cashiers columns
+        ensureColumnExists(driver, "cashiers", "device_id", "TEXT DEFAULT NULL")
 
         // Indexes
         val indexStatements = listOf(

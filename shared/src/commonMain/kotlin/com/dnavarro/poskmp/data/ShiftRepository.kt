@@ -12,15 +12,16 @@ import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.ShiftSummary
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
-
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 interface ShiftRepository {
     val activeShiftFlow: Flow<CashierShift?>
@@ -43,6 +44,7 @@ interface ShiftRepository {
     suspend fun saveCashier(id: String?, nombre: String, pin: String): Result<Cashier>
     suspend fun deleteCashier(id: String): Result<Unit>
     suspend fun countActiveCashiers(): Long
+    suspend fun claimCashiersWithoutDevice()
     fun getMovementsForShiftFlow(shiftId: String): Flow<List<CashMovement>>
     suspend fun getShiftSummary(shiftId: String): Result<ShiftSummary>
 }
@@ -51,6 +53,21 @@ class ShiftRepositoryImpl(
     private val localDataSource: ShiftLocalDataSource,
     private val settingsRepository: SettingsRepository
 ) : ShiftRepository {
+
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                claimCashiersWithoutDevice()
+            } catch (_: Exception) {}
+        }
+    }
+
+    override suspend fun claimCashiersWithoutDevice(): Unit = withContext(Dispatchers.IO) {
+        try {
+            val deviceId = settingsRepository.getOrCreateDeviceId()
+            localDataSource.claimCashiersWithoutDevice(deviceId)
+        } catch (_: Exception) {}
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val activeShiftFlow: Flow<CashierShift?> =
@@ -301,6 +318,11 @@ class ShiftRepositoryImpl(
             val now = currentTimeMillis()
             val cashierId = if (id.isNullOrBlank()) generateUUID() else id
             val existing = id?.let { localDataSource.getCashierById(it) }
+            val currentDeviceId = settingsRepository.getOrCreateDeviceId()
+
+            if (existing?.device_id != null && existing.device_id != currentDeviceId) {
+                return@withContext Result.failure(IllegalStateException("No puedes editar un cajero creado en otro dispositivo."))
+            }
 
             val cashier = Cashiers(
                 id = cashierId,
@@ -309,7 +331,8 @@ class ShiftRepositoryImpl(
                 activo = 1L,
                 created_at = existing?.created_at ?: now,
                 updated_at = now,
-                sync_state = if (existing != null) "PENDING_UPDATE" else "PENDING_INSERT"
+                sync_state = if (existing != null) "PENDING_UPDATE" else "PENDING_INSERT",
+                device_id = existing?.device_id ?: currentDeviceId
             )
             localDataSource.insertCashier(cashier)
             Result.success(cashier.toDomain())
@@ -320,6 +343,12 @@ class ShiftRepositoryImpl(
 
     override suspend fun deleteCashier(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            val existing = localDataSource.getCashierById(id)
+            val currentDeviceId = settingsRepository.getOrCreateDeviceId()
+            if (existing?.device_id != null && existing.device_id != currentDeviceId) {
+                return@withContext Result.failure(IllegalStateException("No puedes eliminar un cajero creado en otro dispositivo."))
+            }
+
             val activeShift = getActiveShift()
             if (activeShift != null && activeShift.cashierId == id) {
                 return@withContext Result.failure(IllegalStateException("No se puede eliminar el cajero porque tiene un turno abierto actualmente."))
@@ -357,7 +386,8 @@ class ShiftRepositoryImpl(
         pin = pin,
         activo = activo == 1L,
         createdAt = created_at,
-        updatedAt = updated_at
+        updatedAt = updated_at,
+        deviceId = device_id
     )
 
     private fun Cash_movements.toDomain(): CashMovement = CashMovement(

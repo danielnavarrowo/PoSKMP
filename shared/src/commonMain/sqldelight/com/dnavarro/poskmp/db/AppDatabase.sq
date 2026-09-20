@@ -641,7 +641,8 @@ CREATE TABLE cashiers (
     activo     INTEGER NOT NULL DEFAULT 1,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    sync_state TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+    sync_state TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    device_id  TEXT    DEFAULT NULL
 );
 
 CREATE INDEX idx_cashiers_activo ON cashiers(activo);
@@ -698,25 +699,31 @@ SELECT COUNT(id) FROM cashiers WHERE activo = 1;
 
 insertCashier:
 INSERT INTO cashiers (
-    id, nombre, pin, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?)
+    id, nombre, pin, activo, created_at, updated_at, sync_state, device_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
     nombre = excluded.nombre,
     pin = excluded.pin,
     activo = excluded.activo,
     created_at = excluded.created_at,
     updated_at = excluded.updated_at,
-    sync_state = excluded.sync_state;
+    sync_state = excluded.sync_state,
+    device_id = COALESCE(excluded.device_id, cashiers.device_id);
 
 updateCashier:
 UPDATE cashiers
-SET nombre = ?, pin = ?, activo = ?, updated_at = ?, sync_state = ?
+SET nombre = ?, pin = ?, activo = ?, updated_at = ?, sync_state = ?, device_id = ?
 WHERE id = ?;
 
 deactivateCashier:
 UPDATE cashiers
 SET activo = 0, updated_at = ?, sync_state = 'PENDING_UPDATE'
 WHERE id = ?;
+
+claimCashiersWithoutDevice:
+UPDATE cashiers
+SET device_id = :deviceId, sync_state = 'PENDING_UPDATE'
+WHERE device_id IS NULL;
 
 selectUnsyncedCashiers:
 SELECT * FROM cashiers WHERE sync_state != 'SYNCED';
@@ -726,15 +733,16 @@ UPDATE cashiers SET sync_state = ? WHERE id = ?;
 
 upsertSyncedCashier:
 INSERT INTO cashiers (
-    id, nombre, pin, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED')
+    id, nombre, pin, activo, created_at, updated_at, sync_state, device_id
+) VALUES (?, ?, ?, ?, ?, ?, 'SYNCED', ?)
 ON CONFLICT(id) DO UPDATE SET
     nombre = excluded.nombre,
     pin = excluded.pin,
     activo = excluded.activo,
     created_at = excluded.created_at,
     updated_at = excluded.updated_at,
-    sync_state = 'SYNCED';
+    sync_state = 'SYNCED',
+    device_id = COALESCE(excluded.device_id, cashiers.device_id);
 
 deleteAllCashiers:
 DELETE FROM cashiers;

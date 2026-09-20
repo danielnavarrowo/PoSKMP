@@ -250,16 +250,26 @@ class AjustesViewModel(
 
     private val _receiptFlow = repository.receiptSettingsFlow
 
+    init {
+        viewModelScope.launch {
+            try {
+                repository.getOrCreateDeviceId()
+            } catch (_: Exception) {}
+        }
+    }
+
     private data class DeviceTerminalState(
         val role: DeviceRole = DeviceRole.ADMIN,
-        val terminalPrefix: String = ""
+        val terminalPrefix: String = "",
+        val deviceId: String = ""
     )
 
     private val _deviceTerminalFlow = combine(
         repository.deviceRoleFlow,
-        repository.terminalPrefixFlow
-    ) { role, prefix ->
-        DeviceTerminalState(role, prefix)
+        repository.terminalPrefixFlow,
+        repository.deviceIdFlow
+    ) { role, prefix, deviceId ->
+        DeviceTerminalState(role, prefix, deviceId)
     }
 
     private val _baseUiState = combine(
@@ -271,6 +281,7 @@ class AjustesViewModel(
         themeState.copy(
             deviceRole = deviceTerminal.role,
             terminalPrefix = deviceTerminal.terminalPrefix,
+            currentDeviceId = deviceTerminal.deviceId,
             defaultScreen = behaviorState.defaultScreen,
             isChecadorDialog = behaviorState.isChecadorDialog,
             showExtraPricesChecador = behaviorState.showExtraPricesChecador,

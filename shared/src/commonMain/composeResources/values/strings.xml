@@ -838,6 +838,11 @@
     <string name="no_cashiers_prompt_title">No hay cajeros registrados</string>
     <string name="no_cashiers_prompt_desc">Para poder abrir un turno de caja y comenzar a registrar ventas, primero debes crear una cuenta de cajero en los ajustes.</string>
     <string name="go_to_cashier_settings_button">Ir a Ajustes de Cajeros</string>
+    <string name="cashier_read_only_badge">Solo lectura</string>
+    <string name="cashier_other_device_hint">Creado en otro dispositivo</string>
+    <string name="cashier_edit_other_device_error">No puedes editar un cajero creado en otro dispositivo.</string>
+    <string name="cashier_delete_other_device_error">No puedes eliminar un cajero creado en otro dispositivo.</string>
+    <string name="cashier_open_shift_other_device_error">Este cajero pertenece a otro dispositivo.</string>
 
     <!-- Filtro de Turnos en VentasScreen -->
     <string name="shift_filter_label">Turno de caja:</string>
