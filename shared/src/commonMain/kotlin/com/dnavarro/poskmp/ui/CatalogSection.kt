@@ -76,6 +76,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -1046,7 +1047,7 @@ private fun ProductContextMenu(
             } else {
                 next.toInt().toString()
             }
-            quantityText = TextFieldValue(formatted, selection = TextRange(formatted.length))
+            quantityText = TextFieldValue(formatted, selection = TextRange(0, formatted.length))
         }
     }
 
@@ -1059,7 +1060,7 @@ private fun ProductContextMenu(
         } else {
             next.toInt().toString()
         }
-        quantityText = TextFieldValue(formatted, selection = TextRange(formatted.length))
+        quantityText = TextFieldValue(formatted, selection = TextRange(0, formatted.length))
     }
 
     val submit = {
@@ -1070,12 +1071,72 @@ private fun ProductContextMenu(
         }
     }
 
+    val handleKeyEvent: (KeyEvent) -> Boolean = { keyEvent ->
+        val isIncrease = keyEvent.key == Key.Plus ||
+                keyEvent.key == Key.NumPadAdd ||
+                keyEvent.utf16CodePoint == '+'.code ||
+                (keyEvent.key == Key.Equals && keyEvent.isShiftPressed)
+
+        val isDecrease = keyEvent.key == Key.Minus ||
+                keyEvent.key == Key.NumPadSubtract ||
+                keyEvent.utf16CodePoint == '-'.code
+
+        val isEnter = keyEvent.key == Key.Enter ||
+                keyEvent.key == Key.NumPadEnter
+
+        when {
+            isIncrease -> {
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    increaseStep()
+                }
+                true
+            }
+            isDecrease -> {
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    decreaseStep()
+                }
+                true
+            }
+            isEnter -> {
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    submit()
+                }
+                true
+            }
+            else -> false
+        }
+    }
+
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            for (d in listOf(50L, 100L, 150L)) {
+                delay(d.milliseconds)
+                if (isInputFocused) break
+                try {
+                    focusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     DropdownMenu(
         expanded = expanded,
         shape = MaterialTheme.shapes.medium,
         onDismissRequest = onDismissRequest,
-        modifier = modifier.widthIn(min = 230.dp)
+        modifier = modifier
+            .widthIn(min = 230.dp)
+            .onPreviewKeyEvent(handleKeyEvent)
     ) {
+        LaunchedEffect(Unit) {
+            for (d in listOf(50L, 100L, 150L)) {
+                delay(d.milliseconds)
+                if (isInputFocused) break
+                try {
+                    focusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1127,6 +1188,7 @@ private fun ProductContextMenu(
                                 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                 shape = MaterialTheme.shapes.extraSmall
                             )
+                            .focusProperties { canFocus = false }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
@@ -1165,14 +1227,7 @@ private fun ProductContextMenu(
                                             )
                                         }
                                     }
-                                    .onPreviewKeyEvent { keyEvent ->
-                                        if (keyEvent.type == KeyEventType.KeyDown &&
-                                            (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
-                                        ) {
-                                            submit()
-                                            true
-                                        } else false
-                                    },
+                                    .onPreviewKeyEvent(handleKeyEvent),
                                 textStyle = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
