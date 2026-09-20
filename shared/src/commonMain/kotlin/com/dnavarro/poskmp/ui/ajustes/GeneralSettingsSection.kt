@@ -13,7 +13,6 @@ import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -29,14 +28,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.barcode_scanner
-import poskmp.shared.generated.resources.card
 import poskmp.shared.generated.resources.catalog_layout_grid
 import poskmp.shared.generated.resources.catalog_layout_subtitle
 import poskmp.shared.generated.resources.catalog_layout_table
@@ -78,234 +76,116 @@ fun GeneralSettingsSection(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        // Card: Comportamiento y Pantallas
+        // 1. Pantalla Principal al Abrir
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            shape = MaterialTheme.shapes.medium,
+            shape = ShapeDefaults.topListItemShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                // Pantalla Principal al Abrir
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(Res.string.default_screen_title),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = stringResource(Res.string.default_screen_subtitle),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val options = listOf(
-                            Triple(
-                                Screen.VENTA,
-                                stringResource(Res.string.tab_venta),
-                                Res.drawable.point_of_sale
-                            ),
-                            Triple(
-                                Screen.PRODUCTOS,
-                                stringResource(Res.string.tab_productos),
-                                Res.drawable.products
-                            ),
-                            Triple(
-                                Screen.CHECADOR,
-                                stringResource(Res.string.tab_checador),
-                                Res.drawable.barcode_scanner
-                            )
-                        )
-                        options.forEachIndexed { index, (screenOption, label, iconRes) ->
-                            val isSelected = defaultScreen == screenOption
-                            ToggleButton(
-                                checked = isSelected,
-                                onCheckedChange = { onDefaultScreenChange(screenOption) },
-                                colors = ToggleButtonDefaults.toggleButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .semantics { role = Role.RadioButton },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        painter = painterResource(iconRes),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    thickness = 1.dp
+                Text(
+                    text = stringResource(Res.string.default_screen_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(Res.string.default_screen_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Modo Checador (Solo Escritorio)
-                if (!isAndroid()) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = stringResource(Res.string.checador_layout_title),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(Res.string.checador_layout_subtitle),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val checadorOptions = listOf(
-                                Triple(
-                                    true,
-                                    stringResource(Res.string.checador_layout_dialog),
-                                    Res.drawable.pip
-                                ),
-                                Triple(
-                                    false,
-                                    stringResource(Res.string.checador_layout_fullscreen),
-                                    Res.drawable.fullscreen
-                                )
-                            )
-                            checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
-                                val isSelected = isChecadorDialog == isDialogOption
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
-                                    colors = ToggleButtonDefaults.toggleButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        checadorOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(icon),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = label,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        thickness = 1.dp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                // Show Extra Prices in Checador Toggle (Costo y Mayoreo)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                        Text(
-                            text = stringResource(Res.string.show_extra_prices_checador_title),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
+                    val options = listOf(
+                        Triple(
+                            Screen.VENTA,
+                            stringResource(Res.string.tab_venta),
+                            Res.drawable.point_of_sale
+                        ),
+                        Triple(
+                            Screen.PRODUCTOS,
+                            stringResource(Res.string.tab_productos),
+                            Res.drawable.products
+                        ),
+                        Triple(
+                            Screen.CHECADOR,
+                            stringResource(Res.string.tab_checador),
+                            Res.drawable.barcode_scanner
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(Res.string.show_extra_prices_checador_subtitle),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Switch(
-                        checked = showExtraPricesChecador,
-                        onCheckedChange = onShowExtraPricesChecadorChange
                     )
+                    options.forEachIndexed { index, (screenOption, label, iconRes) ->
+                        val isSelected = defaultScreen == screenOption
+                        ToggleButton(
+                            checked = isSelected,
+                            onCheckedChange = { onDefaultScreenChange(screenOption) },
+                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = label,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    thickness = 1.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Catalog Layout in Sale Screen Toggle (Tarjetas vs Lista/Tabla)
-                Column(modifier = Modifier.fillMaxWidth()) {
+        // 2. Modo Checador (Solo Escritorio)
+        if (!isAndroid()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = ShapeDefaults.middleListItemShape,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = stringResource(Res.string.catalog_layout_title),
+                        text = stringResource(Res.string.checador_layout_title),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = stringResource(Res.string.catalog_layout_subtitle),
-                        fontSize = 12.sp,
+                        text = stringResource(Res.string.checador_layout_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -314,23 +194,23 @@ fun GeneralSettingsSection(
                         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        val catalogLayoutOptions = listOf(
-                            Triple(
-                                false,
-                                stringResource(Res.string.catalog_layout_grid),
-                                Res.drawable.grid
-                            ),
+                        val checadorOptions = listOf(
                             Triple(
                                 true,
-                                stringResource(Res.string.catalog_layout_table),
-                                Res.drawable.list
+                                stringResource(Res.string.checador_layout_dialog),
+                                Res.drawable.pip
+                            ),
+                            Triple(
+                                false,
+                                stringResource(Res.string.checador_layout_fullscreen),
+                                Res.drawable.fullscreen
                             )
                         )
-                        catalogLayoutOptions.forEachIndexed { index, (useTableOption, label, icon) ->
-                            val isSelected = useProductTableInCatalog == useTableOption
+                        checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
+                            val isSelected = isChecadorDialog == isDialogOption
                             ToggleButton(
                                 checked = isSelected,
-                                onCheckedChange = { onUseProductTableInCatalogChange(useTableOption) },
+                                onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
                                 colors = ToggleButtonDefaults.toggleButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -342,7 +222,7 @@ fun GeneralSettingsSection(
                                     .semantics { role = Role.RadioButton },
                                 shapes = when (index) {
                                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    catalogLayoutOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    checadorOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
                             ) {
@@ -358,8 +238,8 @@ fun GeneralSettingsSection(
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = label,
-                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodySmall,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -368,40 +248,163 @@ fun GeneralSettingsSection(
                         }
                     }
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    thickness = 1.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Swap Venta Layout Order Toggle (Ticket on left, Catalog on right)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                        Text(
-                            text = stringResource(Res.string.swap_venta_layout_order_title),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(Res.string.swap_venta_layout_order_subtitle),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Switch(
-                        checked = swapVentaLayoutOrder,
-                        onCheckedChange = onSwapVentaLayoutOrderChange
+        // 3. Show Extra Prices in Checador Toggle (Costo y Mayoreo)
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = ShapeDefaults.middleListItemShape,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = stringResource(Res.string.show_extra_prices_checador_title),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(Res.string.show_extra_prices_checador_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+                Switch(
+                    checked = showExtraPricesChecador,
+                    onCheckedChange = onShowExtraPricesChecadorChange
+                )
+            }
+        }
+
+        // 4. Catalog Layout in Sale Screen Toggle (Tarjetas vs Lista/Tabla)
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = ShapeDefaults.middleListItemShape,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = stringResource(Res.string.catalog_layout_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(Res.string.catalog_layout_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val catalogLayoutOptions = listOf(
+                        Triple(
+                            false,
+                            stringResource(Res.string.catalog_layout_grid),
+                            Res.drawable.grid
+                        ),
+                        Triple(
+                            true,
+                            stringResource(Res.string.catalog_layout_table),
+                            Res.drawable.list
+                        )
+                    )
+                    catalogLayoutOptions.forEachIndexed { index, (useTableOption, label, icon) ->
+                        val isSelected = useProductTableInCatalog == useTableOption
+                        ToggleButton(
+                            checked = isSelected,
+                            onCheckedChange = { onUseProductTableInCatalogChange(useTableOption) },
+                            colors = ToggleButtonDefaults.toggleButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                catalogLayoutOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(icon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = label,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Swap Venta Layout Order Toggle (Ticket on left, Catalog on right)
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = ShapeDefaults.bottomListItemShape,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = stringResource(Res.string.swap_venta_layout_order_title),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(Res.string.swap_venta_layout_order_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Switch(
+                    checked = swapVentaLayoutOrder,
+                    onCheckedChange = onSwapVentaLayoutOrderChange
+                )
             }
         }
     }

@@ -14,13 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,6 +35,7 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,9 +49,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
@@ -61,6 +63,7 @@ import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.ajustes.AboutSettingsSection
 import com.dnavarro.poskmp.ui.ajustes.AjustesCategory
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
@@ -385,9 +388,11 @@ fun AjustesScreen(
                         TopAppBar(
                             title = {
                                 Text(
+                                    modifier = Modifier.fillMaxWidth(),
                                     text = stringResource(Res.string.settings_title),
                                     fontWeight = FontWeight.ExtraBold,
-                                    style = MaterialTheme.typography.titleLarge
+                                    style = MaterialTheme.typography.titleLarge,
+                                    textAlign = TextAlign.Center
                                 )
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
@@ -403,11 +408,17 @@ fun AjustesScreen(
                             .fillMaxSize()
                             .padding(innerPadding)
                             .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
-                        items(categories) { category ->
+                        itemsIndexed(categories) { index, category ->
                             val isSelected = isListAndDetailVisible && currentCategory == category
+                            val shape = when {
+                                categories.size == 1 -> ShapeDefaults.cardShape
+                                index == 0 -> ShapeDefaults.topListItemShape
+                                index == categories.lastIndex -> ShapeDefaults.bottomListItemShape
+                                else -> ShapeDefaults.middleListItemShape
+                            }
                             Card(
                                 onClick = {
                                     when (category) {
@@ -421,7 +432,7 @@ fun AjustesScreen(
                                         }
                                     }
                                 },
-                                shape = MaterialTheme.shapes.medium,
+                                shape = shape,
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (isSelected) {
                                         MaterialTheme.colorScheme.secondaryContainer
@@ -449,7 +460,7 @@ fun AjustesScreen(
                                                 } else {
                                                     MaterialTheme.colorScheme.surfaceContainerHigh
                                                 },
-                                                shape = MaterialTheme.shapes.small
+                                                shape = MaterialShapes.Gem.toShape()
                                             ),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -469,14 +480,14 @@ fun AjustesScreen(
                                         Text(
                                             text = stringResource(category.titleRes),
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp,
+                                            style = MaterialTheme.typography.titleMedium,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = stringResource(category.subtitleRes),
-                                            fontSize = 12.sp,
+                                            style = MaterialTheme.typography.bodySmall,
                                             color = if (isSelected) {
                                                 MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                                             } else {

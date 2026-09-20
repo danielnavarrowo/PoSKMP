@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -31,11 +30,13 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.util.isAndroid
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -78,6 +78,7 @@ import poskmp.shared.generated.resources.pin_label
 import poskmp.shared.generated.resources.pin_placeholder
 import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.warning
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,7 +159,7 @@ fun OpenShiftView(
                 ) {
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer,
-                        shape = CircleShape,
+                        shape = MaterialShapes.Cookie9Sided.toShape(),
                         modifier = Modifier.size(72.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -222,7 +223,7 @@ fun OpenShiftView(
                 // Header Icon & Title
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = CircleShape,
+                    shape = MaterialShapes.Cookie9Sided.toShape(),
                     modifier = Modifier.size(64.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {

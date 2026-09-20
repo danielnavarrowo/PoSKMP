@@ -21,11 +21,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -90,7 +92,7 @@ fun CashierManagementSection(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = stringResource(Res.string.cashier_management_section_desc),
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -169,7 +171,7 @@ fun CashierManagementSection(
                     cashiers.forEach { cashier ->
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            shape = MaterialTheme.shapes.medium,
+                            shape = ShapeDefaults.middleListItemShape,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -183,7 +185,7 @@ fun CashierManagementSection(
                                 ) {
                                     Surface(
                                         color = MaterialTheme.colorScheme.primaryContainer,
-                                        shape = MaterialTheme.shapes.small,
+                                        shape = MaterialShapes.Cookie12Sided.toShape(),
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
@@ -194,19 +196,12 @@ fun CashierManagementSection(
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = cashier.nombre,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = stringResource(Res.string.cashier_card_pin_masked),
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
+                                    Text(
+                                        text = cashier.nombre,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {

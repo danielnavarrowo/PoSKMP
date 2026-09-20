@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -41,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
@@ -101,15 +99,14 @@ fun AboutSettingsSection(
     var exportErrorMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        modifier = modifier.fillMaxWidth()
     ) {
-        // Card: Info del Sistema
+
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            shape = MaterialTheme.shapes.medium,
+            shape = ShapeDefaults.cardShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -120,32 +117,33 @@ fun AboutSettingsSection(
                     painter = painterResource(Res.drawable.app_icon),
                     contentDescription = null,
                     modifier = Modifier
-                        .size(52.dp)
-                        .background(Color.Transparent, RoundedCornerShape(32.dp))
+                        .size(96.dp)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
                         text = stringResource(Res.string.system_info_title),
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = stringResource(Res.string.system_version, currentVersion),
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
 
-        // Card: Gestión del Catálogo (Importar y Exportar CSV)
+        Spacer(modifier = Modifier.height(36.dp))
+
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            shape = MaterialTheme.shapes.medium,
+            shape = ShapeDefaults.topListItemShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -155,10 +153,10 @@ fun AboutSettingsSection(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Importa o exporta el catálogo de productos en CSV / Excel",
-                    fontSize = 12.sp,
+                    text = "Importa o exporta el catálogo de productos en formato CSV / Excel.",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -249,7 +247,7 @@ fun AboutSettingsSection(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = exportSuccessMessage ?: exportErrorMessage ?: "",
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = if (exportSuccessMessage != null) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -257,26 +255,29 @@ fun AboutSettingsSection(
             }
         }
 
-        // Card: Actualizaciones del Sistema
+
+
+
+        Spacer(modifier = Modifier.height(2.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            shape = ShapeDefaults.bottomListItemShape,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                         Text(
                             text = stringResource(Res.string.updates_section_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = stringResource(Res.string.updates_section_subtitle),
                             style = MaterialTheme.typography.bodySmall,
@@ -290,47 +291,42 @@ fun AboutSettingsSection(
                         Text(
                             text = "v$currentVersion",
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Button(
+                    onClick = onCheckForUpdates,
+                    enabled = !isCheckingUpdates && downloadState !is UpdateDownloadState.Downloading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = onCheckForUpdates,
-                        enabled = !isCheckingUpdates && downloadState !is UpdateDownloadState.Downloading,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        if (isCheckingUpdates) {
-                            ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(Res.string.checking_updates),
-                                fontWeight = FontWeight.Bold
-                            )
-                        } else {
-                            Icon(
-                                painter = painterResource(Res.drawable.sync),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(Res.string.check_updates_button),
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                    if (isCheckingUpdates) {
+                        ContainedLoadingIndicator(modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.checking_updates),
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(Res.drawable.sync),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.check_updates_button),
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
@@ -349,13 +345,8 @@ fun AboutSettingsSection(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "✓",
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF10B981)
-                            )
-                            Text(
                                 text = stringResource(Res.string.app_up_to_date),
-                                fontSize = 13.sp,
+                                style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF10B981)
                             )
@@ -372,7 +363,7 @@ fun AboutSettingsSection(
                     ) {
                         Text(
                             text = stringResource(Res.string.update_error, updateCheckResult.message),
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(12.dp)
@@ -381,14 +372,15 @@ fun AboutSettingsSection(
                 }
             }
         }
+        Spacer(modifier = Modifier.height(36.dp))
 
-        // Restablecer de Fábrica Card (Zona de Peligro)
+
+        // --- Categoría 4: Zona de Peligro / Restablecer de Fábrica ---
         FactoryResetSettingsSection(
             isResettingApp = isResettingApp,
             resetAppError = resetAppError,
             resetAppSuccess = resetAppSuccess,
-            onResetApp = onResetApp,
-            onDismissMessage = onDismissResetAppMessage
+            onResetApp = onResetApp
         )
     }
 
