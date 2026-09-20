@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,10 +40,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -110,6 +114,7 @@ import poskmp.shared.generated.resources.pieces_count_label
 import poskmp.shared.generated.resources.price
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.remove_customer_button
+import poskmp.shared.generated.resources.remove_desc
 import poskmp.shared.generated.resources.shopping_cart
 import poskmp.shared.generated.resources.ticket_empty_message
 import poskmp.shared.generated.resources.total_label
@@ -428,7 +433,7 @@ fun TicketSection(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                itemsIndexed(cartItems) { index, item ->
+                itemsIndexed(cartItems, key = { _, item -> item.product.id }) { index, item ->
                     val shape = if (cartItems.size == 1) {
                         MaterialTheme.shapes.medium
                     } else if (index == 0) {
@@ -452,19 +457,97 @@ fun TicketSection(
                     val focusRequester = remember(index) { focusRequesters.getOrPut(index) { FocusRequester() } }
                     val isRowFocused = selectedIndex == index
 
-                    TicketItemRow(
-                        item = item,
-                        index = index,
-                        cartItemsSize = cartItems.size,
-                        shape = shape,
-                        isRowFocused = isRowFocused,
-                        focusRequester = focusRequester,
-                        focusRequesters = focusRequesters,
-                        onSelectedIndexChange = onSelectedIndexChange,
-                        onUpdateQuantity = onUpdateQuantity,
-                        onSetQuantity = onSetQuantity,
-                        onRemoveItem = onRemoveItem
-                    )
+                    if (isAndroid()) {
+                        val dismissState = rememberSwipeToDismissBoxState()
+
+                        LaunchedEffect(item.product.id) {
+                            if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                            }
+                        }
+
+                        val color by animateColorAsState(
+                            when {
+                                dismissState.targetValue != SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.error
+                                dismissState.dismissDirection != SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.errorContainer
+                                else -> Color.Transparent
+                            },
+                            label = "SwipeBackgroundColor"
+                        )
+                        val iconColor by animateColorAsState(
+                            when {
+                                dismissState.targetValue != SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.onError
+                                dismissState.dismissDirection != SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.onErrorContainer
+                                else -> Color.Transparent
+                            },
+                            label = "SwipeIconColor"
+                        )
+                        val alignment = when (dismissState.dismissDirection) {
+                            SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                            SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                            SwipeToDismissBoxValue.Settled -> Alignment.CenterEnd
+                        }
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(shape)
+                                        .background(color)
+                                        .padding(horizontal = 24.dp),
+                                    contentAlignment = alignment
+                                ) {
+                                    if (dismissState.dismissDirection != SwipeToDismissBoxValue.Settled) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.trash),
+                                            contentDescription = stringResource(Res.string.remove_desc),
+                                            tint = iconColor,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                onRemoveItem(item)
+                            },
+                            gesturesEnabled = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(shape)
+                                .animateItem()
+                        ) {
+                            TicketItemRow(
+                                item = item,
+                                index = index,
+                                cartItemsSize = cartItems.size,
+                                shape = shape,
+                                isRowFocused = isRowFocused,
+                                focusRequester = focusRequester,
+                                focusRequesters = focusRequesters,
+                                onSelectedIndexChange = onSelectedIndexChange,
+                                onUpdateQuantity = onUpdateQuantity,
+                                onSetQuantity = onSetQuantity,
+                                onRemoveItem = onRemoveItem
+                            )
+                        }
+                    } else {
+                        TicketItemRow(
+                            item = item,
+                            index = index,
+                            cartItemsSize = cartItems.size,
+                            shape = shape,
+                            isRowFocused = isRowFocused,
+                            focusRequester = focusRequester,
+                            focusRequesters = focusRequesters,
+                            onSelectedIndexChange = onSelectedIndexChange,
+                            onUpdateQuantity = onUpdateQuantity,
+                            onSetQuantity = onSetQuantity,
+                            onRemoveItem = onRemoveItem,
+                            modifier = Modifier.animateItem()
+                        )
+                    }
                 }
             }
         }
@@ -679,12 +762,13 @@ private fun TicketItemRow(
     onSelectedIndexChange: (Int) -> Unit,
     onUpdateQuantity: (CartItem, Double) -> Unit,
     onSetQuantity: (CartItem, Double) -> Unit,
-    onRemoveItem: (CartItem) -> Unit
+    onRemoveItem: (CartItem) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var isTextFieldFocused by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .then(

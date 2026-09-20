@@ -1121,7 +1121,7 @@ private fun ProductContextMenu(
 
     DropdownMenu(
         expanded = expanded,
-        shape = MaterialTheme.shapes.medium,
+        shape = ShapeDefaults.cardShape,
         onDismissRequest = onDismissRequest,
         modifier = modifier
             .widthIn(min = 230.dp)
