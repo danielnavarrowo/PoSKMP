@@ -98,13 +98,13 @@ class SqlDelightSaleDataSource(
             endTime = endTime
         ).executeAsOne()
         SalesSummary(
-            totalVentas = result.total_ventas,
-            totalSinDescuento = result.total_sin_descuento,
-            totalCosto = result.total_costo,
-            totalGanancia = result.total_ganancia,
+            totalVentas = result.total_ventas ?: 0.0,
+            totalSinDescuento = result.total_sin_descuento ?: 0.0,
+            totalCosto = result.total_costo ?: 0.0,
+            totalGanancia = result.total_ganancia ?: 0.0,
             porcentajeGanancia = result.porcentaje_ganancia ?: 0.0,
             totalTicketCount = result.total_ticket_count,
-            promedioTicket = result.promedio_ticket
+            promedioTicket = result.promedio_ticket ?: 0.0
         )
     }
 

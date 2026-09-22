@@ -232,7 +232,7 @@ class SqlDelightCustomerDataSource(
         val row = queries.selectCustomerDebtSummary().executeAsOne()
         CustomerDebtSummary(
             totalClientes = row.total_clientes,
-            totalDeudaAcumulada = row.total_deuda_acumulada,
+            totalDeudaAcumulada = row.total_deuda_acumulada ?: 0.0,
             clientesConDeuda = row.clientes_con_deuda
         )
     }

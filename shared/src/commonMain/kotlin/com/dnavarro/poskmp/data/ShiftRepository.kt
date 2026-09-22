@@ -278,23 +278,23 @@ class ShiftRepositoryImpl(
                 )
             }
 
-            val ventasEfectivo = salesSummary.ventas_efectivo
+            val ventasEfectivo = salesSummary.ventas_efectivo ?: 0.0
             val fondoInicial = shiftDb.initial_cash
             val efectivoEsperado = fondoInicial + ventasEfectivo + totalEntradas - totalSalidas
 
             val shiftSummary = ShiftSummary(
                 shift = shiftDb.toDomain(),
-                totalVentas = salesSummary.total_ventas,
+                totalVentas = salesSummary.total_ventas ?: 0.0,
                 ventasEfectivo = ventasEfectivo,
-                ventasTarjeta = salesSummary.ventas_tarjeta,
-                ventasTransferencia = salesSummary.ventas_transferencia,
-                ventasCredito = salesSummary.ventas_credito,
-                ventasMixto = salesSummary.ventas_mixto,
+                ventasTarjeta = salesSummary.ventas_tarjeta ?: 0.0,
+                ventasTransferencia = salesSummary.ventas_transferencia ?: 0.0,
+                ventasCredito = salesSummary.ventas_credito ?: 0.0,
+                ventasMixto = salesSummary.ventas_mixto ?: 0.0,
                 totalEntradas = totalEntradas,
                 totalSalidas = totalSalidas,
                 efectivoEsperado = efectivoEsperado,
                 totalTransacciones = salesSummary.total_transacciones,
-                totalVentasCanceladas = cancelledSalesSummary.total_cancelado,
+                totalVentasCanceladas = cancelledSalesSummary.total_cancelado ?: 0.0,
                 totalTicketsCancelados = cancelledSalesSummary.total_tickets_cancelados,
                 cancelledSales = cancelledSales,
                 movements = movements
