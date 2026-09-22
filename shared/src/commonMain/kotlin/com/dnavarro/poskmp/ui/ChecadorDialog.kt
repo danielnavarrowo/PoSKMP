@@ -793,7 +793,7 @@ fun ChecadorScreen(
                                 } else if (hasSearched) {
                                     AutoSizingText(
                                         text = stringResource(Res.string.product_not_found),
-                                        color = Color.Red,
+                                        color = Color.White,
                                         fontWeight = FontWeight.Black,
                                         minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
@@ -882,7 +882,7 @@ fun ChecadorScreen(
                                 Icon(
                                     painter = painterResource(Res.drawable.warning),
                                     contentDescription = null,
-                                    tint = Color.Red,
+                                    tint = Color.White,
                                     modifier = Modifier.size(256.dp)
                                 )
                             }
