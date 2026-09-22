@@ -33,7 +33,7 @@ class ClientesViewModel(
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
-    private val _internalState = MutableStateFlow(ClientesUiState())
+    private val _internalState = MutableStateFlow(ClientesUiState(isLoading = true))
 
     private val _debouncedSearchQuery = _searchQuery.debounce { query ->
         if (query.isEmpty()) 0L else 300L
@@ -85,13 +85,14 @@ class ClientesViewModel(
             filteredClientes = filtered,
             searchQuery = query,
             debtSummary = debtSummary,
+            isLoading = false,
             isSyncing = syncState == SyncStateEnum.SYNCING,
             receiptSettings = receiptSettings
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = ClientesUiState()
+        initialValue = ClientesUiState(isLoading = true)
     )
 
     fun onSearchQueryChange(query: String) {

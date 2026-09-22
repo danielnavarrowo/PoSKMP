@@ -39,8 +39,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
@@ -166,7 +168,8 @@ fun CatalogSection(
     searchFocusRequester: FocusRequester? = null,
     onBarcodeScan: ((String) -> Unit)? = null,
     onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null,
-    onAddProductWithQuantity: ((Products, Double) -> Unit)? = null
+    onAddProductWithQuantity: ((Products, Double) -> Unit)? = null,
+    isLoading: Boolean = false
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -561,7 +564,14 @@ fun CatalogSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (productsList.isEmpty()) {
+        if (isLoading) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                ContainedLoadingIndicator()
+            }
+        } else if (productsList.isEmpty()) {
             Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center

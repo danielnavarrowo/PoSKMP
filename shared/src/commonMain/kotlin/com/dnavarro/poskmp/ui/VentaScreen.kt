@@ -63,6 +63,8 @@ import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation.rememberSupportingPaneScaffoldNavigator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -609,9 +611,18 @@ fun VentaScreen(
                 } else Modifier
             )
     ) {
+        val pullToRefreshState = rememberPullToRefreshState()
         PullToRefreshBox(
+            state = pullToRefreshState,
             isRefreshing = uiState.isSyncing,
             onRefresh = { viewModel.refreshSync() },
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = pullToRefreshState,
+                    isRefreshing = uiState.isSyncing,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            },
             modifier = Modifier.fillMaxSize()
         ) {
             BoxWithConstraints(
@@ -661,7 +672,8 @@ fun VentaScreen(
                             onSellUnregisteredClick = { openUnregisteredDialog() },
                             searchFocusRequester = searchBarFocusRequester,
                             onBarcodeScan = barcodeScanCallback,
-                            onSearchKeyIntercept = handleSearchKeyIntercept
+                            onSearchKeyIntercept = handleSearchKeyIntercept,
+                            isLoading = uiState.isLoading
                         )
                     }
                 }
@@ -795,7 +807,8 @@ fun VentaScreen(
                                 onSellUnregisteredClick = { openUnregisteredDialog() },
                                 searchFocusRequester = searchBarFocusRequester,
                                 onBarcodeScan = barcodeScanCallback,
-                                onSearchKeyIntercept = handleSearchKeyIntercept
+                                onSearchKeyIntercept = handleSearchKeyIntercept,
+                                isLoading = uiState.isLoading
                             )
                         }
                     },

@@ -308,6 +308,7 @@ class VentaViewModel(
             googleSearchApiKey = pricingSettings.googleSearchApiKey,
             useProductTableInCatalog = catalogConfig.useProductTableInCatalog,
             swapVentaLayoutOrder = catalogConfig.swapVentaLayoutOrder,
+            isLoading = false,
             customers = catalogConfig.customers,
             filteredCustomers = filteredCust,
             selectedCustomer = catalogConfig.selectedCustomer,
@@ -333,7 +334,7 @@ class VentaViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = VentaUiState()
+        initialValue = VentaUiState(isLoading = true)
     )
 
     init {

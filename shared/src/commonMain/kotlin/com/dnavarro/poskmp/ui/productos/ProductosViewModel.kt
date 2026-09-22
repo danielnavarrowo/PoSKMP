@@ -201,13 +201,14 @@ class ProductosViewModel(
             geminiApiKey = settings.geminiApiKey,
             googleSearchEngineId = settings.googleSearchEngineId,
             googleSearchApiKey = settings.googleSearchApiKey,
+            isLoading = false,
             isSyncing = extra.syncState == SyncStateEnum.SYNCING,
             canEditProducts = settings.canEditProducts
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = ProductosUiState()
+        initialValue = ProductosUiState(isLoading = true)
     )
 
     fun onSearchQueryChanged(query: String) {
