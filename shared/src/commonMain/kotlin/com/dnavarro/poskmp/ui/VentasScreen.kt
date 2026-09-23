@@ -8,14 +8,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
-import androidx.savedstate.serialization.SavedStateConfiguration
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,6 +88,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
+import androidx.savedstate.serialization.SavedStateConfiguration
 import com.dnavarro.poskmp.domain.model.CashMovementType
 import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
@@ -127,6 +124,9 @@ import ir.ehsannarmani.compose_charts.models.PopupProperties
 import ir.ehsannarmani.compose_charts.models.StrokeStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -136,6 +136,7 @@ import poskmp.shared.generated.resources.accept_button
 import poskmp.shared.generated.resources.active_shift_badge
 import poskmp.shared.generated.resources.all_shifts_option
 import poskmp.shared.generated.resources.arrow_up
+import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.btn_cash_inflow
 import poskmp.shared.generated.resources.btn_cash_inflow_desktop
 import poskmp.shared.generated.resources.btn_cash_outflow
@@ -147,7 +148,6 @@ import poskmp.shared.generated.resources.btn_view_sold_products
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.cancel_sale_button
 import poskmp.shared.generated.resources.cancel_sale_confirm_action
-import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.cancel_sale_confirm_message
 import poskmp.shared.generated.resources.cancel_sale_confirm_title
 import poskmp.shared.generated.resources.cancel_sale_keep_action
@@ -181,7 +181,6 @@ import poskmp.shared.generated.resources.kpi_total_sales
 import poskmp.shared.generated.resources.kpi_without_discount
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.money_transfer
-import poskmp.shared.generated.resources.no_active_shift_badge
 import poskmp.shared.generated.resources.payment_method_credito
 import poskmp.shared.generated.resources.payment_method_efectivo
 import poskmp.shared.generated.resources.payment_method_label
@@ -578,184 +577,72 @@ fun VentasScreen(
 
                 // Period Filter Selector
                 item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Dropdown Selector de Turnos de Caja
-                        var shiftDropdownExpanded by remember { mutableStateOf(false) }
-                        val selectedShift = state.shiftsForSelectedPeriod.firstOrNull { it.id == state.selectedShiftId }
-                        val selectedShiftLabel = if (selectedShift != null) {
-                            formatShiftDisplay(selectedShift)
-                        } else {
-                            stringResource(Res.string.all_shifts_option)
-                        }
-
-                        ExposedDropdownMenuBox(
-                            expanded = shiftDropdownExpanded,
-                            onExpandedChange = { shiftDropdownExpanded = it },
-                            modifier = Modifier.fillMaxWidth(if (isCompact) 1f else 0.55f)
-                        ) {
-                            OutlinedTextField(
-                                value = selectedShiftLabel,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(stringResource(Res.string.shift_filter_label)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shiftDropdownExpanded) },
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.person),
-                                        contentDescription = null,
-                                        tint = if (selectedShift != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                shape = MaterialTheme.shapes.medium,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
-                            )
-
-                            ExposedDropdownMenu(
-                                expanded = shiftDropdownExpanded,
-                                onDismissRequest = { shiftDropdownExpanded = false }
-                            ) {
-                                // Opción por defecto: Ver información de todos los turnos
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = stringResource(Res.string.all_shifts_option),
-                                            fontWeight = if (state.selectedShiftId == null) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (state.selectedShiftId == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    onClick = {
-                                        onSelectShiftFilter(null)
-                                        shiftDropdownExpanded = false
-                                    },
-                                    leadingIcon = {
-                                        if (state.selectedShiftId == null) {
-                                            Icon(
-                                                painter = painterResource(Res.drawable.check),
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
-                                )
-
-                                if (state.shiftsForSelectedPeriod.isNotEmpty()) {
-                                    HorizontalDivider()
-                                }
-
-                                state.shiftsForSelectedPeriod.forEach { shift ->
-                                    val isCurrent = shift.id == state.selectedShiftId
-                                    DropdownMenuItem(
-                                        text = {
-                                            Column {
-                                                Text(
-                                                    text = formatShiftDisplay(shift),
-                                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                                )
-                                                if (!shift.isClosed) {
-                                                    Text(
-                                                        text = stringResource(Res.string.shift_status_open),
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.primary
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        onClick = {
-                                            onSelectShiftFilter(shift.id)
-                                            shiftDropdownExpanded = false
-                                        },
-                                        leadingIcon = {
-                                            if (isCurrent) {
-                                                Icon(
-                                                    painter = painterResource(Res.drawable.check),
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
+                    if (isCompact) {
+                        // Layout de 2 filas para dispositivos compactos
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            val presets = SalesPeriodPreset.entries
+                            ShiftFilterDropdown(
+                                shifts = state.shiftsForSelectedPeriod,
+                                selectedShiftId = state.selectedShiftId,
+                                onSelectShiftFilter = onSelectShiftFilter,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
                             Row(
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                presets.forEachIndexed { index, preset ->
-                                    val isSelected = state.selectedPeriod == preset
-                                    ToggleButton(
-                                        checked = isSelected,
-                                        onCheckedChange = { onSelectPeriod(preset) },
-                                        colors = ToggleButtonDefaults.toggleButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                        ),
-                                        modifier = Modifier.semantics { role = Role.RadioButton },
-                                        shapes = when (index) {
-                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                            presets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                        }
-                                    ) {
-                                        Text(
-                                            text = when (preset) {
-                                                SalesPeriodPreset.HOY -> stringResource(Res.string.period_today)
-                                                SalesPeriodPreset.AYER -> stringResource(Res.string.period_yesterday)
-                                                SalesPeriodPreset.ESTA_SEMANA -> stringResource(Res.string.period_this_week)
-                                                SalesPeriodPreset.ESTE_MES -> stringResource(Res.string.period_this_month)
-                                                SalesPeriodPreset.RANGO -> stringResource(Res.string.period_range)
-                                            },
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
+                                SalesPeriodPresetButtons(
+                                    selectedPeriod = state.selectedPeriod,
+                                    onSelectPeriod = onSelectPeriod
+                                )
+                            }
+                            if (state.selectedPeriod == SalesPeriodPreset.RANGO && state.customStartDate != null && state.customEndDate != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                SalesPeriodRangeBadge(
+                                    startDate = state.customStartDate,
+                                    endDate = state.customEndDate,
+                                    onClick = onOpenDateRangePicker
+                                )
                             }
                         }
-
-                        if (state.selectedPeriod == SalesPeriodPreset.RANGO && state.customStartDate != null && state.customEndDate != null) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                shape = MaterialTheme.shapes.small,
-                                modifier = Modifier.clickable { onOpenDateRangePicker() }
+                    } else {
+                        // Layout de 1 sola fila cuando hay suficiente anchura
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ShiftFilterDropdown(
+                                    shifts = state.shiftsForSelectedPeriod,
+                                    selectedShiftId = state.selectedShiftId,
+                                    onSelectShiftFilter = onSelectShiftFilter,
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .widthIn(min = 220.dp, max = 360.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        text = stringResource(
-                                            Res.string.custom_range_active_format,
-                                            formatDateDisplay(state.customStartDate),
-                                            formatDateDisplay(state.customEndDate)
-                                        ),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
+                                    SalesPeriodPresetButtons(
+                                        selectedPeriod = state.selectedPeriod,
+                                        onSelectPeriod = onSelectPeriod
                                     )
+                                    if (state.selectedPeriod == SalesPeriodPreset.RANGO && state.customStartDate != null && state.customEndDate != null) {
+                                        SalesPeriodRangeBadge(
+                                            startDate = state.customStartDate,
+                                            endDate = state.customEndDate,
+                                            onClick = onOpenDateRangePicker
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1259,6 +1146,197 @@ private fun formatShiftDisplay(shift: CashierShift): String {
         isClosed = shift.isClosed,
         cashierName = shift.cashierName
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShiftFilterDropdown(
+    shifts: List<CashierShift>,
+    selectedShiftId: String?,
+    onSelectShiftFilter: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var shiftDropdownExpanded by remember { mutableStateOf(false) }
+    val selectedShift = shifts.firstOrNull { it.id == selectedShiftId }
+    val selectedShiftLabel = if (selectedShift != null) {
+        formatShiftDisplay(selectedShift)
+    } else {
+        stringResource(Res.string.all_shifts_option)
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = shiftDropdownExpanded,
+        onExpandedChange = { shiftDropdownExpanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedShiftLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(Res.string.shift_filter_label)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shiftDropdownExpanded) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(Res.drawable.person),
+                    contentDescription = null,
+                    tint = if (selectedShift != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+        )
+
+        ExposedDropdownMenu(
+            expanded = shiftDropdownExpanded,
+            onDismissRequest = { shiftDropdownExpanded = false }
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(Res.string.all_shifts_option),
+                        fontWeight = if (selectedShiftId == null) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selectedShiftId == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                onClick = {
+                    onSelectShiftFilter(null)
+                    shiftDropdownExpanded = false
+                },
+                leadingIcon = {
+                    if (selectedShiftId == null) {
+                        Icon(
+                            painter = painterResource(Res.drawable.check),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            )
+
+            if (shifts.isNotEmpty()) {
+                HorizontalDivider()
+            }
+
+            shifts.forEach { shift ->
+                val isCurrent = shift.id == selectedShiftId
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(
+                                text = formatShiftDisplay(shift),
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (!shift.isClosed) {
+                                Text(
+                                    text = stringResource(Res.string.shift_status_open),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
+                    onClick = {
+                        onSelectShiftFilter(shift.id)
+                        shiftDropdownExpanded = false
+                    },
+                    leadingIcon = {
+                        if (isCurrent) {
+                            Icon(
+                                painter = painterResource(Res.drawable.check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SalesPeriodPresetButtons(
+    selectedPeriod: SalesPeriodPreset,
+    onSelectPeriod: (SalesPeriodPreset) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val presets = SalesPeriodPreset.entries
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+    ) {
+        presets.forEachIndexed { index, preset ->
+            val isSelected = selectedPeriod == preset
+            ToggleButton(
+                checked = isSelected,
+                onCheckedChange = { onSelectPeriod(preset) },
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier.semantics { role = Role.RadioButton },
+                shapes = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    presets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                }
+            ) {
+                Text(
+                    text = when (preset) {
+                        SalesPeriodPreset.HOY -> stringResource(Res.string.period_today)
+                        SalesPeriodPreset.AYER -> stringResource(Res.string.period_yesterday)
+                        SalesPeriodPreset.ESTA_SEMANA -> stringResource(Res.string.period_this_week)
+                        SalesPeriodPreset.ESTE_MES -> stringResource(Res.string.period_this_month)
+                        SalesPeriodPreset.RANGO -> stringResource(Res.string.period_range)
+                    },
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SalesPeriodRangeBadge(
+    startDate: Long,
+    endDate: Long,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.small,
+        modifier = modifier.clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = stringResource(
+                    Res.string.custom_range_active_format,
+                    formatDateDisplay(startDate),
+                    formatDateDisplay(endDate)
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
 }
 
 @Composable
