@@ -364,11 +364,11 @@ fun CameraPreviewScreen(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(16.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             ) {
                 Icon(
                     painterResource(Res.drawable.close),
-                    tint = Color.White,
+                    tint = Color.Black,
                     contentDescription = stringResource(Res.string.close_scanner_desc)
                 )
             }
@@ -379,13 +379,13 @@ fun CameraPreviewScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             ) {
                 Icon(
                     painter = if (isFlashEnabled) painterResource(Res.drawable.flash_on) else painterResource(
                         Res.drawable.flash_off
                     ),
-                    tint = Color.White,
+                    tint = Color.Black,
                     contentDescription = stringResource(Res.string.torch_desc)
                 )
             }
@@ -402,7 +402,7 @@ fun CameraPreviewScreen(
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.95f),
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = ShapeDefaults.cardShape,
                     shadowElevation = 10.dp,
                     tonalElevation = 6.dp
                 ) {
@@ -869,7 +869,7 @@ fun PermissionRationaleScreen(
             Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = onRequestPermission,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = ShapeDefaults.topListItemShape,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
@@ -881,7 +881,7 @@ fun PermissionRationaleScreen(
             Spacer(modifier = Modifier.height(4.dp))
             OutlinedButton(
                 onClick = onCancel,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = ShapeDefaults.bottomListItemShape
             ) {
                 Text(stringResource(Res.string.cancel), fontWeight = FontWeight.Bold)
