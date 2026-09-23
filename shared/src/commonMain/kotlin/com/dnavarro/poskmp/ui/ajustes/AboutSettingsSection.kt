@@ -90,7 +90,6 @@ fun AboutSettingsSection(
     resetAppError: String?,
     resetAppSuccess: String?,
     onResetApp: () -> Unit,
-    onDismissResetAppMessage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()

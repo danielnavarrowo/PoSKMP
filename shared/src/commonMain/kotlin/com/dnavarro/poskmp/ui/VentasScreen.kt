@@ -274,7 +274,6 @@ fun VentasScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VentasScreen(
     state: VentasUiState,

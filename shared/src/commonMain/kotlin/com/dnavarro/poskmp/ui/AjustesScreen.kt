@@ -750,8 +750,7 @@ fun AjustesScreen(
                                     isResettingApp = isResettingApp,
                                     resetAppError = resetAppError,
                                     resetAppSuccess = resetAppSuccess,
-                                    onResetApp = onResetApp,
-                                    onDismissResetAppMessage = onDismissResetAppMessage
+                                    onResetApp = onResetApp
                                 )
                             }
                         }

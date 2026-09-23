@@ -477,7 +477,7 @@ fun App(
                 stringResource(if (isDesktop) Res.string.tab_checador_desktop else Res.string.tab_checador)
             val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
 
-            val isChecadorDialog = if (isCheckerOnly && !isAndroid()) false else ajustesUiState.isChecadorDialog
+            val isChecadorDialog = !(isCheckerOnly && !isAndroid()) && ajustesUiState.isChecadorDialog
             val isChecadorFullScreen = currentScreen == Screen.CHECADOR && !isChecadorDialog
             val useDynamicColor = ajustesUiState.useDynamicColor
             val seedColor = ajustesUiState.seedColor
