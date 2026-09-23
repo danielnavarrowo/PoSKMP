@@ -68,6 +68,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -143,6 +144,7 @@ import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.ui.isCameraScannerAvailable
+import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
@@ -415,6 +417,7 @@ fun App(
             var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
             var productosRefocusTrigger by remember { mutableIntStateOf(0) }
             var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
+            var productosSearchFocusTrigger by remember { mutableIntStateOf(0) }
 
             fun reclaimCurrentScreenFocus() {
                 if (!isAndroid()) {
@@ -1354,6 +1357,9 @@ fun App(
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
+                                        val isAndroidPlatform = isAndroid()
+                                        var lastProductosTapTime by remember { mutableLongStateOf(0L) }
+
                                         HorizontalFloatingToolbar(
                                             expanded = false,
                                             modifier = Modifier
@@ -1364,6 +1370,31 @@ fun App(
                                             ) {
                                                 var index = 0
                                                 compactToolbarItems.fastForEach { item ->
+                                                    val isProductosItem = item.label == tabProductosLabel
+                                                    val onCheckedChange: (Boolean) -> Unit = if (isAndroidPlatform && isProductosItem) {
+                                                        { checked ->
+                                                            val now = currentTimeMillis()
+                                                            val elapsed = now - lastProductosTapTime
+                                                            if (elapsed in 30L..450L) {
+                                                                lastProductosTapTime = 0L
+                                                                if (currentScreen != Screen.PRODUCTOS) {
+                                                                    navigateTo(AppRoute.Productos)
+                                                                }
+                                                                productosSearchFocusTrigger++
+                                                            } else {
+                                                                lastProductosTapTime = now
+                                                                item.onCheckedChange(checked)
+                                                            }
+                                                        }
+                                                    } else {
+                                                        { checked ->
+                                                            if (isAndroidPlatform) {
+                                                                lastProductosTapTime = 0L
+                                                            }
+                                                            item.onCheckedChange(checked)
+                                                        }
+                                                    }
+
                                                     TooltipBox(
                                                         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                                                             TooltipAnchorPosition.Above
@@ -1373,7 +1404,7 @@ fun App(
                                                     ) {
                                                         ToggleButton(
                                                             checked = item.isSelected,
-                                                            onCheckedChange = item.onCheckedChange,
+                                                            onCheckedChange = onCheckedChange,
                                                             shapes = ToggleButtonDefaults.shapes(
                                                                 CircleShape,
                                                                 CircleShape,
@@ -1460,7 +1491,9 @@ fun App(
                                         entry<AppRoute.Productos> {
                                             ProductosScreen(
                                                 viewModel = koinViewModel<ProductosViewModel>(),
-                                                refocusTrigger = productosRefocusTrigger
+                                                refocusTrigger = productosRefocusTrigger,
+                                                searchFocusTrigger = productosSearchFocusTrigger,
+                                                onSearchFocusHandled = { productosSearchFocusTrigger = 0 }
                                             )
                                         }
                                         entry<AppRoute.Clientes> {

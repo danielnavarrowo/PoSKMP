@@ -89,6 +89,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -200,7 +201,9 @@ enum class ProductSortOrder {
 fun ProductosScreen(
     viewModel: ProductosViewModel,
     modifier: Modifier = Modifier,
-    refocusTrigger: Int = 0
+    refocusTrigger: Int = 0,
+    searchFocusTrigger: Int = 0,
+    onSearchFocusHandled: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery = uiState.searchQuery
@@ -219,6 +222,7 @@ fun ProductosScreen(
     var selectedProductIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
     var selectionAnchorIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
     val searchBarFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -253,6 +257,29 @@ fun ProductosScreen(
     LaunchedEffect(refocusTrigger) {
         if (refocusTrigger > 0) {
             reclaimSearchBarFocus()
+        }
+    }
+
+    LaunchedEffect(searchFocusTrigger) {
+        if (searchFocusTrigger > 0) {
+            try {
+                searchBarFocusRequester.requestFocus()
+                keyboardController?.show()
+            } catch (_: Exception) {
+            }
+            delay(100.milliseconds)
+            try {
+                searchBarFocusRequester.requestFocus()
+                keyboardController?.show()
+            } catch (_: Exception) {
+            }
+            delay(150.milliseconds)
+            try {
+                searchBarFocusRequester.requestFocus()
+                keyboardController?.show()
+            } catch (_: Exception) {
+            }
+            onSearchFocusHandled()
         }
     }
 
@@ -831,11 +858,7 @@ fun ProductosScreen(
                                             },
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .then(
-                                                    if (!isAndroid()) {
-                                                        Modifier.focusRequester(searchBarFocusRequester)
-                                                    } else Modifier
-                                                )
+                                                .focusRequester(searchBarFocusRequester)
                                                 .onPreviewKeyEvent(handleKeyNavigation),
                                             keyboardOptions = KeyboardOptions(
                                                 imeAction = ImeAction.Search
