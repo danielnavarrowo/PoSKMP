@@ -28,6 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +42,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -52,6 +55,7 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.arrow_up
 import poskmp.shared.generated.resources.cost_label
@@ -59,6 +63,7 @@ import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.favorite_desc
 import poskmp.shared.generated.resources.header_delivery_price
 import poskmp.shared.generated.resources.header_price
+import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.star_filled
 import poskmp.shared.generated.resources.status_inactive
@@ -461,7 +466,7 @@ fun ProductTableRow(
 private data class ProductPriceItem(
     val label: String,
     val price: String,
-    val isPrimary: Boolean = false
+    val isHighlighted: Boolean = false
 )
 
 @Composable
@@ -473,11 +478,16 @@ fun ProductSimpleCard(
     showCheckbox: Boolean = false,
     isChecked: Boolean = false,
     onCheckedChange: ((Boolean) -> Unit)? = null,
+    prioritizeDeliveryPrice: Boolean? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onSecondaryClick: (() -> Unit)? = null,
     contextMenu: (@Composable () -> Unit)? = null
 ) {
+    val settingsRepository = koinInject<SettingsRepository>()
+    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsState(initial = false)
+    val effectivePrioritizeDelivery = prioritizeDeliveryPrice ?: settingsPrioritizeDelivery
+
     Box(modifier = modifier) {
         Card(
             modifier = Modifier
@@ -565,13 +575,26 @@ fun ProductSimpleCard(
                     }
                 }
 
+                val hasDeliveryPrice = product.precio_delivery > 0.0
+                val isDeliveryHighlighted = effectivePrioritizeDelivery && hasDeliveryPrice
+                val isRetailHighlighted = !isDeliveryHighlighted
+
                 val priceItems = buildList {
                     if (product.costo > 0.0) {
                         add(
                             ProductPriceItem(
                                 label = stringResource(Res.string.cost_label),
                                 price = "$${product.costo.toString().formatPrice()}",
-                                isPrimary = false
+                                isHighlighted = false
+                            )
+                        )
+                    }
+                    if (product.precio_mayoreo > 0.0) {
+                        add(
+                            ProductPriceItem(
+                                label = stringResource(Res.string.wholesale),
+                                price = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                isHighlighted = false
                             )
                         )
                     }
@@ -583,27 +606,23 @@ fun ProductSimpleCard(
                         }
                         add(
                             ProductPriceItem(
-                                label = stringResource(Res.string.header_price),
+                                label = stringResource(Res.string.header_retail_price),
                                 price = priceText,
-                                isPrimary = true
+                                isHighlighted = isRetailHighlighted
                             )
                         )
                     }
-                    if (product.precio_mayoreo > 0.0) {
-                        add(
-                            ProductPriceItem(
-                                label = stringResource(Res.string.wholesale),
-                                price = "$${product.precio_mayoreo.toString().formatPrice()}",
-                                isPrimary = false
-                            )
-                        )
-                    }
-                    if (product.precio_delivery > 0.0) {
+                    if (hasDeliveryPrice) {
+                        val priceText = if (product.por_peso == 1L) {
+                            "$${product.precio_delivery.toString().formatPrice()} / Kg"
+                        } else {
+                            "$${product.precio_delivery.toString().formatPrice()}"
+                        }
                         add(
                             ProductPriceItem(
                                 label = stringResource(Res.string.header_delivery_price),
-                                price = "$${product.precio_delivery.toString().formatPrice()}",
-                                isPrimary = false
+                                price = priceText,
+                                isHighlighted = isDeliveryHighlighted
                             )
                         )
                     }
@@ -615,30 +634,52 @@ fun ProductSimpleCard(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         priceItems.forEachIndexed { index, item ->
                             val alignment = when {
+                                item.isHighlighted -> Alignment.CenterHorizontally
                                 priceItems.size == 1 -> Alignment.Start
                                 index == 0 -> Alignment.Start
                                 index == priceItems.lastIndex -> Alignment.End
                                 else -> Alignment.CenterHorizontally
                             }
-                            Column(horizontalAlignment = alignment) {
+                            val highlightedModifier = Modifier
+                                .background(
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    else MaterialTheme.colorScheme.tertiaryContainer,
+                                    shape = MaterialShapes.Slanted.toShape()
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+
+                            Column(
+                                horizontalAlignment = alignment,
+                                modifier = if (item.isHighlighted) highlightedModifier else Modifier
+                            ) {
                                 Text(
                                     text = item.label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                    style = if (item.isHighlighted) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
+                                    color = when {
+                                        isSelected -> if (item.isHighlighted) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                        item.isHighlighted -> MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = item.price,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (item.isPrimary) FontWeight.Bold else FontWeight.Normal,
+                                    style = if (item.isHighlighted) {
+                                        MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    } else {
+                                        MaterialTheme.typography.bodyMedium.copy(
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    },
                                     color = when {
                                         isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
-                                        item.isPrimary -> MaterialTheme.colorScheme.primary
+                                        item.isHighlighted -> MaterialTheme.colorScheme.onTertiaryContainer
                                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )

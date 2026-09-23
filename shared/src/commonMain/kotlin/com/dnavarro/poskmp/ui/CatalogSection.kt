@@ -612,14 +612,9 @@ fun CatalogSection(
                                 }
                                 var showContextMenu by remember { mutableStateOf(false) }
 
-                                val displayProduct = if (prioritizeDeliveryPrice && product.precio_delivery > 0.0) {
-                                    product.copy(precio = product.precio_delivery)
-                                } else {
-                                    product
-                                }
-
                                 ProductSimpleCard(
-                                    product = displayProduct,
+                                    product = product,
+                                    prioritizeDeliveryPrice = prioritizeDeliveryPrice,
                                     shape = shape,
                                     isSelected = selectedCatalogIndex == index,
                                     showCheckbox = false,

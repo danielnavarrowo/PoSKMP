@@ -49,10 +49,12 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -527,7 +529,8 @@ fun CameraPreviewScreen(
                             }
 
                             if (isChecadorMode) {
-                                val showDeliveryPrice = lastScannedProduct.precio_delivery > 0.0 || effectivePrioritizeDelivery
+                                val hasDeliveryPrice = lastScannedProduct.precio_delivery > 0.0
+                                val showDeliveryPrice = hasDeliveryPrice
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -558,29 +561,6 @@ fun CameraPreviewScreen(
 
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
-                                            text = stringResource(Res.string.header_retail_price),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = "$${(lastScannedProduct.precio * lastScannedQuantity).toString().formatPrice()}",
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                        )
-                                        if (hasMultiplePieces) {
-                                            Text(
-                                                text = stringResource(Res.string.price_per_piece_short_fmt, retailPerPiece.toString().formatPrice()),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.tertiary
-                                            )
-                                        }
-                                    }
-
-                                    Column(horizontalAlignment = if (showDeliveryPrice) Alignment.CenterHorizontally else Alignment.End) {
-                                        Text(
                                             text = stringResource(Res.string.wholesale),
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -602,36 +582,87 @@ fun CameraPreviewScreen(
                                         }
                                     }
 
+                                    val isDeliveryHighlighted = effectivePrioritizeDelivery && hasDeliveryPrice
+                                    val isRetailHighlighted = !isDeliveryHighlighted
+
+                                    val highlightedModifier = Modifier
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceContainer,
+                                            shape = MaterialShapes.Slanted.toShape()
+                                        )
+                                        .padding(8.dp)
+
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = if (isRetailHighlighted) highlightedModifier else Modifier
+                                    ) {
+                                        Text(
+                                            text = stringResource(Res.string.header_retail_price),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (isRetailHighlighted) {
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            }
+                                        )
+                                        Text(
+                                            text = "$${(lastScannedProduct.precio * lastScannedQuantity).toString().formatPrice()}",
+                                            style = if (isRetailHighlighted) {
+                                                MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            } else {
+                                                MaterialTheme.typography.titleSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        )
+                                        if (hasMultiplePieces) {
+                                            Text(
+                                                text = stringResource(Res.string.price_per_piece_short_fmt, retailPerPiece.toString().formatPrice()),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.tertiary
+                                            )
+                                        }
+                                    }
+
                                     if (showDeliveryPrice) {
-                                        Column(horizontalAlignment = Alignment.End) {
+                                        Column(
+                                            horizontalAlignment = if (isDeliveryHighlighted) Alignment.CenterHorizontally else Alignment.End,
+                                            modifier = if (isDeliveryHighlighted) highlightedModifier else Modifier
+                                        ) {
                                             Text(
                                                 text = stringResource(Res.string.header_delivery_price),
                                                 style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = if (isDeliveryHighlighted) {
+                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
                                             )
-                                            if (lastScannedProduct.precio_delivery > 0.0) {
-                                                Text(
-                                                    text = "$${(lastScannedProduct.precio_delivery * lastScannedQuantity).toString().formatPrice()}",
-                                                    style = MaterialTheme.typography.titleSmall.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.primary
+                                            Text(
+                                                text = "$${(lastScannedProduct.precio_delivery * lastScannedQuantity).toString().formatPrice()}",
+                                                style = if (isDeliveryHighlighted) {
+                                                    MaterialTheme.typography.titleMedium.copy(
+                                                        fontWeight = FontWeight.ExtraBold,
+                                                        color = MaterialTheme.colorScheme.onSurface
                                                     )
-                                                )
-                                                if (hasMultiplePieces) {
-                                                    Text(
-                                                        text = stringResource(Res.string.price_per_piece_short_fmt, deliveryPerPiece.toString().formatPrice()),
-                                                        style = MaterialTheme.typography.labelSmall,
+                                                } else {
+                                                    MaterialTheme.typography.titleSmall.copy(
                                                         fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.tertiary
+                                                        color = MaterialTheme.colorScheme.onSurface
                                                     )
                                                 }
-                                            } else {
+                                            )
+                                            if (hasMultiplePieces) {
                                                 Text(
-                                                    text = "-",
-                                                    style = MaterialTheme.typography.titleSmall.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
+                                                    text = stringResource(Res.string.price_per_piece_short_fmt, deliveryPerPiece.toString().formatPrice()),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.tertiary
                                                 )
                                             }
                                         }
