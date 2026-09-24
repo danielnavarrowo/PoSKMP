@@ -28,12 +28,15 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.SoundManager
@@ -79,6 +83,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.barcode_input_placeholder
 import poskmp.shared.generated.resources.barcode_scanner
@@ -110,8 +115,13 @@ fun ChecadorContent(
     onClose: (() -> Unit)? = null,
     showHeaderTitle: Boolean = true,
     showExtraPrices: Boolean = false,
+    prioritizeDeliveryPrice: Boolean? = null,
     modifier: Modifier = Modifier
 ) {
+    val settingsRepository = koinInject<SettingsRepository>()
+    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsState(initial = false)
+    val effectivePrioritizeDelivery = prioritizeDeliveryPrice ?: settingsPrioritizeDelivery
+
     var barcodeInputValue by remember {
         mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero))
     }
@@ -317,99 +327,149 @@ fun ChecadorContent(
                     val wholesalePerPiece = if (hasMultiplePieces) product.precio_mayoreo / product.piezas else 0.0
                     val deliveryPerPiece = if (hasMultiplePieces) product.precio_delivery / product.piezas else 0.0
 
+                    val hasDeliveryPrice = product.precio_delivery > 0.0
+                    val isDeliveryHighlighted = effectivePrioritizeDelivery && hasDeliveryPrice
+                    val isRetailHighlighted = !isDeliveryHighlighted
+
+                    val highlightedModifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            shape = MaterialShapes.Slanted.toShape()
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+
                     if (showExtraPrices) {
+                        val renderedPricesCount = (if (product.costo > 0.0) 1 else 0) +
+                            (if (product.precio_mayoreo > 0.0) 1 else 0) +
+                            (if (product.precio > 0.0) 1 else 0) +
+                            (if (hasDeliveryPrice) 1 else 0)
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = if (renderedPricesCount <= 1) Arrangement.Center else Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = stringResource(Res.string.cost_label),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "$${product.costo.toString().formatPrice()}",
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                )
-                                if (hasMultiplePieces) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = stringResource(Res.string.pieces_count_label, product.piezas.toInt().toString()),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                }
-                            }
-
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = stringResource(Res.string.header_retail_price),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "$${product.precio.toString().formatPrice()}$suffix",
-                                    style = MaterialTheme.typography.headlineSmall.copy(
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                )
-                                if (hasMultiplePieces) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                }
-                            }
-
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = stringResource(Res.string.wholesale),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "$${product.precio_mayoreo.toString().formatPrice()}",
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                )
-                                if (hasMultiplePieces) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice()),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                }
-                            }
-
-                            if (product.precio_delivery > 0.0) {
+                            if (product.costo > 0.0) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        text = stringResource(Res.string.delivery_price_label),
+                                        text = stringResource(Res.string.cost_label),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = "$${product.precio_delivery.toString().formatPrice()}$suffix",
+                                        text = "$${product.costo.toString().formatPrice()}",
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    )
+                                    if (hasMultiplePieces) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = stringResource(Res.string.pieces_count_label, product.piezas.toInt().toString()),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (product.precio_mayoreo > 0.0) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = stringResource(Res.string.wholesale),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "$${product.precio_mayoreo.toString().formatPrice()}",
                                         style = MaterialTheme.typography.titleLarge.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
+                                    )
+                                    if (hasMultiplePieces) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = stringResource(Res.string.price_per_piece_fmt, wholesalePerPiece.toString().formatPrice()),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (product.precio > 0.0) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = if (isRetailHighlighted) highlightedModifier else Modifier
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.header_retail_price),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = if (isRetailHighlighted) {
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                    Text(
+                                        text = "$${product.precio.toString().formatPrice()}$suffix",
+                                        style = if (isRetailHighlighted) {
+                                            MaterialTheme.typography.headlineSmall.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        } else {
+                                            MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    )
+                                    if (hasMultiplePieces) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (hasDeliveryPrice) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = if (isDeliveryHighlighted) highlightedModifier else Modifier
+                                ) {
+                                    Text(
+                                        text = stringResource(Res.string.delivery_price_label),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = if (isDeliveryHighlighted) {
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                    Text(
+                                        text = "$${product.precio_delivery.toString().formatPrice()}$suffix",
+                                        style = if (isDeliveryHighlighted) {
+                                            MaterialTheme.typography.headlineSmall.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        } else {
+                                            MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
                                     )
                                     if (hasMultiplePieces) {
                                         Spacer(modifier = Modifier.height(12.dp))
@@ -424,8 +484,12 @@ fun ChecadorContent(
                             }
                         }
                     } else {
+                        val isDeliveryActive = effectivePrioritizeDelivery && hasDeliveryPrice
+                        val effectiveUnitPrice = if (isDeliveryActive) product.precio_delivery else product.precio
+                        val effectivePricePerPiece = if (hasMultiplePieces) effectiveUnitPrice / product.piezas else 0.0
+
                         Text(
-                            text = "$${product.precio.toString().formatPrice()}$suffix",
+                            text = "$${effectiveUnitPrice.toString().formatPrice()}$suffix",
                             fontWeight = FontWeight.Black,
                             fontSize = 42.sp,
                             color = MaterialTheme.colorScheme.primary,
@@ -442,7 +506,7 @@ fun ChecadorContent(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = stringResource(Res.string.price_per_piece_fmt, pricePerPiece.toString().formatPrice()),
+                                text = stringResource(Res.string.price_per_piece_fmt, effectivePricePerPiece.toString().formatPrice()),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = MaterialTheme.colorScheme.secondary,
@@ -552,7 +616,8 @@ fun ChecadorDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit,
     repository: ProductRepository,
-    showExtraPrices: Boolean = false
+    showExtraPrices: Boolean = false,
+    prioritizeDeliveryPrice: Boolean? = null
 ) {
     if (!showDialog) return
 
@@ -561,7 +626,8 @@ fun ChecadorDialog(
             repository = repository,
             onClose = onDismiss,
             showHeaderTitle = false,
-            showExtraPrices = showExtraPrices
+            showExtraPrices = showExtraPrices,
+            prioritizeDeliveryPrice = prioritizeDeliveryPrice
         )
     } else {
         Dialog(
@@ -581,7 +647,8 @@ fun ChecadorDialog(
                         repository = repository,
                         onClose = onDismiss,
                         showHeaderTitle = true,
-                        showExtraPrices = showExtraPrices
+                        showExtraPrices = showExtraPrices,
+                        prioritizeDeliveryPrice = prioritizeDeliveryPrice
                     )
                 }
             }
