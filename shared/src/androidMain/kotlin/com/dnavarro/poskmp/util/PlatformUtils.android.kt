@@ -13,6 +13,18 @@ import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.db.Products
 import java.util.UUID
+import android.view.View
+import android.view.Window
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.findViewTreeOnBackPressedDispatcherOwner
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
@@ -22,7 +34,50 @@ actual fun isAndroid(): Boolean = true
 
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
-    BackHandler(enabled = enabled, onBack = onBack)
+    val currentOnBack by rememberUpdatedState(onBack)
+    val view = LocalView.current
+
+    val dialogWindow = remember(view) {
+        var v: View? = view
+        var w: Window? = null
+        while (v != null) {
+            if (v is DialogWindowProvider) {
+                w = v.window
+                break
+            }
+            v = v.parent as? View
+        }
+        w
+    }
+
+    if (dialogWindow != null) {
+        val dispatcherOwner = remember(dialogWindow, view) {
+            dialogWindow.decorView.findViewTreeOnBackPressedDispatcherOwner()
+                ?: (dialogWindow.callback as? OnBackPressedDispatcherOwner)
+                ?: view.findViewTreeOnBackPressedDispatcherOwner()
+        }
+
+        val callback = remember(dispatcherOwner) {
+            object : OnBackPressedCallback(enabled) {
+                override fun handleOnBackPressed() {
+                    currentOnBack()
+                }
+            }
+        }
+
+        SideEffect {
+            callback.isEnabled = enabled
+        }
+
+        DisposableEffect(dispatcherOwner, callback) {
+            dispatcherOwner?.onBackPressedDispatcher?.addCallback(callback)
+            onDispose {
+                callback.remove()
+            }
+        }
+    } else {
+        BackHandler(enabled = enabled, onBack = onBack)
+    }
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)

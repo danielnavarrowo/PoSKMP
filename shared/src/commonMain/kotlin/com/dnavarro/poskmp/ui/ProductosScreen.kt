@@ -1268,6 +1268,8 @@ fun ProductFilterAndSortBottomSheet(
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+    var isDismissing by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -1288,6 +1290,21 @@ fun ProductFilterAndSortBottomSheet(
             } else Modifier
         )
     ) {
+        PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
+            isDismissing = true
+            coroutineScope.launch {
+                try {
+                    sheetState.hide()
+                } finally {
+                    if (!sheetState.isVisible) {
+                        onDismissRequest()
+                    } else {
+                        isDismissing = false
+                    }
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()

@@ -78,6 +78,7 @@ import com.dnavarro.poskmp.data.source.remote.OpenFoodFactsServiceImpl
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.CategorySuggester
+import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.generateUUID
@@ -1494,6 +1495,8 @@ fun ProductFormDialog(
 
     if (isAndroid()) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val coroutineScope = rememberCoroutineScope()
+        var isDismissing by remember { mutableStateOf(false) }
 
         ModalBottomSheet(
             onDismissRequest = onDismiss,
@@ -1501,6 +1504,21 @@ fun ProductFormDialog(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             modifier = Modifier.fillMaxWidth()
         ) {
+            PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
+                isDismissing = true
+                coroutineScope.launch {
+                    try {
+                        sheetState.hide()
+                    } finally {
+                        if (!sheetState.isVisible) {
+                            onDismiss()
+                        } else {
+                            isDismissing = false
+                        }
+                    }
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
