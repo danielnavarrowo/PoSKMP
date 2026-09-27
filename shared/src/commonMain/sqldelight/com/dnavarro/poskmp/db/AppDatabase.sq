@@ -2,7 +2,7 @@
 CREATE TABLE products (
     id             TEXT    PRIMARY KEY NOT NULL, -- UUID generated locally
     codigos        TEXT    NOT NULL DEFAULT '[]',
-    nombre         TEXT    NOT NULL,
+    nombre         TEXT    NOT NULL COLLATE NOCASE,
     precio         REAL    NOT NULL DEFAULT 0,
     costo          REAL    NOT NULL DEFAULT 0,
     categoria      TEXT    DEFAULT 'Sin categoria',
@@ -19,6 +19,9 @@ CREATE TABLE products (
     sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT' -- 'SYNCED', 'PENDING_INSERT', 'PENDING_UPDATE', 'PENDING_DELETE'
 );
 
+CREATE UNIQUE INDEX idx_products_nombre ON products(nombre COLLATE NOCASE);
+CREATE UNIQUE INDEX idx_products_codigos ON products(codigos) WHERE codigos IS NOT NULL AND codigos != '[]' AND codigos != '';
+
 -- Queries
 
 selectAllProducts:
@@ -29,6 +32,9 @@ SELECT * FROM products WHERE activo = 1;
 
 selectProductById:
 SELECT * FROM products WHERE id = ?;
+
+selectProductByName:
+SELECT * FROM products WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) LIMIT 1;
 
 selectUnsyncedProducts:
 SELECT * FROM products WHERE sync_state != 'SYNCED';

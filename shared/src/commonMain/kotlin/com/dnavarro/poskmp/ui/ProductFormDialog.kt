@@ -716,7 +716,21 @@ fun ProductFormDialog(
         onSave(p)
     }
 
-    val isNameValid = formNombre.trim().isNotEmpty()
+    val trimmedName = formNombre.trim()
+    val conflictingNameProduct = remember(trimmedName, existingProducts, product) {
+        if (trimmedName.isEmpty()) null
+        else {
+            existingProducts.firstOrNull { existing ->
+                (product == null || existing.id != product.id) &&
+                    existing.nombre.trim().equals(trimmedName, ignoreCase = true)
+            }
+        }
+    }
+    val nameValidationError = conflictingNameProduct?.let {
+        "Ya existe un producto con el nombre '${it.nombre}'"
+    }
+
+    val isNameValid = trimmedName.isNotEmpty() && nameValidationError == null
 
     val confirmButtonContent: @Composable () -> Unit = {
         if (!readOnly) {
@@ -905,6 +919,10 @@ fun ProductFormDialog(
                     focusManager.moveFocus(FocusDirection.Next)
                 }
             ),
+            isError = nameValidationError != null,
+            supportingText = if (nameValidationError != null) {
+                { Text(nameValidationError, color = MaterialTheme.colorScheme.error) }
+            } else null,
             singleLine = true
         )
 

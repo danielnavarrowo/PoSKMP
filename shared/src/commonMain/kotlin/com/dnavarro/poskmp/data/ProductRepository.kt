@@ -26,6 +26,7 @@ interface ProductRepository {
     suspend fun updateSyncStatus(id: String, syncState: String, updatedAt: Long)
     suspend fun findProductByBarcode(barcode: String): Products?
     suspend fun findConflictingProductForBarcodes(barcodes: List<String>, excludeProductId: String? = null): Pair<String, Products>?
+    suspend fun getProductByName(name: String): Products?
 }
 
 /**
@@ -75,4 +76,7 @@ class ProductRepositoryImpl(
         excludeProductId: String?
     ): Pair<String, Products>? =
         localDataSource.findConflictingProductForBarcodes(barcodes, excludeProductId)
+
+    override suspend fun getProductByName(name: String): Products? =
+        localDataSource.getProductByName(name)
 }

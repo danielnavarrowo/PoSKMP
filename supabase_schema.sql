@@ -18,12 +18,27 @@ CREATE TABLE IF NOT EXISTS public.products (
     es_favorito    BOOLEAN NOT NULL DEFAULT false,
     piezas         NUMERIC(10, 3) NOT NULL DEFAULT 1.000,
     updated_at     BIGINT NOT NULL,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT uq_products_nombre UNIQUE (nombre)
 );
+
+-- Asegurar constraint en tablas existentes
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_products_nombre'
+    ) THEN
+        ALTER TABLE public.products ADD CONSTRAINT uq_products_nombre UNIQUE (nombre);
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_products_updated_at ON public.products(updated_at);
 CREATE INDEX IF NOT EXISTS idx_products_activo ON public.products(activo);
-CREATE INDEX IF NOT EXISTS idx_products_codigos ON public.products(codigos);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_products_nombre_unique ON public.products(LOWER(TRIM(nombre)));
+DROP INDEX IF EXISTS public.idx_products_codigos;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_products_codigos ON public.products(codigos) WHERE codigos IS NOT NULL AND codigos <> '[]' AND codigos <> '';
 
 -- 2. TABLA: customers (Directorio de Clientes)
 CREATE TABLE IF NOT EXISTS public.customers (
@@ -666,8 +681,32 @@ CREATE TRIGGER trg_prevent_stale_cashiers BEFORE UPDATE ON public.cashiers FOR E
 DROP TRIGGER IF EXISTS trg_prevent_stale_store_settings ON public.store_settings;
 CREATE TRIGGER trg_prevent_stale_store_settings BEFORE UPDATE ON public.store_settings FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
 
--- Integridad de códigos de barras (índice y prevención de duplicados activos):
-CREATE INDEX IF NOT EXISTS idx_products_codigos ON public.products(codigos);
+-- Integridad de nombres y códigos de barras (índices y prevención de duplicados):
+DROP INDEX IF EXISTS public.idx_products_codigos;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_products_codigos ON public.products(codigos) WHERE codigos IS NOT NULL AND codigos <> '[]' AND codigos <> '';
+
+CREATE OR REPLACE FUNCTION public.fn_check_duplicate_product_name()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_dup_id TEXT;
+BEGIN
+    IF NEW.nombre IS NOT NULL AND TRIM(NEW.nombre) != '' THEN
+        SELECT id INTO v_dup_id
+        FROM public.products
+        WHERE id != NEW.id
+          AND LOWER(TRIM(nombre)) = LOWER(TRIM(NEW.nombre))
+        LIMIT 1;
+
+        IF v_dup_id IS NOT NULL THEN
+            RAISE EXCEPTION 'Nombre de producto duplicado: "%" ya existe (ID: %)', NEW.nombre, v_dup_id;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_check_duplicate_product_name ON public.products;
+CREATE TRIGGER trg_check_duplicate_product_name BEFORE INSERT OR UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION public.fn_check_duplicate_product_name();
 
 CREATE OR REPLACE FUNCTION public.fn_check_duplicate_barcode()
 RETURNS TRIGGER AS $$

@@ -10,7 +10,7 @@ object DatabaseMigrator {
             CREATE TABLE IF NOT EXISTS products (
                 id             TEXT    PRIMARY KEY NOT NULL,
                 codigos        TEXT    NOT NULL DEFAULT '[]',
-                nombre         TEXT    NOT NULL,
+                nombre         TEXT    NOT NULL COLLATE NOCASE,
                 precio         REAL    NOT NULL DEFAULT 0,
                 costo          REAL    NOT NULL DEFAULT 0,
                 categoria      TEXT    DEFAULT 'Sin categoria',
@@ -190,8 +190,31 @@ object DatabaseMigrator {
         // Migrate cashiers columns
         ensureColumnExists(driver, "cashiers", "device_id", "TEXT DEFAULT NULL")
 
+        // Deduplicate duplicate names or non-empty barcodes if any before creating unique indexes
+        try {
+            driver.execute(null, """
+                UPDATE products 
+                SET nombre = nombre || ' (' || SUBSTR(id, 1, 4) || ')'
+                WHERE id NOT IN (
+                    SELECT MIN(id) FROM products GROUP BY LOWER(TRIM(nombre))
+                );
+            """.trimIndent(), 0)
+        } catch (_: Exception) {}
+
+        try {
+            driver.execute(null, """
+                UPDATE products 
+                SET codigos = '[]'
+                WHERE codigos != '[]' AND codigos != '' AND id NOT IN (
+                    SELECT MIN(id) FROM products WHERE codigos != '[]' AND codigos != '' GROUP BY codigos
+                );
+            """.trimIndent(), 0)
+        } catch (_: Exception) {}
+
         // Indexes
         val indexStatements = listOf(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_products_nombre ON products(nombre COLLATE NOCASE)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_products_codigos ON products(codigos) WHERE codigos IS NOT NULL AND codigos != '[]' AND codigos != ''",
             "CREATE INDEX IF NOT EXISTS idx_products_activo ON products(activo)",
             "CREATE INDEX IF NOT EXISTS idx_products_es_favorito ON products(es_favorito)",
             "CREATE INDEX IF NOT EXISTS idx_products_categoria ON products(categoria)",

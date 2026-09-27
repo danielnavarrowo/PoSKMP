@@ -24,7 +24,32 @@ class SaveProductUseCase(
             null
         }
 
-        // 2. If not found by ID and barcodes are provided, check if a product with this barcode already exists
+        val cleanName = product.nombre.trim()
+        val existingByName = if (cleanName.isNotBlank()) {
+            repository.getProductByName(cleanName)
+        } else {
+            null
+        }
+
+        // Validate that no OTHER product has the same name
+        if (existingByName != null && (existingById == null || existingByName.id != existingById.id)) {
+            throw IllegalArgumentException("Ya existe un producto con el nombre '$cleanName'")
+        }
+
+        // 2. Validate barcodes: ensure no OTHER product has any of these barcodes
+        val excludeId = existingById?.id ?: existingByName?.id ?: product.id.ifBlank { null }
+        val barcodeConflict = if (parsedCodes.isNotEmpty()) {
+            repository.findConflictingProductForBarcodes(parsedCodes, excludeProductId = excludeId)
+        } else {
+            null
+        }
+
+        if (barcodeConflict != null) {
+            throw IllegalArgumentException(
+                "El código '${barcodeConflict.first}' ya pertenece al producto '${barcodeConflict.second.nombre}'"
+            )
+        }
+
         val existingByBarcode = if (existingById == null && parsedCodes.isNotEmpty()) {
             repository.findConflictingProductForBarcodes(parsedCodes)?.second
         } else {
@@ -34,13 +59,14 @@ class SaveProductUseCase(
         // 3. Resolve canonical ID
         val finalId = when {
             existingById != null -> existingById.id
+            existingByName != null -> existingByName.id
             existingByBarcode != null -> existingByBarcode.id
             product.id.isNotBlank() -> product.id
             else -> generateUUID()
         }
 
         // 4. Determine if this is a brand new product
-        val isBrandNew = existingById == null && existingByBarcode == null
+        val isBrandNew = existingById == null && existingByName == null && existingByBarcode == null
 
         // 5. Determine sync state: preserve PENDING_INSERT if it was never pushed to remote yet
         val syncState = if (isBrandNew) {

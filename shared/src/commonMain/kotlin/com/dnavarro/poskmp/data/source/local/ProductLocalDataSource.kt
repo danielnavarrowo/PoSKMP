@@ -33,6 +33,7 @@ interface ProductLocalDataSource {
     suspend fun updateSyncStatus(id: String, syncState: String, updatedAt: Long)
     suspend fun findProductByBarcode(barcode: String): Products?
     suspend fun findConflictingProductForBarcodes(barcodes: List<String>, excludeProductId: String? = null): Pair<String, Products>?
+    suspend fun getProductByName(name: String): Products?
 }
 
 class SqlDelightProductDataSource(
@@ -228,5 +229,11 @@ class SqlDelightProductDataSource(
             }
         }
         null
+    }
+
+    override suspend fun getProductByName(name: String): Products? = withContext(Dispatchers.IO) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return@withContext null
+        queries.selectProductByName(trimmed).executeAsOneOrNull()
     }
 }

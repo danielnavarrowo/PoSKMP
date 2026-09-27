@@ -620,10 +620,16 @@ fun ImportProductsDialog(
                                                     val existingProducts =
                                                         repository.getAllProductsList()
                                                     val existingById =
-                                                        existingProducts.associateBy { it.id }
+                                                        existingProducts.associateBy { it.id }.toMutableMap()
                                                     val existingByBarcode =
                                                         mutableMapOf<String, Products>()
+                                                    val existingByName =
+                                                        mutableMapOf<String, Products>()
                                                     existingProducts.forEach { prod ->
+                                                        val cleanName = prod.nombre.trim().lowercase()
+                                                        if (cleanName.isNotEmpty()) {
+                                                            existingByName.putIfAbsent(cleanName, prod)
+                                                        }
                                                         val codes = prod.parseBarcodes()
                                                         codes.forEach { code ->
                                                             val trimmed = code.trim()
@@ -659,6 +665,14 @@ fun ImportProductsDialog(
                                                                     break
                                                                 }
                                                             }
+                                                            if (!isExisting) {
+                                                                val cleanName = p.nombre.trim().lowercase()
+                                                                val matched = existingByName[cleanName]
+                                                                if (matched != null) {
+                                                                    targetId = matched.id
+                                                                    isExisting = true
+                                                                }
+                                                            }
                                                         }
 
                                                         val pToInsert = if (isExisting) {
@@ -676,6 +690,21 @@ fun ImportProductsDialog(
                                                         }
 
                                                         repository.insertProduct(pToInsert)
+                                                        existingById[targetId] = pToInsert
+                                                        val insertedCodes = pToInsert.parseBarcodes()
+                                                        for (code in insertedCodes) {
+                                                            val trimmed = code.trim()
+                                                            if (trimmed.isNotEmpty()) {
+                                                                existingByBarcode[trimmed] = pToInsert
+                                                                val norm = normalizeBarcode(trimmed)
+                                                                if (norm.isNotEmpty()) existingByBarcode[norm] = pToInsert
+                                                            }
+                                                        }
+                                                        val insertedName = pToInsert.nombre.trim().lowercase()
+                                                        if (insertedName.isNotEmpty()) {
+                                                            existingByName[insertedName] = pToInsert
+                                                        }
+
                                                         if (isExisting) updated++ else inserted++
 
                                                         val currentProcessed = index + 1
