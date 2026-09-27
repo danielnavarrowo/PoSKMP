@@ -258,6 +258,7 @@ fun App(
     val reprintSaleReceiptUseCase = koinInject<ReprintSaleReceiptUseCase>()
     val recordCashMovementUseCase = koinInject<RecordCashMovementUseCase>()
     val ajustesViewModel = koinViewModel<AjustesViewModel>()
+    val ventaViewModel = koinViewModel<VentaViewModel>()
 
     val activeShift by shiftRepository.activeShiftFlow.collectAsStateWithLifecycle(initialValue = null)
     var showAppInflowDialog by remember { mutableStateOf(false) }
@@ -395,11 +396,8 @@ fun App(
             var hasUserNavigated by rememberSaveable { mutableStateOf(false) }
 
             LaunchedEffect(defaultRoute) {
-                if (backStack.isNotEmpty()) {
+                if (!hasUserNavigated && backStack.isNotEmpty() && backStack.size == 1) {
                     backStack[0] = defaultRoute
-                    if (backStack.size > 1 && backStack[1] == defaultRoute) {
-                        backStack.removeAt(1)
-                    }
                 }
             }
 
@@ -1479,7 +1477,7 @@ fun App(
                                     entryProvider = entryProvider {
                                         entry<AppRoute.Venta> {
                                             VentaScreen(
-                                                viewModel = koinViewModel<VentaViewModel>(),
+                                                viewModel = ventaViewModel,
                                                 isCompact = isCompact,
                                                 refocusTrigger = ventaRefocusTrigger,
                                                 onNavigateToSettings = {
@@ -1543,7 +1541,7 @@ fun App(
                                         entry<AppRoute.Checador> {
                                             if (isChecadorDialog && !isCheckerOnly) {
                                                 VentaScreen(
-                                                    viewModel = koinViewModel<VentaViewModel>(),
+                                                    viewModel = ventaViewModel,
                                                     isCompact = isCompact,
                                                     refocusTrigger = ventaRefocusTrigger
                                                 )

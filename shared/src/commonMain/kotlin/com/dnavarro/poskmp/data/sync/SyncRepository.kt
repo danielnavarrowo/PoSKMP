@@ -15,7 +15,11 @@ import com.dnavarro.poskmp.data.source.remote.dto.SaleItemDto
 import com.dnavarro.poskmp.data.source.remote.dto.ShiftDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
 import com.dnavarro.poskmp.db.AppDatabase
+import com.dnavarro.poskmp.db.AppDatabaseQueries
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.encodeToJsonBarcodes
+import com.dnavarro.poskmp.util.matchesBarcode
+import com.dnavarro.poskmp.util.parseBarcodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +48,23 @@ interface SyncRepository {
     suspend fun testConnection(url: String, key: String): Result<Boolean>
     suspend fun syncAll(forceFullSync: Boolean = false, isManual: Boolean = false): Result<SyncReport>
     suspend fun getRemoteAuditLogs(limit: Int = 100): Result<List<RemoteAuditLogDto>>
+}
+
+internal val DUPLICATE_SUFFIX_REGEX = """\s*\(Duplicado(?:\s+\d+)?\)$""".toRegex(RegexOption.IGNORE_CASE)
+
+internal fun disambiguateProductName(
+    baseName: String,
+    isNameTaken: (String) -> Boolean
+): String {
+    val cleanBase = baseName.replace(DUPLICATE_SUFFIX_REGEX, "").trim().ifBlank { "Producto" }
+    val candidate = "$cleanBase (Duplicado)"
+    if (!isNameTaken(candidate)) return candidate
+    var counter = 2
+    while (true) {
+        val nextCandidate = "$cleanBase (Duplicado $counter)"
+        if (!isNameTaken(nextCandidate)) return nextCandidate
+        counter++
+    }
 }
 
 class SyncRepositoryImpl(
@@ -95,40 +116,90 @@ class SyncRepositoryImpl(
             val canPushCatalogAndSettings = deviceRole == DeviceRole.ADMIN
             val canPushSalesAndPayments = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
 
+            val lastSync = if (forceFullSync) 0L else settingsRepository.lastSyncTimestampFlow.first()
+            var productsAlreadyPulled = false
+
             // ----------------------------------------------------
             // 1. FASE PUSH (Subir datos locales pendientes)
             // ----------------------------------------------------
 
             // A) Productos (Solo ADMIN puede sincronizar catálogo hacia la nube)
             if (canPushCatalogAndSettings) {
-                val unsyncedProducts = queries.selectUnsyncedProducts().executeAsList()
+                // Pre-pull: Descargar novedades remotas previo a la subida para resolver conflictos de nombres y códigos
+                val prePulledProductsResult = remoteDataSource.pullProducts(url, key, lastSync)
+                if (prePulledProductsResult.isFailure) {
+                    throw prePulledProductsResult.exceptionOrNull() ?: Exception("Error al descargar catálogo previo a la sincronización")
+                }
+                val remoteProducts = prePulledProductsResult.getOrDefault(emptyList())
+                syncRemoteProducts(queries, remoteProducts)
+                totalPulled += remoteProducts.size
+                productsAlreadyPulled = true
+
+                var unsyncedProducts = queries.selectUnsyncedProducts().executeAsList()
                 if (unsyncedProducts.isNotEmpty()) {
-                val productDtos = unsyncedProducts.map { p ->
-                    ProductDto(
-                        id = p.id,
-                        codigos = p.codigos,
-                        nombre = p.nombre,
-                        precio = p.precio,
-                        costo = p.costo,
-                        categoria = p.categoria,
-                        activo = p.activo == 1L,
-                        porPeso = p.por_peso == 1L,
-                        precioMayoreo = p.precio_mayoreo,
-                        precioDelivery = p.precio_delivery,
-                        esFavorito = p.es_favorito == 1L,
-                        piezas = p.piezas,
-                        updatedAt = p.updated_at
-                    )
-                }
-                val pushResult = remoteDataSource.pushProducts(url, key, productDtos)
-                if (pushResult.isFailure) {
-                    throw pushResult.exceptionOrNull() ?: Exception("Error al subir productos")
-                }
-                queries.transaction {
-                    for ((id) in unsyncedProducts) {
-                        queries.updateProductSyncState(sync_state = "SYNCED", id = id)
+                    var productDtos = unsyncedProducts.map { p ->
+                        ProductDto(
+                            id = p.id,
+                            codigos = p.codigos,
+                            nombre = p.nombre,
+                            precio = p.precio,
+                            costo = p.costo,
+                            categoria = p.categoria,
+                            activo = p.activo == 1L,
+                            porPeso = p.por_peso == 1L,
+                            precioMayoreo = p.precio_mayoreo,
+                            precioDelivery = p.precio_delivery,
+                            esFavorito = p.es_favorito == 1L,
+                            piezas = p.piezas,
+                            updatedAt = p.updated_at
+                        )
                     }
-                }
+                    var pushResult = remoteDataSource.pushProducts(url, key, productDtos)
+                    if (pushResult.isFailure) {
+                        val errorMsg = pushResult.exceptionOrNull()?.message ?: ""
+                        val isDuplicateError = errorMsg.contains("23505") ||
+                            errorMsg.contains("uq_products_nombre", ignoreCase = true) ||
+                            errorMsg.contains("idx_products_nombre_unique", ignoreCase = true) ||
+                            errorMsg.contains("idx_products_codigos", ignoreCase = true) ||
+                            errorMsg.contains("duplicate key", ignoreCase = true) ||
+                            errorMsg.contains("already exists", ignoreCase = true)
+
+                        if (isDuplicateError) {
+                            // En caso de carrera concurrente, descargar todo el catálogo remoto y desambiguar
+                            val fullPullResult = remoteDataSource.pullProducts(url, key, 0L)
+                            if (fullPullResult.isSuccess) {
+                                val allRemote = fullPullResult.getOrDefault(emptyList())
+                                syncRemoteProducts(queries, allRemote)
+                                unsyncedProducts = queries.selectUnsyncedProducts().executeAsList()
+                                productDtos = unsyncedProducts.map { p ->
+                                    ProductDto(
+                                        id = p.id,
+                                        codigos = p.codigos,
+                                        nombre = p.nombre,
+                                        precio = p.precio,
+                                        costo = p.costo,
+                                        categoria = p.categoria,
+                                        activo = p.activo == 1L,
+                                        porPeso = p.por_peso == 1L,
+                                        precioMayoreo = p.precio_mayoreo,
+                                        precioDelivery = p.precio_delivery,
+                                        esFavorito = p.es_favorito == 1L,
+                                        piezas = p.piezas,
+                                        updatedAt = p.updated_at
+                                    )
+                                }
+                                pushResult = remoteDataSource.pushProducts(url, key, productDtos)
+                            }
+                        }
+                    }
+                    if (pushResult.isFailure) {
+                        throw pushResult.exceptionOrNull() ?: Exception("Error al subir productos")
+                    }
+                    queries.transaction {
+                        for ((id) in unsyncedProducts) {
+                            queries.updateProductSyncState(sync_state = "SYNCED", id = id)
+                        }
+                    }
                     totalPushed += unsyncedProducts.size
                 }
             }
@@ -401,39 +472,17 @@ class SyncRepositoryImpl(
             // ----------------------------------------------------
             // 2. FASE PULL (Descargar novedades remotas)
             // ----------------------------------------------------
-            val lastSync = if (forceFullSync) 0L else settingsRepository.lastSyncTimestampFlow.first()
 
             // A) Productos Remotos
-            val pulledProductsResult = remoteDataSource.pullProducts(url, key, lastSync)
-            if (pulledProductsResult.isFailure) {
-                throw pulledProductsResult.exceptionOrNull() ?: Exception("Error al descargar productos")
-            }
-            val remoteProducts = pulledProductsResult.getOrDefault(emptyList())
-            queries.transaction {
-                for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, precioDelivery, esFavorito, piezas, updatedAt) in remoteProducts) {
-                    val local = queries.selectProductById(id).executeAsOneOrNull()
-                    if (local == null || updatedAt >= local.updated_at) {
-                        val effectiveCreatedAt = local?.created_at?.takeIf { it > 0L } ?: updatedAt
-                        queries.upsertSyncedProduct(
-                            id = id,
-                            codigos = codigos,
-                            nombre = nombre,
-                            precio = precio,
-                            costo = costo,
-                            categoria = categoria ?: "Sin categoría",
-                            activo = if (activo) 1L else 0L,
-                            por_peso = if (porPeso) 1L else 0L,
-                            precio_mayoreo = precioMayoreo,
-                            precio_delivery = precioDelivery,
-                            es_favorito = if (esFavorito) 1L else 0L,
-                            piezas = piezas,
-                            created_at = effectiveCreatedAt,
-                            updated_at = updatedAt
-                        )
-                    }
+            if (!productsAlreadyPulled) {
+                val pulledProductsResult = remoteDataSource.pullProducts(url, key, lastSync)
+                if (pulledProductsResult.isFailure) {
+                    throw pulledProductsResult.exceptionOrNull() ?: Exception("Error al descargar productos")
                 }
+                val remoteProducts = pulledProductsResult.getOrDefault(emptyList())
+                syncRemoteProducts(queries, remoteProducts)
+                totalPulled += remoteProducts.size
             }
-            totalPulled += remoteProducts.size
 
             // B) Clientes Remotos
             val pulledCustomersResult = remoteDataSource.pullCustomers(url, key, lastSync)
@@ -703,5 +752,132 @@ class SyncRepositoryImpl(
         val url = settingsRepository.supabaseUrlFlow.first()
         val key = settingsRepository.supabaseKeyFlow.first()
         remoteDataSource.fetchRemoteAuditLogs(url, key, limit)
+    }
+
+    private fun isProductNameTaken(
+        queries: AppDatabaseQueries,
+        candidate: String,
+        excludeProductId: String? = null,
+        remoteProducts: List<ProductDto> = emptyList()
+    ): Boolean {
+        val trimmed = candidate.trim()
+        val local = queries.selectProductByName(trimmed).executeAsOneOrNull()
+        return local != null && local.id != excludeProductId || remoteProducts.any { it.id != excludeProductId && it.nombre.trim().equals(trimmed, ignoreCase = true) }
+    }
+
+    private fun resolveLocalProductConflicts(
+        queries: AppDatabaseQueries,
+        remoteProduct: ProductDto,
+        allRemoteProducts: List<ProductDto>
+    ) {
+        val remoteBarcodes = parseBarcodes(remoteProduct.codigos)
+
+        // 1. Resolver colisión de nombre con otro producto local
+        val existingWithSameName = queries.selectProductByName(remoteProduct.nombre).executeAsOneOrNull()
+        if (existingWithSameName != null && existingWithSameName.id != remoteProduct.id) {
+            val newName = disambiguateProductName(existingWithSameName.nombre) { candidate ->
+                isProductNameTaken(
+                    queries = queries,
+                    candidate = candidate,
+                    excludeProductId = existingWithSameName.id,
+                    remoteProducts = allRemoteProducts
+                )
+            }
+
+            // Limpiar códigos de barras si también colisionan con el producto remoto
+            val existingCodes = parseBarcodes(existingWithSameName.codigos)
+            val keptCodes = if (remoteBarcodes.isNotEmpty()) {
+                existingCodes.filterNot { ec -> remoteBarcodes.matchesBarcode(ec) }
+            } else {
+                existingCodes
+            }
+            val newCodigos = keptCodes.encodeToJsonBarcodes()
+
+            val newSyncState = if (existingWithSameName.sync_state == "PENDING_INSERT") "PENDING_INSERT" else "PENDING_UPDATE"
+            queries.updateProduct(
+                id = existingWithSameName.id,
+                codigos = newCodigos,
+                nombre = newName,
+                precio = existingWithSameName.precio,
+                costo = existingWithSameName.costo,
+                categoria = existingWithSameName.categoria,
+                activo = existingWithSameName.activo,
+                por_peso = existingWithSameName.por_peso,
+                precio_mayoreo = existingWithSameName.precio_mayoreo,
+                es_favorito = existingWithSameName.es_favorito,
+                piezas = existingWithSameName.piezas,
+                precio_delivery = existingWithSameName.precio_delivery,
+                created_at = existingWithSameName.created_at,
+                updated_at = currentTimeMillis(),
+                sync_state = newSyncState
+            )
+        }
+
+        // 2. Resolver colisión de código de barras para cualquier otro producto local existente
+        if (remoteBarcodes.isNotEmpty()) {
+            val allLocal = queries.selectAllProducts().executeAsList()
+            for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery, created_at, _, sync_state) in allLocal) {
+                if (id == remoteProduct.id || (existingWithSameName != null && id == existingWithSameName.id)) continue
+                val localCodes = parseBarcodes(codigos)
+                if (localCodes.isEmpty()) continue
+
+                val colliding = localCodes.filter { lc -> remoteBarcodes.matchesBarcode(lc) }
+                if (colliding.isNotEmpty()) {
+                    val keptCodes = localCodes.filterNot { lc -> remoteBarcodes.matchesBarcode(lc) }
+                    val newSyncState = if (sync_state == "PENDING_INSERT") "PENDING_INSERT" else "PENDING_UPDATE"
+                    queries.updateProduct(
+                        id = id,
+                        codigos = keptCodes.encodeToJsonBarcodes(),
+                        nombre = nombre,
+                        precio = precio,
+                        costo = costo,
+                        categoria = categoria,
+                        activo = activo,
+                        por_peso = por_peso,
+                        precio_mayoreo = precio_mayoreo,
+                        es_favorito = es_favorito,
+                        piezas = piezas,
+                        precio_delivery = precio_delivery,
+                        created_at = created_at,
+                        updated_at = currentTimeMillis(),
+                        sync_state = newSyncState
+                    )
+                }
+            }
+        }
+    }
+
+    private fun syncRemoteProducts(
+        queries: AppDatabaseQueries,
+        remoteProducts: List<ProductDto>
+    ) {
+        if (remoteProducts.isEmpty()) return
+
+        queries.transaction {
+            for (remote in remoteProducts) {
+                resolveLocalProductConflicts(queries, remote, remoteProducts)
+
+                val local = queries.selectProductById(remote.id).executeAsOneOrNull()
+                if (local == null || remote.updatedAt >= local.updated_at) {
+                    val effectiveCreatedAt = local?.created_at?.takeIf { it > 0L } ?: remote.updatedAt
+                    queries.upsertSyncedProduct(
+                        id = remote.id,
+                        codigos = remote.codigos,
+                        nombre = remote.nombre,
+                        precio = remote.precio,
+                        costo = remote.costo,
+                        categoria = remote.categoria ?: "Sin categoría",
+                        activo = if (remote.activo) 1L else 0L,
+                        por_peso = if (remote.porPeso) 1L else 0L,
+                        precio_mayoreo = remote.precioMayoreo,
+                        precio_delivery = remote.precioDelivery,
+                        es_favorito = if (remote.esFavorito) 1L else 0L,
+                        piezas = remote.piezas,
+                        created_at = effectiveCreatedAt,
+                        updated_at = remote.updatedAt
+                    )
+                }
+            }
+        }
     }
 }

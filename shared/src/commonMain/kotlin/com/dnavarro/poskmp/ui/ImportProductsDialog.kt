@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
@@ -100,6 +102,12 @@ import poskmp.shared.generated.resources.import_step_format
 import poskmp.shared.generated.resources.import_success_replace_message
 import poskmp.shared.generated.resources.import_success_title
 import poskmp.shared.generated.resources.import_success_update_message
+import poskmp.shared.generated.resources.import_completed_with_errors_title
+import poskmp.shared.generated.resources.import_failed_all_title
+import poskmp.shared.generated.resources.import_failed_products_header
+import poskmp.shared.generated.resources.import_failed_products_hint
+import poskmp.shared.generated.resources.import_none_imported_message
+import poskmp.shared.generated.resources.import_skipped_summary_format
 import poskmp.shared.generated.resources.import_warning_replace_all
 import poskmp.shared.generated.resources.next_button
 import poskmp.shared.generated.resources.no_category
@@ -119,6 +127,7 @@ fun ImportProductsDialog(
     var parsedProducts by remember { mutableStateOf<List<Products>>(emptyList()) }
     var importError by remember { mutableStateOf<String?>(null) }
     var importSuccessMessage by remember { mutableStateOf<String?>(null) }
+    var failedProductsList by remember { mutableStateOf<List<FailedImportItem>>(emptyList()) }
     var updateExistingOption by remember { mutableStateOf(true) }
     var isProcessing by remember { mutableStateOf(false) }
     var importProgressFraction by remember { mutableFloatStateOf(0f) }
@@ -133,12 +142,19 @@ fun ImportProductsDialog(
     val insertingFmt = stringResource(Res.string.import_progress_inserting)
     val replaceSuccessFmt = stringResource(Res.string.import_success_replace_message)
     val dbSaveErrFmt = stringResource(Res.string.import_db_save_error)
+    val skippedSummaryFmt = stringResource(Res.string.import_skipped_summary_format)
+    val noneImportedMsg = stringResource(Res.string.import_none_imported_message)
 
-    Dialog(onDismissRequest = { if (!isProcessing) onDismiss() }) {
+    val isWideStep = currentStep == 2 || (currentStep == 4 && failedProductsList.isNotEmpty())
+
+    Dialog(
+        onDismissRequest = { if (!isProcessing) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
-                .widthIn(max = if (currentStep == 2) 980.dp else 680.dp)
-                .fillMaxWidth(if (currentStep == 2) 0.95f else 0.85f)
+                .widthIn(min = 360.dp, max = if (isWideStep) 920.dp else 640.dp)
+                .fillMaxWidth(if (isWideStep) 0.94f else 0.88f)
                 .wrapContentHeight()
                 .padding(16.dp),
             shape = ShapeDefaults.cardShape,
@@ -231,16 +247,12 @@ fun ImportProductsDialog(
                                                 if (prods.isEmpty()) {
                                                     importError = noValidProductsErr
                                                 } else {
-                                                    val duplicateErr = validateImportedBarcodes(prods)
-                                                    if (duplicateErr != null) {
-                                                        importError = duplicateErr
-                                                    } else {
-                                                        selectedFileName = name
-                                                        selectedFileBytes = bytes
-                                                        parsedProducts = prods
-                                                        importError = null
-                                                        currentStep = 2
-                                                    }
+                                                    selectedFileName = name
+                                                    selectedFileBytes = bytes
+                                                    parsedProducts = prods
+                                                    importError = null
+                                                    failedProductsList = emptyList()
+                                                    currentStep = 2
                                                 }
                                             } catch (e: Exception) {
                                                 importError = e.message ?: parseErr
@@ -611,10 +623,15 @@ fun ImportProductsDialog(
                                 onClick = {
                                     isProcessing = true
                                     importError = null
+                                    failedProductsList = emptyList()
                                     importProgressFraction = 0f
                                     importProgressText = startingImportText
                                     scope.launch {
                                         try {
+                                            var updatedCount = 0
+                                            var insertedCount = 0
+                                            val failedItems = mutableListOf<FailedImportItem>()
+
                                             withContext(Dispatchers.IO) {
                                                 if (updateExistingOption) {
                                                     val existingProducts =
@@ -643,69 +660,91 @@ fun ImportProductsDialog(
                                                         }
                                                     }
 
-                                                    var updated = 0
-                                                    var inserted = 0
                                                     val total = parsedProducts.size
 
                                                     for ((index, p) in parsedProducts.withIndex()) {
-                                                        var targetId = p.id
-                                                        var isExisting = false
+                                                        try {
+                                                            var targetId = p.id
+                                                            var isExisting = false
 
-                                                        if (existingById.containsKey(targetId)) {
-                                                            isExisting = true
-                                                        } else {
+                                                            if (existingById.containsKey(targetId)) {
+                                                                isExisting = true
+                                                            } else {
+                                                                val pCodes = p.parseBarcodes()
+                                                                for (code in pCodes) {
+                                                                    val trimmed = code.trim()
+                                                                    val matched =
+                                                                        existingByBarcode[trimmed] ?: existingByBarcode[normalizeBarcode(trimmed)]
+                                                                    if (matched != null) {
+                                                                        targetId = matched.id
+                                                                        isExisting = true
+                                                                        break
+                                                                    }
+                                                                }
+                                                                if (!isExisting) {
+                                                                    val cleanName = p.nombre.trim().lowercase()
+                                                                    val matched = existingByName[cleanName]
+                                                                    if (matched != null) {
+                                                                        targetId = matched.id
+                                                                        isExisting = true
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            // Pre-validación de nombre duplicado con otro producto
+                                                            val cleanName = p.nombre.trim().lowercase()
+                                                            val nameMatch = existingByName[cleanName]
+                                                            if (nameMatch != null && nameMatch.id != targetId) {
+                                                                throw IllegalArgumentException("Nombre duplicado (ya existe '${nameMatch.nombre}')")
+                                                            }
+
+                                                            // Pre-validación de código de barras duplicado con otro producto
                                                             val pCodes = p.parseBarcodes()
                                                             for (code in pCodes) {
                                                                 val trimmed = code.trim()
-                                                                val matched =
-                                                                    existingByBarcode[trimmed] ?: existingByBarcode[normalizeBarcode(trimmed)]
-                                                                if (matched != null) {
-                                                                    targetId = matched.id
-                                                                    isExisting = true
-                                                                    break
+                                                                if (trimmed.isNotEmpty()) {
+                                                                    val codeMatch = existingByBarcode[trimmed] ?: existingByBarcode[normalizeBarcode(trimmed)]
+                                                                    if (codeMatch != null && codeMatch.id != targetId) {
+                                                                        throw IllegalArgumentException("Código '$trimmed' duplicado con '${codeMatch.nombre}'")
+                                                                    }
                                                                 }
                                                             }
-                                                            if (!isExisting) {
-                                                                val cleanName = p.nombre.trim().lowercase()
-                                                                val matched = existingByName[cleanName]
-                                                                if (matched != null) {
-                                                                    targetId = matched.id
-                                                                    isExisting = true
+
+                                                            val pToInsert = if (isExisting) {
+                                                                p.copy(
+                                                                    id = targetId,
+                                                                    updated_at = currentTimeMillis(),
+                                                                    sync_state = "PENDING_UPDATE"
+                                                                )
+                                                            } else {
+                                                                p.copy(
+                                                                    id = targetId,
+                                                                    updated_at = currentTimeMillis(),
+                                                                    sync_state = "PENDING_INSERT"
+                                                                )
+                                                            }
+
+                                                            repository.insertProduct(pToInsert)
+                                                            existingById[targetId] = pToInsert
+                                                            val insertedCodes = pToInsert.parseBarcodes()
+                                                            for (code in insertedCodes) {
+                                                                val trimmed = code.trim()
+                                                                if (trimmed.isNotEmpty()) {
+                                                                    existingByBarcode[trimmed] = pToInsert
+                                                                    val norm = normalizeBarcode(trimmed)
+                                                                    if (norm.isNotEmpty()) existingByBarcode[norm] = pToInsert
                                                                 }
                                                             }
-                                                        }
-
-                                                        val pToInsert = if (isExisting) {
-                                                            p.copy(
-                                                                id = targetId,
-                                                                updated_at = currentTimeMillis(),
-                                                                sync_state = "PENDING_UPDATE"
-                                                            )
-                                                        } else {
-                                                            p.copy(
-                                                                id = targetId,
-                                                                updated_at = currentTimeMillis(),
-                                                                sync_state = "PENDING_INSERT"
-                                                            )
-                                                        }
-
-                                                        repository.insertProduct(pToInsert)
-                                                        existingById[targetId] = pToInsert
-                                                        val insertedCodes = pToInsert.parseBarcodes()
-                                                        for (code in insertedCodes) {
-                                                            val trimmed = code.trim()
-                                                            if (trimmed.isNotEmpty()) {
-                                                                existingByBarcode[trimmed] = pToInsert
-                                                                val norm = normalizeBarcode(trimmed)
-                                                                if (norm.isNotEmpty()) existingByBarcode[norm] = pToInsert
+                                                            val insertedName = pToInsert.nombre.trim().lowercase()
+                                                            if (insertedName.isNotEmpty()) {
+                                                                existingByName[insertedName] = pToInsert
                                                             }
-                                                        }
-                                                        val insertedName = pToInsert.nombre.trim().lowercase()
-                                                        if (insertedName.isNotEmpty()) {
-                                                            existingByName[insertedName] = pToInsert
-                                                        }
 
-                                                        if (isExisting) updated++ else inserted++
+                                                            if (isExisting) updatedCount++ else insertedCount++
+                                                        } catch (e: Throwable) {
+                                                            val readableError = formatImportError(e)
+                                                            failedItems.add(FailedImportItem(product = p, reason = readableError))
+                                                        }
 
                                                         val currentProcessed = index + 1
                                                         withContext(Dispatchers.Main) {
@@ -715,31 +754,65 @@ fun ImportProductsDialog(
                                                                 savingFmt.replace(
                                                                     $$"%1$s",
                                                                     p.nombre
+                                                                ).replace(
+                                                                    $$"%2$d",
+                                                                    currentProcessed.toString()
+                                                                ).replace(
+                                                                    $$"%3$d",
+                                                                    total.toString()
                                                                 )
-                                                                    .replace(
-                                                                        $$"%2$d",
-                                                                        currentProcessed.toString()
-                                                                    ).replace(
-                                                                        $$"%3$d",
-                                                                        total.toString()
-                                                                    )
                                                         }
                                                         delay(10.milliseconds)
                                                     }
-                                                    importSuccessMessage = updateSuccessFmt.replace(
-                                                        $$"%1$d",
-                                                        inserted.toString()
-                                                    ).replace($$"%2$d", updated.toString())
                                                 } else {
                                                     repository.deleteAllProducts()
                                                     val total = parsedProducts.size
+                                                    val existingByName = mutableMapOf<String, Products>()
+                                                    val existingByBarcode = mutableMapOf<String, Products>()
+
                                                     for ((index, p) in parsedProducts.withIndex()) {
-                                                        repository.insertProduct(
-                                                            p.copy(
+                                                        try {
+                                                            val cleanName = p.nombre.trim().lowercase()
+                                                            val nameMatch = existingByName[cleanName]
+                                                            if (nameMatch != null) {
+                                                                throw IllegalArgumentException("Nombre duplicado en el archivo (coincide con '${nameMatch.nombre}')")
+                                                            }
+
+                                                            val pCodes = p.parseBarcodes()
+                                                            for (code in pCodes) {
+                                                                val trimmed = code.trim()
+                                                                if (trimmed.isNotEmpty()) {
+                                                                    val codeMatch = existingByBarcode[trimmed] ?: existingByBarcode[normalizeBarcode(trimmed)]
+                                                                    if (codeMatch != null) {
+                                                                        throw IllegalArgumentException("Código '$trimmed' duplicado en el archivo (coincide con '${codeMatch.nombre}')")
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            val pToInsert = p.copy(
                                                                 updated_at = currentTimeMillis(),
                                                                 sync_state = "PENDING_INSERT"
                                                             )
-                                                        )
+                                                            repository.insertProduct(pToInsert)
+
+                                                            if (cleanName.isNotEmpty()) {
+                                                                existingByName[cleanName] = pToInsert
+                                                            }
+                                                            for (code in pCodes) {
+                                                                val trimmed = code.trim()
+                                                                if (trimmed.isNotEmpty()) {
+                                                                    existingByBarcode[trimmed] = pToInsert
+                                                                    val norm = normalizeBarcode(trimmed)
+                                                                    if (norm.isNotEmpty()) existingByBarcode[norm] = pToInsert
+                                                                }
+                                                            }
+
+                                                            insertedCount++
+                                                        } catch (e: Throwable) {
+                                                            val readableError = formatImportError(e)
+                                                            failedItems.add(FailedImportItem(product = p, reason = readableError))
+                                                        }
+
                                                         val currentProcessed = index + 1
                                                         withContext(Dispatchers.Main) {
                                                             importProgressFraction =
@@ -758,11 +831,23 @@ fun ImportProductsDialog(
                                                         }
                                                         delay(10.milliseconds)
                                                     }
-                                                    importSuccessMessage =
-                                                        replaceSuccessFmt.replace(
-                                                            $$"%1$d",
-                                                            parsedProducts.size.toString()
-                                                        )
+                                                }
+                                            }
+
+                                            failedProductsList = failedItems
+                                            val totalFailed = failedItems.size
+                                            if (insertedCount == 0 && updatedCount == 0 && totalFailed > 0) {
+                                                importSuccessMessage = noneImportedMsg
+                                            } else {
+                                                val baseMessage = if (updateExistingOption) {
+                                                    updateSuccessFmt.replace($$"%1$d", insertedCount.toString()).replace($$"%2$d", updatedCount.toString())
+                                                } else {
+                                                    replaceSuccessFmt.replace($$"%1$d", insertedCount.toString())
+                                                }
+                                                importSuccessMessage = if (totalFailed > 0) {
+                                                    "$baseMessage\n" + skippedSummaryFmt.replace($$"%1$d", totalFailed.toString())
+                                                } else {
+                                                    baseMessage
                                                 }
                                             }
                                             currentStep = 4
@@ -790,23 +875,43 @@ fun ImportProductsDialog(
                     }
 
                     4 -> {
-                        // Success Step
+                        // Results Step
+                        val allFailed = failedProductsList.size == parsedProducts.size && parsedProducts.isNotEmpty()
+                        val hasErrors = failedProductsList.isNotEmpty()
+
+                        val iconRes = when {
+                            allFailed -> Res.drawable.warning
+                            hasErrors -> Res.drawable.warning
+                            else -> Res.drawable.check
+                        }
+                        val iconColor = when {
+                            allFailed -> MaterialTheme.colorScheme.error
+                            hasErrors -> Color(0xFFF59E0B) // Amber
+                            else -> Color(0xFF10B981) // Green
+                        }
+                        val titleText = when {
+                            allFailed -> stringResource(Res.string.import_failed_all_title)
+                            hasErrors -> stringResource(Res.string.import_completed_with_errors_title)
+                            else -> stringResource(Res.string.import_success_title)
+                        }
+
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Icon(
-                                painter = painterResource(Res.drawable.check),
+                                painter = painterResource(iconRes),
                                 contentDescription = null,
-                                tint = Color(0xFF10B981), // Green
-                                modifier = Modifier.size(64.dp)
+                                tint = iconColor,
+                                modifier = Modifier.size(56.dp)
                             )
                             Text(
-                                text = stringResource(Res.string.import_success_title),
+                                text = titleText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
                             )
                             Text(
                                 text = importSuccessMessage ?: "",
@@ -814,6 +919,111 @@ fun ImportProductsDialog(
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+
+                            if (hasErrors) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = MaterialTheme.shapes.small,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                                    ),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = stringResource(
+                                                    Res.string.import_failed_products_header,
+                                                    failedProductsList.size
+                                                ),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                            Text(
+                                                text = stringResource(Res.string.import_failed_products_hint),
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.error.copy(alpha = 0.25f))
+
+                                        LazyColumn(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 280.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            items(failedProductsList) { item ->
+                                                Card(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = MaterialTheme.shapes.extraSmall,
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.surface
+                                                    ),
+                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Text(
+                                                                text = item.product.nombre,
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 13.sp,
+                                                                color = MaterialTheme.colorScheme.onSurface,
+                                                                modifier = Modifier.weight(1f, fill = false)
+                                                            )
+                                                            val codesDisplay = item.product.formatBarcodesForDisplay()
+                                                            if (codesDisplay.isNotBlank()) {
+                                                                Text(
+                                                                    text = "Código: $codesDisplay",
+                                                                    fontSize = 11.sp,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                    modifier = Modifier.padding(start = 8.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(Res.drawable.warning),
+                                                                contentDescription = null,
+                                                                tint = MaterialTheme.colorScheme.error,
+                                                                modifier = Modifier.size(14.dp)
+                                                            )
+                                                            Spacer(modifier = Modifier.width(6.dp))
+                                                            Text(
+                                                                text = item.reason,
+                                                                fontSize = 11.sp,
+                                                                color = MaterialTheme.colorScheme.error,
+                                                                fontWeight = FontWeight.Medium
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // Footer Buttons
@@ -835,20 +1045,28 @@ fun ImportProductsDialog(
     }
 }
 
-private fun validateImportedBarcodes(products: List<Products>): String? {
-    val seenBarcodes = mutableMapOf<String, String>() // normalized barcode -> productName
-    for (product in products) {
-        val codes = product.parseBarcodes()
-        for (code in codes) {
-            val norm = normalizeBarcode(code)
-            if (norm.isNotEmpty()) {
-                if (seenBarcodes.containsKey(norm)) {
-                    val otherProductName = seenBarcodes[norm]
-                    return "El código de barras '$code' se encuentra duplicado en el archivo importado (en los productos '$otherProductName' y '${product.nombre}')."
-                }
-                seenBarcodes[norm] = product.nombre
-            }
+data class FailedImportItem(
+    val product: Products,
+    val reason: String
+)
+
+private fun formatImportError(e: Throwable): String {
+    val message = e.message ?: ""
+    return when {
+        message.contains("UNIQUE constraint failed: products.nombre", ignoreCase = true) ||
+        message.contains("idx_products_nombre", ignoreCase = true) -> {
+            "Nombre duplicado (ya registrado)"
+        }
+        message.contains("UNIQUE constraint failed: products.codigos", ignoreCase = true) ||
+        message.contains("idx_products_codigos", ignoreCase = true) -> {
+            "Código de barras duplicado (ya registrado)"
+        }
+        message.startsWith("Nombre duplicado", ignoreCase = true) ||
+        message.startsWith("Código", ignoreCase = true) -> {
+            message
+        }
+        else -> {
+            message.ifBlank { "Error al guardar el producto" }
         }
     }
-    return null
 }

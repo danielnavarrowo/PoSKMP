@@ -45,7 +45,7 @@
     <string name="supabase_server_title">Servidor Supabase</string>
     <string name="supabase_status_pending_desc">Sincronización en segundo plano pendiente</string>
     <string name="status_pending">Pendiente</string>
-    <string name="sync_now_button">Sincronizar en la nube</string>
+    <string name="sync_now_button">Sincronizar cambios recientes</string>
     <string name="theme_section_title">Apariencia y Tema</string>
     <string name="palette_style_title">Estilo de Paleta de Colores</string>
     <string name="palette_style_subtitle">Personaliza la armonía y el comportamiento de la paleta de colores</string>
@@ -357,6 +357,12 @@
     <string name="confirm_and_import_button">Confirmar e Importar</string>
     <string name="delete_and_replace_button">Borrar y Reemplazar Todo</string>
     <string name="import_success_title">¡Importación Exitosa!</string>
+    <string name="import_completed_with_errors_title">Importación finalizada con observaciones</string>
+    <string name="import_failed_all_title">No se pudieron importar productos</string>
+    <string name="import_failed_products_header">Productos no importados (%1$d):</string>
+    <string name="import_failed_products_hint">Se omitieron para evitar duplicados o inconsistencias</string>
+    <string name="import_skipped_summary_format">(%1$d productos omitidos por errores o duplicados)</string>
+    <string name="import_none_imported_message">Ningún producto pudo ser importado debido a duplicados o errores en los datos.</string>
 
     <!-- VentaScreen -->
     <string name="barcode_not_found_title">Código no encontrado</string>
@@ -667,7 +673,7 @@
     <string name="supabase_sync_failed">Fallo en la sincronización: %1$s</string>
     <string name="supabase_show_key">Mostrar token</string>
     <string name="supabase_hide_key">Ocultar token</string>
-    <string name="supabase_force_full_sync_button">Descarga Completa</string>
+    <string name="supabase_force_full_sync_button">Forzar recarga completa</string>
     <string name="supabase_remote_logs_button">Bitácora en Servidor</string>
     <string name="supabase_remote_logs_title">Bitácora de Operaciones Remotas</string>
     <string name="supabase_remote_logs_subtitle">Historial de escrituras y modificaciones en Supabase</string>

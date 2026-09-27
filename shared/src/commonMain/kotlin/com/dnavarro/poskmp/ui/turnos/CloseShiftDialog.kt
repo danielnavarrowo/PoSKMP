@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.domain.model.ShiftSummary
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
@@ -113,9 +114,10 @@ fun CloseShiftDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = modifier
-            .widthIn(max = 520.dp)
-            .fillMaxWidth()
+            .widthIn(min = 360.dp, max = 700.dp)
+            .fillMaxWidth(0.92f)
             .then(
                 if (!isAndroid()) {
                     Modifier
