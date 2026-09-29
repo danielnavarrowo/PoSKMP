@@ -426,6 +426,8 @@ class SyncRepositoryImpl(
                         storeName = receiptSettings.storeName,
                         storeAddress = receiptSettings.storeAddress,
                         storePhone = receiptSettings.storePhone,
+                        transferClabe = receiptSettings.transferClabe,
+                        transferBeneficiary = receiptSettings.transferBeneficiary,
                         receiptFooter = receiptSettings.footerMessage,
                         defaultRetailMargin = settingsRepository.defaultRetailMarginFlow.first(),
                         defaultWholesaleMargin = settingsRepository.defaultWholesaleMarginFlow.first(),
@@ -701,6 +703,8 @@ class SyncRepositoryImpl(
                             storeName = remoteSettings.storeName,
                             storeAddress = remoteSettings.storeAddress,
                             storePhone = remoteSettings.storePhone,
+                            transferClabe = remoteSettings.transferClabe,
+                            transferBeneficiary = remoteSettings.transferBeneficiary,
                             receiptFooter = remoteSettings.receiptFooter,
                             updatedAt = remoteSettings.updatedAt
                         )

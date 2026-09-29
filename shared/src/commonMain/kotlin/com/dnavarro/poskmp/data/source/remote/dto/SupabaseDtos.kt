@@ -170,6 +170,10 @@ data class StoreSettingsDto(
     val storeAddress: String = "",
     @SerialName("store_phone")
     val storePhone: String = "",
+    @SerialName("transfer_clabe")
+    val transferClabe: String = "",
+    @SerialName("transfer_beneficiary")
+    val transferBeneficiary: String = "",
     @SerialName("receipt_footer")
     val receiptFooter: String = "",
     @SerialName("default_retail_margin")

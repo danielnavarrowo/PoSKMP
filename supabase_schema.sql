@@ -164,6 +164,8 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     store_name                         TEXT NOT NULL DEFAULT '',
     store_address                      TEXT NOT NULL DEFAULT '',
     store_phone                        TEXT NOT NULL DEFAULT '',
+    transfer_clabe                     TEXT NOT NULL DEFAULT '',
+    transfer_beneficiary               TEXT NOT NULL DEFAULT '',
     receipt_footer                     TEXT NOT NULL DEFAULT '',
     default_retail_margin              NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     default_wholesale_margin           NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
