@@ -6,6 +6,7 @@ import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.matchesSearch
 import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
@@ -41,39 +42,63 @@ class SqlDelightProductDataSource(
 ) : ProductLocalDataSource {
     private val queries = database.appDatabaseQueries
 
+    @Volatile
+    private var isBarcodesTableAvailable: Boolean = false
+
+    private fun checkBarcodesTableExists(): Boolean {
+        if (isBarcodesTableAvailable) return true
+        return try {
+            queries.selectBarcodesByProductId("").executeAsList()
+            isBarcodesTableAvailable = true
+            true
+        } catch (_: Exception) {
+            isBarcodesTableAvailable = false
+            false
+        }
+    }
+
     init {
         // Asegurar que la tabla product_barcodes esté poblada en bases de datos existentes
         try {
-            val allProds = queries.selectAllProducts().executeAsList()
-            if (allProds.isNotEmpty()) {
-                val firstProductWithCodes = allProds.firstOrNull { parseBarcodes(it.codigos).isNotEmpty() }
-                if (firstProductWithCodes != null) {
-                    val firstCode = parseBarcodes(firstProductWithCodes.codigos).first()
-                    val existing = queries.selectProductByBarcode(firstCode, normalizeBarcode(firstCode)).executeAsOneOrNull()
-                    if (existing == null) {
-                        queries.transaction {
-                            for (p in allProds) {
-                                syncBarcodesForProduct(p.id, p.codigos)
+            if (checkBarcodesTableExists()) {
+                val allProds = queries.selectAllProducts().executeAsList()
+                if (allProds.isNotEmpty()) {
+                    val firstProductWithCodes = allProds.firstOrNull { parseBarcodes(it.codigos).isNotEmpty() }
+                    if (firstProductWithCodes != null) {
+                        val firstCode = parseBarcodes(firstProductWithCodes.codigos).first()
+                        val existing = queries.selectProductByBarcode(firstCode, normalizeBarcode(firstCode)).executeAsOneOrNull()
+                        if (existing == null) {
+                            queries.transaction {
+                                for (p in allProds) {
+                                    syncBarcodesForProduct(p.id, p.codigos)
+                                }
                             }
                         }
                     }
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+            isBarcodesTableAvailable = false
+        }
     }
 
     private fun syncBarcodesForProduct(productId: String, codigosJson: String) {
-        queries.deleteBarcodesByProductId(productId)
-        val codes = parseBarcodes(codigosJson)
-        for (code in codes) {
-            val trimmed = code.trim()
-            if (trimmed.isNotEmpty()) {
-                queries.insertProductBarcode(trimmed, productId)
-                val norm = normalizeBarcode(trimmed)
-                if (norm.isNotEmpty() && norm != trimmed) {
-                    queries.insertProductBarcode(norm, productId)
+        if (!checkBarcodesTableExists()) return
+        try {
+            queries.deleteBarcodesByProductId(productId)
+            val codes = parseBarcodes(codigosJson)
+            for (code in codes) {
+                val trimmed = code.trim()
+                if (trimmed.isNotEmpty()) {
+                    queries.insertProductBarcode(trimmed, productId)
+                    val norm = normalizeBarcode(trimmed)
+                    if (norm.isNotEmpty() && norm != trimmed) {
+                        queries.insertProductBarcode(norm, productId)
+                    }
                 }
             }
+        } catch (_: Exception) {
+            isBarcodesTableAvailable = false
         }
     }
 
@@ -228,7 +253,13 @@ class SqlDelightProductDataSource(
     override suspend fun deleteProductHard(id: String) {
         withContext(Dispatchers.IO) {
             queries.transaction {
-                queries.deleteBarcodesByProductId(id)
+                if (checkBarcodesTableExists()) {
+                    try {
+                        queries.deleteBarcodesByProductId(id)
+                    } catch (_: Exception) {
+                        isBarcodesTableAvailable = false
+                    }
+                }
                 queries.deleteProductHard(id)
                 queries.insertDeletedSyncRecord(
                     id = id,
@@ -243,8 +274,14 @@ class SqlDelightProductDataSource(
         withContext(Dispatchers.IO) {
             queries.transaction {
                 val now = currentTimeMillis()
-                for (chunk in ids.chunked(500)) {
-                    queries.deleteBarcodesByProductIds(chunk)
+                if (checkBarcodesTableExists()) {
+                    try {
+                        for (chunk in ids.chunked(500)) {
+                            queries.deleteBarcodesByProductIds(chunk)
+                        }
+                    } catch (_: Exception) {
+                        isBarcodesTableAvailable = false
+                    }
                 }
                 for (id in ids) {
                     queries.deleteProductHard(id)
@@ -263,7 +300,13 @@ class SqlDelightProductDataSource(
             queries.transaction {
                 val allIds = queries.selectAllProducts().executeAsList().map { it.id }
                 val now = currentTimeMillis()
-                queries.deleteAllProductBarcodes()
+                if (checkBarcodesTableExists()) {
+                    try {
+                        queries.deleteAllProductBarcodes()
+                    } catch (_: Exception) {
+                        isBarcodesTableAvailable = false
+                    }
+                }
                 queries.deleteAllProducts()
                 for (id in allIds) {
                     queries.insertDeletedSyncRecord(
@@ -294,7 +337,21 @@ class SqlDelightProductDataSource(
         val trimmed = barcode.trim()
         if (trimmed.isEmpty()) return@withContext null
         val norm = normalizeBarcode(trimmed)
-        queries.selectProductByBarcode(barcode = trimmed, normalizedBarcode = norm).executeAsOneOrNull()
+
+        if (checkBarcodesTableExists()) {
+            try {
+                val found = queries.selectProductByBarcode(barcode = trimmed, normalizedBarcode = norm).executeAsOneOrNull()
+                if (found != null) return@withContext found
+            } catch (_: Exception) {
+                isBarcodesTableAvailable = false
+            }
+        }
+
+        // Fallback a escaneo en memoria si la tabla no existe o falló la consulta
+        val list = queries.selectActiveProducts().executeAsList()
+        list.firstOrNull { product ->
+            parseBarcodes(product.codigos).matchesBarcode(trimmed)
+        }
     }
 
     override suspend fun findConflictingProductForBarcodes(
@@ -309,31 +366,53 @@ class SqlDelightProductDataSource(
             if (norm.isNotEmpty() && norm != code) listOf(code, norm) else listOf(code)
         }.distinct()
 
-        val conflictRow = queries.selectConflictingBarcode(
-            barcode = allSearchCodes,
-            excludeProductId = excludeProductId
-        ).executeAsOneOrNull()
+        if (checkBarcodesTableExists()) {
+            try {
+                val conflictRow = queries.selectConflictingBarcode(
+                    barcode = allSearchCodes,
+                    excludeProductId = excludeProductId
+                ).executeAsOneOrNull()
 
-        conflictRow?.let { row ->
-            val product = Products(
-                id = row.id,
-                codigos = row.codigos,
-                nombre = row.nombre,
-                precio = row.precio,
-                costo = row.costo,
-                categoria = row.categoria,
-                activo = row.activo,
-                por_peso = row.por_peso,
-                precio_mayoreo = row.precio_mayoreo,
-                es_favorito = row.es_favorito,
-                piezas = row.piezas,
-                precio_delivery = row.precio_delivery,
-                created_at = row.created_at,
-                updated_at = row.updated_at,
-                sync_state = row.sync_state
-            )
-            Pair(row.barcode, product)
+                if (conflictRow != null) {
+                    val product = Products(
+                        id = conflictRow.id,
+                        codigos = conflictRow.codigos,
+                        nombre = conflictRow.nombre,
+                        precio = conflictRow.precio,
+                        costo = conflictRow.costo,
+                        categoria = conflictRow.categoria,
+                        activo = conflictRow.activo,
+                        por_peso = conflictRow.por_peso,
+                        precio_mayoreo = conflictRow.precio_mayoreo,
+                        es_favorito = conflictRow.es_favorito,
+                        piezas = conflictRow.piezas,
+                        precio_delivery = conflictRow.precio_delivery,
+                        created_at = conflictRow.created_at,
+                        updated_at = conflictRow.updated_at,
+                        sync_state = conflictRow.sync_state
+                    )
+                    return@withContext Pair(conflictRow.barcode, product)
+                }
+                return@withContext null
+            } catch (_: Exception) {
+                isBarcodesTableAvailable = false
+            }
         }
+
+        // Fallback a escaneo en memoria si la tabla no existe o falló la consulta
+        val allProducts = queries.selectAllProducts().executeAsList()
+        for (product in allProducts) {
+            if (excludeProductId != null && product.id == excludeProductId) continue
+
+            val productBarcodes = parseBarcodes(product.codigos)
+            val matchingBarcode = cleanBarcodes.firstOrNull { code ->
+                productBarcodes.matchesBarcode(code)
+            }
+            if (matchingBarcode != null) {
+                return@withContext Pair(matchingBarcode, product)
+            }
+        }
+        null
     }
 
     override suspend fun getProductByName(name: String): Products? = withContext(Dispatchers.IO) {

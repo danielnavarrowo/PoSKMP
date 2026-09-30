@@ -733,7 +733,9 @@ class SyncRepositoryImpl(
                         for ((id, entityType) in remoteDeletes) {
                             when (entityType) {
                                 "PRODUCT" -> {
-                                    queries.deleteBarcodesByProductId(id)
+                                    try {
+                                        queries.deleteBarcodesByProductId(id)
+                                    } catch (_: Exception) {}
                                     queries.deleteProductHard(id)
                                 }
                                 "CUSTOMER" -> queries.deleteCustomerHard(id)
@@ -1002,17 +1004,19 @@ class SyncRepositoryImpl(
     }
 
     private fun syncBarcodesForProduct(queries: AppDatabaseQueries, productId: String, codigosJson: String) {
-        val trimmedCodes = parseBarcodes(codigosJson)
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .distinct()
+        try {
+            val trimmedCodes = parseBarcodes(codigosJson)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .distinct()
 
-        queries.deleteBarcodesByProductId(productId)
-        for (code in trimmedCodes) {
-            queries.insertProductBarcode(
-                barcode = code,
-                product_id = productId
-            )
-        }
+            queries.deleteBarcodesByProductId(productId)
+            for (code in trimmedCodes) {
+                queries.insertProductBarcode(
+                    barcode = code,
+                    product_id = productId
+                )
+            }
+        } catch (_: Exception) {}
     }
 }

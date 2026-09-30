@@ -140,6 +140,12 @@ object DatabaseMigrator {
                 FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE CASCADE,
                 FOREIGN KEY (cashier_id) REFERENCES cashiers(id) ON DELETE RESTRICT
             );
+            """.trimIndent(),
+            """
+            CREATE TABLE IF NOT EXISTS product_barcodes (
+                barcode    TEXT PRIMARY KEY NOT NULL,
+                product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE
+            );
             """.trimIndent()
         )
 
@@ -235,7 +241,8 @@ object DatabaseMigrator {
             "CREATE INDEX IF NOT EXISTS idx_cashiers_activo ON cashiers(activo)",
             "CREATE INDEX IF NOT EXISTS idx_shifts_is_closed ON shifts(is_closed)",
             "CREATE INDEX IF NOT EXISTS idx_shifts_start_time ON shifts(start_time)",
-            "CREATE INDEX IF NOT EXISTS idx_cash_movements_shift_id ON cash_movements(shift_id)"
+            "CREATE INDEX IF NOT EXISTS idx_cash_movements_shift_id ON cash_movements(shift_id)",
+            "CREATE INDEX IF NOT EXISTS idx_product_barcodes_product_id ON product_barcodes(product_id)"
         )
 
         for (sql in indexStatements) {
@@ -243,6 +250,54 @@ object DatabaseMigrator {
                 driver.execute(null, sql, 0)
             } catch (_: Exception) {}
         }
+
+        // Backfill product_barcodes if empty and products exist
+        try {
+            val countResult = driver.executeQuery(
+                identifier = null,
+                sql = "SELECT count(*) FROM product_barcodes;",
+                mapper = { cursor ->
+                    if (cursor.next().value) QueryResult.Value(cursor.getLong(0) ?: 0L)
+                    else QueryResult.Value(0L)
+                },
+                parameters = 0
+            )
+            if (countResult.value == 0L) {
+                val productsWithCodes = driver.executeQuery(
+                    identifier = null,
+                    sql = "SELECT id, codigos FROM products WHERE codigos IS NOT NULL AND codigos != '[]' AND codigos != '';",
+                    mapper = { cursor ->
+                        val list = mutableListOf<Pair<String, String>>()
+                        while (cursor.next().value) {
+                            val id = cursor.getString(0)
+                            val codigos = cursor.getString(1)
+                            if (id != null && codigos != null) {
+                                list.add(id to codigos)
+                            }
+                        }
+                        QueryResult.Value(list)
+                    },
+                    parameters = 0
+                ).value
+
+                for ((id, codigos) in productsWithCodes) {
+                    val codes = com.dnavarro.poskmp.util.parseBarcodes(codigos)
+                    for (code in codes) {
+                        val trimmed = code.trim()
+                        if (trimmed.isNotEmpty()) {
+                            val escapedBarcode = trimmed.replace("'", "''")
+                            val escapedId = id.replace("'", "''")
+                            driver.execute(null, "INSERT OR IGNORE INTO product_barcodes (barcode, product_id) VALUES ('$escapedBarcode', '$escapedId');", 0)
+                            val norm = com.dnavarro.poskmp.util.normalizeBarcode(trimmed)
+                            if (norm.isNotEmpty() && norm != trimmed) {
+                                val escapedNorm = norm.replace("'", "''")
+                                driver.execute(null, "INSERT OR IGNORE INTO product_barcodes (barcode, product_id) VALUES ('$escapedNorm', '$escapedId');", 0)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     private fun getTableColumns(driver: SqlDriver, tableName: String): Set<String> {
