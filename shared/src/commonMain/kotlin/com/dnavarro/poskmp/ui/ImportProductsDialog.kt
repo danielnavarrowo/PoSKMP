@@ -62,7 +62,6 @@ import com.dnavarro.poskmp.util.parseBarcodes
 import com.dnavarro.poskmp.util.parseImportFile
 import com.dnavarro.poskmp.util.pickFile
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
@@ -113,7 +112,6 @@ import poskmp.shared.generated.resources.next_button
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.upload
 import poskmp.shared.generated.resources.warning
-import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -242,20 +240,26 @@ fun ImportProductsDialog(
                                     pickFile(
                                         allowedExtensions = listOf("csv", "xlsx", "json"),
                                         onFilePicked = { name, bytes ->
-                                            try {
-                                                val prods = parseImportFile(name, bytes)
-                                                if (prods.isEmpty()) {
-                                                    importError = noValidProductsErr
-                                                } else {
-                                                    selectedFileName = name
-                                                    selectedFileBytes = bytes
-                                                    parsedProducts = prods
-                                                    importError = null
-                                                    failedProductsList = emptyList()
-                                                    currentStep = 2
+                                            scope.launch(Dispatchers.IO) {
+                                                try {
+                                                    val prods = parseImportFile(name, bytes)
+                                                    withContext(Dispatchers.Main) {
+                                                        if (prods.isEmpty()) {
+                                                            importError = noValidProductsErr
+                                                        } else {
+                                                            selectedFileName = name
+                                                            selectedFileBytes = bytes
+                                                            parsedProducts = prods
+                                                            importError = null
+                                                            failedProductsList = emptyList()
+                                                            currentStep = 2
+                                                        }
+                                                    }
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        importError = e.message ?: parseErr
+                                                    }
                                                 }
-                                            } catch (e: Exception) {
-                                                importError = e.message ?: parseErr
                                             }
                                         },
                                         onError = { importError = it }
@@ -661,6 +665,8 @@ fun ImportProductsDialog(
                                                     }
 
                                                     val total = parsedProducts.size
+                                                    val updateInterval = maxOf(1, total / 20)
+                                                    val toSave = ArrayList<Products>(total)
 
                                                     for ((index, p) in parsedProducts.withIndex()) {
                                                         try {
@@ -724,7 +730,6 @@ fun ImportProductsDialog(
                                                                 )
                                                             }
 
-                                                            repository.insertProduct(pToInsert)
                                                             existingById[targetId] = pToInsert
                                                             val insertedCodes = pToInsert.parseBarcodes()
                                                             for (code in insertedCodes) {
@@ -740,6 +745,7 @@ fun ImportProductsDialog(
                                                                 existingByName[insertedName] = pToInsert
                                                             }
 
+                                                            toSave.add(pToInsert)
                                                             if (isExisting) updatedCount++ else insertedCount++
                                                         } catch (e: Throwable) {
                                                             val readableError = formatImportError(e)
@@ -747,28 +753,52 @@ fun ImportProductsDialog(
                                                         }
 
                                                         val currentProcessed = index + 1
-                                                        withContext(Dispatchers.Main) {
-                                                            importProgressFraction =
-                                                                currentProcessed.toFloat() / total
-                                                            importProgressText =
-                                                                savingFmt.replace(
-                                                                    $$"%1$s",
-                                                                    p.nombre
-                                                                ).replace(
-                                                                    $$"%2$d",
-                                                                    currentProcessed.toString()
-                                                                ).replace(
-                                                                    $$"%3$d",
-                                                                    total.toString()
-                                                                )
+                                                        if (currentProcessed % updateInterval == 0 || currentProcessed == total) {
+                                                            withContext(Dispatchers.Main) {
+                                                                importProgressFraction =
+                                                                    0.1f + 0.6f * (currentProcessed.toFloat() / total)
+                                                                importProgressText =
+                                                                    savingFmt.replace(
+                                                                        $$"%1$s",
+                                                                        p.nombre
+                                                                    ).replace(
+                                                                        $$"%2$d",
+                                                                        currentProcessed.toString()
+                                                                    ).replace(
+                                                                        $$"%3$d",
+                                                                        total.toString()
+                                                                    )
+                                                            }
                                                         }
-                                                        delay(10.milliseconds)
+                                                    }
+
+                                                    if (toSave.isNotEmpty()) {
+                                                        withContext(Dispatchers.Main) {
+                                                            importProgressFraction = 0.85f
+                                                        }
+                                                        try {
+                                                            repository.insertProducts(toSave)
+                                                        } catch (_: Throwable) {
+                                                            var fallbackUpdated = 0
+                                                            var fallbackInserted = 0
+                                                            for (item in toSave) {
+                                                                try {
+                                                                    repository.insertProduct(item)
+                                                                    if (item.sync_state == "PENDING_UPDATE") fallbackUpdated++ else fallbackInserted++
+                                                                } catch (err: Throwable) {
+                                                                    failedItems.add(FailedImportItem(product = item, reason = formatImportError(err)))
+                                                                }
+                                                            }
+                                                            updatedCount = fallbackUpdated
+                                                            insertedCount = fallbackInserted
+                                                        }
                                                     }
                                                 } else {
-                                                    repository.deleteAllProducts()
                                                     val total = parsedProducts.size
+                                                    val updateInterval = maxOf(1, total / 20)
                                                     val existingByName = mutableMapOf<String, Products>()
                                                     val existingByBarcode = mutableMapOf<String, Products>()
+                                                    val toSave = ArrayList<Products>(total)
 
                                                     for ((index, p) in parsedProducts.withIndex()) {
                                                         try {
@@ -793,7 +823,6 @@ fun ImportProductsDialog(
                                                                 updated_at = currentTimeMillis(),
                                                                 sync_state = "PENDING_INSERT"
                                                             )
-                                                            repository.insertProduct(pToInsert)
 
                                                             if (cleanName.isNotEmpty()) {
                                                                 existingByName[cleanName] = pToInsert
@@ -807,6 +836,7 @@ fun ImportProductsDialog(
                                                                 }
                                                             }
 
+                                                            toSave.add(pToInsert)
                                                             insertedCount++
                                                         } catch (e: Throwable) {
                                                             val readableError = formatImportError(e)
@@ -814,23 +844,49 @@ fun ImportProductsDialog(
                                                         }
 
                                                         val currentProcessed = index + 1
-                                                        withContext(Dispatchers.Main) {
-                                                            importProgressFraction =
-                                                                currentProcessed.toFloat() / total
-                                                            importProgressText =
-                                                                insertingFmt.replace(
-                                                                    $$"%1$s",
-                                                                    p.nombre
-                                                                ).replace(
-                                                                    $$"%2$d",
-                                                                    currentProcessed.toString()
-                                                                ).replace(
-                                                                    $$"%3$d",
-                                                                    total.toString()
-                                                                )
+                                                        if (currentProcessed % updateInterval == 0 || currentProcessed == total) {
+                                                            withContext(Dispatchers.Main) {
+                                                                importProgressFraction =
+                                                                    0.1f + 0.6f * (currentProcessed.toFloat() / total)
+                                                                importProgressText =
+                                                                    insertingFmt.replace(
+                                                                        $$"%1$s",
+                                                                        p.nombre
+                                                                    ).replace(
+                                                                        $$"%2$d",
+                                                                        currentProcessed.toString()
+                                                                    ).replace(
+                                                                        $$"%3$d",
+                                                                        total.toString()
+                                                                    )
+                                                            }
                                                         }
-                                                        delay(10.milliseconds)
                                                     }
+
+                                                    if (toSave.isNotEmpty()) {
+                                                        withContext(Dispatchers.Main) {
+                                                            importProgressFraction = 0.85f
+                                                        }
+                                                        repository.deleteAllProducts()
+                                                        try {
+                                                            repository.insertProducts(toSave)
+                                                        } catch (_: Throwable) {
+                                                            var fallbackInserted = 0
+                                                            for (item in toSave) {
+                                                                try {
+                                                                    repository.insertProduct(item)
+                                                                    fallbackInserted++
+                                                                } catch (err: Throwable) {
+                                                                    failedItems.add(FailedImportItem(product = item, reason = formatImportError(err)))
+                                                                }
+                                                            }
+                                                            insertedCount = fallbackInserted
+                                                        }
+                                                    }
+                                                }
+
+                                                withContext(Dispatchers.Main) {
+                                                    importProgressFraction = 1f
                                                 }
                                             }
 
