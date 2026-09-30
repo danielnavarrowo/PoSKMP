@@ -1114,7 +1114,8 @@ private fun formatImportError(e: Throwable): String {
             "Nombre duplicado (ya registrado)"
         }
         message.contains("UNIQUE constraint failed: products.codigos", ignoreCase = true) ||
-        message.contains("idx_products_codigos", ignoreCase = true) -> {
+        message.contains("idx_products_codigos", ignoreCase = true) ||
+        message.contains("product_barcodes", ignoreCase = true) -> {
             "Código de barras duplicado (ya registrado)"
         }
         message.startsWith("Nombre duplicado", ignoreCase = true) ||
