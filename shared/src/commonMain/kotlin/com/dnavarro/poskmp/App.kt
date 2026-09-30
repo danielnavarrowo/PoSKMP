@@ -291,16 +291,6 @@ fun App(
     val isSyncing = syncState == SyncStateEnum.SYNCING
     val coroutineScope = rememberCoroutineScope()
 
-    val infiniteTransition = rememberInfiniteTransition()
-    val syncRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        )
-    )
-
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             syncRepository.syncAll()
@@ -920,12 +910,9 @@ fun App(
                                                             modifier = Modifier.size(24.dp),
                                                             contentAlignment = Alignment.Center
                                                         ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.sync),
-                                                                contentDescription = stringResource(Res.string.sync_now_button),
-                                                                modifier = Modifier
-                                                                    .size(24.dp)
-                                                                    .rotate(if (isSyncing) syncRotation else 0f)
+                                                            SyncIcon(
+                                                                isSyncing = isSyncing,
+                                                                modifier = Modifier.size(24.dp)
                                                             )
                                                         }
                                                         Spacer(modifier = Modifier.width(8.dp))
@@ -951,12 +938,9 @@ fun App(
                                                     enabled = !isSyncing,
                                                     shape = MaterialTheme.shapes.medium
                                                 ) {
-                                                    Icon(
-                                                        painter = painterResource(Res.drawable.sync),
-                                                        contentDescription = stringResource(Res.string.sync_now_button),
-                                                        modifier = Modifier
-                                                            .size(26.dp)
-                                                            .rotate(if (isSyncing) syncRotation else 0f)
+                                                    SyncIcon(
+                                                        isSyncing = isSyncing,
+                                                        modifier = Modifier.size(26.dp)
                                                     )
                                                 }
                                             }
@@ -1827,4 +1811,32 @@ fun App(
             }
         }
     }
+}
+
+@Composable
+private fun SyncIcon(
+    isSyncing: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val rotation = if (isSyncing) {
+        val transition = rememberInfiniteTransition(label = "SyncTransition")
+        val angle by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "SyncRotation"
+        )
+        angle
+    } else {
+        0f
+    }
+
+    Icon(
+        painter = painterResource(Res.drawable.sync),
+        contentDescription = stringResource(Res.string.sync_now_button),
+        modifier = modifier.rotate(rotation)
+    )
 }
