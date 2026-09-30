@@ -16,9 +16,11 @@ import com.dnavarro.poskmp.data.source.remote.dto.ShiftDto
 import com.dnavarro.poskmp.data.source.remote.dto.StoreSettingsDto
 import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.AppDatabaseQueries
+import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.matchesBarcode
+import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -161,6 +163,7 @@ class SyncRepositoryImpl(
                             errorMsg.contains("uq_products_nombre", ignoreCase = true) ||
                             errorMsg.contains("idx_products_nombre_unique", ignoreCase = true) ||
                             errorMsg.contains("idx_products_codigos", ignoreCase = true) ||
+                            errorMsg.contains("product_barcodes", ignoreCase = true) ||
                             errorMsg.contains("duplicate key", ignoreCase = true) ||
                             errorMsg.contains("already exists", ignoreCase = true)
 
@@ -378,25 +381,25 @@ class SyncRepositoryImpl(
                     }
 
                     // Subir las partidas asociadas
-                    val allSaleItems = mutableListOf<SaleItemDto>()
-                    for ((id) in unsyncedSales) {
-                        val items = queries.selectItemsBySaleId(id).executeAsList()
-                        allSaleItems.addAll(items.map { item ->
-                            SaleItemDto(
-                                id = item.id,
-                                saleId = item.sale_id,
-                                productId = item.product_id,
-                                productNombre = item.product_nombre,
-                                cantidad = item.cantidad,
-                                precioUnitario = item.precio_unitario,
-                                costoUnitario = item.costo_unitario,
-                                subtotal = item.subtotal,
-                                ganancia = item.ganancia,
-                                esMayoreo = item.es_mayoreo == 1L,
-                                esDelivery = item.es_delivery == 1L,
-                                createdAt = item.created_at
-                            )
-                        })
+                    val saleIds = unsyncedSales.map { it.id }
+                    val rawItems = saleIds.chunked(500).flatMap { chunk ->
+                        queries.selectItemsBySaleIds(chunk).executeAsList()
+                    }
+                    val allSaleItems = rawItems.map { item ->
+                        SaleItemDto(
+                            id = item.id,
+                            saleId = item.sale_id,
+                            productId = item.product_id,
+                            productNombre = item.product_nombre,
+                            cantidad = item.cantidad,
+                            precioUnitario = item.precio_unitario,
+                            costoUnitario = item.costo_unitario,
+                            subtotal = item.subtotal,
+                            ganancia = item.ganancia,
+                            esMayoreo = item.es_mayoreo == 1L,
+                            esDelivery = item.es_delivery == 1L,
+                            createdAt = item.created_at
+                        )
                     }
 
                     if (allSaleItems.isNotEmpty()) {
@@ -519,18 +522,20 @@ class SyncRepositoryImpl(
                 throw pulledPaymentsResult.exceptionOrNull() ?: Exception("Error al descargar abonos")
             }
             val remotePayments = pulledPaymentsResult.getOrDefault(emptyList())
-            queries.transaction {
-                for ((id, customerId, monto, metodoPago, notas, createdAt) in remotePayments) {
-                    val customerExists = queries.selectCustomerById(customerId).executeAsOneOrNull() != null
-                    if (customerExists) {
-                        queries.upsertSyncedCustomerPayment(
-                            id = id,
-                            customer_id = customerId,
-                            monto = monto,
-                            metodo_pago = metodoPago,
-                            notas = notas,
-                            created_at = createdAt
-                        )
+            if (remotePayments.isNotEmpty()) {
+                val existingCustomerIds = queries.selectAllCustomerIds().executeAsList().toHashSet()
+                queries.transaction {
+                    for ((id, customerId, monto, metodoPago, notas, createdAt) in remotePayments) {
+                        if (existingCustomerIds.contains(customerId)) {
+                            queries.upsertSyncedCustomerPayment(
+                                id = id,
+                                customer_id = customerId,
+                                monto = monto,
+                                metodo_pago = metodoPago,
+                                notas = notas,
+                                created_at = createdAt
+                            )
+                        }
                     }
                 }
             }
@@ -566,23 +571,25 @@ class SyncRepositoryImpl(
                 throw pulledShiftsResult.exceptionOrNull() ?: Exception("Error al descargar turnos de caja")
             }
             val remoteShifts = pulledShiftsResult.getOrDefault(emptyList())
-            queries.transaction {
-                for ((id, cashierId, cashierName, startTime, endTime, initialCash, finalCashExpected, finalCashCounted, difference, notes, isClosed) in remoteShifts) {
-                    val cashierExists = queries.selectCashierById(cashierId).executeAsOneOrNull() != null
-                    if (cashierExists) {
-                        queries.upsertSyncedShift(
-                            id = id,
-                            cashier_id = cashierId,
-                            cashier_name = cashierName,
-                            start_time = startTime,
-                            end_time = endTime,
-                            initial_cash = initialCash,
-                            final_cash_expected = finalCashExpected,
-                            final_cash_counted = finalCashCounted,
-                            difference = difference,
-                            notes = notes,
-                            is_closed = if (isClosed) 1L else 0L
-                        )
+            if (remoteShifts.isNotEmpty()) {
+                val existingCashierIds = queries.selectAllCashierIds().executeAsList().toHashSet()
+                queries.transaction {
+                    for ((id, cashierId, cashierName, startTime, endTime, initialCash, finalCashExpected, finalCashCounted, difference, notes, isClosed) in remoteShifts) {
+                        if (existingCashierIds.contains(cashierId)) {
+                            queries.upsertSyncedShift(
+                                id = id,
+                                cashier_id = cashierId,
+                                cashier_name = cashierName,
+                                start_time = startTime,
+                                end_time = endTime,
+                                initial_cash = initialCash,
+                                final_cash_expected = finalCashExpected,
+                                final_cash_counted = finalCashCounted,
+                                difference = difference,
+                                notes = notes,
+                                is_closed = if (isClosed) 1L else 0L
+                            )
+                        }
                     }
                 }
             }
@@ -594,20 +601,22 @@ class SyncRepositoryImpl(
                 throw pulledMovementsResult.exceptionOrNull() ?: Exception("Error al descargar movimientos de caja")
             }
             val remoteMovements = pulledMovementsResult.getOrDefault(emptyList())
-            queries.transaction {
-                for ((id, shiftId, cashierId, tipo, monto, motivo, createdAt) in remoteMovements) {
-                    val shiftExists = queries.selectShiftById(shiftId).executeAsOneOrNull() != null
-                    val cashierExists = queries.selectCashierById(cashierId).executeAsOneOrNull() != null
-                    if (shiftExists && cashierExists) {
-                        queries.upsertSyncedCashMovement(
-                            id = id,
-                            shift_id = shiftId,
-                            cashier_id = cashierId,
-                            tipo = tipo,
-                            monto = monto,
-                            motivo = motivo,
-                            created_at = createdAt
-                        )
+            if (remoteMovements.isNotEmpty()) {
+                val existingShiftIds = queries.selectAllShiftIds().executeAsList().toHashSet()
+                val existingCashierIds = queries.selectAllCashierIds().executeAsList().toHashSet()
+                queries.transaction {
+                    for ((id, shiftId, cashierId, tipo, monto, motivo, createdAt) in remoteMovements) {
+                        if (existingShiftIds.contains(shiftId) && existingCashierIds.contains(cashierId)) {
+                            queries.upsertSyncedCashMovement(
+                                id = id,
+                                shift_id = shiftId,
+                                cashier_id = cashierId,
+                                tipo = tipo,
+                                monto = monto,
+                                motivo = motivo,
+                                created_at = createdAt
+                            )
+                        }
                     }
                 }
             }
@@ -619,41 +628,41 @@ class SyncRepositoryImpl(
                 throw pulledSalesResult.exceptionOrNull() ?: Exception("Error al descargar ventas")
             }
             val remoteSales = pulledSalesResult.getOrDefault(emptyList())
-            queries.transaction {
-                for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado, esForanea, shiftId) in remoteSales) {
-                    val validCustomerId = if (customerId != null && queries.selectCustomerById(
+            if (remoteSales.isNotEmpty()) {
+                val existingCustomerIds = queries.selectAllCustomerIds().executeAsList().toHashSet()
+                val existingShiftIds = queries.selectAllShiftIds().executeAsList().toHashSet()
+                queries.transaction {
+                    for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado, esForanea, shiftId) in remoteSales) {
+                        val validCustomerId = if (customerId != null && existingCustomerIds.contains(customerId)) {
                             customerId
-                        ).executeAsOneOrNull() != null) {
-                        customerId
-                    } else {
-                        null
-                    }
-                    val validShiftId = if (shiftId != null && queries.selectShiftById(
+                        } else {
+                            null
+                        }
+                        val validShiftId = if (shiftId != null && existingShiftIds.contains(shiftId)) {
                             shiftId
-                        ).executeAsOneOrNull() != null) {
-                        shiftId
-                    } else {
-                        null
+                        } else {
+                            null
+                        }
+                        queries.upsertSyncedSale(
+                            id = id,
+                            folio = folio,
+                            total = total,
+                            total_original = totalOriginal,
+                            total_costo = totalCosto,
+                            ganancia = ganancia,
+                            pago_con = pagoCon,
+                            cambio = cambio,
+                            metodo_pago = metodoPago,
+                            total_items = totalItems,
+                            customer_id = validCustomerId,
+                            created_at = createdAt,
+                            shift_id = validShiftId,
+                            cashier_id = null,
+                            cashier_name = cashierName,
+                            estado = estado,
+                            es_foranea = if (esForanea) 1L else 0L
+                        )
                     }
-                    queries.upsertSyncedSale(
-                        id = id,
-                        folio = folio,
-                        total = total,
-                        total_original = totalOriginal,
-                        total_costo = totalCosto,
-                        ganancia = ganancia,
-                        pago_con = pagoCon,
-                        cambio = cambio,
-                        metodo_pago = metodoPago,
-                        total_items = totalItems,
-                        customer_id = validCustomerId,
-                        created_at = createdAt,
-                        shift_id = validShiftId,
-                        cashier_id = null,
-                        cashier_name = cashierName,
-                        estado = estado,
-                        es_foranea = if (esForanea) 1L else 0L
-                    )
                 }
             }
             totalPulled += remoteSales.size
@@ -663,24 +672,26 @@ class SyncRepositoryImpl(
                 throw pulledItemsResult.exceptionOrNull() ?: Exception("Error al descargar partidas de venta")
             }
             val remoteItems = pulledItemsResult.getOrDefault(emptyList())
-            queries.transaction {
-                for ((id, saleId, productId, productNombre, cantidad, precioUnitario, costoUnitario, subtotal, ganancia, esMayoreo, esDelivery, createdAt) in remoteItems) {
-                    val saleExists = queries.selectSaleById(saleId).executeAsOneOrNull() != null
-                    if (saleExists) {
-                        queries.upsertSyncedSaleItem(
-                            id = id,
-                            sale_id = saleId,
-                            product_id = productId,
-                            product_nombre = productNombre,
-                            cantidad = cantidad,
-                            precio_unitario = precioUnitario,
-                            costo_unitario = costoUnitario,
-                            subtotal = subtotal,
-                            ganancia = ganancia,
-                            es_mayoreo = if (esMayoreo) 1L else 0L,
-                            es_delivery = if (esDelivery) 1L else 0L,
-                            created_at = createdAt
-                        )
+            if (remoteItems.isNotEmpty()) {
+                val existingSaleIds = queries.selectAllSaleIds().executeAsList().toHashSet()
+                queries.transaction {
+                    for ((id, saleId, productId, productNombre, cantidad, precioUnitario, costoUnitario, subtotal, ganancia, esMayoreo, esDelivery, createdAt) in remoteItems) {
+                        if (existingSaleIds.contains(saleId)) {
+                            queries.upsertSyncedSaleItem(
+                                id = id,
+                                sale_id = saleId,
+                                product_id = productId,
+                                product_nombre = productNombre,
+                                cantidad = cantidad,
+                                precio_unitario = precioUnitario,
+                                costo_unitario = costoUnitario,
+                                subtotal = subtotal,
+                                ganancia = ganancia,
+                                es_mayoreo = if (esMayoreo) 1L else 0L,
+                                es_delivery = if (esDelivery) 1L else 0L,
+                                created_at = createdAt
+                            )
+                        }
                     }
                 }
             }
@@ -721,7 +732,10 @@ class SyncRepositoryImpl(
                     queries.transaction {
                         for ((id, entityType) in remoteDeletes) {
                             when (entityType) {
-                                "PRODUCT" -> queries.deleteProductHard(id)
+                                "PRODUCT" -> {
+                                    queries.deleteBarcodesByProductId(id)
+                                    queries.deleteProductHard(id)
+                                }
                                 "CUSTOMER" -> queries.deleteCustomerHard(id)
                                 "PAYMENT" -> queries.deleteCustomerPayment(id)
                             }
@@ -758,34 +772,29 @@ class SyncRepositoryImpl(
         remoteDataSource.fetchRemoteAuditLogs(url, key, limit)
     }
 
-    private fun isProductNameTaken(
-        queries: AppDatabaseQueries,
-        candidate: String,
-        excludeProductId: String? = null,
-        remoteProducts: List<ProductDto> = emptyList()
-    ): Boolean {
-        val trimmed = candidate.trim()
-        val local = queries.selectProductByName(trimmed).executeAsOneOrNull()
-        return local != null && local.id != excludeProductId || remoteProducts.any { it.id != excludeProductId && it.nombre.trim().equals(trimmed, ignoreCase = true) }
-    }
+    private class LocalSyncCatalog(
+        val productsById: MutableMap<String, Products>,
+        val productsByName: MutableMap<String, Products>,
+        val barcodeToProductIds: MutableMap<String, MutableSet<String>>
+    )
 
     private fun resolveLocalProductConflicts(
         queries: AppDatabaseQueries,
         remoteProduct: ProductDto,
-        allRemoteProducts: List<ProductDto>
+        catalog: LocalSyncCatalog,
+        remoteProductNames: Map<String, String>
     ) {
         val remoteBarcodes = parseBarcodes(remoteProduct.codigos)
+        val remoteNameKey = remoteProduct.nombre.trim().lowercase()
 
-        // 1. Resolver colisión de nombre con otro producto local
-        val existingWithSameName = queries.selectProductByName(remoteProduct.nombre).executeAsOneOrNull()
+        // 1. Resolver colisión de nombre con otro producto local (en memoria O(1))
+        val existingWithSameName = catalog.productsByName[remoteNameKey]
         if (existingWithSameName != null && existingWithSameName.id != remoteProduct.id) {
             val newName = disambiguateProductName(existingWithSameName.nombre) { candidate ->
-                isProductNameTaken(
-                    queries = queries,
-                    candidate = candidate,
-                    excludeProductId = existingWithSameName.id,
-                    remoteProducts = allRemoteProducts
-                )
+                val candidateKey = candidate.trim().lowercase()
+                val localConflict = catalog.productsByName[candidateKey]?.let { it.id != existingWithSameName.id } ?: false
+                val remoteConflict = remoteProductNames[candidateKey]?.let { it != existingWithSameName.id } ?: false
+                localConflict || remoteConflict
             }
 
             // Limpiar códigos de barras si también colisionan con el producto remoto
@@ -796,8 +805,9 @@ class SyncRepositoryImpl(
                 existingCodes
             }
             val newCodigos = keptCodes.encodeToJsonBarcodes()
-
             val newSyncState = if (existingWithSameName.sync_state == "PENDING_INSERT") "PENDING_INSERT" else "PENDING_UPDATE"
+            val now = currentTimeMillis()
+
             queries.updateProduct(
                 id = existingWithSameName.id,
                 codigos = newCodigos,
@@ -812,40 +822,89 @@ class SyncRepositoryImpl(
                 piezas = existingWithSameName.piezas,
                 precio_delivery = existingWithSameName.precio_delivery,
                 created_at = existingWithSameName.created_at,
-                updated_at = currentTimeMillis(),
+                updated_at = now,
                 sync_state = newSyncState
             )
+            syncBarcodesForProduct(queries, existingWithSameName.id, newCodigos)
+
+            // Actualizar catálogo en memoria
+            catalog.productsByName.remove(remoteNameKey)
+            val updatedLocal = existingWithSameName.copy(
+                nombre = newName,
+                codigos = newCodigos,
+                updated_at = now,
+                sync_state = newSyncState
+            )
+            catalog.productsById[existingWithSameName.id] = updatedLocal
+            catalog.productsByName[newName.trim().lowercase()] = updatedLocal
+
+            if (keptCodes.size != existingCodes.size) {
+                val removedCodes = existingCodes.filter { ec -> remoteBarcodes.matchesBarcode(ec) }
+                for (rc in removedCodes) {
+                    val t = rc.trim().lowercase()
+                    catalog.barcodeToProductIds[t]?.remove(existingWithSameName.id)
+                    catalog.barcodeToProductIds[normalizeBarcode(t)]?.remove(existingWithSameName.id)
+                }
+            }
         }
 
-        // 2. Resolver colisión de código de barras para cualquier otro producto local existente
+        // 2. Resolver colisión de código de barras para cualquier otro producto local (en memoria O(1))
         if (remoteBarcodes.isNotEmpty()) {
-            val allLocal = queries.selectAllProducts().executeAsList()
-            for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery, created_at, _, sync_state) in allLocal) {
-                if (id == remoteProduct.id || (existingWithSameName != null && id == existingWithSameName.id)) continue
-                val localCodes = parseBarcodes(codigos)
+            val candidateProductIds = mutableSetOf<String>()
+            for (rb in remoteBarcodes) {
+                val t = rb.trim().lowercase()
+                if (t.isNotEmpty()) {
+                    catalog.barcodeToProductIds[t]?.let { candidateProductIds.addAll(it) }
+                    val norm = normalizeBarcode(t)
+                    if (norm.isNotEmpty()) {
+                        catalog.barcodeToProductIds[norm]?.let { candidateProductIds.addAll(it) }
+                    }
+                }
+            }
+
+            for (candidateId in candidateProductIds) {
+                if (candidateId == remoteProduct.id || (existingWithSameName != null && candidateId == existingWithSameName.id)) continue
+                val localProd = catalog.productsById[candidateId] ?: continue
+                val localCodes = parseBarcodes(localProd.codigos)
                 if (localCodes.isEmpty()) continue
 
                 val colliding = localCodes.filter { lc -> remoteBarcodes.matchesBarcode(lc) }
                 if (colliding.isNotEmpty()) {
                     val keptCodes = localCodes.filterNot { lc -> remoteBarcodes.matchesBarcode(lc) }
-                    val newSyncState = if (sync_state == "PENDING_INSERT") "PENDING_INSERT" else "PENDING_UPDATE"
+                    val newSyncState = if (localProd.sync_state == "PENDING_INSERT") "PENDING_INSERT" else "PENDING_UPDATE"
+                    val now = currentTimeMillis()
+                    val newCodigos = keptCodes.encodeToJsonBarcodes()
+
                     queries.updateProduct(
-                        id = id,
-                        codigos = keptCodes.encodeToJsonBarcodes(),
-                        nombre = nombre,
-                        precio = precio,
-                        costo = costo,
-                        categoria = categoria,
-                        activo = activo,
-                        por_peso = por_peso,
-                        precio_mayoreo = precio_mayoreo,
-                        es_favorito = es_favorito,
-                        piezas = piezas,
-                        precio_delivery = precio_delivery,
-                        created_at = created_at,
-                        updated_at = currentTimeMillis(),
+                        id = localProd.id,
+                        codigos = newCodigos,
+                        nombre = localProd.nombre,
+                        precio = localProd.precio,
+                        costo = localProd.costo,
+                        categoria = localProd.categoria,
+                        activo = localProd.activo,
+                        por_peso = localProd.por_peso,
+                        precio_mayoreo = localProd.precio_mayoreo,
+                        es_favorito = localProd.es_favorito,
+                        piezas = localProd.piezas,
+                        precio_delivery = localProd.precio_delivery,
+                        created_at = localProd.created_at,
+                        updated_at = now,
                         sync_state = newSyncState
                     )
+                    syncBarcodesForProduct(queries, localProd.id, newCodigos)
+
+                    val updatedProd = localProd.copy(
+                        codigos = newCodigos,
+                        updated_at = now,
+                        sync_state = newSyncState
+                    )
+                    catalog.productsById[candidateId] = updatedProd
+                    for (c in colliding) {
+                        val t = c.trim().lowercase()
+                        catalog.barcodeToProductIds[t]?.remove(candidateId)
+                        catalog.barcodeToProductIds[normalizeBarcode(t)]?.remove(candidateId)
+                    }
                 }
             }
         }
@@ -857,11 +916,35 @@ class SyncRepositoryImpl(
     ) {
         if (remoteProducts.isEmpty()) return
 
+        // Cargar todo el catálogo local en memoria una sola vez para resolver conflictos en O(1)
+        val allLocal = queries.selectAllProducts().executeAsList()
+        val productsById = allLocal.associateBy { it.id }.toMutableMap()
+        val productsByName = HashMap<String, Products>()
+        for (p in allLocal) {
+            productsByName[p.nombre.trim().lowercase()] = p
+        }
+        val barcodeToProductIds = HashMap<String, MutableSet<String>>()
+        for (p in allLocal) {
+            val codes = parseBarcodes(p.codigos)
+            for (code in codes) {
+                val t = code.trim().lowercase()
+                if (t.isNotEmpty()) {
+                    barcodeToProductIds.getOrPut(t) { mutableSetOf() }.add(p.id)
+                    val norm = normalizeBarcode(t)
+                    if (norm.isNotEmpty()) {
+                        barcodeToProductIds.getOrPut(norm) { mutableSetOf() }.add(p.id)
+                    }
+                }
+            }
+        }
+        val catalog = LocalSyncCatalog(productsById, productsByName, barcodeToProductIds)
+        val remoteProductNames = remoteProducts.associate { it.nombre.trim().lowercase() to it.id }
+
         queries.transaction {
             for (remote in remoteProducts) {
-                resolveLocalProductConflicts(queries, remote, remoteProducts)
+                resolveLocalProductConflicts(queries, remote, catalog, remoteProductNames)
 
-                val local = queries.selectProductById(remote.id).executeAsOneOrNull()
+                val local = catalog.productsById[remote.id]
                 if (local == null || remote.updatedAt >= local.updated_at) {
                     val effectiveCreatedAt = local?.created_at?.takeIf { it > 0L } ?: remote.updatedAt
                     queries.upsertSyncedProduct(
@@ -880,8 +963,56 @@ class SyncRepositoryImpl(
                         created_at = effectiveCreatedAt,
                         updated_at = remote.updatedAt
                     )
+                    syncBarcodesForProduct(queries, remote.id, remote.codigos)
+
+                    // Actualizar el catálogo en memoria para iteraciones posteriores
+                    val syncedProduct = Products(
+                        id = remote.id,
+                        codigos = remote.codigos,
+                        nombre = remote.nombre,
+                        precio = remote.precio,
+                        costo = remote.costo,
+                        categoria = remote.categoria ?: "Sin categoría",
+                        activo = if (remote.activo) 1L else 0L,
+                        por_peso = if (remote.porPeso) 1L else 0L,
+                        precio_mayoreo = remote.precioMayoreo,
+                        precio_delivery = remote.precioDelivery,
+                        es_favorito = if (remote.esFavorito) 1L else 0L,
+                        piezas = remote.piezas,
+                        created_at = effectiveCreatedAt,
+                        updated_at = remote.updatedAt,
+                        sync_state = "SYNCED"
+                    )
+                    catalog.productsById[remote.id] = syncedProduct
+                    catalog.productsByName[remote.nombre.trim().lowercase()] = syncedProduct
+                    val remoteCodes = parseBarcodes(remote.codigos)
+                    for (code in remoteCodes) {
+                        val t = code.trim().lowercase()
+                        if (t.isNotEmpty()) {
+                            catalog.barcodeToProductIds.getOrPut(t) { mutableSetOf() }.add(remote.id)
+                            val norm = normalizeBarcode(t)
+                            if (norm.isNotEmpty()) {
+                                catalog.barcodeToProductIds.getOrPut(norm) { mutableSetOf() }.add(remote.id)
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    private fun syncBarcodesForProduct(queries: AppDatabaseQueries, productId: String, codigosJson: String) {
+        val trimmedCodes = parseBarcodes(codigosJson)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+
+        queries.deleteBarcodesByProductId(productId)
+        for (code in trimmedCodes) {
+            queries.insertProductBarcode(
+                barcode = code,
+                product_id = productId
+            )
         }
     }
 }

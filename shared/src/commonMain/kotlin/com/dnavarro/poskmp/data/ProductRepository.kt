@@ -18,8 +18,10 @@ interface ProductRepository {
     suspend fun insertProduct(product: Products)
     suspend fun insertProducts(products: List<Products>)
     suspend fun updateProduct(product: Products)
+    suspend fun updateProducts(products: List<Products>)
     suspend fun deleteProductSoft(id: String, updatedAt: Long)
     suspend fun deleteProductHard(id: String)
+    suspend fun deleteProductsHard(ids: List<String>)
     suspend fun deleteAllProducts()
     suspend fun getAllProductsList(): List<Products>
     suspend fun getUnsyncedProducts(): List<Products>
@@ -53,11 +55,13 @@ class ProductRepositoryImpl(
     override suspend fun insertProducts(products: List<Products>) = localDataSource.insertProducts(products)
 
     override suspend fun updateProduct(product: Products) = localDataSource.updateProduct(product)
+    override suspend fun updateProducts(products: List<Products>) = localDataSource.updateProducts(products)
 
     override suspend fun deleteProductSoft(id: String, updatedAt: Long) =
         localDataSource.deleteProductSoft(id, updatedAt)
 
     override suspend fun deleteProductHard(id: String) = localDataSource.deleteProductHard(id)
+    override suspend fun deleteProductsHard(ids: List<String>) = localDataSource.deleteProductsHard(ids)
 
     override suspend fun deleteAllProducts() = localDataSource.deleteAllProducts()
 

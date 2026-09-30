@@ -40,6 +40,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_products_nombre_unique ON public.products(
 DROP INDEX IF EXISTS public.idx_products_codigos;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_codigos ON public.products(codigos) WHERE codigos IS NOT NULL AND codigos <> '[]' AND codigos <> '';
 
+-- 1.1 TABLA: product_barcodes (Indexación Relacional B-Tree de Códigos de Barra)
+CREATE TABLE IF NOT EXISTS public.product_barcodes (
+    barcode    TEXT PRIMARY KEY,
+    product_id TEXT NOT NULL REFERENCES public.products(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_barcodes_product_id ON public.product_barcodes(product_id);
+
 -- 2. TABLA: customers (Directorio de Clientes)
 CREATE TABLE IF NOT EXISTS public.customers (
     id              TEXT PRIMARY KEY,
@@ -376,6 +384,38 @@ CREATE TRIGGER trg_check_duplicate_barcode
 BEFORE INSERT OR UPDATE ON public.products
 FOR EACH ROW EXECUTE FUNCTION public.fn_check_duplicate_barcode();
 
+-- Sincronización automática de tabla relacional product_barcodes desde products.codigos
+CREATE OR REPLACE FUNCTION public.sync_product_barcodes_trigger()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_code text;
+    v_json json;
+BEGIN
+    DELETE FROM public.product_barcodes WHERE product_id = NEW.id;
+    IF NEW.codigos IS NOT NULL AND NEW.codigos <> '' AND NEW.codigos <> '[]' THEN
+        BEGIN
+            v_json := NEW.codigos::json;
+            FOR v_code IN SELECT json_array_elements_text(v_json)
+            LOOP
+                IF v_code IS NOT NULL AND TRIM(v_code) <> '' THEN
+                    INSERT INTO public.product_barcodes (barcode, product_id)
+                    VALUES (TRIM(v_code), NEW.id)
+                    ON CONFLICT (barcode) DO UPDATE SET product_id = EXCLUDED.product_id;
+                END IF;
+            END LOOP;
+        EXCEPTION WHEN OTHERS THEN
+            NULL;
+        END;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_product_barcodes ON public.products;
+CREATE TRIGGER trg_sync_product_barcodes
+AFTER INSERT OR UPDATE OF codigos ON public.products
+FOR EACH ROW EXECUTE FUNCTION public.sync_product_barcodes_trigger();
+
 -- =========================================================================
 -- 14. ROW LEVEL SECURITY (RLS) - SEGURIDAD Y CONTROL DE ACCESO POR LLAVES (anon vs service_role)
 -- =========================================================================
@@ -392,6 +432,11 @@ FOR EACH ROW EXECUTE FUNCTION public.fn_check_duplicate_barcode();
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "products_select_anon" ON public.products;
 CREATE POLICY "products_select_anon" ON public.products FOR SELECT TO anon USING (true);
+
+-- A1) product_barcodes (Códigos de Barra Relacionales - Solo lectura para cajas secundarias y checadores)
+ALTER TABLE public.product_barcodes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "product_barcodes_select_anon" ON public.product_barcodes;
+CREATE POLICY "product_barcodes_select_anon" ON public.product_barcodes FOR SELECT TO anon USING (true);
 
 -- B) store_settings (Ajustes de Negocio y Reglas - Solo lectura para terminales)
 ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;

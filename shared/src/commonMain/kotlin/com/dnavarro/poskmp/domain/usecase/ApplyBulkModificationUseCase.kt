@@ -1,12 +1,10 @@
 package com.dnavarro.poskmp.domain.usecase
 
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.ui.BulkProductModification
 import com.dnavarro.poskmp.ui.applyBulkProductModification
 import com.dnavarro.poskmp.util.currentTimeMillis
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.yield
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Use case to apply price, cost, category, or status modifications across a set of selected product IDs.
@@ -29,6 +27,10 @@ class ApplyBulkModificationUseCase(
 
         onProgress?.invoke(0, total)
 
+        val toDeleteIds = mutableListOf<String>()
+        val toUpdate = ArrayList<Products>(total)
+        val updateInterval = maxOf(1, total / 20)
+
         targetProducts.forEachIndexed { index, product ->
             val updated = applyBulkProductModification(
                 product = product,
@@ -36,21 +38,27 @@ class ApplyBulkModificationUseCase(
                 roundProductPrices = roundProductPrices
             )
             if (updated == null) {
-                repository.deleteProductHard(product.id)
+                toDeleteIds.add(product.id)
             } else {
-                repository.updateProduct(
+                toUpdate.add(
                     updated.copy(
                         updated_at = now,
                         sync_state = "PENDING_UPDATE"
                     )
                 )
             }
-            onProgress?.invoke(index + 1, total)
-            yield()
-            if (total <= 30) {
-                delay(15.milliseconds)
+            if ((index + 1) % updateInterval == 0 || index == total - 1) {
+                onProgress?.invoke(index + 1, total)
             }
         }
-        delay(200.milliseconds)
+
+        if (toDeleteIds.isNotEmpty()) {
+            repository.deleteProductsHard(toDeleteIds)
+        }
+        if (toUpdate.isNotEmpty()) {
+            repository.updateProducts(toUpdate)
+        }
+
+        onProgress?.invoke(total, total)
     }
 }

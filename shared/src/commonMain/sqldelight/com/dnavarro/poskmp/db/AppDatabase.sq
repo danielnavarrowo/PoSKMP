@@ -22,6 +22,41 @@ CREATE TABLE products (
 CREATE UNIQUE INDEX idx_products_nombre ON products(nombre COLLATE NOCASE);
 CREATE UNIQUE INDEX idx_products_codigos ON products(codigos) WHERE codigos IS NOT NULL AND codigos != '[]' AND codigos != '';
 
+CREATE TABLE product_barcodes (
+    barcode    TEXT PRIMARY KEY NOT NULL,
+    product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_product_barcodes_product_id ON product_barcodes(product_id);
+
+insertProductBarcode:
+INSERT OR REPLACE INTO product_barcodes (barcode, product_id)
+VALUES (?, ?);
+
+deleteBarcodesByProductId:
+DELETE FROM product_barcodes WHERE product_id = ?;
+
+deleteBarcodesByProductIds:
+DELETE FROM product_barcodes WHERE product_id IN ?;
+
+deleteAllProductBarcodes:
+DELETE FROM product_barcodes;
+
+selectProductByBarcode:
+SELECT p.* FROM products p
+INNER JOIN product_barcodes pb ON p.id = pb.product_id
+WHERE (pb.barcode = :barcode OR pb.barcode = :normalizedBarcode) AND p.activo = 1
+LIMIT 1;
+
+selectConflictingBarcode:
+SELECT pb.barcode, p.* FROM products p
+INNER JOIN product_barcodes pb ON p.id = pb.product_id
+WHERE pb.barcode IN ? AND (:excludeProductId IS NULL OR p.id != :excludeProductId)
+LIMIT 1;
+
+selectBarcodesByProductId:
+SELECT barcode FROM product_barcodes WHERE product_id = ?;
+
 -- Queries
 
 selectAllProducts:
@@ -200,6 +235,9 @@ SELECT c.*,
     (SELECT COUNT(s.id) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA') AS total_compras
 FROM customers c
 WHERE c.id = ?;
+
+selectAllCustomerIds:
+SELECT id FROM customers;
 
 searchActiveCustomers:
 SELECT c.*,
@@ -594,8 +632,14 @@ ORDER BY dia ASC;
 selectSaleById:
 SELECT * FROM sales WHERE id = ?;
 
+selectAllSaleIds:
+SELECT id FROM sales;
+
 selectItemsBySaleId:
 SELECT * FROM sale_items WHERE sale_id = ?;
+
+selectItemsBySaleIds:
+SELECT * FROM sale_items WHERE sale_id IN ?;
 
 selectAllSalesCount:
 SELECT COUNT(id) FROM sales WHERE estado != 'CANCELADA';
@@ -697,6 +741,9 @@ SELECT * FROM cashiers ORDER BY nombre ASC;
 selectCashierById:
 SELECT * FROM cashiers WHERE id = ?;
 
+selectAllCashierIds:
+SELECT id FROM cashiers;
+
 countCashiers:
 SELECT COUNT(id) FROM cashiers;
 
@@ -759,6 +806,9 @@ SELECT * FROM shifts WHERE is_closed = 0 ORDER BY start_time DESC LIMIT 1;
 
 selectShiftById:
 SELECT * FROM shifts WHERE id = ?;
+
+selectAllShiftIds:
+SELECT id FROM shifts;
 
 selectAllShifts:
 SELECT * FROM shifts ORDER BY start_time DESC;

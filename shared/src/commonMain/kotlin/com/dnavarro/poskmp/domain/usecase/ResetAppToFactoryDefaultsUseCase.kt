@@ -21,6 +21,7 @@ class ResetAppToFactoryDefaultsUseCase(
                 queries.deleteAllSales()
                 queries.deleteAllCustomerPayments()
                 queries.deleteAllCustomers()
+                queries.deleteAllProductBarcodes()
                 queries.deleteAllProducts()
                 queries.deleteAllDeletedSyncRecords()
             }
