@@ -654,6 +654,9 @@ fun ProductFormDialog(
 
         val totalCodes = allCodes.distinct()
         if (onValidateBarcodes != null) {
+            if (barcodeInput.isNotBlank()) {
+                delay(200.milliseconds)
+            }
             isValidatingBarcode = true
             val conflict = onValidateBarcodes(totalCodes)
             isValidatingBarcode = false
