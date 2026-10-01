@@ -51,6 +51,8 @@ import poskmp.shared.generated.resources.list
 import poskmp.shared.generated.resources.pip
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.checador_low_resource_subtitle
+import poskmp.shared.generated.resources.checador_low_resource_title
 import poskmp.shared.generated.resources.show_extra_prices_checador_subtitle
 import poskmp.shared.generated.resources.show_extra_prices_checador_title
 import poskmp.shared.generated.resources.swap_venta_layout_order_subtitle
@@ -68,6 +70,8 @@ fun GeneralSettingsSection(
     onIsChecadorDialogChange: (Boolean) -> Unit,
     showExtraPricesChecador: Boolean,
     onShowExtraPricesChecadorChange: (Boolean) -> Unit,
+    lowResourceChecadorShader: Boolean = false,
+    onLowResourceChecadorShaderChange: (Boolean) -> Unit = {},
     useProductTableInCatalog: Boolean,
     onUseProductTableInCatalogChange: (Boolean) -> Unit,
     swapVentaLayoutOrder: Boolean,
@@ -285,6 +289,45 @@ fun GeneralSettingsSection(
                     checked = showExtraPricesChecador,
                     onCheckedChange = onShowExtraPricesChecadorChange
                 )
+            }
+        }
+
+        // 4. Low Resource Checador Background Toggle (Solo Escritorio)
+        if (!isAndroid()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = ShapeDefaults.middleListItemShape,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.checador_low_resource_title),
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.checador_low_resource_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = lowResourceChecadorShader,
+                        onCheckedChange = onLowResourceChecadorShaderChange
+                    )
+                }
             }
         }
 

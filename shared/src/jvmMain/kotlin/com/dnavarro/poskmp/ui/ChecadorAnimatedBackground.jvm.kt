@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -13,10 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asComposeShader
+import com.dnavarro.poskmp.data.SettingsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
+import org.koin.compose.koinInject
 import java.time.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
@@ -309,21 +312,78 @@ vec4 main(vec2 fragCoord) {
 }
 """
 
+internal const val CHECADOR_SKSL_LIGHT_SHADER = """
+uniform float2 uResolution;
+uniform float uTime;
+uniform vec3 uColor1;
+uniform vec3 uColor2;
+uniform vec3 uColor3;
+uniform vec3 uColor4;
+
+const float uDriftSpeed = 0.04;
+
+vec4 main(vec2 fragCoord) {
+    vec3 c0 = uColor1;
+    vec3 c1 = uColor2;
+    vec3 c2 = uColor3;
+    vec3 c3 = uColor4;
+
+    vec2 uv = fragCoord / uResolution;
+    float aspect = uResolution.x / uResolution.y;
+    vec2 pos = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
+
+    float t = uTime * uDriftSpeed;
+
+    // Fast analytic sine warp without FBM or noise loops
+    pos += vec2(sin(pos.y * 3.0 + t), cos(pos.x * 3.0 + t * 0.7)) * 0.08;
+
+    // 4 moving poles
+    vec2 p0 = vec2(-0.40,  0.30) + vec2(sin(t * 0.9), cos(t * 1.1)) * 0.35;
+    vec2 p1 = vec2( 0.40,  0.25) + vec2(sin(t * 0.7 + 2.0), cos(t * 1.3)) * 0.35;
+    vec2 p2 = vec2(-0.20, -0.35) + vec2(sin(t * 1.2 + 4.0), cos(t * 0.8)) * 0.35;
+    vec2 p3 = vec2( 0.35, -0.25) + vec2(sin(t * 0.8 + 5.0), cos(t * 1.0)) * 0.35;
+
+    // Fast squared-distance inverse falloffs (no exp or pow)
+    vec2 d0 = pos - p0;
+    vec2 d1 = pos - p1;
+    vec2 d2 = pos - p2;
+    vec2 d3 = pos - p3;
+
+    float w0 = 1.0 / (0.16 + dot(d0, d0));
+    float w1 = 1.0 / (0.16 + dot(d1, d1));
+    float w2 = 1.0 / (0.16 + dot(d2, d2));
+    float w3 = 1.0 / (0.16 + dot(d3, d3));
+    float wsum = w0 + w1 + w2 + w3 + 0.001;
+
+    vec3 col = (w0 * c0 + w1 * c1 + w2 * c2 + w3 * c3) / wsum;
+
+    // Fast soft contrast
+    col = col * col * (3.0 - 2.0 * col);
+
+    return vec4(col, 1.0);
+}
+"""
+
 @Composable
 actual fun ChecadorAnimatedBackground(
     modifier: Modifier
 ) {
+    val settingsRepository = koinInject<SettingsRepository>()
+    val isLowResource by settingsRepository.lowResourceChecadorShaderFlow.collectAsState(initial = false)
+
     var time by remember { mutableFloatStateOf(0f) }
     var currentDay by remember { mutableLongStateOf(LocalDate.now().toEpochDay()) }
     val currentTheme = remember(currentDay) {
         getDailyChecadorTheme(LocalDate.ofEpochDay(currentDay))
     }
 
-    // Low refresh rate (~10 FPS): sleeps 100ms per update to minimize CPU/GPU/battery usage
-    LaunchedEffect(Unit) {
+    // Refresh rate: 100ms (~10 FPS) in standard mode, 200ms (~5 FPS) in low-resource mode to minimize CPU/GPU/battery usage
+    LaunchedEffect(isLowResource) {
+        val delayDuration = if (isLowResource) 200L.milliseconds else 100L.milliseconds
+        val timeStep = if (isLowResource) 0.20f else 0.10f
         while (isActive) {
-            delay(100L.milliseconds)
-            time += 0.10f
+            delay(delayDuration)
+            time += timeStep
             val today = LocalDate.now().toEpochDay()
             if (today != currentDay) {
                 currentDay = today
@@ -331,8 +391,9 @@ actual fun ChecadorAnimatedBackground(
         }
     }
 
-    val effect = remember {
-        RuntimeEffect.makeForShader(CHECADOR_SKSL_SHADER)
+    val selectedShader = if (isLowResource) CHECADOR_SKSL_LIGHT_SHADER else CHECADOR_SKSL_SHADER
+    val effect = remember(isLowResource) {
+        RuntimeEffect.makeForShader(selectedShader)
     }
     val builder = remember(effect) {
         RuntimeShaderBuilder(effect)

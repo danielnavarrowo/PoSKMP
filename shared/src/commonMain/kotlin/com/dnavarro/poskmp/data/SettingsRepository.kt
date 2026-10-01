@@ -52,6 +52,7 @@ interface SettingsRepository {
     val defaultScreenFlow: Flow<Screen>
     val isChecadorDialogFlow: Flow<Boolean>
     val showExtraPricesChecadorFlow: Flow<Boolean>
+    val lowResourceChecadorShaderFlow: Flow<Boolean>
     val useProductTableInCatalogFlow: Flow<Boolean>
     val swapVentaLayoutOrderFlow: Flow<Boolean>
     val defaultRetailMarginFlow: Flow<Double>
@@ -102,6 +103,7 @@ interface SettingsRepository {
     suspend fun setDefaultScreen(screen: Screen)
     suspend fun setIsChecadorDialog(isDialog: Boolean)
     suspend fun setShowExtraPricesChecador(show: Boolean)
+    suspend fun setLowResourceChecadorShader(enabled: Boolean)
     suspend fun setUseProductTableInCatalog(enabled: Boolean)
     suspend fun setSwapVentaLayoutOrder(swap: Boolean)
     suspend fun setDefaultRetailMargin(margin: Double)
@@ -171,6 +173,7 @@ class SettingsRepositoryImpl(
         val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
         val IS_CHECADOR_DIALOG = booleanPreferencesKey("is_checador_dialog")
         val SHOW_EXTRA_PRICES_CHECADOR = booleanPreferencesKey("show_extra_prices_checador")
+        val LOW_RESOURCE_CHECADOR_SHADER = booleanPreferencesKey("low_resource_checador_shader")
         val USE_PRODUCT_TABLE_IN_CATALOG = booleanPreferencesKey("use_product_table_in_catalog")
         val SWAP_VENTA_LAYOUT_ORDER = booleanPreferencesKey("swap_venta_layout_order")
         val DEFAULT_RETAIL_MARGIN = doublePreferencesKey("default_retail_margin_percentage")
@@ -319,6 +322,10 @@ class SettingsRepositoryImpl(
 
     override val showExtraPricesChecadorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] ?: false
+    }
+
+    override val lowResourceChecadorShaderFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.LOW_RESOURCE_CHECADOR_SHADER] ?: false
     }
 
     override val useProductTableInCatalogFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -560,6 +567,12 @@ class SettingsRepositoryImpl(
     override suspend fun setShowExtraPricesChecador(show: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] = show
+        }
+    }
+
+    override suspend fun setLowResourceChecadorShader(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.LOW_RESOURCE_CHECADOR_SHADER] = enabled
         }
     }
 

@@ -52,6 +52,14 @@ private data class UpdateInternalState(
 private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 private data class Tuple7<A, B, C, D, E, F, G>(val a: A, val b: B, val c: C, val d: D, val e: E, val f: F, val g: G)
+private data class GeneralBehaviorState(
+    val defaultScreen: Screen,
+    val isChecadorDialog: Boolean,
+    val showExtraPricesChecador: Boolean,
+    val lowResourceChecadorShader: Boolean,
+    val useProductTableInCatalog: Boolean,
+    val swapVentaLayoutOrder: Boolean
+)
 
 /**
  * ViewModel for Settings screen according to Google UI Layer architecture.
@@ -124,13 +132,30 @@ class AjustesViewModel(
 
     private val _behaviorFlow = combine(
         combine(
-            repository.defaultScreenFlow,
-            repository.isChecadorDialogFlow,
-            repository.showExtraPricesChecadorFlow,
-            repository.useProductTableInCatalogFlow,
-            repository.swapVentaLayoutOrderFlow
-        ) { defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, swapVentaLayoutOrder ->
-            Tuple5(defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, swapVentaLayoutOrder)
+            combine(
+                repository.defaultScreenFlow,
+                repository.isChecadorDialogFlow,
+                repository.showExtraPricesChecadorFlow
+            ) { defaultScreen, isChecadorDialog, showExtraPricesChecador ->
+                Triple(defaultScreen, isChecadorDialog, showExtraPricesChecador)
+            },
+            combine(
+                repository.lowResourceChecadorShaderFlow,
+                repository.useProductTableInCatalogFlow,
+                repository.swapVentaLayoutOrderFlow
+            ) { lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder ->
+                Triple(lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder)
+            }
+        ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador),
+            (lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder) ->
+            GeneralBehaviorState(
+                defaultScreen = defaultScreen,
+                isChecadorDialog = isChecadorDialog,
+                showExtraPricesChecador = showExtraPricesChecador,
+                lowResourceChecadorShader = lowResourceChecadorShader,
+                useProductTableInCatalog = useProductTableInCatalog,
+                swapVentaLayoutOrder = swapVentaLayoutOrder
+            )
         },
         combine(
             combine(
@@ -212,15 +237,16 @@ class AjustesViewModel(
         ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
             Tuple7(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
         }
-    ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, useProductTableInCatalog, swapVentaLayoutOrder),
+    ) { generalBehaviorState,
         pricingState,
         (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
         AjustesUiState(
-            defaultScreen = defaultScreen,
-            isChecadorDialog = isChecadorDialog,
-            showExtraPricesChecador = showExtraPricesChecador,
-            useProductTableInCatalog = useProductTableInCatalog,
-            swapVentaLayoutOrder = swapVentaLayoutOrder,
+            defaultScreen = generalBehaviorState.defaultScreen,
+            isChecadorDialog = generalBehaviorState.isChecadorDialog,
+            showExtraPricesChecador = generalBehaviorState.showExtraPricesChecador,
+            lowResourceChecadorShader = generalBehaviorState.lowResourceChecadorShader,
+            useProductTableInCatalog = generalBehaviorState.useProductTableInCatalog,
+            swapVentaLayoutOrder = generalBehaviorState.swapVentaLayoutOrder,
             defaultRetailMargin = pricingState.defaultRetailMargin,
             defaultWholesaleMargin = pricingState.defaultWholesaleMargin,
             defaultDeliveryMargin = pricingState.defaultDeliveryMargin,
@@ -285,6 +311,7 @@ class AjustesViewModel(
             defaultScreen = behaviorState.defaultScreen,
             isChecadorDialog = behaviorState.isChecadorDialog,
             showExtraPricesChecador = behaviorState.showExtraPricesChecador,
+            lowResourceChecadorShader = behaviorState.lowResourceChecadorShader,
             useProductTableInCatalog = behaviorState.useProductTableInCatalog,
             swapVentaLayoutOrder = behaviorState.swapVentaLayoutOrder,
             defaultRetailMargin = behaviorState.defaultRetailMargin,
@@ -416,6 +443,12 @@ class AjustesViewModel(
     fun setShowExtraPricesChecador(show: Boolean) {
         viewModelScope.launch {
             repository.setShowExtraPricesChecador(show)
+        }
+    }
+
+    fun setLowResourceChecadorShader(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setLowResourceChecadorShader(enabled)
         }
     }
 
