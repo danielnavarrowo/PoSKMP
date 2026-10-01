@@ -110,6 +110,86 @@ val CHECADOR_THEMES = listOf(
         color2 = Color(0xFFc4b0f2), // #58d89c
         color3 = Color(0xFFf2bed5), // #f6ca51
         color4 = Color(0xFFaeeade)  // #f26878
+    ),
+    ChecadorShaderTheme(
+        id = "midnight",
+        name = "Midnight",
+        color1 = Color(0xFF3B82F6), // #3b82f6
+        color2 = Color(0xFFA855F7), // #a855f7
+        color3 = Color(0xFF22D3EE), // #22d3ee
+        color4 = Color(0xFFF43F5E)  // #f43f5e
+    ),
+    ChecadorShaderTheme(
+        id = "witchlight",
+        name = "Witchlight",
+        color1 = Color(0xFF8B5CF6), // #8b5cf6
+        color2 = Color(0xFFEC4899), // #ec4899
+        color3 = Color(0xFF4CBBE8), // #4cbbe8
+        color4 = Color(0xFFFBBF24)  // #fbbf24
+    ),
+    ChecadorShaderTheme(
+        id = "peacock",
+        name = "Peacock",
+        color1 = Color(0xFF129CB1), // #129cb1
+        color2 = Color(0xFF2D73CD), // #2d73cd
+        color3 = Color(0xFF8F5BCF), // #8f5bcf
+        color4 = Color(0xFFF6BC49)  // #f6bc49
+    ),
+    ChecadorShaderTheme(
+        id = "neon",
+        name = "Neon",
+        color1 = Color(0xFF12F3D4), // #12f3d4
+        color2 = Color(0xFFF639AE), // #f639ae
+        color3 = Color(0xFFAEF73C), // #aef73c
+        color4 = Color(0xFF396BF6)  // #396bf6
+    ),
+    ChecadorShaderTheme(
+        id = "spectral",
+        name = "Spectral",
+        color1 = Color(0xFF38D4D9), // #38d4d9
+        color2 = Color(0xFF61C47B), // #61c47b
+        color3 = Color(0xFF9C6BEA), // #9c6bea
+        color4 = Color(0xFF4679F2)  // #4679f2
+    ),
+    ChecadorShaderTheme(
+        id = "fuchsia",
+        name = "Fuchsia",
+        color1 = Color(0xFFE3389E), // #e3389e
+        color2 = Color(0xFFF964BD), // #f964bd
+        color3 = Color(0xFFA849E3), // #a849e3
+        color4 = Color(0xFF841C67)  // #841c67
+    ),
+    ChecadorShaderTheme(
+        id = "viridian",
+        name = "Viridian",
+        color1 = Color(0xFF22AF71), // #22af71
+        color2 = Color(0xFF58D885), // #58d885
+        color3 = Color(0xFFB8F3AA), // #b8f3aa
+        color4 = Color(0xFF11675A)  // #11675a
+    ),
+    ChecadorShaderTheme(
+        id = "foundry",
+        name = "Foundry",
+        color1 = Color(0xFFF98326), // #f98326
+        color2 = Color(0xFFF6B02E), // #f6b02e
+        color3 = Color(0xFFFED56B), // #fed56b
+        color4 = Color(0xFF9E3C1C)  // #9e3c1c
+    ),
+    ChecadorShaderTheme(
+        id = "tide",
+        name = "Tide",
+        color1 = Color(0xFF06B6B0), // #06b6b0
+        color2 = Color(0xFF4CD9B4), // #4cd9b4
+        color3 = Color(0xFFA8F3D5), // #a8f3d5
+        color4 = Color(0xFF136F84)  // #136f84
+    ),
+    ChecadorShaderTheme(
+        id = "daybreak",
+        name = "Daybreak",
+        color1 = Color(0xFFFB9C67), // #fb9c67
+        color2 = Color(0xFFFDC671), // #fdc671
+        color3 = Color(0xFFF6828D), // #f6828d
+        color4 = Color(0xFFAE8ECE)  // #ae8ece
     )
 )
 
@@ -119,7 +199,7 @@ fun getDailyChecadorTheme(date: LocalDate = LocalDate.now()): ChecadorShaderThem
     val cycle = Math.floorDiv(epochDay, size.toLong())
     val pos = Math.floorMod(epochDay, size.toLong()).toInt()
     val cyclePermutation = getCyclePermutation(cycle, size)
-    return CHECADOR_THEMES[cyclePermutation[pos]]
+    return CHECADOR_THEMES[13]
 }
 
 internal fun getCyclePermutation(cycle: Long, size: Int): IntArray {
