@@ -811,7 +811,7 @@ fun ChecadorScreen(
                     Icon(
                         painter = painterResource(Res.drawable.settings),
                         contentDescription = "Ajustes",
-                        tint = Color.White
+                        tint = Color.Black
                     )
                 }
             }
@@ -851,7 +851,7 @@ fun ChecadorScreen(
                                 if (searchedProduct != null) {
                                     AutoSizingText(
                                         text = searchedProduct!!.nombre,
-                                        color = Color.White,
+                                        color = Color.Black,
                                         fontWeight = FontWeight.Black,
                                         minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
@@ -860,7 +860,7 @@ fun ChecadorScreen(
                                 } else if (hasSearched) {
                                     AutoSizingText(
                                         text = stringResource(Res.string.product_not_found),
-                                        color = Color.White,
+                                        color = Color.Black,
                                         fontWeight = FontWeight.Black,
                                         minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
@@ -869,7 +869,7 @@ fun ChecadorScreen(
                                 } else {
                                     AutoSizingText(
                                         text = stringResource(Res.string.price_checker_title),
-                                        color = Color.White,
+                                        color = Color.Black,
                                         fontWeight = FontWeight.Black,
                                         minFontSize = 20.sp,
                                         maxFontSize = 360.sp,
@@ -949,7 +949,7 @@ fun ChecadorScreen(
                                 Icon(
                                     painter = painterResource(Res.drawable.warning),
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = Color.Black,
                                     modifier = Modifier.size(256.dp)
                                 )
                             }
@@ -973,7 +973,7 @@ fun ChecadorScreen(
                                     Icon(
                                         painter = painterResource(Res.drawable.barcode_scanner),
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = Color.Black,
                                         modifier = Modifier
                                             .size(256.dp)
                                             .then(
@@ -1009,12 +1009,12 @@ fun ChecadorScreen(
                                         },
                                         singleLine = true,
                                         textStyle = TextStyle(
-                                            color = Color.White,
+                                            color = Color.Black,
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.Bold,
                                             textAlign = TextAlign.Center
                                         ),
-                                        cursorBrush = SolidColor(Color.White),
+                                        cursorBrush = SolidColor(Color.Black),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                         keyboardActions = KeyboardActions(onDone = { performSearch() }),
                                         decorationBox = { innerTextField ->
@@ -1038,7 +1038,7 @@ fun ChecadorScreen(
                                                     Text(
                                                         text = "Acerca el código de barras al escáner...",
                                                         fontSize = 16.sp,
-                                                        color = Color.White.copy(alpha = 0.6f),
+                                                        color = Color.Black.copy(alpha = 0.6f),
                                                         textAlign = TextAlign.Center,
                                                         style = MaterialTheme.typography.bodyLarge
                                                     )
@@ -1064,14 +1064,14 @@ fun ChecadorScreen(
                 ) {
                     Text(
                         text = currentDateText,
-                        color = Color.White,
+                        color = Color.Black,
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
                         text = currentTimeText,
-                        color = Color.White,
+                        color = Color.Black,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -1086,7 +1086,7 @@ fun ChecadorScreen(
 private fun AutoSizingText(
     text: String,
     modifier: Modifier = Modifier,
-    color: Color = Color.White,
+    color: Color = Color.Black,
     fontWeight: FontWeight = FontWeight.Black,
     textAlign: TextAlign = TextAlign.Start,
     minFontSize: TextUnit = 16.sp,
@@ -1231,18 +1231,17 @@ private fun ChecadorMetricRow(
                     text = title.uppercase(),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 1.2.sp
                     ),
-                    color = Color.White.copy(alpha = if (isPrimary) 1f else 0.7f)
+                    color = Color.Black.copy(alpha = if (isPrimary) 1f else 0.8f)
                 )
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
                         ),
-                        color = Color.White
+                        color = Color.Black
                     )
                 }
             }
@@ -1252,13 +1251,14 @@ private fun ChecadorMetricRow(
                 style = if (isPrimary) {
                     MaterialTheme.typography.displayLarge.copy(
                         fontWeight = FontWeight.Black,
-                        color = Color.White,
+                        color = Color.Black,
                         fontSize = 128.sp
                     )
                 } else {
                     MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontWeight = FontWeight.Black,
+                        color = Color.Black,
+                        fontSize = 72.sp
                     )
                 },
                 textAlign = TextAlign.End
