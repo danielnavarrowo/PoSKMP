@@ -199,7 +199,7 @@ fun getDailyChecadorTheme(date: LocalDate = LocalDate.now()): ChecadorShaderThem
     val cycle = Math.floorDiv(epochDay, size.toLong())
     val pos = Math.floorMod(epochDay, size.toLong()).toInt()
     val cyclePermutation = getCyclePermutation(cycle, size)
-    return CHECADOR_THEMES[13]
+    return CHECADOR_THEMES[cyclePermutation[pos]]
 }
 
 internal fun getCyclePermutation(cycle: Long, size: Int): IntArray {
@@ -230,7 +230,7 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 
-const float uDriftSpeed = 0.03;
+const float uDriftSpeed = 0.04;
 const float uSoftness   = 0.85;
 const float uWarp       = 0.95;
 const float uHeat       = 0.70;
