@@ -360,10 +360,15 @@
     <string name="delete_and_replace_button">Borrar y Reemplazar Todo</string>
     <string name="import_success_title">¡Importación Exitosa!</string>
     <string name="import_completed_with_errors_title">Importación finalizada con observaciones</string>
+    <string name="import_completed_with_modifications_title">Importación completada con ajustes</string>
     <string name="import_failed_all_title">No se pudieron importar productos</string>
     <string name="import_failed_products_header">Productos no importados (%1$d):</string>
     <string name="import_failed_products_hint">Se omitieron para evitar duplicados o inconsistencias</string>
     <string name="import_skipped_summary_format">(%1$d productos omitidos por errores o duplicados)</string>
+    <string name="import_modified_products_header">Productos con nombre modificado (%1$d):</string>
+    <string name="import_modified_products_hint">Se renombraron con \"(Duplicado)\" para evitar duplicados en el catálogo</string>
+    <string name="import_modified_summary_format">(%1$d productos renombrados por duplicidad de nombre)</string>
+    <string name="import_original_name_label">Original: %1$s</string>
     <string name="import_none_imported_message">Ningún producto pudo ser importado debido a duplicados o errores en los datos.</string>
 
     <!-- VentaScreen -->

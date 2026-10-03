@@ -995,79 +995,6 @@ fun ProductFormDialog(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
-                value = formPrecio,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                        formPrecio = input
-                        val price = input.toDoubleOrNull()
-                        val cost = formCosto.toDoubleOrNull()
-                        if (price != null && cost != null && cost > 0) {
-                            val margin = ((price - cost) / cost) * 100.0
-                            formMargenVenta = formatMargin(margin)
-                        }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.retail_price_required_label),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = retailPriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = formMargenVenta,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
-                        formMargenVenta = input
-                        val margin = input.toDoubleOrNull()
-                        val cost = formCosto.toDoubleOrNull()
-                        if (margin != null && cost != null && cost > 0) {
-                            val newPrice = cost * (1.0 + margin / 100.0)
-                            formPrecio = formatNumber(newPrice)
-                        }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.retail_margin_label),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = retailPriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
-                singleLine = true
-            )
-        }
-
-        if (retailPriceError != null) {
-            Text(
-                text = retailPriceError,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-            )
-        } else if (retailMarginWarning != null) {
-            MarginWarningBadge(retailMarginWarning)
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
                 value = formPrecioMayoreo,
                 onValueChange = { input ->
                     if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
@@ -1137,6 +1064,79 @@ fun ProductFormDialog(
             )
         } else if (wholesaleMarginWarning != null) {
             MarginWarningBadge(wholesaleMarginWarning)
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = formPrecio,
+                onValueChange = { input ->
+                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                        formPrecio = input
+                        val price = input.toDoubleOrNull()
+                        val cost = formCosto.toDoubleOrNull()
+                        if (price != null && cost != null && cost > 0) {
+                            val margin = ((price - cost) / cost) * 100.0
+                            formMargenVenta = formatMargin(margin)
+                        }
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                label = {
+                    Text(
+                        stringResource(Res.string.retail_price_required_label),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                },
+                isError = retailPriceError != null,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = formMargenVenta,
+                onValueChange = { input ->
+                    if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                        formMargenVenta = input
+                        val margin = input.toDoubleOrNull()
+                        val cost = formCosto.toDoubleOrNull()
+                        if (margin != null && cost != null && cost > 0) {
+                            val newPrice = cost * (1.0 + margin / 100.0)
+                            formPrecio = formatNumber(newPrice)
+                        }
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                label = {
+                    Text(
+                        stringResource(Res.string.retail_margin_label),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                },
+                isError = retailPriceError != null,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                singleLine = true
+            )
+        }
+
+        if (retailPriceError != null) {
+            Text(
+                text = retailPriceError,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            )
+        } else if (retailMarginWarning != null) {
+            MarginWarningBadge(retailMarginWarning)
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

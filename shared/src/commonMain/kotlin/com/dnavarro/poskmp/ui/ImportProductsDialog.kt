@@ -55,6 +55,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.disambiguateProductName
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.normalizeBarcode
@@ -71,6 +72,7 @@ import poskmp.shared.generated.resources.back_button
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.close_button
+import poskmp.shared.generated.resources.codes_display_label
 import poskmp.shared.generated.resources.confirm_and_import_button
 import poskmp.shared.generated.resources.delete_and_replace_button
 import poskmp.shared.generated.resources.header_category
@@ -102,12 +104,18 @@ import poskmp.shared.generated.resources.import_success_replace_message
 import poskmp.shared.generated.resources.import_success_title
 import poskmp.shared.generated.resources.import_success_update_message
 import poskmp.shared.generated.resources.import_completed_with_errors_title
+import poskmp.shared.generated.resources.import_completed_with_modifications_title
 import poskmp.shared.generated.resources.import_failed_all_title
 import poskmp.shared.generated.resources.import_failed_products_header
 import poskmp.shared.generated.resources.import_failed_products_hint
+import poskmp.shared.generated.resources.import_modified_products_header
+import poskmp.shared.generated.resources.import_modified_products_hint
+import poskmp.shared.generated.resources.import_modified_summary_format
+import poskmp.shared.generated.resources.import_original_name_label
 import poskmp.shared.generated.resources.import_none_imported_message
 import poskmp.shared.generated.resources.import_skipped_summary_format
 import poskmp.shared.generated.resources.import_warning_replace_all
+import poskmp.shared.generated.resources.info
 import poskmp.shared.generated.resources.next_button
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.upload
@@ -126,6 +134,7 @@ fun ImportProductsDialog(
     var importError by remember { mutableStateOf<String?>(null) }
     var importSuccessMessage by remember { mutableStateOf<String?>(null) }
     var failedProductsList by remember { mutableStateOf<List<FailedImportItem>>(emptyList()) }
+    var modifiedProductsList by remember { mutableStateOf<List<ModifiedImportItem>>(emptyList()) }
     var updateExistingOption by remember { mutableStateOf(true) }
     var isProcessing by remember { mutableStateOf(false) }
     var importProgressFraction by remember { mutableFloatStateOf(0f) }
@@ -141,9 +150,10 @@ fun ImportProductsDialog(
     val replaceSuccessFmt = stringResource(Res.string.import_success_replace_message)
     val dbSaveErrFmt = stringResource(Res.string.import_db_save_error)
     val skippedSummaryFmt = stringResource(Res.string.import_skipped_summary_format)
+    val modifiedSummaryFmt = stringResource(Res.string.import_modified_summary_format)
     val noneImportedMsg = stringResource(Res.string.import_none_imported_message)
 
-    val isWideStep = currentStep == 2 || (currentStep == 4 && failedProductsList.isNotEmpty())
+    val isWideStep = currentStep == 2 || (currentStep == 4 && (failedProductsList.isNotEmpty() || modifiedProductsList.isNotEmpty()))
 
     Dialog(
         onDismissRequest = { if (!isProcessing) onDismiss() },
@@ -252,6 +262,7 @@ fun ImportProductsDialog(
                                                             parsedProducts = prods
                                                             importError = null
                                                             failedProductsList = emptyList()
+                                                            modifiedProductsList = emptyList()
                                                             currentStep = 2
                                                         }
                                                     }
@@ -628,6 +639,7 @@ fun ImportProductsDialog(
                                     isProcessing = true
                                     importError = null
                                     failedProductsList = emptyList()
+                                    modifiedProductsList = emptyList()
                                     importProgressFraction = 0f
                                     importProgressText = startingImportText
                                     scope.launch {
@@ -635,6 +647,7 @@ fun ImportProductsDialog(
                                             var updatedCount = 0
                                             var insertedCount = 0
                                             val failedItems = mutableListOf<FailedImportItem>()
+                                            val modifiedItems = mutableListOf<ModifiedImportItem>()
 
                                             withContext(Dispatchers.IO) {
                                                 if (updateExistingOption) {
@@ -687,21 +700,41 @@ fun ImportProductsDialog(
                                                                         break
                                                                     }
                                                                 }
-                                                                if (!isExisting) {
+                                                                if (!isExisting && pCodes.isEmpty()) {
                                                                     val cleanName = p.nombre.trim().lowercase()
                                                                     val matched = existingByName[cleanName]
-                                                                    if (matched != null) {
+                                                                    if (matched != null && matched.parseBarcodes().isEmpty()) {
                                                                         targetId = matched.id
                                                                         isExisting = true
                                                                     }
                                                                 }
                                                             }
 
-                                                            // Pre-validación de nombre duplicado con otro producto
-                                                            val cleanName = p.nombre.trim().lowercase()
+                                                            // Pre-validación y resolución de nombre duplicado con otro producto
+                                                            val originalName = p.nombre.trim()
+                                                            val cleanName = originalName.lowercase()
                                                             val nameMatch = existingByName[cleanName]
-                                                            if (nameMatch != null && nameMatch.id != targetId) {
-                                                                throw IllegalArgumentException("Nombre duplicado (ya existe '${nameMatch.nombre}')")
+                                                            val isNameConflict = nameMatch != null && nameMatch.id != targetId
+
+                                                            val finalName = if (isNameConflict) {
+                                                                val disambiguated = disambiguateProductName(originalName) { candidate ->
+                                                                    val candidateKey = candidate.trim().lowercase()
+                                                                    val match = existingByName[candidateKey]
+                                                                    match != null && match.id != targetId
+                                                                }
+                                                                disambiguated
+                                                            } else {
+                                                                originalName
+                                                            }
+
+                                                            if (finalName != originalName) {
+                                                                modifiedItems.add(
+                                                                    ModifiedImportItem(
+                                                                        originalName = originalName,
+                                                                        newName = finalName,
+                                                                        product = p.copy(nombre = finalName)
+                                                                    )
+                                                                )
                                                             }
 
                                                             // Pre-validación de código de barras duplicado con otro producto
@@ -719,15 +752,35 @@ fun ImportProductsDialog(
                                                             val pToInsert = if (isExisting) {
                                                                 p.copy(
                                                                     id = targetId,
+                                                                    nombre = finalName,
                                                                     updated_at = currentTimeMillis(),
                                                                     sync_state = "PENDING_UPDATE"
                                                                 )
                                                             } else {
                                                                 p.copy(
                                                                     id = targetId,
+                                                                    nombre = finalName,
                                                                     updated_at = currentTimeMillis(),
                                                                     sync_state = "PENDING_INSERT"
                                                                 )
+                                                            }
+
+                                                            val previousProduct = existingById[targetId]
+                                                            if (previousProduct != null) {
+                                                                val oldCleanName = previousProduct.nombre.trim().lowercase()
+                                                                if (oldCleanName != finalName.trim().lowercase()) {
+                                                                    existingByName.remove(oldCleanName)
+                                                                }
+                                                                val oldCodes = previousProduct.parseBarcodes()
+                                                                val newCodes = pToInsert.parseBarcodes()
+                                                                for (oldCode in oldCodes) {
+                                                                    val trimmed = oldCode.trim()
+                                                                    if (trimmed.isNotEmpty() && !newCodes.any { it.equals(trimmed, ignoreCase = true) }) {
+                                                                        existingByBarcode.remove(trimmed)
+                                                                        val norm = normalizeBarcode(trimmed)
+                                                                        if (norm.isNotEmpty()) existingByBarcode.remove(norm)
+                                                                    }
+                                                                }
                                                             }
 
                                                             existingById[targetId] = pToInsert
@@ -787,6 +840,7 @@ fun ImportProductsDialog(
                                                                     if (item.sync_state == "PENDING_UPDATE") fallbackUpdated++ else fallbackInserted++
                                                                 } catch (err: Throwable) {
                                                                     failedItems.add(FailedImportItem(product = item, reason = formatImportError(err)))
+                                                                    modifiedItems.removeAll { it.product.id == item.id }
                                                                 }
                                                             }
                                                             updatedCount = fallbackUpdated
@@ -802,10 +856,26 @@ fun ImportProductsDialog(
 
                                                     for ((index, p) in parsedProducts.withIndex()) {
                                                         try {
-                                                            val cleanName = p.nombre.trim().lowercase()
+                                                            val originalName = p.nombre.trim()
+                                                            val cleanName = originalName.lowercase()
                                                             val nameMatch = existingByName[cleanName]
-                                                            if (nameMatch != null) {
-                                                                throw IllegalArgumentException("Nombre duplicado en el archivo (coincide con '${nameMatch.nombre}')")
+                                                            val finalName = if (nameMatch != null) {
+                                                                val disambiguated = disambiguateProductName(originalName) { candidate ->
+                                                                    existingByName.containsKey(candidate.trim().lowercase())
+                                                                }
+                                                                disambiguated
+                                                            } else {
+                                                                originalName
+                                                            }
+
+                                                            if (finalName != originalName) {
+                                                                modifiedItems.add(
+                                                                    ModifiedImportItem(
+                                                                        originalName = originalName,
+                                                                        newName = finalName,
+                                                                        product = p.copy(nombre = finalName)
+                                                                    )
+                                                                )
                                                             }
 
                                                             val pCodes = p.parseBarcodes()
@@ -820,12 +890,14 @@ fun ImportProductsDialog(
                                                             }
 
                                                             val pToInsert = p.copy(
+                                                                nombre = finalName,
                                                                 updated_at = currentTimeMillis(),
                                                                 sync_state = "PENDING_INSERT"
                                                             )
 
-                                                            if (cleanName.isNotEmpty()) {
-                                                                existingByName[cleanName] = pToInsert
+                                                            val insertedName = pToInsert.nombre.trim().lowercase()
+                                                            if (insertedName.isNotEmpty()) {
+                                                                existingByName[insertedName] = pToInsert
                                                             }
                                                             for (code in pCodes) {
                                                                 val trimmed = code.trim()
@@ -878,6 +950,7 @@ fun ImportProductsDialog(
                                                                     fallbackInserted++
                                                                 } catch (err: Throwable) {
                                                                     failedItems.add(FailedImportItem(product = item, reason = formatImportError(err)))
+                                                                    modifiedItems.removeAll { it.product.id == item.id }
                                                                 }
                                                             }
                                                             insertedCount = fallbackInserted
@@ -891,7 +964,9 @@ fun ImportProductsDialog(
                                             }
 
                                             failedProductsList = failedItems
+                                            modifiedProductsList = modifiedItems
                                             val totalFailed = failedItems.size
+                                            val totalModified = modifiedItems.size
                                             if (insertedCount == 0 && updatedCount == 0 && totalFailed > 0) {
                                                 importSuccessMessage = noneImportedMsg
                                             } else {
@@ -900,10 +975,15 @@ fun ImportProductsDialog(
                                                 } else {
                                                     replaceSuccessFmt.replace($$"%1$d", insertedCount.toString())
                                                 }
-                                                importSuccessMessage = if (totalFailed > 0) {
+                                                val withSkipped = if (totalFailed > 0) {
                                                     "$baseMessage\n" + skippedSummaryFmt.replace($$"%1$d", totalFailed.toString())
                                                 } else {
                                                     baseMessage
+                                                }
+                                                importSuccessMessage = if (totalModified > 0) {
+                                                    "$withSkipped\n" + modifiedSummaryFmt.replace($$"%1$d", totalModified.toString())
+                                                } else {
+                                                    withSkipped
                                                 }
                                             }
                                             currentStep = 4
@@ -934,20 +1014,24 @@ fun ImportProductsDialog(
                         // Results Step
                         val allFailed = failedProductsList.size == parsedProducts.size && parsedProducts.isNotEmpty()
                         val hasErrors = failedProductsList.isNotEmpty()
+                        val hasModified = modifiedProductsList.isNotEmpty()
 
                         val iconRes = when {
                             allFailed -> Res.drawable.warning
                             hasErrors -> Res.drawable.warning
+                            hasModified -> Res.drawable.info
                             else -> Res.drawable.check
                         }
                         val iconColor = when {
                             allFailed -> MaterialTheme.colorScheme.error
                             hasErrors -> Color(0xFFF59E0B) // Amber
+                            hasModified -> MaterialTheme.colorScheme.primary
                             else -> Color(0xFF10B981) // Green
                         }
                         val titleText = when {
                             allFailed -> stringResource(Res.string.import_failed_all_title)
                             hasErrors -> stringResource(Res.string.import_completed_with_errors_title)
+                            hasModified -> stringResource(Res.string.import_completed_with_modifications_title)
                             else -> stringResource(Res.string.import_success_title)
                         }
 
@@ -975,6 +1059,115 @@ fun ImportProductsDialog(
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+
+                            if (hasModified) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = MaterialTheme.shapes.small,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+                                    ),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(Res.drawable.info),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.secondary,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Text(
+                                                    text = stringResource(
+                                                        Res.string.import_modified_products_header,
+                                                        modifiedProductsList.size
+                                                    ),
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp,
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                )
+                                            }
+                                            Text(
+                                                text = stringResource(Res.string.import_modified_products_hint),
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f))
+
+                                        LazyColumn(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = if (hasErrors) 160.dp else 240.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            items(modifiedProductsList) { item ->
+                                                Card(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = MaterialTheme.shapes.extraSmall,
+                                                    colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.surface
+                                                    ),
+                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Text(
+                                                                text = item.newName,
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 13.sp,
+                                                                color = MaterialTheme.colorScheme.onSurface,
+                                                                modifier = Modifier.weight(1f, fill = false)
+                                                            )
+                                                            val codesDisplay = item.product.formatBarcodesForDisplay()
+                                                            if (codesDisplay.isNotBlank()) {
+                                                                Text(
+                                                                    text = stringResource(Res.string.codes_display_label, codesDisplay),
+                                                                    fontSize = 11.sp,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                    modifier = Modifier.padding(start = 8.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Text(
+                                                                text = stringResource(Res.string.import_original_name_label, item.originalName),
+                                                                fontSize = 11.sp,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                fontWeight = FontWeight.Medium
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 
                             if (hasErrors) {
                                 Card(
@@ -1015,7 +1208,7 @@ fun ImportProductsDialog(
                                         LazyColumn(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .heightIn(max = 280.dp),
+                                                .heightIn(max = if (hasModified) 160.dp else 280.dp),
                                             verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             items(failedProductsList) { item ->
@@ -1048,7 +1241,7 @@ fun ImportProductsDialog(
                                                             val codesDisplay = item.product.formatBarcodesForDisplay()
                                                             if (codesDisplay.isNotBlank()) {
                                                                 Text(
-                                                                    text = "Código: $codesDisplay",
+                                                                    text = stringResource(Res.string.codes_display_label, codesDisplay),
                                                                     fontSize = 11.sp,
                                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                                     modifier = Modifier.padding(start = 8.dp)
@@ -1104,6 +1297,12 @@ fun ImportProductsDialog(
 data class FailedImportItem(
     val product: Products,
     val reason: String
+)
+
+data class ModifiedImportItem(
+    val originalName: String,
+    val newName: String,
+    val product: Products
 )
 
 private fun formatImportError(e: Throwable): String {

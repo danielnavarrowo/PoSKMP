@@ -18,6 +18,7 @@ import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.AppDatabaseQueries
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.disambiguateProductName
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.normalizeBarcode
@@ -50,23 +51,6 @@ interface SyncRepository {
     suspend fun testConnection(url: String, key: String): Result<Boolean>
     suspend fun syncAll(forceFullSync: Boolean = false, isManual: Boolean = false): Result<SyncReport>
     suspend fun getRemoteAuditLogs(limit: Int = 100): Result<List<RemoteAuditLogDto>>
-}
-
-internal val DUPLICATE_SUFFIX_REGEX = """\s*\(Duplicado(?:\s+\d+)?\)$""".toRegex(RegexOption.IGNORE_CASE)
-
-internal fun disambiguateProductName(
-    baseName: String,
-    isNameTaken: (String) -> Boolean
-): String {
-    val cleanBase = baseName.replace(DUPLICATE_SUFFIX_REGEX, "").trim().ifBlank { "Producto" }
-    val candidate = "$cleanBase (Duplicado)"
-    if (!isNameTaken(candidate)) return candidate
-    var counter = 2
-    while (true) {
-        val nextCandidate = "$cleanBase (Duplicado $counter)"
-        if (!isNameTaken(nextCandidate)) return nextCandidate
-        counter++
-    }
 }
 
 class SyncRepositoryImpl(

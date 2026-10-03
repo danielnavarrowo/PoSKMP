@@ -294,3 +294,23 @@ fun com.dnavarro.poskmp.db.Products.matchesSearch(query: String, normalizedBarco
     return false
 }
 
+val DUPLICATE_SUFFIX_REGEX = """\s*\(Duplicado(?:\s+\d+)?\)$""".toRegex(RegexOption.IGNORE_CASE)
+
+/**
+ * Resolves product name collisions by appending " (Duplicado)" or " (Duplicado N)".
+ */
+fun disambiguateProductName(
+    baseName: String,
+    isNameTaken: (String) -> Boolean
+): String {
+    val cleanBase = baseName.replace(DUPLICATE_SUFFIX_REGEX, "").trim().ifBlank { "Producto" }
+    val candidate = "$cleanBase (Duplicado)"
+    if (!isNameTaken(candidate)) return candidate
+    var counter = 2
+    while (true) {
+        val nextCandidate = "$cleanBase (Duplicado $counter)"
+        if (!isNameTaken(nextCandidate)) return nextCandidate
+        counter++
+    }
+}
+
