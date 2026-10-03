@@ -233,7 +233,7 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 
-const float uDriftSpeed = 0.04;
+const float uDriftSpeed = 0.05;
 const float uSoftness   = 0.85;
 const float uWarp       = 0.95;
 const float uHeat       = 0.70;
@@ -320,7 +320,7 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 uniform vec3 uColor4;
 
-const float uDriftSpeed = 0.04;
+const float uDriftSpeed = 0.10;
 
 vec4 main(vec2 fragCoord) {
     vec3 c0 = uColor1;

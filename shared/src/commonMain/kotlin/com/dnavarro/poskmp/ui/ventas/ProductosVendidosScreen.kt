@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -27,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +65,8 @@ import poskmp.shared.generated.resources.title_sold_products
 @Composable
 fun ProductosVendidosScreen(
     soldProducts: List<ProductSalesMetric>,
+    isSyncing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -142,11 +149,27 @@ fun ProductosVendidosScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            state = pullToRefreshState,
+            isRefreshing = isSyncing,
+            onRefresh = onRefresh,
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = pullToRefreshState,
+                    isRefreshing = isSyncing,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(top = paddingValues.calculateTopPadding())
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = paddingValues.calculateBottomPadding())
+            ) {
             // Quick Summary Row
             if (soldProducts.isNotEmpty()) {
                 Row(
@@ -205,6 +228,7 @@ fun ProductosVendidosScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -349,3 +373,5 @@ fun ProductosVendidosScreen(
         }
     }
 }
+}
+

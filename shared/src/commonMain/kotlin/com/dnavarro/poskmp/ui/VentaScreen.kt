@@ -57,6 +57,7 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
 import androidx.compose.material3.adaptive.layout.SupportingPaneScaffold
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
@@ -1347,6 +1348,22 @@ fun VentaScreen(
                     printReceipt = printReceipt
                 )
                 lastSaleFolio = folio
+                if (folio > 0L) {
+                    val isShowingOnlyTicketSection = (navigator.scaffoldValue[ThreePaneScaffoldRole.Secondary] == PaneAdaptedValue.Expanded &&
+                        navigator.scaffoldValue[ThreePaneScaffoldRole.Primary] == PaneAdaptedValue.Hidden) || (isCompact && navigator.canNavigateBack())
+                    if (isShowingOnlyTicketSection) {
+                        if (isAndroid()) {
+                            focusManager.clearFocus(force = true)
+                            keyboardController?.hide()
+                        }
+                        if (navigator.canNavigateBack()) {
+                            navigator.navigateBack()
+                        } else {
+                            navigator.navigateTo(ThreePaneScaffoldRole.Primary)
+                        }
+                    }
+                    reclaimSearchBarFocus()
+                }
             }
         }
 

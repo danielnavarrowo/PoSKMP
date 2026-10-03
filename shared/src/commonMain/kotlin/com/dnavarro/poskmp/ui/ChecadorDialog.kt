@@ -95,7 +95,6 @@ import poskmp.shared.generated.resources.cost_label
 import poskmp.shared.generated.resources.delivery_price_label
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
-import poskmp.shared.generated.resources.settings
 import poskmp.shared.generated.resources.per_kg_suffix
 import poskmp.shared.generated.resources.pieces_count_label
 import poskmp.shared.generated.resources.price_checker_title
@@ -800,22 +799,6 @@ fun ChecadorScreen(
                     .focusRequester(focusRequester)
             )
 
-            if (onNavigateToAjustes != null) {
-                IconButton(
-                    onClick = onNavigateToAjustes,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                        .alpha(0.5f)
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.settings),
-                        contentDescription = "Ajustes",
-                        tint = Color.Black
-                    )
-                }
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1074,7 +1057,12 @@ fun ChecadorScreen(
                         color = Color.Black,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold
-                        )
+                        ),
+                        modifier = Modifier.clickable {
+                            if (onNavigateToAjustes != null) {
+                                onNavigateToAjustes()
+                            }
+                        }
                     )
                 }
             }

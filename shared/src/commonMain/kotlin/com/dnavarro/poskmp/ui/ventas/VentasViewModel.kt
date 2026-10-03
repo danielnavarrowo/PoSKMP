@@ -23,14 +23,18 @@ import com.dnavarro.poskmp.domain.usecase.GetShiftSummaryUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordCashMovementUseCase
 import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
 import com.dnavarro.poskmp.util.currentTimeMillis
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 import com.dnavarro.poskmp.data.ShiftRepository
+import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.sync.SyncStateEnum
 
 enum class SalesPeriodPreset {
     HOY, AYER, ESTA_SEMANA, ESTE_MES, RANGO
@@ -44,6 +48,7 @@ data class VentasUiState(
     val shiftsForSelectedPeriod: List<CashierShift> = emptyList(),
     val selectedShiftId: String? = null,
     val isLoading: Boolean = false,
+    val isSyncing: Boolean = false,
     val summary: SalesSummary = SalesSummary(0.0, 0.0, 0.0, 0.0, 0.0, 0L, 0.0),
     val deliveryComparison: DeliveryComparisonMetric = DeliveryComparisonMetric(),
     val soldProducts: List<ProductSalesMetric> = emptyList(),
@@ -77,16 +82,36 @@ class VentasViewModel(
     private val getShiftSummaryUseCase: GetShiftSummaryUseCase,
     private val closeShiftUseCase: CloseShiftUseCase,
     private val cancelSaleUseCase: CancelSaleUseCase,
-    private val reprintSaleReceiptUseCase: ReprintSaleReceiptUseCase
+    private val reprintSaleReceiptUseCase: ReprintSaleReceiptUseCase,
+    private val syncRepository: SyncRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
     val uiState: StateFlow<VentasUiState> = _uiState.asStateFlow()
     private var movementsJob: Job? = null
+    private var loadDataJob: Job? = null
+    private var isManualSyncActive = false
 
     init {
         loadDataForPeriod(SalesPeriodPreset.HOY)
         observeActiveShift()
+        observeSyncState()
+    }
+
+    private fun observeSyncState() {
+        viewModelScope.launch {
+            var wasSyncing = false
+            syncRepository.syncState.collect { syncState ->
+                val isSyncing = syncState == SyncStateEnum.SYNCING
+                if (!isManualSyncActive) {
+                    _uiState.update { it.copy(isSyncing = isSyncing) }
+                }
+                if (wasSyncing && !isSyncing && !isManualSyncActive) {
+                    refresh()
+                }
+                wasSyncing = isSyncing
+            }
+        }
     }
 
     private fun observeActiveShift() {
@@ -159,6 +184,23 @@ class VentasViewModel(
             getPeriodTimeRange(currentState.selectedPeriod)
         }
         loadDataForRange(startTime, endTime, shiftId = currentState.selectedShiftId, preserveSelectedShift = true)
+    }
+
+    fun refreshSync() {
+        viewModelScope.launch {
+            isManualSyncActive = true
+            _uiState.update { it.copy(isSyncing = true) }
+            try {
+                withContext(Dispatchers.IO) {
+                    syncRepository.syncAll(isManual = true)
+                }
+            } catch (_: Exception) {
+            } finally {
+                isManualSyncActive = false
+                refresh()
+                _uiState.update { it.copy(isSyncing = false) }
+            }
+        }
     }
 
     fun selectSaleForDetail(sale: Sale?) {
@@ -342,7 +384,8 @@ class VentasViewModel(
         shiftId: String? = null,
         preserveSelectedShift: Boolean = false
     ) {
-        viewModelScope.launch {
+        loadDataJob?.cancel()
+        loadDataJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
             val shifts = shiftRepository.getShiftsBetween(startTime, endTime)
@@ -392,7 +435,7 @@ class VentasViewModel(
         val endOfToday = today.atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
 
         return when (preset) {
-            SalesPeriodPreset.HOY -> Pair(startOfToday, nowMillis)
+            SalesPeriodPreset.HOY -> Pair(startOfToday, maxOf(nowMillis, endOfToday))
             SalesPeriodPreset.AYER -> {
                 val yesterday = today.minusDays(1)
                 val startOfYesterday = yesterday.atStartOfDay(zoneId).toInstant().toEpochMilli()
@@ -401,11 +444,13 @@ class VentasViewModel(
             }
             SalesPeriodPreset.ESTA_SEMANA -> {
                 val startOfWeek = today.with(java.time.DayOfWeek.MONDAY).atStartOfDay(zoneId).toInstant().toEpochMilli()
-                Pair(startOfWeek, nowMillis)
+                val endOfWeek = today.with(java.time.DayOfWeek.SUNDAY).atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
+                Pair(startOfWeek, maxOf(nowMillis, endOfWeek))
             }
             SalesPeriodPreset.ESTE_MES -> {
                 val startOfMonth = today.withDayOfMonth(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
-                Pair(startOfMonth, nowMillis)
+                val endOfMonth = today.withDayOfMonth(today.lengthOfMonth()).atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
+                Pair(startOfMonth, maxOf(nowMillis, endOfMonth))
             }
             SalesPeriodPreset.RANGO -> {
                 val start = _uiState.value.customStartDate ?: startOfToday

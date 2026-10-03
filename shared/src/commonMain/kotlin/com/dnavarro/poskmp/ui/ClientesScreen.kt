@@ -395,11 +395,12 @@ fun ClientesContent(
                 },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(top = innerPadding.calculateTopPadding())
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
                 ) {
                 // Search Bar
                 OutlinedTextField(
@@ -618,6 +619,8 @@ fun ClientesContent(
             customer = customer,
             statementItems = state.statementItems,
             isLoading = state.isLoadingStatement,
+            isSyncing = state.isSyncing,
+            onRefresh = onRefresh,
             onDismissRequest = onDismissAccountStatement,
             onOpenPaymentDialog = { onOpenRecordPayment(customer) },
             onDeletePayment = onDeletePayment

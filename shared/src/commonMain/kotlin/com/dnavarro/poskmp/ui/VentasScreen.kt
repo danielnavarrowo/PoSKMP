@@ -55,6 +55,9 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -252,6 +255,7 @@ fun VentasScreen(
 
     VentasScreen(
         state = state,
+        onRefresh = { viewModel.refreshSync() },
         onSelectPeriod = { viewModel.selectPeriod(it) },
         onSetCustomDateRange = { start, end -> viewModel.setCustomDateRange(start, end) },
         onDismissDateRangePicker = { viewModel.dismissDateRangePicker() },
@@ -277,6 +281,7 @@ fun VentasScreen(
 @Composable
 fun VentasScreen(
     state: VentasUiState,
+    onRefresh: () -> Unit = {},
     onSelectPeriod: (SalesPeriodPreset) -> Unit,
     onSetCustomDateRange: (startDateMillis: Long, endDateMillis: Long) -> Unit,
     onDismissDateRangePicker: () -> Unit,
@@ -361,6 +366,8 @@ fun VentasScreen(
             entry<VentasSubRoute.ProductosVendidos> {
                 ProductosVendidosScreen(
                     soldProducts = state.soldProducts,
+                    isSyncing = state.isSyncing,
+                    onRefresh = onRefresh,
                     onNavigateBack = {
                         if (subBackStack.size > 1) {
                             subBackStack.removeLastOrNull()
@@ -372,6 +379,8 @@ fun VentasScreen(
             entry<VentasSubRoute.HistorialVentas> {
                 HistorialVentasScreen(
                     sales = state.recentSales,
+                    isSyncing = state.isSyncing,
+                    onRefresh = onRefresh,
                     onSelectSale = onSelectSaleForDetail,
                     onCancelSale = onOpenCancelSaleDialog,
                     onNavigateBack = {
@@ -435,12 +444,27 @@ fun VentasScreen(
                 } else Modifier
             )
     ) { innerPadding ->
-        BoxWithConstraints(
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            state = pullToRefreshState,
+            isRefreshing = state.isSyncing,
+            onRefresh = onRefresh,
+            indicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    state = pullToRefreshState,
+                    isRefreshing = state.isSyncing,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
-                .padding(horizontal = 16.dp)
         ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
             val isCompact = maxWidth < 720.dp
 
             LazyColumn(
@@ -819,6 +843,7 @@ fun VentasScreen(
                     )
                 }
             }
+        }
         }
     }
 }

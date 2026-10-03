@@ -21,6 +21,7 @@ import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.util.matchesSearchQuery
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(FlowPreview::class)
 class ClientesViewModel(
@@ -34,6 +35,21 @@ class ClientesViewModel(
 
     private val _searchQuery = MutableStateFlow("")
     private val _internalState = MutableStateFlow(ClientesUiState(isLoading = true))
+
+    init {
+        viewModelScope.launch {
+            var wasSyncing = false
+            syncRepository.syncState.collect { syncState ->
+                val isSyncing = syncState == SyncStateEnum.SYNCING
+                if (wasSyncing && !isSyncing) {
+                    _internalState.value.selectedCustomerForStatement?.let { customer ->
+                        loadAccountStatement(customer.id)
+                    }
+                }
+                wasSyncing = isSyncing
+            }
+        }
+    }
 
     private val _debouncedSearchQuery = _searchQuery.debounce { query ->
         if (query.isEmpty()) 0L else 300L
@@ -263,8 +279,17 @@ class ClientesViewModel(
     }
 
     fun refreshSync() {
-        viewModelScope.launch(Dispatchers.IO) {
-            syncRepository.syncAll(isManual = true)
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    syncRepository.syncAll(isManual = true)
+                }
+            } catch (_: Exception) {
+            } finally {
+                _internalState.value.selectedCustomerForStatement?.let { customer ->
+                    loadAccountStatement(customer.id)
+                }
+            }
         }
     }
 }

@@ -17,12 +17,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +33,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -83,6 +89,8 @@ fun AccountStatementDialog(
     customer: Customer,
     statementItems: List<AccountStatementItem>,
     isLoading: Boolean,
+    isSyncing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onDismissRequest: () -> Unit,
     onOpenPaymentDialog: () -> Unit,
     onDeletePayment: (paymentId: String) -> Unit
@@ -208,35 +216,52 @@ fun AccountStatementDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Statement Items List
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ContainedLoadingIndicator()
-                    }
-                } else if (statementItems.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.statement_empty),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                val pullToRefreshState = rememberPullToRefreshState()
+                PullToRefreshBox(
+                    state = pullToRefreshState,
+                    isRefreshing = isSyncing,
+                    onRefresh = onRefresh,
+                    indicator = {
+                        PullToRefreshDefaults.LoadingIndicator(
+                            state = pullToRefreshState,
+                            isRefreshing = isSyncing,
+                            modifier = Modifier.align(Alignment.TopCenter)
                         )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(statementItems, key = { it.id }) { item ->
-                            StatementItemRow(
-                                item = item,
-                                onDeletePayment = { paymentToDelete = item }
+                    },
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                ) {
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ContainedLoadingIndicator()
+                        }
+                    } else if (statementItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.statement_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
                             )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(statementItems, key = { it.id }) { item ->
+                                StatementItemRow(
+                                    item = item,
+                                    onDeletePayment = { paymentToDelete = item }
+                                )
+                            }
                         }
                     }
                 }

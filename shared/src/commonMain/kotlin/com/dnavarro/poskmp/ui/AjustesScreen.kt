@@ -27,6 +27,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.AnimatedPane
@@ -213,8 +216,7 @@ fun AjustesScreen(
         isResettingApp = uiState.isResettingApp,
         resetAppError = uiState.resetAppError,
         resetAppSuccess = uiState.resetAppSuccess,
-        onResetApp = { viewModel.resetAppToFactoryDefaults() },
-        onDismissResetAppMessage = { viewModel.clearResetAppMessage() }
+        onResetApp = { viewModel.resetAppToFactoryDefaults() }
     )
 }
 
@@ -336,7 +338,6 @@ fun AjustesScreen(
     resetAppError: String? = null,
     resetAppSuccess: String? = null,
     onResetApp: () -> Unit = {},
-    onDismissResetAppMessage: () -> Unit = {},
     repository: ProductRepository = koinInject()
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -409,14 +410,30 @@ fun AjustesScreen(
                     },
                     containerColor = MaterialTheme.colorScheme.background
                 ) { innerPadding ->
-                    LazyColumn(
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        state = pullToRefreshState,
+                        isRefreshing = syncState == SyncStateEnum.SYNCING,
+                        onRefresh = onSyncNow,
+                        indicator = {
+                            PullToRefreshDefaults.LoadingIndicator(
+                                state = pullToRefreshState,
+                                isRefreshing = syncState == SyncStateEnum.SYNCING,
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding)
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp)
+                            .padding(top = innerPadding.calculateTopPadding())
                     ) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = innerPadding.calculateBottomPadding())
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            contentPadding = PaddingValues(bottom = 24.dp)
+                        ) {
                         itemsIndexed(categories) { index, category ->
                             val isSelected = isListAndDetailVisible && currentCategory == category
                             val shape = when {
@@ -519,6 +536,7 @@ fun AjustesScreen(
                     }
                 }
             }
+        }
         },
         detailPane = {
             AnimatedPane(modifier = Modifier.fillMaxSize()) {
@@ -554,14 +572,30 @@ fun AjustesScreen(
                     },
                     containerColor = MaterialTheme.colorScheme.background
                 ) { innerPadding ->
-                    Column(
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        state = pullToRefreshState,
+                        isRefreshing = syncState == SyncStateEnum.SYNCING,
+                        onRefresh = onSyncNow,
+                        indicator = {
+                            PullToRefreshDefaults.LoadingIndicator(
+                                state = pullToRefreshState,
+                                isRefreshing = syncState == SyncStateEnum.SYNCING,
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding)
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = if (isListAndDetailVisible) 24.dp else 16.dp)
-                            .padding(bottom = 32.dp)
+                            .padding(top = innerPadding.calculateTopPadding())
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = innerPadding.calculateBottomPadding())
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = if (isListAndDetailVisible) 24.dp else 16.dp)
+                                .padding(bottom = 32.dp)
+                        ) {
                         if (isListAndDetailVisible) {
                             Spacer(modifier = Modifier.height(20.dp))
                             Row(
@@ -763,6 +797,7 @@ fun AjustesScreen(
                     }
                 }
             }
+        }
         }
     )
 }
