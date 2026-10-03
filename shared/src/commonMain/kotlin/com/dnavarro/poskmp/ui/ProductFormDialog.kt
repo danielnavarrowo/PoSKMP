@@ -244,31 +244,22 @@ fun ProductFormDialog(
         }
         mutableStateOf(target)
     }
-    var formMargenVenta by remember(product, defaultRetailMarginPercentage, roundProductPrices) {
+    var formMargenVenta by remember(product, defaultRetailMarginPercentage) {
         val cost = product?.costo
         val price = product?.precio
         val initialMargin = if (cost != null && cost > 0.0 && price != null && price > 0.0) {
             ((price - cost) / cost) * 100.0
-        } else if (cost != null && cost > 0.0 && defaultRetailMarginPercentage > 0.0) {
-            val raw = cost * (1.0 + defaultRetailMarginPercentage / 100.0)
-            val finalPrice = if (roundProductPrices) roundPrice(raw) else raw
-            ((finalPrice - cost) / cost) * 100.0
-        } else if (defaultRetailMarginPercentage > 0.0) {
+        } else if (isNew && defaultRetailMarginPercentage > 0.0) {
             defaultRetailMarginPercentage
         } else {
             null
         }
         mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
     }
-    var formPrecio by remember(product, defaultRetailMarginPercentage, roundProductPrices) {
+    var formPrecio by remember(product) {
         val price = product?.precio
-        val cost = product?.costo
         val initialPrice = if (price != null && price > 0.0) {
             formatNumber(price)
-        } else if (cost != null && cost > 0.0 && defaultRetailMarginPercentage > 0.0) {
-            val raw = cost * (1.0 + defaultRetailMarginPercentage / 100.0)
-            val finalPrice = if (roundProductPrices) roundPrice(raw) else raw
-            formatNumber(finalPrice)
         } else {
             ""
         }
@@ -286,32 +277,23 @@ fun ProductFormDialog(
         }
         mutableStateOf(target)
     }
-    var formMargenMayoreo by remember(product, defaultWholesaleMarginPercentage, roundProductPrices) {
+    var formMargenMayoreo by remember(product, defaultWholesaleMarginPercentage) {
         val cost = product?.costo
         val wholesale = product?.precio_mayoreo
         val initialMargin =
             if (cost != null && cost > 0.0 && wholesale != null && wholesale > 0.0) {
                 ((wholesale - cost) / cost) * 100.0
-            } else if (cost != null && cost > 0.0 && defaultWholesaleMarginPercentage > 0.0) {
-                val raw = cost * (1.0 + defaultWholesaleMarginPercentage / 100.0)
-                val finalWholesale = if (roundProductPrices) roundPrice(raw) else raw
-                ((finalWholesale - cost) / cost) * 100.0
-            } else if (defaultWholesaleMarginPercentage > 0.0) {
+            } else if (isNew && defaultWholesaleMarginPercentage > 0.0) {
                 defaultWholesaleMarginPercentage
             } else {
                 null
             }
         mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
     }
-    var formPrecioMayoreo by remember(product, defaultWholesaleMarginPercentage, roundProductPrices) {
+    var formPrecioMayoreo by remember(product) {
         val wholesale = product?.precio_mayoreo
-        val cost = product?.costo
         val initialWholesale = if (wholesale != null && wholesale > 0.0) {
             formatNumber(wholesale)
-        } else if (cost != null && cost > 0.0 && defaultWholesaleMarginPercentage > 0.0) {
-            val raw = cost * (1.0 + defaultWholesaleMarginPercentage / 100.0)
-            val finalWholesale = if (roundProductPrices) roundPrice(raw) else raw
-            formatNumber(finalWholesale)
         } else {
             ""
         }
@@ -329,31 +311,22 @@ fun ProductFormDialog(
         }
         mutableStateOf(target)
     }
-    var formMargenDelivery by remember(product, defaultDeliveryMarginPercentage, roundProductPrices) {
+    var formMargenDelivery by remember(product, defaultDeliveryMarginPercentage) {
         val cost = product?.costo
         val delivery = product?.precio_delivery
         val initialMargin = if (cost != null && cost > 0.0 && delivery != null && delivery > 0.0) {
             ((delivery - cost) / cost) * 100.0
-        } else if (cost != null && cost > 0.0 && defaultDeliveryMarginPercentage > 0.0) {
-            val raw = cost * (1.0 + defaultDeliveryMarginPercentage / 100.0)
-            val finalDelivery = if (roundProductPrices) roundPrice(raw) else raw
-            ((finalDelivery - cost) / cost) * 100.0
-        } else if (defaultDeliveryMarginPercentage > 0.0) {
+        } else if (isNew && defaultDeliveryMarginPercentage > 0.0) {
             defaultDeliveryMarginPercentage
         } else {
             null
         }
         mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
     }
-    var formPrecioDelivery by remember(product, defaultDeliveryMarginPercentage, roundProductPrices) {
+    var formPrecioDelivery by remember(product) {
         val delivery = product?.precio_delivery
-        val cost = product?.costo
         val initialDelivery = if (delivery != null && delivery > 0.0) {
             formatNumber(delivery)
-        } else if (cost != null && cost > 0.0 && defaultDeliveryMarginPercentage > 0.0) {
-            val raw = cost * (1.0 + defaultDeliveryMarginPercentage / 100.0)
-            val finalDelivery = if (roundProductPrices) roundPrice(raw) else raw
-            formatNumber(finalDelivery)
         } else {
             ""
         }
