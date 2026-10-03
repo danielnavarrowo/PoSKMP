@@ -32,9 +32,9 @@ enum class ProductTableColumn(
     NOMBRE(Res.string.header_product_name, ProductSortField.NOMBRE, 0.28f),
     CATEGORIA(Res.string.header_category, ProductSortField.CATEGORIA, 0.16f),
     PIEZAS(Res.string.header_pieces, ProductSortField.PIEZAS, 0.10f),
-    PRECIO(Res.string.header_retail_price, ProductSortField.PRECIO, 0.12f),
     COSTO(Res.string.header_cost, ProductSortField.COSTO, 0.12f),
     MAYOREO(Res.string.wholesale, ProductSortField.MAYOREO, 0.12f),
+    PRECIO(Res.string.header_retail_price, ProductSortField.PRECIO, 0.12f),
     DOMICILIO(Res.string.header_delivery_price, ProductSortField.DOMICILIO, 0.12f),
     MARGEN_VENTA(Res.string.header_retail_margin, ProductSortField.MARGEN_VENTA, 0.10f),
     MARGEN_MAYOREO(Res.string.header_wholesale_margin, ProductSortField.MARGEN_MAYOREO, 0.10f),
@@ -46,9 +46,9 @@ enum class ProductTableColumn(
 val DEFAULT_PRODUCT_TABLE_COLUMNS: Set<ProductTableColumn> = setOf(
     ProductTableColumn.NOMBRE,
     ProductTableColumn.CATEGORIA,
-    ProductTableColumn.PRECIO,
     ProductTableColumn.COSTO,
-    ProductTableColumn.MAYOREO
+    ProductTableColumn.MAYOREO,
+    ProductTableColumn.PRECIO
 )
 
 enum class FavoriteFilterOption {

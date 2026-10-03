@@ -55,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -231,11 +232,27 @@ fun ProductFormDialog(
         val cost = product?.costo
         mutableStateOf(if (cost == null || cost == 0.0) "" else formatNumber(cost))
     }
-    var formMargenVenta by remember(product, defaultRetailMarginPercentage) {
+    var targetMargenVenta by remember(product, defaultRetailMarginPercentage) {
+        val cost = product?.costo
+        val price = product?.precio
+        val target = if (cost != null && cost > 0.0 && price != null && price > 0.0) {
+            ((price - cost) / cost) * 100.0
+        } else if (defaultRetailMarginPercentage > 0.0) {
+            defaultRetailMarginPercentage
+        } else {
+            null
+        }
+        mutableStateOf(target)
+    }
+    var formMargenVenta by remember(product, defaultRetailMarginPercentage, roundProductPrices) {
         val cost = product?.costo
         val price = product?.precio
         val initialMargin = if (cost != null && cost > 0.0 && price != null && price > 0.0) {
             ((price - cost) / cost) * 100.0
+        } else if (cost != null && cost > 0.0 && defaultRetailMarginPercentage > 0.0) {
+            val raw = cost * (1.0 + defaultRetailMarginPercentage / 100.0)
+            val finalPrice = if (roundProductPrices) roundPrice(raw) else raw
+            ((finalPrice - cost) / cost) * 100.0
         } else if (defaultRetailMarginPercentage > 0.0) {
             defaultRetailMarginPercentage
         } else {
@@ -243,24 +260,42 @@ fun ProductFormDialog(
         }
         mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
     }
-    var formPrecio by remember(product, defaultRetailMarginPercentage) {
+    var formPrecio by remember(product, defaultRetailMarginPercentage, roundProductPrices) {
         val price = product?.precio
         val cost = product?.costo
         val initialPrice = if (price != null && price > 0.0) {
             formatNumber(price)
         } else if (cost != null && cost > 0.0 && defaultRetailMarginPercentage > 0.0) {
-            formatNumber(cost * (1.0 + defaultRetailMarginPercentage / 100.0))
+            val raw = cost * (1.0 + defaultRetailMarginPercentage / 100.0)
+            val finalPrice = if (roundProductPrices) roundPrice(raw) else raw
+            formatNumber(finalPrice)
         } else {
             ""
         }
         mutableStateOf(initialPrice)
     }
-    var formMargenMayoreo by remember(product, defaultWholesaleMarginPercentage) {
+    var targetMargenMayoreo by remember(product, defaultWholesaleMarginPercentage) {
+        val cost = product?.costo
+        val wholesale = product?.precio_mayoreo
+        val target = if (cost != null && cost > 0.0 && wholesale != null && wholesale > 0.0) {
+            ((wholesale - cost) / cost) * 100.0
+        } else if (defaultWholesaleMarginPercentage > 0.0) {
+            defaultWholesaleMarginPercentage
+        } else {
+            null
+        }
+        mutableStateOf(target)
+    }
+    var formMargenMayoreo by remember(product, defaultWholesaleMarginPercentage, roundProductPrices) {
         val cost = product?.costo
         val wholesale = product?.precio_mayoreo
         val initialMargin =
             if (cost != null && cost > 0.0 && wholesale != null && wholesale > 0.0) {
                 ((wholesale - cost) / cost) * 100.0
+            } else if (cost != null && cost > 0.0 && defaultWholesaleMarginPercentage > 0.0) {
+                val raw = cost * (1.0 + defaultWholesaleMarginPercentage / 100.0)
+                val finalWholesale = if (roundProductPrices) roundPrice(raw) else raw
+                ((finalWholesale - cost) / cost) * 100.0
             } else if (defaultWholesaleMarginPercentage > 0.0) {
                 defaultWholesaleMarginPercentage
             } else {
@@ -268,23 +303,41 @@ fun ProductFormDialog(
             }
         mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
     }
-    var formPrecioMayoreo by remember(product, defaultWholesaleMarginPercentage) {
+    var formPrecioMayoreo by remember(product, defaultWholesaleMarginPercentage, roundProductPrices) {
         val wholesale = product?.precio_mayoreo
         val cost = product?.costo
         val initialWholesale = if (wholesale != null && wholesale > 0.0) {
             formatNumber(wholesale)
         } else if (cost != null && cost > 0.0 && defaultWholesaleMarginPercentage > 0.0) {
-            formatNumber(cost * (1.0 + defaultWholesaleMarginPercentage / 100.0))
+            val raw = cost * (1.0 + defaultWholesaleMarginPercentage / 100.0)
+            val finalWholesale = if (roundProductPrices) roundPrice(raw) else raw
+            formatNumber(finalWholesale)
         } else {
             ""
         }
         mutableStateOf(initialWholesale)
     }
-    var formMargenDelivery by remember(product, defaultDeliveryMarginPercentage) {
+    var targetMargenDelivery by remember(product, defaultDeliveryMarginPercentage) {
+        val cost = product?.costo
+        val delivery = product?.precio_delivery
+        val target = if (cost != null && cost > 0.0 && delivery != null && delivery > 0.0) {
+            ((delivery - cost) / cost) * 100.0
+        } else if (defaultDeliveryMarginPercentage > 0.0) {
+            defaultDeliveryMarginPercentage
+        } else {
+            null
+        }
+        mutableStateOf(target)
+    }
+    var formMargenDelivery by remember(product, defaultDeliveryMarginPercentage, roundProductPrices) {
         val cost = product?.costo
         val delivery = product?.precio_delivery
         val initialMargin = if (cost != null && cost > 0.0 && delivery != null && delivery > 0.0) {
             ((delivery - cost) / cost) * 100.0
+        } else if (cost != null && cost > 0.0 && defaultDeliveryMarginPercentage > 0.0) {
+            val raw = cost * (1.0 + defaultDeliveryMarginPercentage / 100.0)
+            val finalDelivery = if (roundProductPrices) roundPrice(raw) else raw
+            ((finalDelivery - cost) / cost) * 100.0
         } else if (defaultDeliveryMarginPercentage > 0.0) {
             defaultDeliveryMarginPercentage
         } else {
@@ -292,13 +345,15 @@ fun ProductFormDialog(
         }
         mutableStateOf(initialMargin?.let { formatMargin(it) } ?: "")
     }
-    var formPrecioDelivery by remember(product, defaultDeliveryMarginPercentage) {
+    var formPrecioDelivery by remember(product, defaultDeliveryMarginPercentage, roundProductPrices) {
         val delivery = product?.precio_delivery
         val cost = product?.costo
         val initialDelivery = if (delivery != null && delivery > 0.0) {
             formatNumber(delivery)
         } else if (cost != null && cost > 0.0 && defaultDeliveryMarginPercentage > 0.0) {
-            formatNumber(cost * (1.0 + defaultDeliveryMarginPercentage / 100.0))
+            val raw = cost * (1.0 + defaultDeliveryMarginPercentage / 100.0)
+            val finalDelivery = if (roundProductPrices) roundPrice(raw) else raw
+            formatNumber(finalDelivery)
         } else {
             ""
         }
@@ -692,12 +747,9 @@ fun ProductFormDialog(
         val finalBarcodes = (formBarcodes + parseBarcodes(barcodeInput)).distinct()
         val formattedCodes = finalBarcodes.encodeToJsonBarcodes()
 
-        val rawPrice = formPrecio.toDoubleOrNull() ?: 0.0
-        val finalPrice = if (roundProductPrices) roundPrice(rawPrice) else rawPrice
-        val rawWholesale = formPrecioMayoreo.toDoubleOrNull() ?: 0.0
-        val finalWholesale = if (roundProductPrices) roundPrice(rawWholesale) else rawWholesale
-        val rawDelivery = formPrecioDelivery.toDoubleOrNull() ?: 0.0
-        val finalDelivery = if (roundProductPrices) roundPrice(rawDelivery) else rawDelivery
+        val finalPrice = formPrecio.toDoubleOrNull() ?: 0.0
+        val finalWholesale = formPrecioMayoreo.toDoubleOrNull() ?: 0.0
+        val finalDelivery = formPrecioDelivery.toDoubleOrNull() ?: 0.0
 
         val p = Products(
             id = id,
@@ -937,20 +989,44 @@ fun ProductFormDialog(
                         formCosto = input
                         val cost = input.toDoubleOrNull()
                         if (cost != null && cost > 0) {
-                            val marginVenta = formMargenVenta.toDoubleOrNull()
+                            val marginVenta = targetMargenVenta ?: formMargenVenta.toDoubleOrNull()
+                                ?: if (defaultRetailMarginPercentage > 0.0) defaultRetailMarginPercentage else null
                             if (marginVenta != null) {
-                                val newPrice = cost * (1.0 + marginVenta / 100.0)
-                                formPrecio = formatNumber(newPrice)
+                                val rawPrice = cost * (1.0 + marginVenta / 100.0)
+                                val finalPrice = if (roundProductPrices) roundPrice(rawPrice) else rawPrice
+                                formPrecio = formatNumber(finalPrice)
+                                val realMargin = if (roundProductPrices) {
+                                    ((finalPrice - cost) / cost) * 100.0
+                                } else {
+                                    marginVenta
+                                }
+                                formMargenVenta = formatMargin(realMargin)
                             }
-                            val marginMayoreo = formMargenMayoreo.toDoubleOrNull()
+                            val marginMayoreo = targetMargenMayoreo ?: formMargenMayoreo.toDoubleOrNull()
+                                ?: if (defaultWholesaleMarginPercentage > 0.0) defaultWholesaleMarginPercentage else null
                             if (marginMayoreo != null) {
-                                val newWholesale = cost * (1.0 + marginMayoreo / 100.0)
-                                formPrecioMayoreo = formatNumber(newWholesale)
+                                val rawWholesale = cost * (1.0 + marginMayoreo / 100.0)
+                                val finalWholesale = if (roundProductPrices) roundPrice(rawWholesale) else rawWholesale
+                                formPrecioMayoreo = formatNumber(finalWholesale)
+                                val realMargin = if (roundProductPrices) {
+                                    ((finalWholesale - cost) / cost) * 100.0
+                                } else {
+                                    marginMayoreo
+                                }
+                                formMargenMayoreo = formatMargin(realMargin)
                             }
-                            val marginDelivery = formMargenDelivery.toDoubleOrNull()
+                            val marginDelivery = targetMargenDelivery ?: formMargenDelivery.toDoubleOrNull()
+                                ?: if (defaultDeliveryMarginPercentage > 0.0) defaultDeliveryMarginPercentage else null
                             if (marginDelivery != null) {
-                                val newDelivery = cost * (1.0 + marginDelivery / 100.0)
-                                formPrecioDelivery = formatNumber(newDelivery)
+                                val rawDelivery = cost * (1.0 + marginDelivery / 100.0)
+                                val finalDelivery = if (roundProductPrices) roundPrice(rawDelivery) else rawDelivery
+                                formPrecioDelivery = formatNumber(finalDelivery)
+                                val realMargin = if (roundProductPrices) {
+                                    ((finalDelivery - cost) / cost) * 100.0
+                                } else {
+                                    marginDelivery
+                                }
+                                formMargenDelivery = formatMargin(realMargin)
                             }
                         }
                     }
@@ -1004,6 +1080,7 @@ fun ProductFormDialog(
                         if (wholesale != null && cost != null && cost > 0) {
                             val margin = ((wholesale - cost) / cost) * 100.0
                             formMargenMayoreo = formatMargin(margin)
+                            targetMargenMayoreo = margin
                         }
                     }
                 },
@@ -1029,14 +1106,27 @@ fun ProductFormDialog(
                     if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
                         formMargenMayoreo = input
                         val margin = input.toDoubleOrNull()
+                        targetMargenMayoreo = margin
                         val cost = formCosto.toDoubleOrNull()
                         if (margin != null && cost != null && cost > 0) {
-                            val newWholesale = cost * (1.0 + margin / 100.0)
-                            formPrecioMayoreo = formatNumber(newWholesale)
+                            val rawWholesale = cost * (1.0 + margin / 100.0)
+                            val finalWholesale = if (roundProductPrices) roundPrice(rawWholesale) else rawWholesale
+                            formPrecioMayoreo = formatNumber(finalWholesale)
                         }
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused && roundProductPrices) {
+                            val cost = formCosto.toDoubleOrNull()
+                            val wholesale = formPrecioMayoreo.toDoubleOrNull()
+                            if (cost != null && cost > 0 && wholesale != null && wholesale > 0) {
+                                val realMargin = ((wholesale - cost) / cost) * 100.0
+                                formMargenMayoreo = formatMargin(realMargin)
+                            }
+                        }
+                    },
                 suffix = { Text("%", fontWeight = FontWeight.Bold) },
                 label = {
                     Text(
@@ -1049,7 +1139,17 @@ fun ProductFormDialog(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                keyboardActions = KeyboardActions(onNext = {
+                    if (roundProductPrices) {
+                        val cost = formCosto.toDoubleOrNull()
+                        val wholesale = formPrecioMayoreo.toDoubleOrNull()
+                        if (cost != null && cost > 0 && wholesale != null && wholesale > 0) {
+                            val realMargin = ((wholesale - cost) / cost) * 100.0
+                            formMargenMayoreo = formatMargin(realMargin)
+                        }
+                    }
+                    focusManager.moveFocus(FocusDirection.Next)
+                }),
                 singleLine = true
             )
         }
@@ -1077,6 +1177,7 @@ fun ProductFormDialog(
                         if (price != null && cost != null && cost > 0) {
                             val margin = ((price - cost) / cost) * 100.0
                             formMargenVenta = formatMargin(margin)
+                            targetMargenVenta = margin
                         }
                     }
                 },
@@ -1102,14 +1203,27 @@ fun ProductFormDialog(
                     if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
                         formMargenVenta = input
                         val margin = input.toDoubleOrNull()
+                        targetMargenVenta = margin
                         val cost = formCosto.toDoubleOrNull()
                         if (margin != null && cost != null && cost > 0) {
-                            val newPrice = cost * (1.0 + margin / 100.0)
-                            formPrecio = formatNumber(newPrice)
+                            val rawPrice = cost * (1.0 + margin / 100.0)
+                            val finalPrice = if (roundProductPrices) roundPrice(rawPrice) else rawPrice
+                            formPrecio = formatNumber(finalPrice)
                         }
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused && roundProductPrices) {
+                            val cost = formCosto.toDoubleOrNull()
+                            val price = formPrecio.toDoubleOrNull()
+                            if (cost != null && cost > 0 && price != null && price > 0) {
+                                val realMargin = ((price - cost) / cost) * 100.0
+                                formMargenVenta = formatMargin(realMargin)
+                            }
+                        }
+                    },
                 suffix = { Text("%", fontWeight = FontWeight.Bold) },
                 label = {
                     Text(
@@ -1122,7 +1236,17 @@ fun ProductFormDialog(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                keyboardActions = KeyboardActions(onNext = {
+                    if (roundProductPrices) {
+                        val cost = formCosto.toDoubleOrNull()
+                        val price = formPrecio.toDoubleOrNull()
+                        if (cost != null && cost > 0 && price != null && price > 0) {
+                            val realMargin = ((price - cost) / cost) * 100.0
+                            formMargenVenta = formatMargin(realMargin)
+                        }
+                    }
+                    focusManager.moveFocus(FocusDirection.Next)
+                }),
                 singleLine = true
             )
         }
@@ -1150,6 +1274,7 @@ fun ProductFormDialog(
                         if (delivery != null && cost != null && cost > 0) {
                             val margin = ((delivery - cost) / cost) * 100.0
                             formMargenDelivery = formatMargin(margin)
+                            targetMargenDelivery = margin
                         }
                     }
                 },
@@ -1175,14 +1300,27 @@ fun ProductFormDialog(
                     if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
                         formMargenDelivery = input
                         val margin = input.toDoubleOrNull()
+                        targetMargenDelivery = margin
                         val cost = formCosto.toDoubleOrNull()
                         if (margin != null && cost != null && cost > 0) {
-                            val newDelivery = cost * (1.0 + margin / 100.0)
-                            formPrecioDelivery = formatNumber(newDelivery)
+                            val rawDelivery = cost * (1.0 + margin / 100.0)
+                            val finalDelivery = if (roundProductPrices) roundPrice(rawDelivery) else rawDelivery
+                            formPrecioDelivery = formatNumber(finalDelivery)
                         }
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused && roundProductPrices) {
+                            val cost = formCosto.toDoubleOrNull()
+                            val delivery = formPrecioDelivery.toDoubleOrNull()
+                            if (cost != null && cost > 0 && delivery != null && delivery > 0) {
+                                val realMargin = ((delivery - cost) / cost) * 100.0
+                                formMargenDelivery = formatMargin(realMargin)
+                            }
+                        }
+                    },
                 suffix = { Text("%", fontWeight = FontWeight.Bold) },
                 label = {
                     Text(
@@ -1195,7 +1333,17 @@ fun ProductFormDialog(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                keyboardActions = KeyboardActions(onNext = {
+                    if (roundProductPrices) {
+                        val cost = formCosto.toDoubleOrNull()
+                        val delivery = formPrecioDelivery.toDoubleOrNull()
+                        if (cost != null && cost > 0 && delivery != null && delivery > 0) {
+                            val realMargin = ((delivery - cost) / cost) * 100.0
+                            formMargenDelivery = formatMargin(realMargin)
+                        }
+                    }
+                    focusManager.moveFocus(FocusDirection.Next)
+                }),
                 singleLine = true
             )
         }

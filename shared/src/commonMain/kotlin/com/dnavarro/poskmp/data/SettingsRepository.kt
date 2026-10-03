@@ -34,9 +34,9 @@ import kotlinx.coroutines.launch
 val DEFAULT_PRODUCT_TABLE_COLUMN_NAMES: Set<String> = setOf(
     "NOMBRE",
     "CATEGORIA",
-    "PRECIO",
     "COSTO",
-    "MAYOREO"
+    "MAYOREO",
+    "PRECIO"
 )
 
 /**

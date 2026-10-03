@@ -598,8 +598,8 @@
     <string name="rounding_section_subtitle">Ajusta cómo se redondean los precios y totales de venta</string>
     <string name="enable_rounding_title">Activar redondeo</string>
     <string name="enable_rounding_subtitle">Redondea centavos de 0 a 49 a 50¢, y de 51 a 99 a $1.00</string>
-    <string name="round_product_prices_title">Redondear precios al guardar producto</string>
-    <string name="round_product_prices_subtitle">Aplica el redondeo a los precios de venta, mayoreo y domicilio al guardar o recalcular</string>
+    <string name="round_product_prices_title">Redondear precios en cálculo automático</string>
+    <string name="round_product_prices_subtitle">Aplica redondeo al calcular automáticamente los precios de venta, mayoreo y domicilio según el margen</string>
     <string name="round_ticket_total_title">Redondear total del ticket antes del cobro</string>
     <string name="round_ticket_total_subtitle">Redondea el total acumulado en el ticket de venta al finalizar</string>
 

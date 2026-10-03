@@ -332,19 +332,6 @@ fun ProductTableRow(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
-                    ProductTableColumn.PRECIO -> {
-                        val priceText = if (product.por_peso == 1L) {
-                            "$${product.precio.toString().formatPrice()} / Kg"
-                        } else {
-                            "$${product.precio.toString().formatPrice()}"
-                        }
-                        Text(
-                            text = priceText,
-                            modifier = Modifier.weight(weight),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                     ProductTableColumn.COSTO -> {
                         Text(
                             text = "$${product.costo.toString().formatPrice()}",
@@ -357,6 +344,19 @@ fun ProductTableRow(
                             text = "$${product.precio_mayoreo.toString().formatPrice()}",
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    ProductTableColumn.PRECIO -> {
+                        val priceText = if (product.por_peso == 1L) {
+                            "$${product.precio.toString().formatPrice()} / Kg"
+                        } else {
+                            "$${product.precio.toString().formatPrice()}"
+                        }
+                        Text(
+                            text = priceText,
+                            modifier = Modifier.weight(weight),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     ProductTableColumn.DOMICILIO -> {
