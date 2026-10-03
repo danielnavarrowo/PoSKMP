@@ -26,6 +26,8 @@ data class HeldTicket(
 data class VentaUiState(
     val searchQuery: String = "",
     val activeProducts: List<Products> = emptyList(),
+    val allActiveProducts: List<Products> = emptyList(),
+    val availableCategories: List<String> = emptyList(),
     val selectedCategory: String? = null,
     val cartItems: List<CartItem> = emptyList(),
     val heldTickets: List<HeldTicket> = emptyList(),

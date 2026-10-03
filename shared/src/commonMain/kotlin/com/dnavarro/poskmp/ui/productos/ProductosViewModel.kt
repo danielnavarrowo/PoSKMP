@@ -75,7 +75,9 @@ private data class ProductSettingsConfig(
 private data class ProductExtraState(
     val visibleColumns: Set<ProductTableColumn>,
     val salesStats: Map<String, ProductSalesStats>,
-    val syncState: SyncStateEnum
+    val syncState: SyncStateEnum,
+    val allProducts: List<Products> = emptyList(),
+    val allCategories: List<String> = emptyList()
 )
 
 /**
@@ -114,6 +116,8 @@ class ProductosViewModel(
         getProductsUseCase(query = query, activeOnly = false)
     }
 
+    private val _allProductsFlow: Flow<List<Products>> = repository.getAllProducts()
+
     private val _needsSalesStats = combine(_displayState, _visibleColumnsFlow) { display, visibleCols ->
         visibleCols.contains(ProductTableColumn.VENTAS_TOTALES) ||
             visibleCols.contains(ProductTableColumn.ULTIMA_VENTA) ||
@@ -140,9 +144,21 @@ class ProductosViewModel(
         combine(
             _visibleColumnsFlow,
             _salesStatsFlow,
-            syncRepository.syncState
-        ) { visibleColumns, salesStats, syncState ->
-            ProductExtraState(visibleColumns, salesStats, syncState)
+            syncRepository.syncState,
+            _allProductsFlow
+        ) { visibleColumns, salesStats, syncState, allProducts ->
+            val allCats = allProducts
+                .mapNotNull { it.categoria }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .sorted()
+            ProductExtraState(
+                visibleColumns = visibleColumns,
+                salesStats = salesStats,
+                syncState = syncState,
+                allProducts = allProducts,
+                allCategories = allCats
+            )
         },
         combine(
             combine(
@@ -181,6 +197,8 @@ class ProductosViewModel(
         ProductosUiState(
             searchQuery = query,
             rawProducts = products,
+            allExistingProducts = extra.allProducts,
+            availableCategories = extra.allCategories,
             salesStats = extra.salesStats,
             sortField = display.sortField,
             sortOrder = display.sortOrder,

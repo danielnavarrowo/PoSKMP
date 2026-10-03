@@ -106,6 +106,8 @@ class VentaViewModel(
         getProductsUseCase(query = query, activeOnly = true)
     }
 
+    private val _allActiveProductsFlow = repository.getActiveProducts()
+
     private val _activeShiftFlow = getActiveShiftUseCase()
 
     private val _activeShiftMovementsFlow = _activeShiftFlow.flatMapLatest { shift ->
@@ -264,12 +266,14 @@ class VentaViewModel(
         ) { pricingSettings, receiptSettings, shiftState ->
             Triple(pricingSettings, receiptSettings, shiftState)
         },
-        syncRepository.syncState
+        combine(syncRepository.syncState, _allActiveProductsFlow) { syncState, allActive ->
+            Pair(syncState, allActive)
+        }
     ) { (q, products, cat, cart, held),
         catalogConfig,
         receiptDialogState,
         (pricingSettings, receiptSettings, shiftState),
-        syncState ->
+        (syncState, allActiveProducts) ->
         val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
         val filteredCust = if (cQuery.isBlank()) {
             catalogConfig.customers
@@ -281,10 +285,17 @@ class VentaViewModel(
                 it.direccion.matchesSearchQuery(query)
             }
         }
+        val allCats = allActiveProducts
+            .mapNotNull { it.categoria }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
 
         VentaUiState(
             searchQuery = q,
             activeProducts = products,
+            allActiveProducts = allActiveProducts,
+            availableCategories = allCats,
             selectedCategory = cat,
             cartItems = cart,
             heldTickets = held,

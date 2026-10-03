@@ -2188,9 +2188,6 @@ fun VentaScreen(
 
     // PRODUCT FORM DIALOG (from context menu)
     if (showProductDialogFor != null) {
-        val categories = remember(uiState.activeProducts) {
-            uiState.activeProducts.mapNotNull { it.categoria }.filter { it.isNotBlank() }.distinct().sorted()
-        }
         ProductFormDialog(
             product = showProductDialogFor,
             onDismiss = { showProductDialogFor = null },
@@ -2198,8 +2195,8 @@ fun VentaScreen(
                 viewModel.updateProduct(updatedProduct)
                 showProductDialogFor = null
             },
-            existingCategories = categories,
-            existingProducts = uiState.activeProducts,
+            existingCategories = uiState.availableCategories,
+            existingProducts = uiState.allActiveProducts.ifEmpty { uiState.activeProducts },
             defaultRetailMarginPercentage = uiState.defaultRetailMargin,
             defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
             defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,

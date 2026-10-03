@@ -65,6 +65,8 @@ enum class StatusFilterOption {
 data class ProductosUiState(
     val searchQuery: String = "",
     val rawProducts: List<Products> = emptyList(),
+    val allExistingProducts: List<Products> = emptyList(),
+    val availableCategories: List<String> = emptyList(),
     val salesStats: Map<String, ProductSalesStats> = emptyMap(),
     val sortField: ProductSortField = ProductSortField.NOMBRE,
     val sortOrder: ProductSortOrder = ProductSortOrder.ASC,
@@ -89,9 +91,6 @@ data class ProductosUiState(
     val isSyncing: Boolean = false,
     val canEditProducts: Boolean = true
 ) {
-    val availableCategories: List<String>
-        get() = rawProducts.mapNotNull { it.categoria }.filter { it.isNotBlank() }.distinct().sorted()
-
     val hasActiveFilters: Boolean
         get() = selectedCategory != null || favoriteFilter != FavoriteFilterOption.ALL || statusFilter != StatusFilterOption.ALL
 

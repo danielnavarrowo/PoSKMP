@@ -1169,7 +1169,7 @@ fun ProductosScreen(
                         viewModel.validateBarcodes(codes, showProductDialogFor.id.ifEmpty { null })
                     },
                     existingCategories = uiState.availableCategories,
-                    existingProducts = uiState.rawProducts,
+                    existingProducts = uiState.allExistingProducts.ifEmpty { uiState.rawProducts },
                     defaultRetailMarginPercentage = uiState.defaultRetailMargin,
                     defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
                     defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
