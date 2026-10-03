@@ -19,17 +19,85 @@ actual object PlatformUpdater {
             ?: AppConstants.APP_VERSION
     }
 
+    private fun isRunningAppImage(): Boolean {
+        val appImageEnv = System.getenv("APPIMAGE")
+        val appDirEnv = System.getenv("APPDIR")
+        if (!appImageEnv.isNullOrBlank() || !appDirEnv.isNullOrBlank()) {
+            return true
+        }
+        val exe = getLinuxExecutablePath()
+        return exe != null && (exe.contains("/.mount_") || exe.endsWith(".appimage", ignoreCase = true))
+    }
+
+    private fun getRunningAppImageFile(): File? {
+        val appImagePath = System.getenv("APPIMAGE")
+        if (!appImagePath.isNullOrBlank()) {
+            val file = File(appImagePath)
+            if (file.exists() && file.isFile) {
+                return file
+            }
+        }
+        return null
+    }
+
+    private fun getLinuxExecutablePath(): String? {
+        try {
+            val procExe = File("/proc/self/exe")
+            if (procExe.exists()) {
+                return procExe.canonicalPath
+            }
+        } catch (_: Exception) {}
+
+        try {
+            val command = ProcessHandle.current().info().command().orElse(null)
+            if (!command.isNullOrBlank()) {
+                return command
+            }
+        } catch (_: Exception) {}
+
+        return null
+    }
+
     actual fun findMatchingAsset(assets: List<ReleaseAsset>): ReleaseAsset? {
         val osName = System.getProperty("os.name", "").lowercase()
         val isLinux = osName.contains("linux")
         val isWindows = osName.contains("windows")
 
         return if (isLinux) {
-            assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
-                ?: assets.firstOrNull { it.name.endsWith(".deb", ignoreCase = true) }
-                ?: assets.firstOrNull { it.name.endsWith(".rpm", ignoreCase = true) }
-                ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
-                ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
+            val isCurrentAppImage = isRunningAppImage()
+
+            if (isCurrentAppImage) {
+                // Si la app se está ejecutando como AppImage, debe actualizarse con el AppImage
+                assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
+                    ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                    ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
+            } else {
+                // No es AppImage: detectar si el sistema o instalación usa .deb o .rpm
+                val isDebian = File("/etc/debian_version").exists() || File("/usr/bin/dpkg").exists()
+                val isRedHat = File("/etc/redhat-release").exists() || File("/etc/fedora-release").exists() || (File("/usr/bin/rpm").exists() && !isDebian)
+
+                when {
+                    isDebian -> {
+                        assets.firstOrNull { it.name.endsWith(".deb", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
+                    }
+                    isRedHat -> {
+                        assets.firstOrNull { it.name.endsWith(".rpm", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
+                    }
+                    else -> {
+                        assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".deb", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".rpm", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
+                    }
+                }
+            }
         } else if (isWindows) {
             assets.firstOrNull { it.name.endsWith("-portable.zip", ignoreCase = true) }
                 ?: assets.firstOrNull { it.name.endsWith(".zip", ignoreCase = true) }
@@ -51,6 +119,10 @@ actual object PlatformUpdater {
                 updateWorkDir.deleteRecursively()
             }
             updateWorkDir.mkdirs()
+            try {
+                updateWorkDir.setReadable(true, false)
+                updateWorkDir.setExecutable(true, false)
+            } catch (_: Exception) {}
 
             val targetFile = File(updateWorkDir, asset.name)
 
@@ -102,6 +174,9 @@ actual object PlatformUpdater {
                 }
             }
             connection.disconnect()
+            try {
+                targetFile.setReadable(true, false)
+            } catch (_: Exception) {}
 
             val osName = System.getProperty("os.name", "").lowercase()
             val fileName = targetFile.name.lowercase()
@@ -118,21 +193,10 @@ actual object PlatformUpdater {
                     }
                 }
                 osName.contains("linux") && (fileName.endsWith(".deb") || fileName.endsWith(".rpm")) -> {
-                    try {
-                        ProcessBuilder("xdg-open", targetFile.absolutePath).start()
-                    } catch (_: Exception) {
-                        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                            Desktop.getDesktop().open(targetFile)
-                        }
-                    }
+                    applyLinuxPackageUpdate(targetFile, updateWorkDir)
                 }
                 osName.contains("linux") && fileName.endsWith(".appimage") -> {
-                    targetFile.setExecutable(true)
-                    ProcessBuilder(targetFile.absolutePath).start()
-                    kotlin.concurrent.thread {
-                        Thread.sleep(1000)
-                        exitProcess(0)
-                    }
+                    applyLinuxAppImageUpdate(targetFile, updateWorkDir)
                 }
                 else -> {
                     if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
@@ -301,6 +365,188 @@ actual object PlatformUpdater {
             "-TargetPath", appTarget.installDir.absolutePath,
             "-ExecutablePath", appTarget.executable.absolutePath,
             "-WorkDir", updateWorkDir.absolutePath
+        ).start()
+
+        kotlin.concurrent.thread {
+            Thread.sleep(600)
+            exitProcess(0)
+        }
+    }
+
+    private fun applyLinuxAppImageUpdate(targetFile: File, updateWorkDir: File) {
+        val targetAppImage = getRunningAppImageFile()
+            ?: File(System.getProperty("user.home"), "Applications/${targetFile.name}").let {
+                if (it.parentFile.exists() || it.parentFile.mkdirs()) it else File(System.getProperty("user.home"), targetFile.name)
+            }
+
+        targetFile.setExecutable(true, false)
+
+        val currentPid = ProcessHandle.current().pid()
+        val scriptFile = File(updateWorkDir, "update_appimage.sh")
+
+        val shScript = $$"""
+            #!/bin/sh
+            OLD_PID="$1"
+            NEW_FILE="$2"
+            TARGET_FILE="$3"
+            WORK_DIR="$4"
+
+            # 1. Wait for old AppImage process to fully exit
+            if [ -n "$OLD_PID" ] && [ "$OLD_PID" -gt 0 ] 2>/dev/null; then
+                while kill -0 "$OLD_PID" 2>/dev/null; do
+                    sleep 0.2
+                done
+            fi
+            sleep 0.6
+
+            # 2. Atomic replacement of target AppImage
+            TARGET_DIR="$(dirname "$TARGET_FILE")"
+            mkdir -p "$TARGET_DIR" 2>/dev/null
+
+            FINAL_EXEC="$TARGET_FILE"
+            if [ -w "$TARGET_DIR" ]; then
+                TMP_TARGET="${TARGET_FILE}.new.$$"
+                if cp -f "$NEW_FILE" "$TMP_TARGET" 2>/dev/null || cat "$NEW_FILE" > "$TMP_TARGET" 2>/dev/null; then
+                    chmod +x "$TMP_TARGET" 2>/dev/null
+                    mv -f "$TMP_TARGET" "$TARGET_FILE" 2>/dev/null
+                    chmod +x "$TARGET_FILE" 2>/dev/null
+                else
+                    chmod +x "$NEW_FILE"
+                    FINAL_EXEC="$NEW_FILE"
+                fi
+            else
+                USER_APP_DIR="$HOME/Applications"
+                mkdir -p "$USER_APP_DIR" 2>/dev/null
+                if [ -w "$USER_APP_DIR" ]; then
+                    DEST="$USER_APP_DIR/$(basename "$TARGET_FILE")"
+                    cp -f "$NEW_FILE" "$DEST" 2>/dev/null && chmod +x "$DEST" 2>/dev/null && FINAL_EXEC="$DEST"
+                else
+                    chmod +x "$NEW_FILE"
+                    FINAL_EXEC="$NEW_FILE"
+                fi
+            fi
+
+            # 3. CRUCIAL: Unset parent AppImage environment variables so child AppImage runs its own mount cleanly
+            unset APPIMAGE
+            unset APPDIR
+            unset ARGV0
+            unset OWD
+
+            if [ -n "$LD_LIBRARY_PATH" ]; then
+                CLEANED_LD="$(echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep -v '\.mount_' | tr '\n' ':' | sed 's/:$//')"
+                export LD_LIBRARY_PATH="$CLEANED_LD"
+            fi
+
+            # 4. Launch the updated AppImage in the background, fully detached
+            nohup "$FINAL_EXEC" >/dev/null 2>&1 &
+
+            # 5. Cleanup temporary work directory
+            sleep 3
+            if [ -n "$WORK_DIR" ] && [ -d "$WORK_DIR" ] && [ "$FINAL_EXEC" != "$NEW_FILE" ]; then
+                rm -rf "$WORK_DIR" 2>/dev/null
+            fi
+        """.trimIndent()
+
+        scriptFile.writeText(shScript, Charsets.UTF_8)
+        scriptFile.setExecutable(true, false)
+
+        ProcessBuilder(
+            "sh",
+            scriptFile.absolutePath,
+            currentPid.toString(),
+            targetFile.absolutePath,
+            targetAppImage.absolutePath,
+            updateWorkDir.absolutePath
+        ).start()
+
+        kotlin.concurrent.thread {
+            Thread.sleep(600)
+            exitProcess(0)
+        }
+    }
+
+    private fun applyLinuxPackageUpdate(packageFile: File, updateWorkDir: File) {
+        val currentPid = ProcessHandle.current().pid()
+        val currentExe = getLinuxExecutablePath() ?: ""
+        val scriptFile = File(updateWorkDir, "update_package.sh")
+
+        val shScript = $$"""
+            #!/bin/sh
+            OLD_PID="$1"
+            PACKAGE_FILE="$2"
+            APP_COMMAND="$3"
+            WORK_DIR="$4"
+
+            # 1. Wait for old process to exit
+            if [ -n "$OLD_PID" ] && [ "$OLD_PID" -gt 0 ] 2>/dev/null; then
+                while kill -0 "$OLD_PID" 2>/dev/null; do
+                    sleep 0.2
+                done
+            fi
+            sleep 0.6
+
+            INSTALLED=0
+
+            # 2. Try pkexec with system package manager for seamless GUI authentication
+            if command -v pkexec >/dev/null 2>&1; then
+                case "$PACKAGE_FILE" in
+                    *.deb)
+                        if command -v apt-get >/dev/null 2>&1; then
+                            pkexec apt-get install -y --reinstall "$PACKAGE_FILE" && INSTALLED=1
+                        elif command -v dpkg >/dev/null 2>&1; then
+                            pkexec dpkg -i "$PACKAGE_FILE" && INSTALLED=1
+                        fi
+                        ;;
+                    *.rpm)
+                        if command -v dnf >/dev/null 2>&1; then
+                            pkexec dnf reinstall -y "$PACKAGE_FILE" || pkexec dnf install -y "$PACKAGE_FILE" && INSTALLED=1
+                        elif command -v rpm >/dev/null 2>&1; then
+                            pkexec rpm -Uvh --replacepkgs "$PACKAGE_FILE" && INSTALLED=1
+                        elif command -v zypper >/dev/null 2>&1; then
+                            pkexec zypper --non-interactive install "$PACKAGE_FILE" && INSTALLED=1
+                        fi
+                        ;;
+                esac
+            fi
+
+            # 3. If installed successfully, relaunch the app from system path
+            if [ "$INSTALLED" -eq 1 ]; then
+                sleep 1
+                if [ -n "$APP_COMMAND" ] && [ -x "$APP_COMMAND" ]; then
+                    nohup "$APP_COMMAND" >/dev/null 2>&1 &
+                elif [ -x "/opt/punto-de-venta/bin/Punto de Venta" ]; then
+                    nohup "/opt/punto-de-venta/bin/Punto de Venta" >/dev/null 2>&1 &
+                elif [ -x "/opt/poskmp/bin/PoSKMP" ]; then
+                    nohup "/opt/poskmp/bin/PoSKMP" >/dev/null 2>&1 &
+                elif command -v gtk-launch >/dev/null 2>&1; then
+                    gtk-launch "punto-de-venta" >/dev/null 2>&1 || gtk-launch "poskmp" >/dev/null 2>&1 &
+                fi
+
+                # Cleanup work directory
+                sleep 2
+                if [ -n "$WORK_DIR" ] && [ -d "$WORK_DIR" ]; then
+                    rm -rf "$WORK_DIR" 2>/dev/null
+                fi
+            else
+                # Fallback to desktop GUI package installer
+                if command -v gdebi-gtk >/dev/null 2>&1; then
+                    gdebi-gtk "$PACKAGE_FILE"
+                elif command -v xdg-open >/dev/null 2>&1; then
+                    xdg-open "$PACKAGE_FILE"
+                fi
+            fi
+        """.trimIndent()
+
+        scriptFile.writeText(shScript, Charsets.UTF_8)
+        scriptFile.setExecutable(true, false)
+
+        ProcessBuilder(
+            "sh",
+            scriptFile.absolutePath,
+            currentPid.toString(),
+            packageFile.absolutePath,
+            currentExe,
+            updateWorkDir.absolutePath
         ).start()
 
         kotlin.concurrent.thread {
