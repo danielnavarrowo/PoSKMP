@@ -35,6 +35,8 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.barcode_scanner
+import poskmp.shared.generated.resources.beep_on_barcode_scan_subtitle
+import poskmp.shared.generated.resources.beep_on_barcode_scan_title
 import poskmp.shared.generated.resources.catalog_layout_grid
 import poskmp.shared.generated.resources.catalog_layout_subtitle
 import poskmp.shared.generated.resources.catalog_layout_table
@@ -76,6 +78,8 @@ fun GeneralSettingsSection(
     onUseProductTableInCatalogChange: (Boolean) -> Unit,
     swapVentaLayoutOrder: Boolean,
     onSwapVentaLayoutOrderChange: (Boolean) -> Unit,
+    beepOnBarcodeScan: Boolean = false,
+    onBeepOnBarcodeScanChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -419,7 +423,7 @@ fun GeneralSettingsSection(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            shape = ShapeDefaults.bottomListItemShape,
+            shape = ShapeDefaults.middleListItemShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -447,6 +451,43 @@ fun GeneralSettingsSection(
                 Switch(
                     checked = swapVentaLayoutOrder,
                     onCheckedChange = onSwapVentaLayoutOrderChange
+                )
+            }
+        }
+
+        // 6. Beep on Barcode Scan Success Toggle
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = ShapeDefaults.bottomListItemShape,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = stringResource(Res.string.beep_on_barcode_scan_title),
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(Res.string.beep_on_barcode_scan_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Switch(
+                    checked = beepOnBarcodeScan,
+                    onCheckedChange = onBeepOnBarcodeScanChange
                 )
             }
         }

@@ -92,23 +92,56 @@ actual fun <T> AdaptiveScaffoldPredictiveBackHandler(
     )
 }
 
-actual fun playSoundAlert(bytes: ByteArray) {
-    kotlin.concurrent.thread(isDaemon = true) {
-        try {
-            val tempFile = java.io.File.createTempFile("sound_alert", ".mp3")
-            tempFile.deleteOnExit()
-            tempFile.writeBytes(bytes)
+private object AndroidSoundPlayer {
+    private val pendingPlay = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
+    private val soundCache = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+    private val tempFiles = java.util.concurrent.ConcurrentHashMap<Int, java.io.File>()
 
-            val mediaPlayer = android.media.MediaPlayer()
-            mediaPlayer.setDataSource(tempFile.absolutePath)
-            mediaPlayer.prepare()
-            mediaPlayer.setOnCompletionListener { mp ->
-                mp.release()
-                try { tempFile.delete() } catch (_: Exception) {}
+    private val soundPool: android.media.SoundPool by lazy {
+        val audioAttributes = android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        android.media.SoundPool.Builder()
+            .setMaxStreams(6)
+            .setAudioAttributes(audioAttributes)
+            .build().apply {
+                setOnLoadCompleteListener { sp, sampleId, status ->
+                    try {
+                        tempFiles.remove(sampleId)?.delete()
+                    } catch (_: Exception) {}
+                    if (status == 0 && pendingPlay.remove(sampleId)) {
+                        sp.play(sampleId, 1f, 1f, 1, 0, 1f)
+                    }
+                }
             }
-            mediaPlayer.start()
-        } catch (_: Exception) {}
     }
+
+    fun play(bytes: ByteArray) {
+        val hash = bytes.contentHashCode()
+        val existingSoundId = soundCache[hash]
+        if (existingSoundId != null && existingSoundId != 0) {
+            soundPool.play(existingSoundId, 1f, 1f, 1, 0, 1f)
+            return
+        }
+
+        kotlin.concurrent.thread(isDaemon = true) {
+            try {
+                val tempFile = java.io.File.createTempFile("snd_", ".wav")
+                tempFile.deleteOnExit()
+                tempFile.writeBytes(bytes)
+
+                val soundId = soundPool.load(tempFile.absolutePath, 1)
+                soundCache[hash] = soundId
+                pendingPlay.add(soundId)
+                tempFiles[soundId] = tempFile
+            } catch (_: Exception) {}
+        }
+    }
+}
+
+actual fun playSoundAlert(bytes: ByteArray) {
+    AndroidSoundPlayer.play(bytes)
 }
 
 actual fun pickFile(

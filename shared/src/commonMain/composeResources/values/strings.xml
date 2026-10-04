@@ -97,6 +97,8 @@
     <string name="catalog_layout_table">Lista / Tabla</string>
     <string name="swap_venta_layout_order_title">Ticket a la izquierda en Venta</string>
     <string name="swap_venta_layout_order_subtitle">Muestra el ticket de venta a la izquierda y el catálogo de productos a la derecha en el diseño ancho</string>
+    <string name="beep_on_barcode_scan_title">Sonido al escanear código de barras</string>
+    <string name="beep_on_barcode_scan_subtitle">Reproduce un pitido de confirmación al escanear o detectar un producto existente</string>
     <string name="default_margins_section_title">Márgenes de Ganancia</string>
     <string name="default_margins_section_subtitle">Define los porcentajes de ganancia automáticos para calcular el precio de venta, mayoreo y domicilio a partir del costo</string>
     <string name="retail_margin_label">% Venta</string>

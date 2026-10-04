@@ -64,8 +64,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.dnavarro.poskmp.data.SettingsRepository
-import org.koin.compose.koinInject
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -86,6 +84,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.formatPrice
@@ -102,6 +101,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.camera_permission_required_desc
@@ -130,7 +130,7 @@ import poskmp.shared.generated.resources.wholesale
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.milliseconds
 
-@Suppress("SameReturnValue")
+    @Suppress("SameReturnValue")
 actual fun isCameraScannerAvailable(): Boolean = true
 
 @OptIn(ExperimentalPermissionsApi::class)

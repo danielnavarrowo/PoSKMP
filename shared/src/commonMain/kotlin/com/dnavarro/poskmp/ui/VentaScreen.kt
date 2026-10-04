@@ -337,7 +337,7 @@ fun VentaScreen(
 
     LaunchedEffect(showWeightDialogForProduct) {
         if (showWeightDialogForProduct != null) {
-            SoundManager.playErrorSound()
+            SoundManager.playInfoSound()
         }
     }
 
@@ -436,6 +436,9 @@ fun VentaScreen(
                     showWeightDialogForProduct = p
                 } else {
                     addProductToCart(p, 1.0)
+                    if (uiState.beepOnBarcodeScan) {
+                        SoundManager.playBeepSound()
+                    }
                 }
                 viewModel.onSearchQueryChanged("")
             } else {
@@ -458,6 +461,9 @@ fun VentaScreen(
                     cameraScannerFeedback = null
                 } else {
                     addProductToCart(p, 1.0)
+                    if (uiState.beepOnBarcodeScan) {
+                        SoundManager.playBeepSound()
+                    }
                     lastScannedProduct = p
                     cameraScannerFeedback = null
                 }

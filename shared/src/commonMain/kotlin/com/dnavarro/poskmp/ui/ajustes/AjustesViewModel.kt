@@ -58,7 +58,8 @@ private data class GeneralBehaviorState(
     val showExtraPricesChecador: Boolean,
     val lowResourceChecadorShader: Boolean,
     val useProductTableInCatalog: Boolean,
-    val swapVentaLayoutOrder: Boolean
+    val swapVentaLayoutOrder: Boolean,
+    val beepOnBarcodeScan: Boolean
 )
 
 /**
@@ -142,19 +143,21 @@ class AjustesViewModel(
             combine(
                 repository.lowResourceChecadorShaderFlow,
                 repository.useProductTableInCatalogFlow,
-                repository.swapVentaLayoutOrderFlow
-            ) { lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder ->
-                Triple(lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder)
+                repository.swapVentaLayoutOrderFlow,
+                repository.beepOnBarcodeScanFlow
+            ) { lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan ->
+                Tuple4(lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan)
             }
         ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador),
-            (lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder) ->
+            (lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan) ->
             GeneralBehaviorState(
                 defaultScreen = defaultScreen,
                 isChecadorDialog = isChecadorDialog,
                 showExtraPricesChecador = showExtraPricesChecador,
                 lowResourceChecadorShader = lowResourceChecadorShader,
                 useProductTableInCatalog = useProductTableInCatalog,
-                swapVentaLayoutOrder = swapVentaLayoutOrder
+                swapVentaLayoutOrder = swapVentaLayoutOrder,
+                beepOnBarcodeScan = beepOnBarcodeScan
             )
         },
         combine(
@@ -247,6 +250,7 @@ class AjustesViewModel(
             lowResourceChecadorShader = generalBehaviorState.lowResourceChecadorShader,
             useProductTableInCatalog = generalBehaviorState.useProductTableInCatalog,
             swapVentaLayoutOrder = generalBehaviorState.swapVentaLayoutOrder,
+            beepOnBarcodeScan = generalBehaviorState.beepOnBarcodeScan,
             defaultRetailMargin = pricingState.defaultRetailMargin,
             defaultWholesaleMargin = pricingState.defaultWholesaleMargin,
             defaultDeliveryMargin = pricingState.defaultDeliveryMargin,
@@ -314,6 +318,7 @@ class AjustesViewModel(
             lowResourceChecadorShader = behaviorState.lowResourceChecadorShader,
             useProductTableInCatalog = behaviorState.useProductTableInCatalog,
             swapVentaLayoutOrder = behaviorState.swapVentaLayoutOrder,
+            beepOnBarcodeScan = behaviorState.beepOnBarcodeScan,
             defaultRetailMargin = behaviorState.defaultRetailMargin,
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
             defaultDeliveryMargin = behaviorState.defaultDeliveryMargin,
@@ -461,6 +466,12 @@ class AjustesViewModel(
     fun setSwapVentaLayoutOrder(swap: Boolean) {
         viewModelScope.launch {
             repository.setSwapVentaLayoutOrder(swap)
+        }
+    }
+
+    fun setBeepOnBarcodeScan(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setBeepOnBarcodeScan(enabled)
         }
     }
 

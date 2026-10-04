@@ -119,6 +119,7 @@ fun ChecadorContent(
 ) {
     val settingsRepository = koinInject<SettingsRepository>()
     val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsState(initial = false)
+    val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsState(initial = false)
     val effectivePrioritizeDelivery = prioritizeDeliveryPrice ?: settingsPrioritizeDelivery
 
     var barcodeInputValue by remember {
@@ -147,6 +148,8 @@ fun ChecadorContent(
             cameraScannerFeedback = if (result == null) "Producto no encontrado: $code" else null
             if (result == null) {
                 SoundManager.playErrorSound()
+            } else if (beepOnBarcodeScan) {
+                SoundManager.playBeepSound()
             }
             barcodeInputValue = TextFieldValue(
                 text = barcodeInputValue.text,
@@ -575,6 +578,9 @@ fun ChecadorContent(
                     val code = scannedCode.trim()
                     val product = repository.findProductByBarcode(code)
                     if (product != null) {
+                        if (beepOnBarcodeScan) {
+                            SoundManager.playBeepSound()
+                        }
                         searchedProduct = product
                         hasSearched = true
                         lastScannedProduct = product
@@ -665,6 +671,9 @@ fun ChecadorScreen(
     onOpenScanner: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val settingsRepository = koinInject<SettingsRepository>()
+    val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsState(initial = false)
+
     var barcodeInputValue by remember {
         mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero))
     }
@@ -699,6 +708,8 @@ fun ChecadorScreen(
             cameraScannerFeedback = if (result == null) "Producto no encontrado: $code" else null
             if (result == null) {
                 SoundManager.playErrorSound()
+            } else if (beepOnBarcodeScan) {
+                SoundManager.playBeepSound()
             }
             barcodeInputValue = TextFieldValue(
                 text = code,
@@ -738,6 +749,9 @@ fun ChecadorScreen(
                     val code = scannedCode.trim()
                     val product = repository.findProductByBarcode(code)
                     if (product != null) {
+                        if (beepOnBarcodeScan) {
+                            SoundManager.playBeepSound()
+                        }
                         searchedProduct = product
                         hasSearched = true
                         lastScannedProduct = product
