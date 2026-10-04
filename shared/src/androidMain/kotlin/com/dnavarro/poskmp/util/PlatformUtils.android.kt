@@ -99,7 +99,7 @@ private object AndroidSoundPlayer {
 
     private val soundPool: android.media.SoundPool by lazy {
         val audioAttributes = android.media.AudioAttributes.Builder()
-            .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
             .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
         android.media.SoundPool.Builder()
