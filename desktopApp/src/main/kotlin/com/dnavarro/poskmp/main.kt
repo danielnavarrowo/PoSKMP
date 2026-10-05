@@ -18,6 +18,20 @@ fun main() {
     val appDir = java.io.File(userHome, ".poskmp").apply { if (!exists()) mkdirs() }
     val logFile = java.io.File(appDir, "app.log")
 
+    // Check for optional manual renderApi override or set Windows default to OPENGL
+    val renderApiOverrideFile = java.io.File(appDir, "render_api.txt")
+    if (renderApiOverrideFile.exists()) {
+        val overrideApi = renderApiOverrideFile.readText().trim().uppercase()
+        if (overrideApi.isNotEmpty()) {
+            System.setProperty("skiko.renderApi", overrideApi)
+        }
+    } else if (System.getProperty("skiko.renderApi") == null && System.getenv("SKIKO_RENDER_API") == null) {
+        val osName = System.getProperty("os.name")?.lowercase() ?: ""
+        if (osName.contains("win")) {
+            System.setProperty("skiko.renderApi", "OPENGL")
+        }
+    }
+
     val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
         val timestamp = java.time.LocalDateTime.now()
@@ -28,6 +42,21 @@ fun main() {
         } catch (_: Exception) {
         }
         defaultHandler?.uncaughtException(thread, throwable)
+    }
+
+    try {
+        val timestamp = java.time.LocalDateTime.now()
+        val runtime = Runtime.getRuntime()
+        val startupMsg = buildString {
+            appendLine("[$timestamp] [STARTUP] Starting Punto de Venta v${System.getProperty("app.version") ?: "unknown"}")
+            appendLine("OS: ${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})")
+            appendLine("Java: ${System.getProperty("java.version")} by ${System.getProperty("java.vendor")}")
+            appendLine("Processors: ${runtime.availableProcessors()} cores, Max Memory: ${runtime.maxMemory() / (1024 * 1024)} MB")
+            appendLine("Skiko Render API: ${System.getProperty("skiko.renderApi") ?: "DEFAULT"}")
+        }
+        println(startupMsg)
+        logFile.appendText(startupMsg + "\n")
+    } catch (_: Exception) {
     }
 
     initKoin()

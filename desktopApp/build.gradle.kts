@@ -18,13 +18,17 @@ dependencies {
 
 val appVersion = libs.versions.app.version.get()
 
+val commonJvmArgs = listOf(
+    "-Dapp.version=$appVersion",
+    "-Dskiko.renderApi=OPENGL",
+    "-XX:+UseParallelGC",
+    "-XX:CICompilerCount=2"
+)
+
 compose.desktop {
     application {
         mainClass = "com.dnavarro.poskmp.MainKt"
-        jvmArgs += listOf(
-            "-Dapp.version=$appVersion",
-            "-XX:+TieredCompilation"
-        )
+        jvmArgs += commonJvmArgs
 
         buildTypes.release.proguard {
             isEnabled.set(false)
@@ -36,9 +40,7 @@ compose.desktop {
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
             packageName = "Punto de Venta"
             packageVersion = appVersion
-            jvmArgs += listOf(
-                "-Dapp.version=$appVersion"
-            )
+            jvmArgs += commonJvmArgs
             windows {
                 iconFile.set(project.file("src/main/resources/icons/icon.ico"))
                 perUserInstall = true
