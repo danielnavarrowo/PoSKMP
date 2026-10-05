@@ -20,7 +20,6 @@ val appVersion = libs.versions.app.version.get()
 
 val commonJvmArgs = listOf(
     "-Dapp.version=$appVersion",
-    "-Dskiko.renderApi=OPENGL",
     "-XX:+UseParallelGC",
     "-XX:CICompilerCount=2",
     "-Xms256m",

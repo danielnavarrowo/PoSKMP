@@ -24,7 +24,16 @@ fun main() {
         return
     }
 
-    // Check for optional manual renderApi override or set Windows default to OPENGL
+    // Optional FPS profiling toggle via fps.txt
+    val fpsFile = java.io.File(appDir, "fps.txt")
+    if (fpsFile.exists()) {
+        System.setProperty("skiko.fps.enabled", "true")
+        System.setProperty("skiko.fps.longFrames.show", "true")
+        System.setProperty("skiko.fps.longFrames.millis", "16.6")
+    }
+
+    // Check for manual renderApi override or intelligently detect GPU on Windows
+    var detectedGpu: String? = null
     val renderApiOverrideFile = java.io.File(appDir, "render_api.txt")
     if (renderApiOverrideFile.exists()) {
         val overrideApi = renderApiOverrideFile.readText().trim().uppercase()
@@ -32,10 +41,13 @@ fun main() {
             System.setProperty("skiko.renderApi", overrideApi)
         }
     } else if (System.getProperty("skiko.renderApi") == null && System.getenv("SKIKO_RENDER_API") == null) {
-        val osName = System.getProperty("os.name")?.lowercase() ?: ""
-        if (osName.contains("win")) {
+        detectedGpu = WindowsGpuDetector.detectGpuName()
+        if (WindowsGpuDetector.isLegacyIntelGpu(detectedGpu)) {
+            // Legacy Intel HD Graphics (Bay Trail, Haswell, Ivy Bridge) lack DirectX 12 hardware support
+            // and fall back to severe CPU-based WARP software emulation. Force OPENGL for hardware acceleration.
             System.setProperty("skiko.renderApi", "OPENGL")
         }
+        // Modern GPUs (Iris Xe, UHD, GeForce, Radeon) keep the default DIRECT3D for optimal Windows 11 DWM performance.
     }
 
     val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -58,7 +70,13 @@ fun main() {
             appendLine("OS: ${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})")
             appendLine("Java: ${System.getProperty("java.version")} by ${System.getProperty("java.vendor")}")
             appendLine("Processors: ${runtime.availableProcessors()} cores, Max Memory: ${runtime.maxMemory() / (1024 * 1024)} MB")
-            appendLine("Skiko Render API: ${System.getProperty("skiko.renderApi") ?: "DEFAULT"}")
+            if (detectedGpu != null) {
+                appendLine("Detected GPU: $detectedGpu")
+            }
+            appendLine("Skiko Render API: ${System.getProperty("skiko.renderApi") ?: "DIRECT3D (Default)"}")
+            if (System.getProperty("skiko.fps.enabled") == "true") {
+                appendLine("FPS Profiling: ENABLED (logging long frames > 16.6ms)")
+            }
         }
         println(startupMsg)
         logFile.appendText(startupMsg + "\n")
