@@ -65,13 +65,35 @@ actual fun <T> AdaptiveScaffoldPredictiveBackHandler(
     // No-op on Desktop JVM
 }
 
-actual fun playSoundAlert(bytes: ByteArray) {
-    kotlin.concurrent.thread(isDaemon = true) {
+private object DesktopSoundPlayer {
+    private val clipCache = java.util.concurrent.ConcurrentHashMap<Int, javax.sound.sampled.Clip>()
+
+    fun play(bytes: ByteArray) {
         try {
-            val player = javazoom.jl.player.Player(ByteArrayInputStream(bytes))
-            player.play()
+            val hash = bytes.contentHashCode()
+            val existingClip = clipCache[hash]
+            if (existingClip != null) {
+                if (existingClip.isRunning) {
+                    existingClip.stop()
+                }
+                existingClip.framePosition = 0
+                existingClip.start()
+                return
+            }
+
+            val audioInputStream = javax.sound.sampled.AudioSystem.getAudioInputStream(
+                ByteArrayInputStream(bytes)
+            )
+            val clip = javax.sound.sampled.AudioSystem.getClip()
+            clip.open(audioInputStream)
+            clipCache[hash] = clip
+            clip.start()
         } catch (_: Exception) {}
     }
+}
+
+actual fun playSoundAlert(bytes: ByteArray) {
+    DesktopSoundPlayer.play(bytes)
 }
 
 actual fun pickFile(

@@ -186,11 +186,12 @@ class VentaViewModel(
                 settingsRepository.useProductTableInCatalogFlow,
                 getCustomersUseCase(),
                 _selectedCustomer,
-                settingsRepository.swapVentaLayoutOrderFlow
-            ) { useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder ->
-                Tuple4(useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder)
+                settingsRepository.swapVentaLayoutOrderFlow,
+                settingsRepository.beepOnBarcodeScanFlow
+            ) { useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder, beepOnBarcodeScan ->
+                Tuple5(useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder, beepOnBarcodeScan)
             }
-        ) { (canUndo, retailMargin, wholesaleMargin, deliveryMargin), (useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder) ->
+        ) { (canUndo, retailMargin, wholesaleMargin, deliveryMargin), (useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder, beepOnBarcodeScan) ->
             VentaCatalogConfig(
                 canUndo = canUndo,
                 defaultRetailMargin = retailMargin,
@@ -199,7 +200,8 @@ class VentaViewModel(
                 useProductTableInCatalog = useProductTableInCatalog,
                 customers = customers,
                 selectedCustomer = selectedCustomer,
-                swapVentaLayoutOrder = swapVentaLayoutOrder
+                swapVentaLayoutOrder = swapVentaLayoutOrder,
+                beepOnBarcodeScan = beepOnBarcodeScan
             )
         },
         combine(
@@ -319,6 +321,7 @@ class VentaViewModel(
             googleSearchApiKey = pricingSettings.googleSearchApiKey,
             useProductTableInCatalog = catalogConfig.useProductTableInCatalog,
             swapVentaLayoutOrder = catalogConfig.swapVentaLayoutOrder,
+            beepOnBarcodeScan = catalogConfig.beepOnBarcodeScan,
             isLoading = false,
             customers = catalogConfig.customers,
             filteredCustomers = filteredCust,
@@ -457,7 +460,8 @@ class VentaViewModel(
         val useProductTableInCatalog: Boolean = false,
         val customers: List<Customer> = emptyList(),
         val selectedCustomer: Customer? = null,
-        val swapVentaLayoutOrder: Boolean = false
+        val swapVentaLayoutOrder: Boolean = false,
+        val beepOnBarcodeScan: Boolean = false
     )
 
     private data class VentaAiAndSearch(

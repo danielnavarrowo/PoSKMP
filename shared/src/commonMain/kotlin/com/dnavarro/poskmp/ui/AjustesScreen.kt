@@ -131,6 +131,8 @@ fun AjustesScreen(
         onUseProductTableInCatalogChange = { viewModel.setUseProductTableInCatalog(it) },
         swapVentaLayoutOrder = uiState.swapVentaLayoutOrder,
         onSwapVentaLayoutOrderChange = { viewModel.setSwapVentaLayoutOrder(it) },
+        beepOnBarcodeScan = uiState.beepOnBarcodeScan,
+        onBeepOnBarcodeScanChange = { viewModel.setBeepOnBarcodeScan(it) },
         defaultRetailMargin = uiState.defaultRetailMargin,
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
@@ -252,6 +254,8 @@ fun AjustesScreen(
     onUseProductTableInCatalogChange: (Boolean) -> Unit = {},
     swapVentaLayoutOrder: Boolean = false,
     onSwapVentaLayoutOrderChange: (Boolean) -> Unit = {},
+    beepOnBarcodeScan: Boolean = false,
+    onBeepOnBarcodeScanChange: (Boolean) -> Unit = {},
     defaultRetailMargin: Double = 0.0,
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
@@ -656,7 +660,9 @@ fun AjustesScreen(
                                     useProductTableInCatalog = useProductTableInCatalog,
                                     onUseProductTableInCatalogChange = onUseProductTableInCatalogChange,
                                     swapVentaLayoutOrder = swapVentaLayoutOrder,
-                                    onSwapVentaLayoutOrderChange = onSwapVentaLayoutOrderChange
+                                    onSwapVentaLayoutOrderChange = onSwapVentaLayoutOrderChange,
+                                    beepOnBarcodeScan = beepOnBarcodeScan,
+                                    onBeepOnBarcodeScanChange = onBeepOnBarcodeScanChange
                                 )
                             }
 

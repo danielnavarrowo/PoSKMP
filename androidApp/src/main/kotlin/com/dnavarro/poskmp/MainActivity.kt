@@ -18,6 +18,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         )
         window.isNavigationBarContrastEnforced = false
+        volumeControlStream = android.media.AudioManager.STREAM_MUSIC
         super.onCreate(savedInstanceState)
 
         // Initialize local database context for Android

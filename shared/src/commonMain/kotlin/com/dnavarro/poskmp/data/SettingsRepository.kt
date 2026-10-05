@@ -55,6 +55,7 @@ interface SettingsRepository {
     val lowResourceChecadorShaderFlow: Flow<Boolean>
     val useProductTableInCatalogFlow: Flow<Boolean>
     val swapVentaLayoutOrderFlow: Flow<Boolean>
+    val beepOnBarcodeScanFlow: Flow<Boolean>
     val defaultRetailMarginFlow: Flow<Double>
     val defaultWholesaleMarginFlow: Flow<Double>
     val defaultDeliveryMarginFlow: Flow<Double>
@@ -106,6 +107,7 @@ interface SettingsRepository {
     suspend fun setLowResourceChecadorShader(enabled: Boolean)
     suspend fun setUseProductTableInCatalog(enabled: Boolean)
     suspend fun setSwapVentaLayoutOrder(swap: Boolean)
+    suspend fun setBeepOnBarcodeScan(enabled: Boolean)
     suspend fun setDefaultRetailMargin(margin: Double)
     suspend fun setDefaultWholesaleMargin(margin: Double)
     suspend fun setDefaultDeliveryMargin(margin: Double)
@@ -176,6 +178,7 @@ class SettingsRepositoryImpl(
         val LOW_RESOURCE_CHECADOR_SHADER = booleanPreferencesKey("low_resource_checador_shader")
         val USE_PRODUCT_TABLE_IN_CATALOG = booleanPreferencesKey("use_product_table_in_catalog")
         val SWAP_VENTA_LAYOUT_ORDER = booleanPreferencesKey("swap_venta_layout_order")
+        val BEEP_ON_BARCODE_SCAN = booleanPreferencesKey("beep_on_barcode_scan")
         val DEFAULT_RETAIL_MARGIN = doublePreferencesKey("default_retail_margin_percentage")
         val DEFAULT_WHOLESALE_MARGIN = doublePreferencesKey("default_wholesale_margin_percentage")
         val DEFAULT_DELIVERY_MARGIN = doublePreferencesKey("default_delivery_margin_percentage")
@@ -334,6 +337,10 @@ class SettingsRepositoryImpl(
 
     override val swapVentaLayoutOrderFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.SWAP_VENTA_LAYOUT_ORDER] ?: false
+    }
+
+    override val beepOnBarcodeScanFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.BEEP_ON_BARCODE_SCAN] ?: false
     }
 
     override val defaultRetailMarginFlow: Flow<Double> = dataStore.data.map { preferences ->
@@ -585,6 +592,12 @@ class SettingsRepositoryImpl(
     override suspend fun setSwapVentaLayoutOrder(swap: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.SWAP_VENTA_LAYOUT_ORDER] = swap
+        }
+    }
+
+    override suspend fun setBeepOnBarcodeScan(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.BEEP_ON_BARCODE_SCAN] = enabled
         }
     }
 

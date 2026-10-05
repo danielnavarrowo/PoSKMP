@@ -51,6 +51,7 @@ data class VentaUiState(
     val googleSearchApiKey: String = "",
     val useProductTableInCatalog: Boolean = false,
     val swapVentaLayoutOrder: Boolean = false,
+    val beepOnBarcodeScan: Boolean = false,
     val isLoading: Boolean = false,
     val customers: List<Customer> = emptyList(),
     val filteredCustomers: List<Customer> = emptyList(),

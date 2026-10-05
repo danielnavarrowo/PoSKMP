@@ -33,6 +33,7 @@ data class AjustesUiState(
     val lowResourceChecadorShader: Boolean = false,
     val useProductTableInCatalog: Boolean = false,
     val swapVentaLayoutOrder: Boolean = false,
+    val beepOnBarcodeScan: Boolean = false,
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
     val defaultDeliveryMargin: Double = 0.0,
