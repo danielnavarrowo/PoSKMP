@@ -22,7 +22,9 @@ val commonJvmArgs = listOf(
     "-Dapp.version=$appVersion",
     "-Dskiko.renderApi=OPENGL",
     "-XX:+UseParallelGC",
-    "-XX:CICompilerCount=2"
+    "-XX:CICompilerCount=2",
+    "-Xms256m",
+    "-Xmx768m"
 )
 
 compose.desktop {

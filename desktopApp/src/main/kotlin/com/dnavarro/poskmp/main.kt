@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp
 
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +18,11 @@ fun main() {
     val userHome = System.getProperty("user.home") ?: "."
     val appDir = java.io.File(userHome, ".poskmp").apply { if (!exists()) mkdirs() }
     val logFile = java.io.File(appDir, "app.log")
+
+    // Allow only one instance of the application to run at a time
+    if (!SingleInstanceManager.acquireLock(appDir, logFile)) {
+        return
+    }
 
     // Check for optional manual renderApi override or set Windows default to OPENGL
     val renderApiOverrideFile = java.io.File(appDir, "render_api.txt")
@@ -76,6 +82,20 @@ fun main() {
             icon = painterResource(Res.drawable.app_icon),
             undecorated = true
         ) {
+            DisposableEffect(Unit) {
+                SingleInstanceManager.onBringToFront = {
+                    javax.swing.SwingUtilities.invokeLater {
+                        windowState.isMinimized = false
+                        window.extendedState = java.awt.Frame.NORMAL
+                        window.toFront()
+                        window.requestFocus()
+                    }
+                }
+                onDispose {
+                    SingleInstanceManager.onBringToFront = null
+                }
+            }
+
             App(
                 isExiting = isClosing,
                 onCancelExit = { isClosing = false },
