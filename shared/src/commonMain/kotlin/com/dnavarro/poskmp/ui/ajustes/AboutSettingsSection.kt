@@ -402,7 +402,7 @@ fun AboutSettingsSection(
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(
-                                text = "Aceleración Gráfica (Motor de Render)",
+                                text = "Aceleración Gráfica",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -475,9 +475,9 @@ fun AboutSettingsSection(
                             )
                             Text(
                                 text = if (renderApiInfo.isLegacyGpu) {
-                                    "Sugerencia del sistema: Se detectó una GPU Intel heredada sin soporte nativo para DirectX 12. Si experimentas lentitud o caídas de fluidez, selecciona OpenGL."
+                                    "Se detectó una GPU sin soporte nativo para DirectX 12. Si experimentas lentitud o caídas de fluidez, selecciona OpenGL."
                                 } else {
-                                    "Sugerencia del sistema: Se detectó una GPU moderna con soporte nativo de DirectX 12. Se recomienda Automático o Direct3D para la mejor fluidez en animaciones."
+                                    "Se detectó una GPU moderna con soporte nativo de DirectX 12. Se recomienda Automático o Direct3D para la mejor fluidez."
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -536,13 +536,13 @@ fun AboutSettingsSection(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.small,
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
                             )
                         ) {
                             Text(
                                 text = "Configuración guardada. Reinicia la aplicación para que el nuevo motor gráfico surta efecto.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(12.dp)
                             )

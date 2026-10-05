@@ -24,14 +24,6 @@ fun main() {
         return
     }
 
-    // Optional FPS profiling toggle via fps.txt
-    val fpsFile = java.io.File(appDir, "fps.txt")
-    if (fpsFile.exists()) {
-        System.setProperty("skiko.fps.enabled", "true")
-        System.setProperty("skiko.fps.longFrames.show", "true")
-        System.setProperty("skiko.fps.longFrames.millis", "16.6")
-    }
-
     // Check for user-configured renderApi override from settings
     val renderApiOverrideFile = java.io.File(appDir, "render_api.txt")
     if (renderApiOverrideFile.exists()) {
@@ -51,24 +43,6 @@ fun main() {
         } catch (_: Exception) {
         }
         defaultHandler?.uncaughtException(thread, throwable)
-    }
-
-    try {
-        val timestamp = java.time.LocalDateTime.now()
-        val runtime = Runtime.getRuntime()
-        val startupMsg = buildString {
-            appendLine("[$timestamp] [STARTUP] Starting Punto de Venta v${System.getProperty("app.version") ?: "unknown"}")
-            appendLine("OS: ${System.getProperty("os.name")} ${System.getProperty("os.version")} (${System.getProperty("os.arch")})")
-            appendLine("Java: ${System.getProperty("java.version")} by ${System.getProperty("java.vendor")}")
-            appendLine("Processors: ${runtime.availableProcessors()} cores, Max Memory: ${runtime.maxMemory() / (1024 * 1024)} MB")
-            appendLine("Skiko Render API: ${System.getProperty("skiko.renderApi") ?: "Por defecto (Sistema)"}")
-            if (System.getProperty("skiko.fps.enabled") == "true") {
-                appendLine("FPS Profiling: ENABLED (logging long frames > 16.6ms)")
-            }
-        }
-        println(startupMsg)
-        logFile.appendText(startupMsg + "\n")
-    } catch (_: Exception) {
     }
 
     initKoin()
