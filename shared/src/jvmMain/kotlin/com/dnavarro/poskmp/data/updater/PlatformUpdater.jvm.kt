@@ -279,8 +279,9 @@ actual object PlatformUpdater {
                 if (parent != null && parent.name.equals("app", ignoreCase = true)) {
                     val installDir = parent.parentFile
                     if (installDir != null) {
-                        val exe = File(installDir, "PoSKMP.exe")
-                        if (exe.exists()) {
+                        val exe = File(installDir, "Punto de Venta.exe").takeIf { it.exists() }
+                            ?: File(installDir, "PoSKMP.exe").takeIf { it.exists() }
+                        if (exe != null) {
                             return WindowsAppTarget(installDir = installDir, executable = exe)
                         }
                     }
@@ -290,8 +291,9 @@ actual object PlatformUpdater {
 
         try {
             val userDir = File(System.getProperty("user.dir", "."))
-            val exe = File(userDir, "PoSKMP.exe")
-            if (exe.exists()) {
+            val exe = File(userDir, "Punto de Venta.exe").takeIf { it.exists() }
+                ?: File(userDir, "PoSKMP.exe").takeIf { it.exists() }
+            if (exe != null) {
                 return WindowsAppTarget(installDir = userDir, executable = exe)
             }
         } catch (_: Exception) {}
@@ -303,11 +305,11 @@ actual object PlatformUpdater {
         val stagedDir = File(updateWorkDir, "staged")
         extractZip(zipFile, stagedDir)
 
-        val sourceDir = if (File(stagedDir, "PoSKMP.exe").exists() || File(stagedDir, "app").exists()) {
+        val sourceDir = if (File(stagedDir, "Punto de Venta.exe").exists() || File(stagedDir, "PoSKMP.exe").exists() || File(stagedDir, "app").exists()) {
             stagedDir
         } else {
             stagedDir.listFiles()?.firstOrNull { child ->
-                child.isDirectory && (File(child, "PoSKMP.exe").exists() || File(child, "app").exists())
+                child.isDirectory && (File(child, "Punto de Venta.exe").exists() || File(child, "PoSKMP.exe").exists() || File(child, "app").exists())
             } ?: stagedDir
         }
 
