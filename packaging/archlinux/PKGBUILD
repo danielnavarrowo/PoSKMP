@@ -1,13 +1,12 @@
 # Maintainer: daniel
 pkgname=poskmp
-pkgver=1.2.12
+pkgver=1.2.13
 pkgrel=1
 pkgdesc="PoSKMP - Sistema Punto de Venta (Compose Multiplatform)"
 arch=('x86_64')
 license=('custom')
 depends=('glibc' 'hicolor-icon-theme')
 provides=('punto-de-venta')
-conflicts=('punto-de-venta')
 options=('!strip')
 
 build() {

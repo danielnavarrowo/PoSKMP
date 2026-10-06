@@ -96,6 +96,12 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
 
         if (isMakepkgAvailable && packagingDirFile.exists()) {
             println("Building package with makepkg...")
+            val pkgbuildFile = File(packagingDirFile, "PKGBUILD")
+            if (pkgbuildFile.exists()) {
+                val updatedContent = pkgbuildFile.readText()
+                    .replace(Regex("pkgver=.*"), "pkgver=$currentAppVersion")
+                pkgbuildFile.writeText(updatedContent)
+            }
             val pb = ProcessBuilder("makepkg", "-f", "--nodeps")
                 .directory(packagingDirFile)
                 .redirectErrorStream(true)
@@ -184,11 +190,18 @@ license = custom
 depend = glibc
 depend = hicolor-icon-theme
 provides = punto-de-venta
-conflicts = punto-de-venta
 """.trimIndent() + "\n"
             )
 
-            val pb = ProcessBuilder("tar", "-czf", targetPkgFile.absolutePath, "--owner=0", "--group=0", ".")
+            val topLevelEntries = (pkgRoot.list() ?: emptyArray<String>())
+                .sortedWith { a, b ->
+                    if (a == ".PKGINFO") -1 else if (b == ".PKGINFO") 1 else a.compareTo(b)
+                }
+
+            val tarCmd = mutableListOf("tar", "-czf", targetPkgFile.absolutePath, "--owner=0", "--group=0")
+            tarCmd.addAll(topLevelEntries)
+
+            val pb = ProcessBuilder(tarCmd)
                 .directory(pkgRoot)
                 .redirectErrorStream(true)
             val proc = pb.start()
