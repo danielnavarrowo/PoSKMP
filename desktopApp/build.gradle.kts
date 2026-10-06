@@ -130,7 +130,32 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
             // /opt/poskmp
             val optDir = File(pkgRoot, "opt/poskmp")
             optDir.mkdirs()
-            appDir.copyRecursively(optDir, overwrite = true)
+            val hasCp = try { ProcessBuilder("which", "cp").start().waitFor() == 0 } catch (_: Exception) { false }
+            if (hasCp) {
+                ProcessBuilder("cp", "-a", "${appDir.absolutePath}/.", optDir.absolutePath).start().waitFor()
+            } else {
+                appDir.copyRecursively(optDir, overwrite = true)
+            }
+
+            // Ensure directories are 755 and executables have +x permissions preserved
+            try { ProcessBuilder("chmod", "-R", "a+rX", pkgRoot.absolutePath).start().waitFor() } catch (_: Exception) {}
+            File(optDir, "bin").walkTopDown().forEach {
+                if (it.isFile) {
+                    it.setExecutable(true, false)
+                    try { ProcessBuilder("chmod", "755", it.absolutePath).start().waitFor() } catch (_: Exception) {}
+                }
+            }
+            File(optDir, "lib").listFiles()?.filter { it.extension == "so" }?.forEach {
+                it.setExecutable(true, false)
+                try { ProcessBuilder("chmod", "755", it.absolutePath).start().waitFor() } catch (_: Exception) {}
+            }
+            listOf("jspawnhelper", "jexec").forEach { binaryName ->
+                val f = File(optDir, "lib/runtime/lib/$binaryName")
+                if (f.exists()) {
+                    f.setExecutable(true, false)
+                    try { ProcessBuilder("chmod", "755", f.absolutePath).start().waitFor() } catch (_: Exception) {}
+                }
+            }
 
             // /usr/bin launchers
             val binDir = File(pkgRoot, "usr/bin")
@@ -138,10 +163,12 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
             val launcherScript = File(binDir, "poskmp")
             launcherScript.writeText("#!/bin/sh\nexec \"/opt/poskmp/bin/Punto de Venta\" \"\$@\"\n")
             launcherScript.setExecutable(true, false)
+            try { ProcessBuilder("chmod", "755", launcherScript.absolutePath).start().waitFor() } catch (_: Exception) {}
 
             val altLauncher = File(binDir, "punto-de-venta")
             altLauncher.writeText("#!/bin/sh\nexec \"/opt/poskmp/bin/Punto de Venta\" \"\$@\"\n")
             altLauncher.setExecutable(true, false)
+            try { ProcessBuilder("chmod", "755", altLauncher.absolutePath).start().waitFor() } catch (_: Exception) {}
 
             // Desktop entry
             val appsDir = File(pkgRoot, "usr/share/applications")

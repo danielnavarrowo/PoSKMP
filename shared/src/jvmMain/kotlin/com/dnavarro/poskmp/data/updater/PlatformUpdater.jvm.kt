@@ -69,31 +69,39 @@ actual object PlatformUpdater {
             if (isCurrentAppImage) {
                 // Si la app se está ejecutando como AppImage, debe actualizarse con el AppImage
                 assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
-                    ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                    ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) && !it.name.contains(".pkg.tar", ignoreCase = true) }
                     ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
             } else {
-                // No es AppImage: detectar si el sistema o instalación usa .deb o .rpm
+                // No es AppImage: detectar si el sistema o instalación usa .pkg.tar (Arch), .deb o .rpm
                 val isDebian = File("/etc/debian_version").exists() || File("/usr/bin/dpkg").exists()
                 val isRedHat = File("/etc/redhat-release").exists() || File("/etc/fedora-release").exists() || (File("/usr/bin/rpm").exists() && !isDebian)
+                val isArch = File("/etc/arch-release").exists() || File("/etc/cachyos-release").exists() || File("/usr/bin/pacman").exists()
+                val isInstalledArchPkg = getLinuxExecutablePath()?.let { it.startsWith("/opt/poskmp") || it.startsWith("/opt/punto-de-venta") } == true
 
                 when {
+                    isArch || isInstalledArchPkg -> {
+                        assets.firstOrNull { it.name.contains(".pkg.tar", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
+                    }
                     isDebian -> {
                         assets.firstOrNull { it.name.endsWith(".deb", ignoreCase = true) }
                             ?: assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
-                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) && !it.name.contains(".pkg.tar", ignoreCase = true) }
                             ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
                     }
                     isRedHat -> {
                         assets.firstOrNull { it.name.endsWith(".rpm", ignoreCase = true) }
                             ?: assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
-                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) && !it.name.contains(".pkg.tar", ignoreCase = true) }
                             ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
                     }
                     else -> {
-                        assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
+                        assets.firstOrNull { it.name.contains(".pkg.tar", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".AppImage", ignoreCase = true) }
                             ?: assets.firstOrNull { it.name.endsWith(".deb", ignoreCase = true) }
                             ?: assets.firstOrNull { it.name.endsWith(".rpm", ignoreCase = true) }
-                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) }
+                            ?: assets.firstOrNull { it.name.endsWith(".tar.gz", ignoreCase = true) && !it.name.contains(".pkg.tar", ignoreCase = true) }
                             ?: assets.firstOrNull { it.name.contains("linux", ignoreCase = true) }
                     }
                 }
@@ -192,7 +200,11 @@ actual object PlatformUpdater {
                         exitProcess(0)
                     }
                 }
-                osName.contains("linux") && (fileName.endsWith(".deb") || fileName.endsWith(".rpm")) -> {
+                osName.contains("linux") && (
+                    fileName.endsWith(".deb") ||
+                    fileName.endsWith(".rpm") ||
+                    fileName.contains(".pkg.tar")
+                ) -> {
                     applyLinuxPackageUpdate(targetFile, updateWorkDir)
                 }
                 osName.contains("linux") && fileName.endsWith(".appimage") -> {
@@ -490,6 +502,11 @@ actual object PlatformUpdater {
             # 2. Try pkexec with system package manager for seamless GUI authentication
             if command -v pkexec >/dev/null 2>&1; then
                 case "$PACKAGE_FILE" in
+                    *.pkg.tar.*|*.pkg.tar.gz|*.pkg.tar.zst)
+                        if command -v pacman >/dev/null 2>&1; then
+                            pkexec pacman -U --noconfirm "$PACKAGE_FILE" && INSTALLED=1
+                        fi
+                        ;;
                     *.deb)
                         if command -v apt-get >/dev/null 2>&1; then
                             pkexec apt-get install -y --reinstall "$PACKAGE_FILE" && INSTALLED=1
@@ -514,12 +531,18 @@ actual object PlatformUpdater {
                 sleep 1
                 if [ -n "$APP_COMMAND" ] && [ -x "$APP_COMMAND" ]; then
                     nohup "$APP_COMMAND" >/dev/null 2>&1 &
+                elif [ -x "/usr/bin/poskmp" ]; then
+                    nohup "/usr/bin/poskmp" >/dev/null 2>&1 &
+                elif [ -x "/usr/bin/punto-de-venta" ]; then
+                    nohup "/usr/bin/punto-de-venta" >/dev/null 2>&1 &
+                elif [ -x "/opt/poskmp/bin/Punto de Venta" ]; then
+                    nohup "/opt/poskmp/bin/Punto de Venta" >/dev/null 2>&1 &
                 elif [ -x "/opt/punto-de-venta/bin/Punto de Venta" ]; then
                     nohup "/opt/punto-de-venta/bin/Punto de Venta" >/dev/null 2>&1 &
                 elif [ -x "/opt/poskmp/bin/PoSKMP" ]; then
                     nohup "/opt/poskmp/bin/PoSKMP" >/dev/null 2>&1 &
                 elif command -v gtk-launch >/dev/null 2>&1; then
-                    gtk-launch "punto-de-venta" >/dev/null 2>&1 || gtk-launch "poskmp" >/dev/null 2>&1 &
+                    gtk-launch "poskmp" >/dev/null 2>&1 || gtk-launch "punto-de-venta" >/dev/null 2>&1 &
                 fi
 
                 # Cleanup work directory
@@ -529,7 +552,9 @@ actual object PlatformUpdater {
                 fi
             else
                 # Fallback to desktop GUI package installer
-                if command -v gdebi-gtk >/dev/null 2>&1; then
+                if command -v pamac-installer >/dev/null 2>&1; then
+                    pamac-installer "$PACKAGE_FILE"
+                elif command -v gdebi-gtk >/dev/null 2>&1; then
                     gdebi-gtk "$PACKAGE_FILE"
                 elif command -v xdg-open >/dev/null 2>&1; then
                     xdg-open "$PACKAGE_FILE"
