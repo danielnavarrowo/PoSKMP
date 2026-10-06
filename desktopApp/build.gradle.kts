@@ -39,7 +39,7 @@ compose.desktop {
         nativeDistributions {
             modules("java.desktop", "java.instrument", "java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
-            packageName = "Punto de Venta"
+            packageName = "poskmp"
             packageVersion = appVersion
             jvmArgs += commonJvmArgs
             windows {
@@ -48,7 +48,7 @@ compose.desktop {
                 menu = true
                 shortcut = true
                 dirChooser = true
-                menuGroup = "PoSKMP"
+                menuGroup = "Punto de Venta"
                 upgradeUuid = "d7b2a9e1-6c3f-4b8a-9e12-3456789abcde"
             }
             linux {
@@ -66,7 +66,7 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
     dependsOn("createReleaseDistributable")
 
     val archOutputDir = layout.buildDirectory.dir("compose/binaries/main-release/arch")
-    val appDistDir = layout.buildDirectory.dir("compose/binaries/main-release/app/Punto de Venta")
+    val appDistDir = layout.buildDirectory.dir("compose/binaries/main-release/app/poskmp")
     val packagingDir = rootProject.layout.projectDirectory.dir("packaging/archlinux")
     val artifactsDir = rootProject.layout.projectDirectory.dir("artifacts/desktop-linux")
     val iconFile = layout.projectDirectory.file("src/main/resources/icons/icon.png")
@@ -90,7 +90,7 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
             false
         }
 
-        val pkgFileName = "punto-de-venta-$currentAppVersion-1-x86_64.pkg.tar.gz"
+        val pkgFileName = "poskmp-$currentAppVersion-1-x86_64.pkg.tar.gz"
         val targetPkgFile = File(outDir, pkgFileName)
 
         if (isMakepkgAvailable && packagingDirFile.exists()) {
@@ -111,13 +111,16 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
             if (exitCode != 0) {
                 throw GradleException("makepkg failed with exit code $exitCode:\n$output")
             }
-            val generatedFile = File(packagingDirFile, pkgFileName)
-            if (generatedFile.exists()) {
+            val generatedFile = packagingDirFile.listFiles()?.firstOrNull {
+                it.name.startsWith("poskmp-$currentAppVersion-") && it.name.endsWith(".pkg.tar.gz")
+            }
+            if (generatedFile != null && generatedFile.exists()) {
                 generatedFile.copyTo(targetPkgFile, overwrite = true)
+                generatedFile.delete()
                 File(packagingDirFile, "src").deleteRecursively()
                 File(packagingDirFile, "pkg").deleteRecursively()
             } else {
-                throw GradleException("Expected package file not found: ${generatedFile.absolutePath}")
+                throw GradleException("Expected package file not found in ${packagingDirFile.absolutePath}")
             }
         } else {
             println("makepkg not found, building package with tar and .PKGINFO fallback...")
@@ -126,8 +129,8 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
             val pkgRoot = File(stagingDir, "pkg")
             pkgRoot.mkdirs()
 
-            // /opt/punto-de-venta
-            val optDir = File(pkgRoot, "opt/punto-de-venta")
+            // /opt/poskmp
+            val optDir = File(pkgRoot, "opt/poskmp")
             optDir.mkdirs()
             val hasCp = try { ProcessBuilder("which", "cp").start().waitFor() == 0 } catch (_: Exception) { false }
             if (hasCp) {
@@ -135,9 +138,6 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
             } else {
                 appDir.copyRecursively(optDir, overwrite = true)
             }
-
-            // Compatibility symlink /opt/poskmp -> punto-de-venta
-            try { ProcessBuilder("ln", "-sf", "punto-de-venta", File(pkgRoot, "opt/poskmp").absolutePath).start().waitFor() } catch (_: Exception) {}
 
             // Ensure directories are 755 and executables have +x permissions preserved
             try { ProcessBuilder("chmod", "-R", "a+rX", pkgRoot.absolutePath).start().waitFor() } catch (_: Exception) {}
@@ -162,30 +162,27 @@ val packagePkgTarGz = tasks.register("packagePkgTarGz") {
             // /usr/bin launchers
             val binDir = File(pkgRoot, "usr/bin")
             binDir.mkdirs()
-            val launcherScript = File(binDir, "punto-de-venta")
-            launcherScript.writeText("#!/bin/sh\nexec \"/opt/punto-de-venta/bin/Punto de Venta\" \"\$@\"\n")
+            val launcherScript = File(binDir, "poskmp")
+            launcherScript.writeText("#!/bin/sh\nexec \"/opt/poskmp/bin/poskmp\" \"$@\"\n")
             launcherScript.setExecutable(true, false)
             try { ProcessBuilder("chmod", "755", launcherScript.absolutePath).start().waitFor() } catch (_: Exception) {}
 
-            val altLauncher = File(binDir, "poskmp")
-            altLauncher.writeText("#!/bin/sh\nexec \"/opt/punto-de-venta/bin/Punto de Venta\" \"\$@\"\n")
-            altLauncher.setExecutable(true, false)
-            try { ProcessBuilder("chmod", "755", altLauncher.absolutePath).start().waitFor() } catch (_: Exception) {}
+            try { ProcessBuilder("ln", "-sf", "poskmp", File(binDir, "punto-de-venta").absolutePath).start().waitFor() } catch (_: Exception) {}
 
-            // Desktop entry
+            // Desktop entry - user sees "Punto de Venta" in desktop launcher and menu
             val appsDir = File(pkgRoot, "usr/share/applications")
             appsDir.mkdirs()
-            File(appsDir, "punto-de-venta.desktop").writeText(
+            File(appsDir, "poskmp.desktop").writeText(
                 """[Desktop Entry]
 Type=Application
 Name=Punto de Venta
 GenericName=Sistema Punto de Venta
 Comment=PoSKMP - Sistema Punto de Venta
-Exec=/usr/bin/punto-de-venta
-Icon=punto-de-venta
+Exec=/usr/bin/poskmp
+Icon=poskmp
 Terminal=false
 Categories=Office;Utility;
-StartupWMClass=Punto de Venta
+StartupWMClass=poskmp
 """.trimIndent()
             )
 
@@ -194,20 +191,20 @@ StartupWMClass=Punto de Venta
             if (iconSrc.exists()) {
                 val icon512Dir = File(pkgRoot, "usr/share/icons/hicolor/512x512/apps")
                 icon512Dir.mkdirs()
-                iconSrc.copyTo(File(icon512Dir, "punto-de-venta.png"), overwrite = true)
+                iconSrc.copyTo(File(icon512Dir, "poskmp.png"), overwrite = true)
 
                 val pixmapDir = File(pkgRoot, "usr/share/pixmaps")
                 pixmapDir.mkdirs()
-                iconSrc.copyTo(File(pixmapDir, "punto-de-venta.png"), overwrite = true)
+                iconSrc.copyTo(File(pixmapDir, "poskmp.png"), overwrite = true)
             }
 
             // .PKGINFO
-            val totalSize = pkgRoot.walkTopDown().filter { it.isFile }.map { it.length() }.sum()
+            val totalSize = pkgRoot.walkTopDown().filter { it.isFile }.sumOf { it.length() }
             val buildDate = System.currentTimeMillis() / 1000
             File(pkgRoot, ".PKGINFO").writeText(
                 """# Generated by PoSKMP Gradle build
-pkgname = punto-de-venta
-pkgbase = punto-de-venta
+pkgname = poskmp
+pkgbase = poskmp
 pkgver = $currentAppVersion-1
 pkgdesc = Punto de Venta - Sistema Punto de Venta (Compose Multiplatform)
 url = https://github.com/daniel-navarro-pos/poskmp
@@ -218,7 +215,6 @@ arch = x86_64
 license = custom
 depend = glibc
 depend = hicolor-icon-theme
-provides = poskmp
 """.trimIndent() + "\n"
             )
 

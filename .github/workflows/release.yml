@@ -52,7 +52,7 @@ jobs:
       - name: Prepare Android Artifacts
         run: |
           mkdir -p artifacts/android
-          find androidApp/build/outputs/apk/release/ -type f -name "*.apk" -exec cp {} artifacts/android/punto-de-venta-release.apk \;
+          find androidApp/build/outputs/apk/release/ -type f -name "*.apk" -exec cp {} artifacts/android/poskmp-release.apk \;
 
       - name: Upload Android APKs
         uses: actions/upload-artifact@v4
@@ -125,14 +125,14 @@ jobs:
             chmod +x AppDir/AppRun
 
             # Desktop file
-            printf '[Desktop Entry]\nType=Application\nName=Punto de Venta\nExec=AppRun\nIcon=punto-de-venta\nCategories=Office;Utility;\n' > AppDir/punto-de-venta.desktop
+            printf '[Desktop Entry]\nType=Application\nName=Punto de Venta\nExec=AppRun\nIcon=poskmp\nCategories=Office;Utility;\n' > AppDir/poskmp.desktop
 
             # Icon
             ICON_SRC=$(find AppDir -name "*.png" | head -n 1)
             if [ -n "$ICON_SRC" ]; then
-              cp "$ICON_SRC" AppDir/punto-de-venta.png
+              cp "$ICON_SRC" AppDir/poskmp.png
             else
-              cp androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher.png AppDir/punto-de-venta.png || true
+              cp androidApp/src/main/res/mipmap-xxxhdpi/ic_launcher.png AppDir/poskmp.png || true
             fi
 
             # Download and run appimagetool
@@ -140,7 +140,7 @@ jobs:
             chmod +x appimagetool
             ./appimagetool --appimage-extract
             export ARCH=x86_64
-            ./squashfs-root/AppRun AppDir artifacts/desktop-linux/punto-de-venta-x86_64.AppImage
+            ./squashfs-root/AppRun AppDir artifacts/desktop-linux/poskmp-x86_64.AppImage
             rm -rf AppDir squashfs-root appimagetool
           fi
 
@@ -158,7 +158,7 @@ jobs:
           # Create portable ZIP containing the full application directory (exe + app/ + runtime/)
           $appDir = Get-ChildItem -Path desktopApp/build/compose/binaries/main-release/app -Directory | Select-Object -First 1
           if ($appDir) {
-            Compress-Archive -Path "$($appDir.FullName)\*" -DestinationPath artifacts/desktop-windows/punto-de-venta-windows-portable.zip -Force
+            Compress-Archive -Path "$($appDir.FullName)\*" -DestinationPath artifacts/desktop-windows/poskmp-windows-portable.zip -Force
           }
 
       - name: Upload Desktop Artifacts

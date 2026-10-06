@@ -76,7 +76,7 @@ actual object PlatformUpdater {
                 val isDebian = File("/etc/debian_version").exists() || File("/usr/bin/dpkg").exists()
                 val isRedHat = File("/etc/redhat-release").exists() || File("/etc/fedora-release").exists() || (File("/usr/bin/rpm").exists() && !isDebian)
                 val isArch = File("/etc/arch-release").exists() || File("/etc/cachyos-release").exists() || File("/usr/bin/pacman").exists()
-                val isInstalledArchPkg = getLinuxExecutablePath()?.let { it.startsWith("/opt/poskmp") || it.startsWith("/opt/punto-de-venta") } == true
+                val isInstalledArchPkg = getLinuxExecutablePath()?.startsWith("/opt/poskmp") == true
 
                 when {
                     isArch || isInstalledArchPkg -> {
@@ -279,7 +279,8 @@ actual object PlatformUpdater {
                 if (parent != null && parent.name.equals("app", ignoreCase = true)) {
                     val installDir = parent.parentFile
                     if (installDir != null) {
-                        val exe = File(installDir, "Punto de Venta.exe").takeIf { it.exists() }
+                        val exe = File(installDir, "poskmp.exe").takeIf { it.exists() }
+                            ?: File(installDir, "Punto de Venta.exe").takeIf { it.exists() }
                             ?: File(installDir, "PoSKMP.exe").takeIf { it.exists() }
                         if (exe != null) {
                             return WindowsAppTarget(installDir = installDir, executable = exe)
@@ -291,7 +292,8 @@ actual object PlatformUpdater {
 
         try {
             val userDir = File(System.getProperty("user.dir", "."))
-            val exe = File(userDir, "Punto de Venta.exe").takeIf { it.exists() }
+            val exe = File(userDir, "poskmp.exe").takeIf { it.exists() }
+                ?: File(userDir, "Punto de Venta.exe").takeIf { it.exists() }
                 ?: File(userDir, "PoSKMP.exe").takeIf { it.exists() }
             if (exe != null) {
                 return WindowsAppTarget(installDir = userDir, executable = exe)
@@ -305,11 +307,11 @@ actual object PlatformUpdater {
         val stagedDir = File(updateWorkDir, "staged")
         extractZip(zipFile, stagedDir)
 
-        val sourceDir = if (File(stagedDir, "Punto de Venta.exe").exists() || File(stagedDir, "PoSKMP.exe").exists() || File(stagedDir, "app").exists()) {
+        val sourceDir = if (File(stagedDir, "poskmp.exe").exists() || File(stagedDir, "Punto de Venta.exe").exists() || File(stagedDir, "PoSKMP.exe").exists() || File(stagedDir, "app").exists()) {
             stagedDir
         } else {
             stagedDir.listFiles()?.firstOrNull { child ->
-                child.isDirectory && (File(child, "Punto de Venta.exe").exists() || File(child, "PoSKMP.exe").exists() || File(child, "app").exists())
+                child.isDirectory && (File(child, "poskmp.exe").exists() || File(child, "Punto de Venta.exe").exists() || File(child, "PoSKMP.exe").exists() || File(child, "app").exists())
             } ?: stagedDir
         }
 
@@ -491,6 +493,16 @@ actual object PlatformUpdater {
             APP_COMMAND="$3"
             WORK_DIR="$4"
 
+            if [ -n "$WORK_DIR" ] && [ -d "$WORK_DIR" ]; then
+                exec >> "$WORK_DIR/update.log" 2>&1
+            fi
+
+            echo "=== Update started at $(date) ==="
+            echo "OLD_PID: $OLD_PID"
+            echo "PACKAGE_FILE: $PACKAGE_FILE"
+            echo "APP_COMMAND: $APP_COMMAND"
+            echo "WORK_DIR: $WORK_DIR"
+
             # 1. Wait for old process to exit
             if [ -n "$OLD_PID" ] && [ "$OLD_PID" -gt 0 ] 2>/dev/null; then
                 while kill -0 "$OLD_PID" 2>/dev/null; do
@@ -506,7 +518,7 @@ actual object PlatformUpdater {
                 case "$PACKAGE_FILE" in
                     *.pkg.tar.*|*.pkg.tar.gz|*.pkg.tar.zst)
                         if command -v pacman >/dev/null 2>&1; then
-                            pkexec pacman -U --noconfirm "$PACKAGE_FILE" && INSTALLED=1
+                            pkexec pacman -U --noconfirm --overwrite '*' "$PACKAGE_FILE" && INSTALLED=1
                         fi
                         ;;
                     *.deb)
@@ -530,21 +542,18 @@ actual object PlatformUpdater {
 
             # 3. If installed successfully, relaunch the app from system path
             if [ "$INSTALLED" -eq 1 ]; then
+                echo "Package installed successfully. Relaunching..."
                 sleep 1
-                if [ -n "$APP_COMMAND" ] && [ -x "$APP_COMMAND" ]; then
-                    nohup "$APP_COMMAND" >/dev/null 2>&1 &
-                elif [ -x "/usr/bin/poskmp" ]; then
+                if [ -x "/usr/bin/poskmp" ]; then
                     nohup "/usr/bin/poskmp" >/dev/null 2>&1 &
+                elif [ -x "/opt/poskmp/bin/poskmp" ]; then
+                    nohup "/opt/poskmp/bin/poskmp" >/dev/null 2>&1 &
                 elif [ -x "/usr/bin/punto-de-venta" ]; then
                     nohup "/usr/bin/punto-de-venta" >/dev/null 2>&1 &
-                elif [ -x "/opt/poskmp/bin/Punto de Venta" ]; then
-                    nohup "/opt/poskmp/bin/Punto de Venta" >/dev/null 2>&1 &
-                elif [ -x "/opt/punto-de-venta/bin/Punto de Venta" ]; then
-                    nohup "/opt/punto-de-venta/bin/Punto de Venta" >/dev/null 2>&1 &
-                elif [ -x "/opt/poskmp/bin/PoSKMP" ]; then
-                    nohup "/opt/poskmp/bin/PoSKMP" >/dev/null 2>&1 &
+                elif [ -n "$APP_COMMAND" ] && [ -x "$APP_COMMAND" ]; then
+                    nohup "$APP_COMMAND" >/dev/null 2>&1 &
                 elif command -v gtk-launch >/dev/null 2>&1; then
-                    gtk-launch "poskmp" >/dev/null 2>&1 || gtk-launch "punto-de-venta" >/dev/null 2>&1 &
+                    gtk-launch "poskmp" >/dev/null 2>&1 &
                 fi
 
                 # Cleanup work directory
@@ -553,13 +562,16 @@ actual object PlatformUpdater {
                     rm -rf "$WORK_DIR" 2>/dev/null
                 fi
             else
+                echo "Installation failed. INSTALLED=$INSTALLED"
                 # Fallback to desktop GUI package installer
                 if command -v pamac-installer >/dev/null 2>&1; then
                     pamac-installer "$PACKAGE_FILE"
                 elif command -v gdebi-gtk >/dev/null 2>&1; then
                     gdebi-gtk "$PACKAGE_FILE"
-                elif command -v xdg-open >/dev/null 2>&1; then
-                    xdg-open "$PACKAGE_FILE"
+                else
+                    if command -v notify-send >/dev/null 2>&1; then
+                        notify-send -u critical "Punto de Venta" "No se pudo completar la actualización. Revisa los permisos o inténtalo nuevamente."
+                    fi
                 fi
             fi
         """.trimIndent()

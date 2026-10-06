@@ -1,45 +1,41 @@
 # Maintainer: daniel
-pkgname=punto-de-venta
-pkgver=1.2.14
+pkgname=poskmp
+pkgver=1.2.16
 pkgrel=1
 pkgdesc="Punto de Venta - Sistema Punto de Venta (Compose Multiplatform)"
 arch=('x86_64')
 license=('custom')
 depends=('glibc' 'hicolor-icon-theme')
-provides=('poskmp')
 options=('!strip')
 
 build() {
     cd "$startdir/../.."
-    if [ ! -d "desktopApp/build/compose/binaries/main-release/app/Punto de Venta" ]; then
+    if [ ! -d "desktopApp/build/compose/binaries/main-release/app/poskmp" ]; then
         ./gradlew :desktopApp:createReleaseDistributable
     fi
 }
 
 package() {
-    local app_dir="$startdir/../../desktopApp/build/compose/binaries/main-release/app/Punto de Venta"
+    local app_dir="$startdir/../../desktopApp/build/compose/binaries/main-release/app/poskmp"
 
-    install -d "$pkgdir/opt/punto-de-venta"
-    cp -a "$app_dir"/* "$pkgdir/opt/punto-de-venta/"
-
-    # Backward compatibility symlink for /opt/poskmp
-    ln -sf punto-de-venta "$pkgdir/opt/poskmp"
+    install -d "$pkgdir/opt/poskmp"
+    cp -a "$app_dir"/* "$pkgdir/opt/poskmp/"
 
     # Launcher wrapper in /usr/bin
     install -d "$pkgdir/usr/bin"
-    cat << 'EOF' > "$pkgdir/usr/bin/punto-de-venta"
+    cat << 'EOF' > "$pkgdir/usr/bin/poskmp"
 #!/bin/sh
-exec "/opt/punto-de-venta/bin/Punto de Venta" "$@"
+exec "/opt/poskmp/bin/poskmp" "$@"
 EOF
-    chmod 755 "$pkgdir/usr/bin/punto-de-venta"
-    ln -sf punto-de-venta "$pkgdir/usr/bin/poskmp"
+    chmod 755 "$pkgdir/usr/bin/poskmp"
+    ln -sf poskmp "$pkgdir/usr/bin/punto-de-venta"
 
-    # Desktop entry
-    install -Dm644 "$startdir/punto-de-venta.desktop" "$pkgdir/usr/share/applications/punto-de-venta.desktop"
+    # Desktop entry - user sees "Punto de Venta" in desktop launcher and menu
+    install -Dm644 "$startdir/poskmp.desktop" "$pkgdir/usr/share/applications/poskmp.desktop"
 
     # Icons
     install -Dm644 "$startdir/../../desktopApp/src/main/resources/icons/icon.png" \
-        "$pkgdir/usr/share/icons/hicolor/512x512/apps/punto-de-venta.png"
+        "$pkgdir/usr/share/icons/hicolor/512x512/apps/poskmp.png"
     install -Dm644 "$startdir/../../desktopApp/src/main/resources/icons/icon.png" \
-        "$pkgdir/usr/share/pixmaps/punto-de-venta.png"
+        "$pkgdir/usr/share/pixmaps/poskmp.png"
 }
