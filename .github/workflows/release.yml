@@ -144,6 +144,10 @@ jobs:
             rm -rf AppDir squashfs-root appimagetool
           fi
 
+          # Build Arch Linux package (.pkg.tar.gz)
+          ./gradlew :desktopApp:packagePkgTarGz --stacktrace
+
+
       - name: Package Desktop Artifacts (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

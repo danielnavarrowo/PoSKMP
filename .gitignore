@@ -22,3 +22,7 @@ node_modules/
 *.keystore
 *.jfr
 *.asd
+/artifacts/
+packaging/**/*.pkg.tar.*
+packaging/**/pkg/
+packaging/**/src/
