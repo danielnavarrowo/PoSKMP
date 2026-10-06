@@ -1,6 +1,6 @@
 # Maintainer: daniel
 pkgname=poskmp
-pkgver=1.2.16
+pkgver=1.2.17
 pkgrel=1
 pkgdesc="Punto de Venta - Sistema Punto de Venta (Compose Multiplatform)"
 arch=('x86_64')
