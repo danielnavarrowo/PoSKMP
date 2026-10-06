@@ -1,5 +1,12 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,6 +72,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +81,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -182,7 +194,44 @@ fun CatalogSection(
     val tableListState = rememberLazyListState()
     val gridState = rememberLazyGridState()
 
+    var isSearchBarVisible by rememberSaveable { mutableStateOf(true) }
+
+    val nestedScrollConnection = remember(isCompact) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (isCompact) {
+                    val delta = available.y
+                    if (delta < -8f && isSearchBarVisible) {
+                        isSearchBarVisible = false
+                    } else if (delta > 8f && !isSearchBarVisible) {
+                        isSearchBarVisible = true
+                    }
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
+    LaunchedEffect(
+        compactListState.firstVisibleItemIndex,
+        compactListState.firstVisibleItemScrollOffset,
+        tableListState.firstVisibleItemIndex,
+        tableListState.firstVisibleItemScrollOffset,
+        gridState.firstVisibleItemIndex,
+        gridState.firstVisibleItemScrollOffset
+    ) {
+        val isAtTop = when {
+            useProductTable && isCompact -> compactListState.firstVisibleItemIndex == 0 && compactListState.firstVisibleItemScrollOffset == 0
+            useProductTable && !isCompact -> tableListState.firstVisibleItemIndex == 0 && tableListState.firstVisibleItemScrollOffset == 0
+            else -> gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+        }
+        if (isAtTop && !isSearchBarVisible) {
+            isSearchBarVisible = true
+        }
+    }
+
     fun resetScrollPosition() {
+        isSearchBarVisible = true
         try {
             tableListState.requestScrollToItem(0)
             compactListState.requestScrollToItem(0)
@@ -312,6 +361,7 @@ fun CatalogSection(
             .fillMaxSize()
             .widthIn(min = 320.dp)
             .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
+            .nestedScroll(nestedScrollConnection)
             .then(
                 if (isAndroid()) {
                     Modifier
@@ -320,8 +370,14 @@ fun CatalogSection(
                 } else Modifier
             )
     ) {
-        // Search Bar & Fast Codes
-        Row(
+        AnimatedVisibility(
+            visible = !isCompact || isSearchBarVisible || latestSearchQuery.value.isNotEmpty(),
+            enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+            exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut()
+        ) {
+            Column {
+                // Search Bar & Fast Codes
+                Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -561,7 +617,9 @@ fun CatalogSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
 
         if (isLoading) {
             Box(

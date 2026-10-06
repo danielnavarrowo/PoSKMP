@@ -19,9 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,6 +63,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,6 +80,7 @@ import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
 import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.isCompactWidth
 import com.dnavarro.poskmp.util.resetScroll
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
@@ -184,7 +188,7 @@ fun ClientesContent(
 ) {
     val searchBarFocusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     var selectedCustomerIndex by remember(state.filteredClientes) { mutableIntStateOf(-1) }
 
     fun reclaimSearchBarFocus() {
@@ -232,22 +236,22 @@ fun ClientesContent(
     LaunchedEffect(selectedCustomerIndex) {
         if (selectedCustomerIndex in state.filteredClientes.indices) {
             try {
-                listState.scrollItemIntoView(selectedCustomerIndex + 2)
+                gridState.scrollItemIntoView(selectedCustomerIndex + 2)
             } catch (_: Exception) {
             }
         } else if (selectedCustomerIndex == -1) {
-            listState.resetScroll(coroutineScope)
+            gridState.resetScroll(coroutineScope)
         }
     }
 
     LaunchedEffect(state.searchQuery) {
         selectedCustomerIndex = -1
-        listState.resetScroll(coroutineScope)
+        gridState.resetScroll(coroutineScope)
     }
 
     LaunchedEffect(state.filteredClientes) {
         if (selectedCustomerIndex <= 0) {
-            listState.resetScroll(coroutineScope)
+            gridState.resetScroll(coroutineScope)
         }
     }
 
@@ -257,11 +261,11 @@ fun ClientesContent(
                 if (state.searchQuery.isNotEmpty()) {
                     onSearchQueryChange("")
                     selectedCustomerIndex = -1
-                    listState.resetScroll(coroutineScope)
+                    gridState.resetScroll(coroutineScope)
                     true
                 } else if (selectedCustomerIndex != -1) {
                     selectedCustomerIndex = -1
-                    listState.resetScroll(coroutineScope)
+                    gridState.resetScroll(coroutineScope)
                     true
                 } else false
             }
@@ -293,7 +297,7 @@ fun ClientesContent(
                     true
                 } else if (selectedCustomerIndex == 0) {
                     selectedCustomerIndex = -1
-                    listState.resetScroll(coroutineScope)
+                    gridState.resetScroll(coroutineScope)
                     true
                 } else false
             }
@@ -310,12 +314,17 @@ fun ClientesContent(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val isCompact = maxWidth < 700.dp
+        val isCompact = isCompactWidth(maxWidth)
+        val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
 
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
+                .then(
+                    if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                    else Modifier
+                )
                 .then(
                     if (!isAndroid()) {
                         Modifier
@@ -346,8 +355,10 @@ fun ClientesContent(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
+                        scrolledContainerColor = MaterialTheme.colorScheme.background,
                         titleContentColor = MaterialTheme.colorScheme.onBackground
-                    )
+                    ),
+                    scrollBehavior = scrollBehavior
                 )
             },
             floatingActionButton = {
@@ -435,7 +446,7 @@ fun ClientesContent(
                             IconButton(onClick = {
                                 onSearchQueryChange("")
                                 selectedCustomerIndex = -1
-                                listState.resetScroll(coroutineScope)
+                                gridState.resetScroll(coroutineScope)
                                 reclaimSearchBarFocus()
                             }) {
                                 Icon(
@@ -451,14 +462,16 @@ fun ClientesContent(
                 )
 
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    LazyColumn(
-                        state = listState,
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Adaptive(minSize = 340.dp),
                         modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(bottom = if (isCompact) 88.dp else 128.dp)
                     ) {
-                        // KPI Cards Grid
-                        item {
+                        // KPI Cards Grid (spans all columns)
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             if (isCompact) {
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
@@ -518,13 +531,13 @@ fun ClientesContent(
                         }
 
                         // Customers List Header
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             Spacer(modifier = Modifier.height(4.dp))
                         }
 
                         // Empty States or Customer Items
                         if (state.isLoading) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -535,7 +548,7 @@ fun ClientesContent(
                                 }
                             }
                         } else if (state.filteredClientes.isEmpty()) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -594,7 +607,7 @@ fun ClientesContent(
                     }
 
                     AppVerticalScrollbar(
-                        state = listState,
+                        gridState = gridState,
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .fillMaxHeight()

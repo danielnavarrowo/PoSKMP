@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -80,6 +82,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -105,6 +108,7 @@ import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.ui.ventas.HistorialVentasScreen
 import com.dnavarro.poskmp.ui.ventas.ProductosVendidosScreen
 import com.dnavarro.poskmp.ui.ventas.SalesPeriodPreset
@@ -114,6 +118,8 @@ import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatShiftInterval
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.isCompactWidth
+import com.dnavarro.poskmp.util.isMediumOrExpandedWidth
 import ir.ehsannarmani.compose_charts.ColumnChart
 import ir.ehsannarmani.compose_charts.PieChart
 import ir.ehsannarmani.compose_charts.models.BarProperties
@@ -392,86 +398,93 @@ fun VentasScreen(
                 )
             }
             entry<VentasSubRoute.Main> {
-                Scaffold(
-                topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            modifier = Modifier.fillMaxWidth(),
-                            text = stringResource(Res.string.ventas_title),
-                            fontWeight = FontWeight.ExtraBold,
-                            style = MaterialTheme.typography.titleLarge,
-                            textAlign = if (onNavigateBack != null) TextAlign.Start else TextAlign.Center
-                        )
-                    },
-                    navigationIcon = {
-                        if (onNavigateBack != null) {
-                            IconButton(onClick = onNavigateBack) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.back),
-                                    contentDescription = stringResource(Res.string.cancel)
-                                )
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
+                BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+                    val isCompact = isCompactWidth(maxWidth)
+                    val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+                    val listState = rememberLazyListState()
+
+                    Scaffold(
+                        topBar = {
+                            TopAppBar(
+                                title = {
+                                    Text(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        text = stringResource(Res.string.ventas_title),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        textAlign = if (onNavigateBack != null) TextAlign.Start else TextAlign.Center
+                                    )
+                                },
+                                navigationIcon = {
+                                    if (onNavigateBack != null) {
+                                        IconButton(onClick = onNavigateBack) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.back),
+                                                contentDescription = stringResource(Res.string.cancel)
+                                            )
+                                        }
+                                    }
+                                },
+                                colors = TopAppBarDefaults.topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.background,
+                                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                                ),
+                                scrollBehavior = scrollBehavior
+                            )
+                        },
                         containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground
-                    )
-                )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-        modifier = modifier
-            .fillMaxSize()
-            .then(
-                if (!isAndroid()) {
-                    Modifier
-                        .focusRequester(desktopFocusRequester)
-                        .focusable()
-                        .onPreviewKeyEvent { keyEvent ->
-                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                                else Modifier
+                            )
+                            .then(
+                                if (!isAndroid()) {
+                                    Modifier
+                                        .focusRequester(desktopFocusRequester)
+                                        .focusable()
+                                        .onPreviewKeyEvent { keyEvent ->
+                                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
 
-                                Key.F9 -> {
-                                    if (state.activeShift != null) {
-                                        onOpenCloseShiftDialog()
-                                        true
-                                    } else false
-                                }
+                                                Key.F9 -> {
+                                                    if (state.activeShift != null) {
+                                                        onOpenCloseShiftDialog()
+                                                        true
+                                                    } else false
+                                                }
 
-                                else -> false
-                            }
-                        }
-                } else Modifier
-            )
-    ) { innerPadding ->
-        val pullToRefreshState = rememberPullToRefreshState()
-        PullToRefreshBox(
-            state = pullToRefreshState,
-            isRefreshing = state.isSyncing,
-            onRefresh = onRefresh,
-            indicator = {
-                PullToRefreshDefaults.LoadingIndicator(
-                    state = pullToRefreshState,
-                    isRefreshing = state.isSyncing,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
-        ) {
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-            ) {
-            val isCompact = maxWidth < 720.dp
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
+                                                else -> false
+                                            }
+                                        }
+                                } else Modifier
+                            )
+                    ) { innerPadding ->
+                        val pullToRefreshState = rememberPullToRefreshState()
+                        PullToRefreshBox(
+                            state = pullToRefreshState,
+                            isRefreshing = state.isSyncing,
+                            onRefresh = onRefresh,
+                            indicator = {
+                                PullToRefreshDefaults.LoadingIndicator(
+                                    state = pullToRefreshState,
+                                    isRefreshing = state.isSyncing,
+                                    modifier = Modifier.align(Alignment.TopCenter)
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = innerPadding.calculateTopPadding())
+                        ) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                contentPadding = PaddingValues(bottom = 24.dp)
+                            ) {
                 // Banner de Éxito / Feedback de Acciones de Turno
                 if (state.shiftActionSuccess != null) {
                     item {
@@ -843,6 +856,14 @@ fun VentasScreen(
                     )
                 }
             }
+
+            AppVerticalScrollbar(
+                state = listState,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .padding(vertical = 4.dp, horizontal = 2.dp)
+            )
         }
         }
     }
@@ -2506,7 +2527,7 @@ private fun DeliveryVsLocalComparisonCard(
                 }
 
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val isWide = maxWidth >= 640.dp
+                    val isWide = isMediumOrExpandedWidth(maxWidth)
                     if (isWide) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),

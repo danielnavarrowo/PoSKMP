@@ -147,9 +147,11 @@ import com.dnavarro.poskmp.ui.isCameraScannerAvailable
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatTimeOnly
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.isCompactWidth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -210,12 +212,9 @@ import java.time.LocalDateTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-internal val NAV_RAIL_MIN_WIDTH = 800.dp
-internal val NAV_RAIL_EXPANDED_MIN_WIDTH = 1200.dp
-
 internal fun navigationSuiteTypeForWidth(width: Dp): NavigationSuiteType = when {
-    width >= NAV_RAIL_EXPANDED_MIN_WIDTH -> NavigationSuiteType.WideNavigationRailExpanded
-    width >= NAV_RAIL_MIN_WIDTH -> NavigationSuiteType.WideNavigationRailCollapsed
+    width >= AdaptiveBreakpoints.NavRailExpandedMinWidth -> NavigationSuiteType.WideNavigationRailExpanded
+    width >= AdaptiveBreakpoints.NavRailMinWidth -> NavigationSuiteType.WideNavigationRailCollapsed
     else -> NavigationSuiteType.None
 }
 
@@ -629,7 +628,7 @@ fun App(
                             )
                     ) {
                     val appMaxWidth = maxWidth
-                    val isCompact = appMaxWidth < 600.dp
+                    val isCompact = isCompactWidth(appMaxWidth)
                     val isToolbarNavigation = navigationSuiteTypeForWidth(appMaxWidth) == NavigationSuiteType.None
 
                     val toolbarItems = remember(

@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
@@ -27,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -393,8 +395,15 @@ fun AjustesScreen(
         directive = navigator.scaffoldDirective,
         scaffoldState = navigator.scaffoldState,
         listPane = {
+            val listScrollBehavior = if (!isListAndDetailVisible || isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
             AnimatedPane(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (listScrollBehavior != null) Modifier.nestedScroll(listScrollBehavior.nestedScrollConnection)
+                            else Modifier
+                        ),
                     topBar = {
                         TopAppBar(
                             title = {
@@ -408,8 +417,10 @@ fun AjustesScreen(
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
                                 containerColor = MaterialTheme.colorScheme.background,
+                                scrolledContainerColor = MaterialTheme.colorScheme.background,
                                 titleContentColor = MaterialTheme.colorScheme.onBackground
-                            )
+                            ),
+                            scrollBehavior = listScrollBehavior
                         )
                     },
                     containerColor = MaterialTheme.colorScheme.background
@@ -543,8 +554,15 @@ fun AjustesScreen(
         }
         },
         detailPane = {
+            val detailScrollBehavior = if (!isListAndDetailVisible || isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
             AnimatedPane(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (detailScrollBehavior != null) Modifier.nestedScroll(detailScrollBehavior.nestedScrollConnection)
+                            else Modifier
+                        ),
                     topBar = {
                         if (!isListAndDetailVisible) {
                             TopAppBar(
@@ -569,8 +587,10 @@ fun AjustesScreen(
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = MaterialTheme.colorScheme.background,
+                                    scrolledContainerColor = MaterialTheme.colorScheme.background,
                                     titleContentColor = MaterialTheme.colorScheme.onBackground
-                                )
+                                ),
+                                scrollBehavior = detailScrollBehavior
                             )
                         }
                     },

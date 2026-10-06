@@ -88,6 +88,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
@@ -114,6 +115,7 @@ import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.isCompactWidth
 import com.dnavarro.poskmp.util.resetScroll
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
@@ -439,7 +441,8 @@ fun ProductosScreen(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val isCompact = maxWidth < 720.dp
+        val isCompact = isCompactWidth(maxWidth)
+        val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
 
         Scaffold(
             topBar = {
@@ -455,8 +458,10 @@ fun ProductosScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
+                        scrolledContainerColor = MaterialTheme.colorScheme.background,
                         titleContentColor = MaterialTheme.colorScheme.onBackground
-                    )
+                    ),
+                    scrollBehavior = scrollBehavior
                 )
             },
             floatingActionButton = {
@@ -741,6 +746,10 @@ fun ProductosScreen(
             containerColor = MaterialTheme.colorScheme.background,
             modifier = Modifier
                 .fillMaxSize()
+                .then(
+                    if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                    else Modifier
+                )
                 .padding(horizontal = 16.dp)
                 .then(
                     if (!isAndroid()) {
@@ -770,7 +779,7 @@ fun ProductosScreen(
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    val isCompact = maxWidth < 720.dp
+                    val isCompact = isCompactWidth(maxWidth)
                     val availableWidth = maxWidth
                     val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
                     val selectAllState = when {
