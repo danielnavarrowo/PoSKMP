@@ -47,10 +47,13 @@ compose.desktop {
             configurationFiles.from(project.file("proguard-rules.pro"))
         }
 
+        val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+
         nativeDistributions {
             modules("java.desktop", "java.instrument", "java.sql", "jdk.unsupported")
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage, TargetFormat.Msi)
-            packageName = "poskmp"
+            packageName = if (isWindows) "Punto de Venta" else "poskmp"
+            description = "poskmp - Sistema Punto de Venta"
             packageVersion = appVersion
             jvmArgs += commonJvmArgs
             windows {

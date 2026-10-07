@@ -153,8 +153,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifacts/desktop-windows
-          # Copy MSI installer
-          Get-ChildItem -Path desktopApp/build/compose/binaries/main-release -Recurse -Include *.msi | Copy-Item -Destination artifacts/desktop-windows
+          # Copy MSI installer ensuring uniform package naming (poskmp-<version>.msi)
+          $msi = Get-ChildItem -Path desktopApp/build/compose/binaries/main-release -Recurse -Include *.msi | Select-Object -First 1
+          if ($msi) {
+            $versionMatch = [regex]::Match($msi.Name, '(\d+\.[\d\.]+)')
+            $version = if ($versionMatch.Success) { $versionMatch.Groups[1].Value } else { "1.0.1" }
+            Copy-Item -Path $msi.FullName -Destination "artifacts/desktop-windows/poskmp-$version.msi" -Force
+          }
           # Create portable ZIP containing the full application directory (exe + app/ + runtime/)
           $appDir = Get-ChildItem -Path desktopApp/build/compose/binaries/main-release/app -Directory | Select-Object -First 1
           if ($appDir) {
