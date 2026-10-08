@@ -46,8 +46,7 @@ class SqlDelightProductDataSource(
     private var isBarcodesTableAvailable: Boolean = false
 
     private fun checkBarcodesTableExists(): Boolean {
-        if (isBarcodesTableAvailable) return true
-        return try {
+        return isBarcodesTableAvailable || try {
             queries.selectBarcodesByProductId("").executeAsList()
             isBarcodesTableAvailable = true
             true
@@ -69,8 +68,8 @@ class SqlDelightProductDataSource(
                         val existing = queries.selectProductByBarcode(firstCode, normalizeBarcode(firstCode)).executeAsOneOrNull()
                         if (existing == null) {
                             queries.transaction {
-                                for (p in allProds) {
-                                    syncBarcodesForProduct(p.id, p.codigos)
+                                for ((id, codigos) in allProds) {
+                                    syncBarcodesForProduct(id, codigos)
                                 }
                             }
                         }
@@ -168,25 +167,25 @@ class SqlDelightProductDataSource(
     override suspend fun insertProducts(products: List<Products>) {
         withContext(Dispatchers.IO) {
             queries.transaction {
-                for (product in products) {
+                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery, created_at, updated_at, sync_state) in products) {
                     queries.insertProduct(
-                        id = product.id,
-                        codigos = product.codigos,
-                        nombre = product.nombre,
-                        precio = product.precio,
-                        costo = product.costo,
-                        categoria = product.categoria,
-                        activo = product.activo,
-                        por_peso = product.por_peso,
-                        precio_mayoreo = product.precio_mayoreo,
-                        es_favorito = product.es_favorito,
-                        piezas = product.piezas,
-                        precio_delivery = product.precio_delivery,
-                        created_at = product.created_at,
-                        updated_at = product.updated_at,
-                        sync_state = product.sync_state
+                        id = id,
+                        codigos = codigos,
+                        nombre = nombre,
+                        precio = precio,
+                        costo = costo,
+                        categoria = categoria,
+                        activo = activo,
+                        por_peso = por_peso,
+                        precio_mayoreo = precio_mayoreo,
+                        es_favorito = es_favorito,
+                        piezas = piezas,
+                        precio_delivery = precio_delivery,
+                        created_at = created_at,
+                        updated_at = updated_at,
+                        sync_state = sync_state
                     )
-                    syncBarcodesForProduct(product.id, product.codigos)
+                    syncBarcodesForProduct(id, codigos)
                 }
             }
         }
@@ -220,25 +219,25 @@ class SqlDelightProductDataSource(
     override suspend fun updateProducts(products: List<Products>) {
         withContext(Dispatchers.IO) {
             queries.transaction {
-                for (product in products) {
+                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery, created_at, updated_at, sync_state) in products) {
                     queries.updateProduct(
-                        id = product.id,
-                        codigos = product.codigos,
-                        nombre = product.nombre,
-                        precio = product.precio,
-                        costo = product.costo,
-                        categoria = product.categoria,
-                        activo = product.activo,
-                        por_peso = product.por_peso,
-                        precio_mayoreo = product.precio_mayoreo,
-                        es_favorito = product.es_favorito,
-                        piezas = product.piezas,
-                        precio_delivery = product.precio_delivery,
-                        created_at = product.created_at,
-                        updated_at = product.updated_at,
-                        sync_state = product.sync_state
+                        id = id,
+                        codigos = codigos,
+                        nombre = nombre,
+                        precio = precio,
+                        costo = costo,
+                        categoria = categoria,
+                        activo = activo,
+                        por_peso = por_peso,
+                        precio_mayoreo = precio_mayoreo,
+                        es_favorito = es_favorito,
+                        piezas = piezas,
+                        precio_delivery = precio_delivery,
+                        created_at = created_at,
+                        updated_at = updated_at,
+                        sync_state = sync_state
                     )
-                    syncBarcodesForProduct(product.id, product.codigos)
+                    syncBarcodesForProduct(id, codigos)
                 }
             }
         }

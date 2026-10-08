@@ -23,7 +23,6 @@ object AdaptiveBreakpoints {
     val CompactMaxWidth: Dp = 600.dp
     val MediumMaxWidth: Dp = 840.dp
     val ExpandedMinWidth: Dp = 840.dp
-    val LargeDesktopMinWidth: Dp = 1200.dp
 
     // Navigation Rail specific breakpoints
     val NavRailMinWidth: Dp = 800.dp

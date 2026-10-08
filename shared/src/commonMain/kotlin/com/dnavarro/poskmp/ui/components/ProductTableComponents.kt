@@ -62,7 +62,6 @@ import poskmp.shared.generated.resources.cost_label
 import poskmp.shared.generated.resources.disabled
 import poskmp.shared.generated.resources.favorite_desc
 import poskmp.shared.generated.resources.header_delivery_price
-import poskmp.shared.generated.resources.header_price
 import poskmp.shared.generated.resources.header_retail_price
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.star_filled

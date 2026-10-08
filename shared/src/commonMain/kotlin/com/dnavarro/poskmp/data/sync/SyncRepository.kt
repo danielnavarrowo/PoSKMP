@@ -910,15 +910,15 @@ class SyncRepositoryImpl(
             productsByName[p.nombre.trim().lowercase()] = p
         }
         val barcodeToProductIds = HashMap<String, MutableSet<String>>()
-        for (p in allLocal) {
-            val codes = parseBarcodes(p.codigos)
+        for ((id, codigos) in allLocal) {
+            val codes = parseBarcodes(codigos)
             for (code in codes) {
                 val t = code.trim().lowercase()
                 if (t.isNotEmpty()) {
-                    barcodeToProductIds.getOrPut(t) { mutableSetOf() }.add(p.id)
+                    barcodeToProductIds.getOrPut(t) { mutableSetOf() }.add(id)
                     val norm = normalizeBarcode(t)
                     if (norm.isNotEmpty()) {
-                        barcodeToProductIds.getOrPut(norm) { mutableSetOf() }.add(p.id)
+                        barcodeToProductIds.getOrPut(norm) { mutableSetOf() }.add(id)
                     }
                 }
             }

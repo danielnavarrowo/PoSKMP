@@ -5,7 +5,9 @@ import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import com.dnavarro.poskmp.db.Products
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -182,7 +184,7 @@ actual fun pickDirectory(
     }
 }
 
-actual fun parseImportFile(
+actual suspend fun parseImportFile(
     fileName: String,
     content: ByteArray
 ): List<Products> {
@@ -191,22 +193,22 @@ actual fun parseImportFile(
         "xlsx" -> parseXlsxContent(content)
         "json" -> parseJsonContent(content)
         else -> {
-            val err = runBlocking { getString(Res.string.unsupported_file_format, extension) }
+            val err = getString(Res.string.unsupported_file_format, extension)
             throw IllegalArgumentException(err)
         }
     }
 }
 
-private fun parseCsvContent(content: ByteArray): List<Products> {
+private suspend fun parseCsvContent(content: ByteArray): List<Products> {
     val text = String(content, Charsets.UTF_8)
     val lines = text.split(Regex("\\r?\\n"))
     if (lines.isEmpty()) {
-        val err = runBlocking { getString(Res.string.csv_empty_error) }
+        val err = getString(Res.string.csv_empty_error)
         throw Exception(err)
     }
     
     val headerLine = lines.firstOrNull { it.trim().isNotEmpty() } ?: run {
-        val err = runBlocking { getString(Res.string.csv_no_header_error) }
+        val err = getString(Res.string.csv_no_header_error)
         throw Exception(err)
     }
     val headerCols = parseCsvLine(headerLine).map { it.lowercase().trim() }
@@ -215,7 +217,7 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
     val priceIndex = headerCols.indexOfFirst { it == "precio" || it == "price" || it == "precio_venta" }
     
     if (nameIndex == -1 || priceIndex == -1) {
-        val err = runBlocking { getString(Res.string.csv_invalid_headers_error) }
+        val err = getString(Res.string.csv_invalid_headers_error)
         throw Exception(err)
     }
     
@@ -300,7 +302,7 @@ private fun parseCsvContent(content: ByteArray): List<Products> {
     return products
 }
 
-private fun parseXlsxContent(content: ByteArray): List<Products> {
+private suspend fun parseXlsxContent(content: ByteArray): List<Products> {
     val sharedStrings = mutableListOf<String>()
     var sheetXmlBytes: ByteArray? = null
 
@@ -322,18 +324,21 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
             }
         }
     } catch (e: Exception) {
-        val err = runBlocking { getString(Res.string.excel_read_error, e.message ?: "") }
+        val err = getString(Res.string.excel_read_error, e.message ?: "")
         throw Exception(err)
     }
 
     if (sheetXmlBytes == null) {
-        val err = runBlocking { getString(Res.string.excel_no_sheet_error) }
+        val err = getString(Res.string.excel_no_sheet_error)
         throw Exception(err)
     }
 
     val rows = mutableListOf<List<String>>()
     try {
-        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(sheetXmlBytes))
+        val doc = withContext(Dispatchers.IO) {
+            DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(ByteArrayInputStream(sheetXmlBytes))
+        }
         val rowList = doc.getElementsByTagName("row")
         for (i in 0 until rowList.length) {
             val rowEl = rowList.item(i) as Element
@@ -372,12 +377,12 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
             rows.add(rowCells)
         }
     } catch (e: Exception) {
-        val err = runBlocking { getString(Res.string.excel_parse_error, e.message ?: "") }
+        val err = getString(Res.string.excel_parse_error, e.message ?: "")
         throw Exception(err)
     }
 
     if (rows.isEmpty()) {
-        val err = runBlocking { getString(Res.string.excel_empty_rows_error) }
+        val err = getString(Res.string.excel_empty_rows_error)
         throw Exception(err)
     }
 
@@ -388,7 +393,7 @@ private fun parseXlsxContent(content: ByteArray): List<Products> {
     val priceIndex = headerCols.indexOfFirst { it == "precio" || it == "price" || it == "precio_venta" }
     
     if (nameIndex == -1 || priceIndex == -1) {
-        val err = runBlocking { getString(Res.string.excel_invalid_headers_error) }
+        val err = getString(Res.string.excel_invalid_headers_error)
         throw Exception(err)
     }
     
@@ -483,17 +488,17 @@ private val importJsonParser = Json {
     allowTrailingComma = true
 }
 
-private fun parseJsonContent(content: ByteArray): List<Products> {
+private suspend fun parseJsonContent(content: ByteArray): List<Products> {
     val text = String(content, Charsets.UTF_8).trim()
     if (text.isEmpty()) {
-        val err = runBlocking { getString(Res.string.json_empty_error) }
+        val err = getString(Res.string.json_empty_error)
         throw Exception(err)
     }
 
     val rootElement = try {
         importJsonParser.parseToJsonElement(text)
     } catch (e: Exception) {
-        val err = runBlocking { getString(Res.string.json_parse_error, e.message ?: "") }
+        val err = getString(Res.string.json_parse_error, e.message ?: "")
         throw Exception(err)
     }
 
@@ -513,13 +518,13 @@ private fun parseJsonContent(content: ByteArray): List<Products> {
             }
         }
         else -> {
-            val err = runBlocking { getString(Res.string.json_invalid_structure_error) }
+            val err = getString(Res.string.json_invalid_structure_error)
             throw Exception(err)
         }
     }
 
     if (productObjects.isEmpty()) {
-        val err = runBlocking { getString(Res.string.json_no_valid_products_error) }
+        val err = getString(Res.string.json_no_valid_products_error)
         throw Exception(err)
     }
 
@@ -562,7 +567,7 @@ private fun parseJsonContent(content: ByteArray): List<Products> {
     }
 
     if (products.isEmpty()) {
-        val err = runBlocking { getString(Res.string.json_no_valid_products_error) }
+        val err = getString(Res.string.json_no_valid_products_error)
         throw Exception(err)
     }
 

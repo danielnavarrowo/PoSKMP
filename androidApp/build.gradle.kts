@@ -25,6 +25,7 @@ dependencies {
 android {
     namespace = "com.dnavarro.poskmp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdkMinor = libs.versions.android.compileSdkMinor.get().toInt()
 
     defaultConfig {
         applicationId = "com.dnavarro.poskmp"

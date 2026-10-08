@@ -40,7 +40,7 @@ expect fun pickDirectory(
     onError: (String) -> Unit
 )
 
-expect fun parseImportFile(
+expect suspend fun parseImportFile(
     fileName: String,
     content: ByteArray
 ): List<Products>

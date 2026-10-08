@@ -868,10 +868,4 @@ class AjustesViewModel(
         }
     }
 
-    fun clearResetAppMessage() {
-        _updateState.value = _updateState.value.copy(
-            resetAppError = null,
-            resetAppSuccess = null
-        )
-    }
 }

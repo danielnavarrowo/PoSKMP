@@ -25,7 +25,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,7 +63,6 @@ import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -83,6 +81,7 @@ import poskmp.shared.generated.resources.statement_empty
 import poskmp.shared.generated.resources.statement_running_balance_format
 import poskmp.shared.generated.resources.statement_summary_balance
 import poskmp.shared.generated.resources.statement_title_format
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun AccountStatementDialog(

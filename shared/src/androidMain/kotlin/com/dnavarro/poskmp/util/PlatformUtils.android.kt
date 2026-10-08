@@ -227,7 +227,7 @@ actual fun saveFile(
     context.startActivity(intent)
 }
 
-actual fun parseImportFile(
+actual suspend fun parseImportFile(
     fileName: String,
     content: ByteArray
 ): List<Products> {

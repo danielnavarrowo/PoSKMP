@@ -37,7 +37,7 @@ class SaveProductUseCase(
         }
 
         // 2. Validate barcodes: ensure no OTHER product has any of these barcodes
-        val excludeId = existingById?.id ?: existingByName?.id ?: product.id.ifBlank { null }
+        val excludeId = existingById?.id ?: product.id.ifBlank { null }
         val barcodeConflict = if (parsedCodes.isNotEmpty()) {
             repository.findConflictingProductForBarcodes(parsedCodes, excludeProductId = excludeId)
         } else {
@@ -59,14 +59,13 @@ class SaveProductUseCase(
         // 3. Resolve canonical ID
         val finalId = when {
             existingById != null -> existingById.id
-            existingByName != null -> existingByName.id
             existingByBarcode != null -> existingByBarcode.id
             product.id.isNotBlank() -> product.id
             else -> generateUUID()
         }
 
         // 4. Determine if this is a brand new product
-        val isBrandNew = existingById == null && existingByName == null && existingByBarcode == null
+        val isBrandNew = existingById == null && existingByBarcode == null
 
         // 5. Determine sync state: preserve PENDING_INSERT if it was never pushed to remote yet
         val syncState = if (isBrandNew) {

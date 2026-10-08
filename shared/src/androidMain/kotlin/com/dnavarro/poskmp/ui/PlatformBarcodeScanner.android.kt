@@ -37,8 +37,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
@@ -530,7 +533,6 @@ fun CameraPreviewScreen(
 
                             if (isChecadorMode) {
                                 val hasDeliveryPrice = lastScannedProduct.precio_delivery > 0.0
-                                val showDeliveryPrice = hasDeliveryPrice
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -629,7 +631,7 @@ fun CameraPreviewScreen(
                                         }
                                     }
 
-                                    if (showDeliveryPrice) {
+                                    if (hasDeliveryPrice) {
                                         Column(
                                             horizontalAlignment = if (isDeliveryHighlighted) Alignment.CenterHorizontally else Alignment.End,
                                             modifier = if (isDeliveryHighlighted) highlightedModifier else Modifier
@@ -725,19 +727,40 @@ fun CameraPreviewScreen(
                                 }
 
                                 val isWeight = lastScannedProduct.por_peso == 1L
-                                var textValue by remember(lastScannedQuantity, lastScannedProduct.id) {
-                                    mutableStateOf(lastScannedQuantity.formatQuantity(isWeight))
+                                val textFieldState = remember(lastScannedProduct.id) {
+                                    TextFieldState(lastScannedQuantity.formatQuantity(isWeight))
+                                }
+
+                                LaunchedEffect(lastScannedQuantity, lastScannedProduct.id) {
+                                    val formatted = lastScannedQuantity.formatQuantity(isWeight)
+                                    if (textFieldState.text.toString() != formatted) {
+                                        textFieldState.setTextAndPlaceCursorAtEnd(formatted)
+                                    }
+                                }
+
+                                val inputTransformation = remember(isWeight) {
+                                    InputTransformation {
+                                        val current = asCharSequence()
+                                        val isValid = if (isWeight) {
+                                            current.all { it.isDigit() || it == '.' } && current.count { it == '.' } <= 1
+                                        } else {
+                                            current.all { it.isDigit() }
+                                        }
+                                        if (!isValid) {
+                                            revertAllChanges()
+                                        }
+                                    }
                                 }
 
                                 val commitQuantity = {
-                                    val parsed = textValue.toDoubleOrNull()
+                                    val parsed = textFieldState.text.toString().toDoubleOrNull()
                                     if (parsed != null && parsed > 0.0) {
                                         val delta = parsed - lastScannedQuantity
                                         if (kotlin.math.abs(delta) > 0.0001) {
                                             onQuantityChange(delta)
                                         }
                                     } else {
-                                        textValue = lastScannedQuantity.formatQuantity(isWeight)
+                                        textFieldState.setTextAndPlaceCursorAtEnd(lastScannedQuantity.formatQuantity(isWeight))
                                     }
                                 }
 
@@ -778,27 +801,21 @@ fun CameraPreviewScreen(
                                     customItem(
                                         {
                                             BasicTextField(
-                                                value = textValue,
-                                                onValueChange = { newValue ->
-                                                    val filtered = if (isWeight) {
-                                                        newValue.filter { it.isDigit() || it == '.' }
-                                                    } else {
-                                                        newValue.filter { it.isDigit() }
-                                                    }
-                                                    textValue = filtered
-                                                },
+                                                state = textFieldState,
+                                                inputTransformation = inputTransformation,
                                                 textStyle = MaterialTheme.typography.titleLarge.copy(
                                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                                     textAlign = TextAlign.Center
                                                 ),
-                                                singleLine = true,
+                                                lineLimits = TextFieldLineLimits.SingleLine,
                                                 keyboardOptions = KeyboardOptions(
                                                     keyboardType = if (isWeight) KeyboardType.Decimal else KeyboardType.Number,
                                                     imeAction = ImeAction.Done
                                                 ),
-                                                keyboardActions = KeyboardActions(
-                                                    onDone = { commitQuantity() }
-                                                ),
+                                                onKeyboardAction = { performDefaultAction ->
+                                                    commitQuantity()
+                                                    performDefaultAction()
+                                                },
                                                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                                 modifier = Modifier
                                                     .weight(1f)
