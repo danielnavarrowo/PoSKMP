@@ -20,7 +20,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -76,7 +75,7 @@ import poskmp.shared.generated.resources.transfer_clabe_label
 import poskmp.shared.generated.resources.transfer_info_title
 import poskmp.shared.generated.resources.transfer_no_data_configured
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 @Composable
 fun RecordPaymentDialog(
     customer: Customer,
@@ -166,7 +165,7 @@ fun RecordPaymentDialog(
                             checked = isSelected,
                             onCheckedChange = { selectedMethod = method },
                             modifier = Modifier.weight(1f),
-                            colors = ToggleButtonDefaults.toggleButtonColors(
+                            colors = ToggleButtonDefaults.colors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                 checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer

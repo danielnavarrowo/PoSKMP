@@ -20,8 +20,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,8 +63,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -122,9 +125,7 @@ fun ChecadorContent(
     val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsState(initial = false)
     val effectivePrioritizeDelivery = prioritizeDeliveryPrice ?: settingsPrioritizeDelivery
 
-    var barcodeInputValue by remember {
-        mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero))
-    }
+    val barcodeState = rememberTextFieldState()
     var searchedProduct by remember { mutableStateOf<Products?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
     var showCameraScanner by remember { mutableStateOf(false) }
@@ -136,7 +137,7 @@ fun ChecadorContent(
     val scope = rememberCoroutineScope()
 
     fun performSearch() {
-        val code = barcodeInputValue.text.trim()
+        val code = barcodeState.text.toString().trim()
         if (code.isEmpty()) return
 
         scope.launch {
@@ -151,10 +152,9 @@ fun ChecadorContent(
             } else if (beepOnBarcodeScan) {
                 SoundManager.playBeepSound()
             }
-            barcodeInputValue = TextFieldValue(
-                text = barcodeInputValue.text,
-                selection = TextRange(0, barcodeInputValue.text.length)
-            )
+            barcodeState.edit {
+                selection = TextRange(0, length)
+            }
         }
     }
 
@@ -164,7 +164,7 @@ fun ChecadorContent(
             delay(10.seconds)
             searchedProduct = null
             hasSearched = false
-            barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+            barcodeState.clearText()
         }
     }
 
@@ -214,7 +214,7 @@ fun ChecadorContent(
                     .fillMaxWidth()
                     .height(54.dp)
                     .background(
-                        color = if (barcodeInputValue.text.isNotEmpty())
+                        color = if (barcodeState.text.isNotEmpty())
                             MaterialTheme.colorScheme.surfaceContainerLowest
                         else
                             MaterialTheme.colorScheme.surfaceContainer,
@@ -239,7 +239,7 @@ fun ChecadorContent(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        if (barcodeInputValue.text.isEmpty()) {
+                        if (barcodeState.text.isEmpty()) {
                             Text(
                                 text = stringResource(Res.string.barcode_input_placeholder),
                                 style = MaterialTheme.typography.titleSmall.copy(
@@ -250,8 +250,7 @@ fun ChecadorContent(
                         }
 
                         BasicTextField(
-                            value = barcodeInputValue,
-                            onValueChange = { barcodeInputValue = it },
+                            state = barcodeState,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester),
@@ -259,17 +258,18 @@ fun ChecadorContent(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Start
                             ),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            lineLimits = TextFieldLineLimits.SingleLine,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Search),
+                            onKeyboardAction = { performSearch() },
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
                         )
                     }
 
-                    if (barcodeInputValue.text.isNotEmpty()) {
+                    if (barcodeState.text.isNotEmpty()) {
                         IconButton(
                             modifier = Modifier.size(32.dp),
                             onClick = {
-                                barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+                                barcodeState.clearText()
                                 searchedProduct = null
                                 hasSearched = false
                                 focusRequester.requestFocus()
@@ -284,7 +284,7 @@ fun ChecadorContent(
                     }
 
                     if (isCameraScannerAvailable()) {
-                        if (barcodeInputValue.text.isNotEmpty()) {
+                        if (barcodeState.text.isNotEmpty()) {
                             Spacer(modifier = Modifier.width(6.dp))
                         }
                         IconButton(
@@ -586,10 +586,7 @@ fun ChecadorContent(
                         lastScannedProduct = product
                         checadorQuantity = 1.0
                         cameraScannerFeedback = null
-                        barcodeInputValue = TextFieldValue(
-                            text = code,
-                            selection = TextRange(0, code.length)
-                        )
+                        barcodeState.setTextAndPlaceCursorAtEnd(code)
                     } else {
                         lastScannedProduct = null
                         cameraScannerFeedback = "Producto no encontrado: $code"
@@ -674,9 +671,7 @@ fun ChecadorScreen(
     val settingsRepository = koinInject<SettingsRepository>()
     val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsState(initial = false)
 
-    var barcodeInputValue by remember {
-        mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero))
-    }
+    val barcodeState = rememberTextFieldState()
     var searchedProduct by remember { mutableStateOf<Products?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
     var showCameraScanner by remember { mutableStateOf(false) }
@@ -696,7 +691,7 @@ fun ChecadorScreen(
     }
 
     fun performSearch() {
-        val code = barcodeInputValue.text.trim()
+        val code = barcodeState.text.toString().trim()
         if (code.isEmpty()) return
 
         scope.launch {
@@ -711,10 +706,10 @@ fun ChecadorScreen(
             } else if (beepOnBarcodeScan) {
                 SoundManager.playBeepSound()
             }
-            barcodeInputValue = TextFieldValue(
-                text = code,
+            barcodeState.edit {
+                replace(0, length, code)
                 selection = TextRange(0, code.length)
-            )
+            }
         }
     }
 
@@ -724,7 +719,7 @@ fun ChecadorScreen(
             delay(10.seconds)
             searchedProduct = null
             hasSearched = false
-            barcodeInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+            barcodeState.clearText()
         }
     }
 
@@ -757,10 +752,7 @@ fun ChecadorScreen(
                         lastScannedProduct = product
                         checadorQuantity = 1.0
                         cameraScannerFeedback = null
-                        barcodeInputValue = TextFieldValue(
-                            text = code,
-                            selection = TextRange(0, code.length)
-                        )
+                        barcodeState.setTextAndPlaceCursorAtEnd(code)
                     } else {
                         lastScannedProduct = null
                         cameraScannerFeedback = "Producto no encontrado: $code"
@@ -799,19 +791,18 @@ fun ChecadorScreen(
             ChecadorAnimatedBackground(modifier = Modifier.fillMaxSize())
 
             // Hidden but always-focused Input TextField to process scanner/keyboard input seamlessly
-            BasicTextField(
-                value = barcodeInputValue,
-                onValueChange = { newValue ->
-                    barcodeInputValue = newValue
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                keyboardActions = KeyboardActions(onDone = { performSearch() }),
-                modifier = Modifier
-                    .size(1.dp)
-                    .alpha(0.01f)
-                    .focusRequester(focusRequester)
-            )
+            if (searchedProduct != null || hasSearched) {
+                BasicTextField(
+                    state = barcodeState,
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Search),
+                    onKeyboardAction = { performSearch() },
+                    modifier = Modifier
+                        .size(1.dp)
+                        .alpha(0.01f)
+                        .focusRequester(focusRequester)
+                )
+            }
 
             Column(
                 modifier = Modifier
@@ -1000,11 +991,8 @@ fun ChecadorScreen(
 
                                     // Visual input field for on-screen typing if needed
                                     BasicTextField(
-                                        value = barcodeInputValue,
-                                        onValueChange = { newValue ->
-                                            barcodeInputValue = newValue
-                                        },
-                                        singleLine = true,
+                                        state = barcodeState,
+                                        lineLimits = TextFieldLineLimits.SingleLine,
                                         textStyle = TextStyle(
                                             color = Color.Black,
                                             fontSize = 18.sp,
@@ -1012,9 +1000,9 @@ fun ChecadorScreen(
                                             textAlign = TextAlign.Center
                                         ),
                                         cursorBrush = SolidColor(Color.Black),
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        keyboardActions = KeyboardActions(onDone = { performSearch() }),
-                                        decorationBox = { innerTextField ->
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Search),
+                                        onKeyboardAction = { performSearch() },
+                                        decorator = { innerTextField ->
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -1031,7 +1019,7 @@ fun ChecadorScreen(
                                                     .padding(horizontal = 20.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                if (barcodeInputValue.text.isEmpty()) {
+                                                if (barcodeState.text.isEmpty()) {
                                                     Text(
                                                         text = "Acerca el código de barras al escáner...",
                                                         fontSize = 16.sp,

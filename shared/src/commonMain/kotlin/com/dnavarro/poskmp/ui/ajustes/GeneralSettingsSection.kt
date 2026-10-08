@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -63,7 +62,6 @@ import poskmp.shared.generated.resources.tab_checador
 import poskmp.shared.generated.resources.tab_productos
 import poskmp.shared.generated.resources.tab_venta
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun GeneralSettingsSection(
     defaultScreen: Screen,
@@ -135,7 +133,7 @@ fun GeneralSettingsSection(
                         ToggleButton(
                             checked = isSelected,
                             onCheckedChange = { onDefaultScreenChange(screenOption) },
-                            colors = ToggleButtonDefaults.toggleButtonColors(
+                            colors = ToggleButtonDefaults.colors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 checkedContainerColor = MaterialTheme.colorScheme.primary,
@@ -219,7 +217,7 @@ fun GeneralSettingsSection(
                             ToggleButton(
                                 checked = isSelected,
                                 onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
-                                colors = ToggleButtonDefaults.toggleButtonColors(
+                                colors = ToggleButtonDefaults.colors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     checkedContainerColor = MaterialTheme.colorScheme.primary,
@@ -379,7 +377,7 @@ fun GeneralSettingsSection(
                         ToggleButton(
                             checked = isSelected,
                             onCheckedChange = { onUseProductTableInCatalogChange(useTableOption) },
-                            colors = ToggleButtonDefaults.toggleButtonColors(
+                            colors = ToggleButtonDefaults.colors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 checkedContainerColor = MaterialTheme.colorScheme.primary,

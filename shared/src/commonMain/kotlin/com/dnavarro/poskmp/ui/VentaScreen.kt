@@ -1464,7 +1464,7 @@ fun VentaScreen(
                                                 paymentAmountInput.clearText()
                                             }
                                         },
-                                        colors = ToggleButtonDefaults.toggleButtonColors(
+                                        colors = ToggleButtonDefaults.colors(
                                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                             checkedContainerColor = MaterialTheme.colorScheme.primary,

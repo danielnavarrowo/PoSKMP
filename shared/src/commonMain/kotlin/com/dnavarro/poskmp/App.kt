@@ -39,7 +39,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -53,7 +52,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
@@ -139,15 +138,15 @@ import com.dnavarro.poskmp.ui.VentasScreen
 import com.dnavarro.poskmp.ui.ajustes.AjustesViewModel
 import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.components.DesktopTitleBar
+import com.dnavarro.poskmp.ui.isCameraScannerAvailable
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
-import com.dnavarro.poskmp.ui.isCameraScannerAvailable
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
-import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatTimeOnly
 import com.dnavarro.poskmp.util.isAndroid
@@ -233,9 +232,6 @@ enum class ExitProgressStep {
     FAILURE
 }
 
-@OptIn(
-    ExperimentalMaterial3ExpressiveApi::class
-)
 @Composable
 fun App(
     modifier: Modifier = Modifier,
@@ -1386,7 +1382,7 @@ fun App(
                                                         ToggleButton(
                                                             checked = item.isSelected,
                                                             onCheckedChange = onCheckedChange,
-                                                            shapes = ToggleButtonDefaults.shapes(
+                                                            shapes = ToggleButtonShapes(
                                                                 CircleShape,
                                                                 CircleShape,
                                                                 CircleShape

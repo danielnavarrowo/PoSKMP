@@ -28,8 +28,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -75,6 +78,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -119,6 +123,7 @@ import com.dnavarro.poskmp.util.isCompactWidth
 import com.dnavarro.poskmp.util.resetScroll
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -156,6 +161,8 @@ import poskmp.shared.generated.resources.filter_status_title
 import poskmp.shared.generated.resources.header_category
 import poskmp.shared.generated.resources.header_codes
 import poskmp.shared.generated.resources.header_cost
+import poskmp.shared.generated.resources.header_delivery_margin
+import poskmp.shared.generated.resources.header_delivery_price
 import poskmp.shared.generated.resources.header_last_sale
 import poskmp.shared.generated.resources.header_pieces
 import poskmp.shared.generated.resources.header_product_name
@@ -168,6 +175,8 @@ import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.new_product_button_desktop
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
+import poskmp.shared.generated.resources.percent_discount_24px
+import poskmp.shared.generated.resources.price
 import poskmp.shared.generated.resources.product_admin_title
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.reset_filters
@@ -176,17 +185,13 @@ import poskmp.shared.generated.resources.scan_with_camera_desc
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
+import poskmp.shared.generated.resources.sort_field_created_at
+import poskmp.shared.generated.resources.sort_field_updated_at
 import poskmp.shared.generated.resources.sort_order_asc
 import poskmp.shared.generated.resources.sort_order_desc
 import poskmp.shared.generated.resources.sort_order_section_title
 import poskmp.shared.generated.resources.sort_section_title
-import poskmp.shared.generated.resources.sort_field_created_at
-import poskmp.shared.generated.resources.sort_field_updated_at
 import poskmp.shared.generated.resources.star
-import poskmp.shared.generated.resources.header_delivery_margin
-import poskmp.shared.generated.resources.header_delivery_price
-import poskmp.shared.generated.resources.percent_discount_24px
-import poskmp.shared.generated.resources.price
 import poskmp.shared.generated.resources.wholesale
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -215,6 +220,23 @@ fun ProductosScreen(
     val showProductDialogFor = uiState.showProductDialogFor
     val showBulkModificationFor = uiState.showBulkModificationFor
     val selectedProductIds = uiState.selectedProductIds
+
+    val searchQueryState = rememberTextFieldState(searchQuery)
+
+    LaunchedEffect(searchQuery) {
+        if (searchQueryState.text.toString() != searchQuery) {
+            searchQueryState.setTextAndPlaceCursorAtEnd(searchQuery)
+        }
+    }
+
+    LaunchedEffect(searchQueryState) {
+        snapshotFlow { searchQueryState.text.toString() }.collectLatest { query ->
+            if (query != uiState.searchQuery) {
+                delay(150.milliseconds)
+                viewModel.onSearchQueryChanged(query)
+            }
+        }
+    }
 
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var showCameraScanner by remember { mutableStateOf(false) }
@@ -313,11 +335,12 @@ fun ProductosScreen(
             viewModel.onShowProductDialog(sortedProducts[selectedProductIndex])
             true
         } else {
-            val trimmed = searchQuery.trim()
+            val trimmed = searchQueryState.text.toString().trim()
             if (trimmed.isNotEmpty()) {
                 coroutineScope.launch {
                     val matchingProduct = viewModel.findProductByBarcode(trimmed)
                     if (matchingProduct != null) {
+                        searchQueryState.clearText()
                         viewModel.onSearchQueryChanged("")
                         selectedProductIndex = -1
                         selectionAnchorIndex = -1
@@ -333,7 +356,8 @@ fun ProductosScreen(
     val handleKeyNavigation: (KeyEvent) -> Boolean = { keyEvent ->
         keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
             Key.Escape -> {
-                if (searchQuery.isNotEmpty()) {
+                if (searchQueryState.text.isNotEmpty()) {
+                    searchQueryState.clearText()
                     viewModel.onSearchQueryChanged("")
                     selectedProductIndex = -1
                     selectionAnchorIndex = -1
@@ -821,7 +845,7 @@ fun ProductosScreen(
                                     .height(54.dp)
                                     .weight(1f)
                                     .background(
-                                        color = if (searchQuery.isNotEmpty())
+                                        color = if (searchQueryState.text.isNotEmpty())
                                             MaterialTheme.colorScheme.surfaceContainerLowest
                                         else
                                             MaterialTheme.colorScheme.surfaceContainer,
@@ -846,7 +870,7 @@ fun ProductosScreen(
                                         modifier = Modifier.weight(1f),
                                         contentAlignment = Alignment.CenterStart
                                     ) {
-                                        if (searchQuery.isEmpty()) {
+                                        if (searchQueryState.text.isEmpty()) {
                                             Text(
                                                 text = stringResource(Res.string.search_placeholder),
                                                 style = MaterialTheme.typography.titleSmall.copy(
@@ -859,12 +883,7 @@ fun ProductosScreen(
                                         }
 
                                         BasicTextField(
-                                            value = searchQuery,
-                                            onValueChange = {
-                                                viewModel.onSearchQueryChanged(it)
-                                                selectedProductIndex = -1
-                                                selectionAnchorIndex = -1
-                                            },
+                                            state = searchQueryState,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .focusRequester(searchBarFocusRequester)
@@ -872,24 +891,23 @@ fun ProductosScreen(
                                             keyboardOptions = KeyboardOptions(
                                                 imeAction = ImeAction.Search
                                             ),
-                                            keyboardActions = KeyboardActions(
-                                                onSearch = {
-                                                    onConfirmSearchOrBarcode()
-                                                }
-                                            ),
+                                            onKeyboardAction = {
+                                                onConfirmSearchOrBarcode()
+                                            },
                                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 textAlign = TextAlign.Start
                                             ),
-                                            singleLine = true
+                                            lineLimits = TextFieldLineLimits.SingleLine
                                         )
                                     }
 
-                                    if (searchQuery.isNotEmpty()) {
+                                    if (searchQueryState.text.isNotEmpty()) {
                                         IconButton(
                                             modifier = Modifier
                                                 .size(32.dp),
                                             onClick = {
+                                                searchQueryState.clearText()
                                                 viewModel.onSearchQueryChanged("")
                                                 selectedProductIndex = -1
                                                 selectionAnchorIndex = -1
@@ -1427,7 +1445,7 @@ fun ProductFilterAndSortBottomSheet(
                                 ToggleButton(
                                     checked = isSelected,
                                     onCheckedChange = { onSortOrderSelected(order) },
-                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                    colors = ToggleButtonDefaults.colors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         checkedContainerColor = MaterialTheme.colorScheme.primary,
@@ -1553,7 +1571,7 @@ fun ProductFilterAndSortBottomSheet(
                                 ToggleButton(
                                     checked = isSelected,
                                     onCheckedChange = { onFavoriteFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                    colors = ToggleButtonDefaults.colors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         checkedContainerColor = MaterialTheme.colorScheme.primary,
@@ -1604,7 +1622,7 @@ fun ProductFilterAndSortBottomSheet(
                                 ToggleButton(
                                     checked = isSelected,
                                     onCheckedChange = { onStatusFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.toggleButtonColors(
+                                    colors = ToggleButtonDefaults.colors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         checkedContainerColor = MaterialTheme.colorScheme.primary,

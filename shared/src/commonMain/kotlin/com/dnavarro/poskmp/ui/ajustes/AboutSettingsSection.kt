@@ -506,7 +506,7 @@ fun AboutSettingsSection(
                                     setSavedRenderApi(apiKey)
                                     showRestartNotice = true
                                 },
-                                colors = ToggleButtonDefaults.toggleButtonColors(
+                                colors = ToggleButtonDefaults.colors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     checkedContainerColor = MaterialTheme.colorScheme.primary,

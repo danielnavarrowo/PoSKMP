@@ -125,7 +125,7 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.collectLatest import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -218,21 +218,19 @@ fun CatalogSection(
         }
     }
 
-    LaunchedEffect(
-        compactListState.firstVisibleItemIndex,
-        compactListState.firstVisibleItemScrollOffset,
-        tableListState.firstVisibleItemIndex,
-        tableListState.firstVisibleItemScrollOffset,
-        gridState.firstVisibleItemIndex,
-        gridState.firstVisibleItemScrollOffset
-    ) {
-        val isAtTop = when {
-            useProductTable && isCompact -> compactListState.firstVisibleItemIndex == 0 && compactListState.firstVisibleItemScrollOffset == 0
-            useProductTable && !isCompact -> tableListState.firstVisibleItemIndex == 0 && tableListState.firstVisibleItemScrollOffset == 0
-            else -> gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+    LaunchedEffect(useProductTable, isCompact) {
+        snapshotFlow {
+            when {
+                useProductTable && isCompact -> compactListState.firstVisibleItemIndex == 0 && compactListState.firstVisibleItemScrollOffset == 0
+                useProductTable && !isCompact -> tableListState.firstVisibleItemIndex == 0 && tableListState.firstVisibleItemScrollOffset == 0
+                else -> gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
+            }
         }
-        if (isAtTop && !isSearchBarVisible) {
-            isSearchBarVisible = true
+        .distinctUntilChanged()
+        .collect { isAtTop ->
+            if (isAtTop && !isSearchBarVisible) {
+                isSearchBarVisible = true
+            }
         }
     }
 

@@ -167,7 +167,7 @@ fun SyncSettingsSection(
                             ToggleButton(
                                 checked = isSelected,
                                 onCheckedChange = { onDeviceRoleChange(role) },
-                                colors = ToggleButtonDefaults.toggleButtonColors(
+                                colors = ToggleButtonDefaults.colors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     checkedContainerColor = MaterialTheme.colorScheme.primary,
