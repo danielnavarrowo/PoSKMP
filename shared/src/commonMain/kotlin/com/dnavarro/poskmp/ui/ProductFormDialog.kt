@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -41,9 +42,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -792,10 +794,7 @@ fun ProductFormDialog(
     }
 
     @Composable
-    fun FormFields() {
-
-
-        // Barcodes input field and chips
+    fun BarcodeSection() {
         Column(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = barcodeInput,
@@ -927,12 +926,14 @@ fun ProductFormDialog(
                 }
             }
         }
+    }
 
+    @Composable
+    fun ProductNameField() {
         OutlinedTextField(
             value = formNombre,
             onValueChange = { formNombre = it },
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             label = {
                 Text(
                     stringResource(Res.string.product_name_label),
@@ -954,8 +955,14 @@ fun ProductFormDialog(
             } else null,
             singleLine = true
         )
+    }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    @Composable
+    fun CostAndPiecesSection() {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             OutlinedTextField(
                 value = formCosto,
                 onValueChange = { input ->
@@ -1042,154 +1049,86 @@ fun ProductFormDialog(
                 singleLine = true
             )
         }
+    }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = formPrecioMayoreo,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                        formPrecioMayoreo = input
-                        val wholesale = input.toDoubleOrNull()
-                        val cost = formCosto.toDoubleOrNull()
-                        if (wholesale != null && cost != null && cost > 0) {
-                            val margin = ((wholesale - cost) / cost) * 100.0
-                            formMargenMayoreo = formatMargin(margin)
-                            targetMargenMayoreo = margin
-                        }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.wholesale_price),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = wholesalePriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = formMargenMayoreo,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
-                        formMargenMayoreo = input
-                        val margin = input.toDoubleOrNull()
-                        targetMargenMayoreo = margin
-                        val cost = formCosto.toDoubleOrNull()
-                        if (margin != null && cost != null && cost > 0) {
-                            val rawWholesale = cost * (1.0 + margin / 100.0)
-                            val finalWholesale = if (roundProductPrices) roundPrice(rawWholesale) else rawWholesale
-                            formPrecioMayoreo = formatNumber(finalWholesale)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { focusState ->
-                        if (!focusState.isFocused && roundProductPrices) {
+    @Composable
+    fun RetailPriceSection() {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = formPrecio,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                            formPrecio = input
+                            val price = input.toDoubleOrNull()
                             val cost = formCosto.toDoubleOrNull()
-                            val wholesale = formPrecioMayoreo.toDoubleOrNull()
-                            if (cost != null && cost > 0 && wholesale != null && wholesale > 0) {
-                                val realMargin = ((wholesale - cost) / cost) * 100.0
-                                formMargenMayoreo = formatMargin(realMargin)
+                            if (price != null && cost != null && cost > 0) {
+                                val margin = ((price - cost) / cost) * 100.0
+                                formMargenVenta = formatMargin(margin)
+                                targetMargenVenta = margin
                             }
                         }
                     },
-                suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.wholesale_margin_label),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = wholesalePriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = {
-                    if (roundProductPrices) {
-                        val cost = formCosto.toDoubleOrNull()
-                        val wholesale = formPrecioMayoreo.toDoubleOrNull()
-                        if (cost != null && cost > 0 && wholesale != null && wholesale > 0) {
-                            val realMargin = ((wholesale - cost) / cost) * 100.0
-                            formMargenMayoreo = formatMargin(realMargin)
-                        }
-                    }
-                    focusManager.moveFocus(FocusDirection.Next)
-                }),
-                singleLine = true
-            )
-        }
-
-        if (wholesalePriceError != null) {
-            Text(
-                text = wholesalePriceError,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-            )
-        } else if (wholesaleMarginWarning != null) {
-            MarginWarningBadge(wholesaleMarginWarning)
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = formPrecio,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                        formPrecio = input
-                        val price = input.toDoubleOrNull()
-                        val cost = formCosto.toDoubleOrNull()
-                        if (price != null && cost != null && cost > 0) {
-                            val margin = ((price - cost) / cost) * 100.0
-                            formMargenVenta = formatMargin(margin)
+                    modifier = Modifier.weight(1f),
+                    prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            stringResource(Res.string.retail_price_required_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    isError = retailPriceError != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = formMargenVenta,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                            formMargenVenta = input
+                            val margin = input.toDoubleOrNull()
                             targetMargenVenta = margin
+                            val cost = formCosto.toDoubleOrNull()
+                            if (margin != null && cost != null && cost > 0) {
+                                val rawPrice = cost * (1.0 + margin / 100.0)
+                                val finalPrice = if (roundProductPrices) roundPrice(rawPrice) else rawPrice
+                                formPrecio = formatNumber(finalPrice)
+                            }
                         }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.retail_price_required_label),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = retailPriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = formMargenVenta,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
-                        formMargenVenta = input
-                        val margin = input.toDoubleOrNull()
-                        targetMargenVenta = margin
-                        val cost = formCosto.toDoubleOrNull()
-                        if (margin != null && cost != null && cost > 0) {
-                            val rawPrice = cost * (1.0 + margin / 100.0)
-                            val finalPrice = if (roundProductPrices) roundPrice(rawPrice) else rawPrice
-                            formPrecio = formatNumber(finalPrice)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { focusState ->
-                        if (!focusState.isFocused && roundProductPrices) {
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused && roundProductPrices) {
+                                val cost = formCosto.toDoubleOrNull()
+                                val price = formPrecio.toDoubleOrNull()
+                                if (cost != null && cost > 0 && price != null && price > 0) {
+                                    val realMargin = ((price - cost) / cost) * 100.0
+                                    formMargenVenta = formatMargin(realMargin)
+                                }
+                            }
+                        },
+                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            stringResource(Res.string.retail_margin_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    isError = retailPriceError != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(onNext = {
+                        if (roundProductPrices) {
                             val cost = formCosto.toDoubleOrNull()
                             val price = formPrecio.toDoubleOrNull()
                             if (cost != null && cost > 0 && price != null && price > 0) {
@@ -1197,553 +1136,821 @@ fun ProductFormDialog(
                                 formMargenVenta = formatMargin(realMargin)
                             }
                         }
-                    },
-                suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.retail_margin_label),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = retailPriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = {
-                    if (roundProductPrices) {
-                        val cost = formCosto.toDoubleOrNull()
-                        val price = formPrecio.toDoubleOrNull()
-                        if (cost != null && cost > 0 && price != null && price > 0) {
-                            val realMargin = ((price - cost) / cost) * 100.0
-                            formMargenVenta = formatMargin(realMargin)
-                        }
-                    }
-                    focusManager.moveFocus(FocusDirection.Next)
-                }),
-                singleLine = true
-            )
-        }
+                        focusManager.moveFocus(FocusDirection.Next)
+                    }),
+                    singleLine = true
+                )
+            }
 
-        if (retailPriceError != null) {
-            Text(
-                text = retailPriceError,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-            )
-        } else if (retailMarginWarning != null) {
-            MarginWarningBadge(retailMarginWarning)
+            if (retailPriceError != null) {
+                Text(
+                    text = retailPriceError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                )
+            } else if (retailMarginWarning != null) {
+                MarginWarningBadge(retailMarginWarning)
+            }
         }
+    }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = formPrecioDelivery,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                        formPrecioDelivery = input
-                        val delivery = input.toDoubleOrNull()
-                        val cost = formCosto.toDoubleOrNull()
-                        if (delivery != null && cost != null && cost > 0) {
-                            val margin = ((delivery - cost) / cost) * 100.0
-                            formMargenDelivery = formatMargin(margin)
-                            targetMargenDelivery = margin
-                        }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.delivery_price),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = deliveryPriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = formMargenDelivery,
-                onValueChange = { input ->
-                    if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
-                        formMargenDelivery = input
-                        val margin = input.toDoubleOrNull()
-                        targetMargenDelivery = margin
-                        val cost = formCosto.toDoubleOrNull()
-                        if (margin != null && cost != null && cost > 0) {
-                            val rawDelivery = cost * (1.0 + margin / 100.0)
-                            val finalDelivery = if (roundProductPrices) roundPrice(rawDelivery) else rawDelivery
-                            formPrecioDelivery = formatNumber(finalDelivery)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { focusState ->
-                        if (!focusState.isFocused && roundProductPrices) {
+    @Composable
+    fun WholesalePriceSection() {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = formPrecioMayoreo,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                            formPrecioMayoreo = input
+                            val wholesale = input.toDoubleOrNull()
                             val cost = formCosto.toDoubleOrNull()
-                            val delivery = formPrecioDelivery.toDoubleOrNull()
-                            if (cost != null && cost > 0 && delivery != null && delivery > 0) {
-                                val realMargin = ((delivery - cost) / cost) * 100.0
-                                formMargenDelivery = formatMargin(realMargin)
+                            if (wholesale != null && cost != null && cost > 0) {
+                                val margin = ((wholesale - cost) / cost) * 100.0
+                                formMargenMayoreo = formatMargin(margin)
+                                targetMargenMayoreo = margin
                             }
                         }
                     },
-                suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                label = {
-                    Text(
-                        stringResource(Res.string.delivery_margin_label),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                isError = deliveryPriceError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(onNext = {
-                    if (roundProductPrices) {
-                        val cost = formCosto.toDoubleOrNull()
-                        val delivery = formPrecioDelivery.toDoubleOrNull()
-                        if (cost != null && cost > 0 && delivery != null && delivery > 0) {
-                            val realMargin = ((delivery - cost) / cost) * 100.0
-                            formMargenDelivery = formatMargin(realMargin)
+                    modifier = Modifier.weight(1f),
+                    prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            stringResource(Res.string.wholesale_price),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    isError = wholesalePriceError != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = formMargenMayoreo,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                            formMargenMayoreo = input
+                            val margin = input.toDoubleOrNull()
+                            targetMargenMayoreo = margin
+                            val cost = formCosto.toDoubleOrNull()
+                            if (margin != null && cost != null && cost > 0) {
+                                val rawWholesale = cost * (1.0 + margin / 100.0)
+                                val finalWholesale = if (roundProductPrices) roundPrice(rawWholesale) else rawWholesale
+                                formPrecioMayoreo = formatNumber(finalWholesale)
+                            }
                         }
-                    }
-                    focusManager.moveFocus(FocusDirection.Next)
-                }),
-                singleLine = true
-            )
-        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused && roundProductPrices) {
+                                val cost = formCosto.toDoubleOrNull()
+                                val wholesale = formPrecioMayoreo.toDoubleOrNull()
+                                if (cost != null && cost > 0 && wholesale != null && wholesale > 0) {
+                                    val realMargin = ((wholesale - cost) / cost) * 100.0
+                                    formMargenMayoreo = formatMargin(realMargin)
+                                }
+                            }
+                        },
+                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            stringResource(Res.string.wholesale_margin_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    isError = wholesalePriceError != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(onNext = {
+                        if (roundProductPrices) {
+                            val cost = formCosto.toDoubleOrNull()
+                            val wholesale = formPrecioMayoreo.toDoubleOrNull()
+                            if (cost != null && cost > 0 && wholesale != null && wholesale > 0) {
+                                val realMargin = ((wholesale - cost) / cost) * 100.0
+                                formMargenMayoreo = formatMargin(realMargin)
+                            }
+                        }
+                        focusManager.moveFocus(FocusDirection.Next)
+                    }),
+                    singleLine = true
+                )
+            }
 
-        if (deliveryPriceError != null) {
-            Text(
-                text = deliveryPriceError,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
-            )
-        } else if (deliveryMarginWarning != null) {
-            MarginWarningBadge(deliveryMarginWarning)
+            if (wholesalePriceError != null) {
+                Text(
+                    text = wholesalePriceError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                )
+            } else if (wholesaleMarginWarning != null) {
+                MarginWarningBadge(wholesaleMarginWarning)
+            }
         }
+    }
 
-        ExposedDropdownMenuBox(
-            expanded = categoryDropdownExpanded,
-            onExpandedChange = { categoryDropdownExpanded = it },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = formCategoria,
-                onValueChange = {
-                    formCategoria = it
-                    categoryDropdownExpanded = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
-                label = {
-                    Text(
-                        stringResource(Res.string.category_label),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
-                },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        categoryDropdownExpanded = false
-                        focusManager.clearFocus()
-                    }
-                ),
-                singleLine = true
-            )
-            if (filteredCategories.isNotEmpty() || (formCategoria.trim()
-                    .isNotEmpty() && !allCategories.any {
-                    it.equals(
-                        formCategoria.trim(),
-                        ignoreCase = true
-                    )
-                })
+    @Composable
+    fun DeliveryPriceSection(isWide: Boolean) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ExposedDropdownMenu(
-                    expanded = categoryDropdownExpanded,
-                    onDismissRequest = { categoryDropdownExpanded = false }
+                OutlinedTextField(
+                    value = formPrecioDelivery,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                            formPrecioDelivery = input
+                            val delivery = input.toDoubleOrNull()
+                            val cost = formCosto.toDoubleOrNull()
+                            if (delivery != null && cost != null && cost > 0) {
+                                val margin = ((delivery - cost) / cost) * 100.0
+                                formMargenDelivery = formatMargin(margin)
+                                targetMargenDelivery = margin
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            stringResource(Res.string.delivery_price),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    isError = deliveryPriceError != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = formMargenDelivery,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                            formMargenDelivery = input
+                            val margin = input.toDoubleOrNull()
+                            targetMargenDelivery = margin
+                            val cost = formCosto.toDoubleOrNull()
+                            if (margin != null && cost != null && cost > 0) {
+                                val rawDelivery = cost * (1.0 + margin / 100.0)
+                                val finalDelivery = if (roundProductPrices) roundPrice(rawDelivery) else rawDelivery
+                                formPrecioDelivery = formatNumber(finalDelivery)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused && roundProductPrices) {
+                                val cost = formCosto.toDoubleOrNull()
+                                val delivery = formPrecioDelivery.toDoubleOrNull()
+                                if (cost != null && cost > 0 && delivery != null && delivery > 0) {
+                                    val realMargin = ((delivery - cost) / cost) * 100.0
+                                    formMargenDelivery = formatMargin(realMargin)
+                                }
+                            }
+                        },
+                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                    label = {
+                        Text(
+                            stringResource(Res.string.delivery_margin_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    isError = deliveryPriceError != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = if (isWide) ImeAction.Done else ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            if (roundProductPrices) {
+                                val cost = formCosto.toDoubleOrNull()
+                                val delivery = formPrecioDelivery.toDoubleOrNull()
+                                if (cost != null && cost > 0 && delivery != null && delivery > 0) {
+                                    val realMargin = ((delivery - cost) / cost) * 100.0
+                                    formMargenDelivery = formatMargin(realMargin)
+                                }
+                            }
+                            focusManager.moveFocus(FocusDirection.Next)
+                        },
+                        onDone = {
+                            if (roundProductPrices) {
+                                val cost = formCosto.toDoubleOrNull()
+                                val delivery = formPrecioDelivery.toDoubleOrNull()
+                                if (cost != null && cost > 0 && delivery != null && delivery > 0) {
+                                    val realMargin = ((delivery - cost) / cost) * 100.0
+                                    formMargenDelivery = formatMargin(realMargin)
+                                }
+                            }
+                            focusManager.clearFocus()
+                        }
+                    ),
+                    singleLine = true
+                )
+            }
+
+            if (deliveryPriceError != null) {
+                Text(
+                    text = deliveryPriceError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                )
+            } else if (deliveryMarginWarning != null) {
+                MarginWarningBadge(deliveryMarginWarning)
+            }
+        }
+    }
+
+    @Composable
+    fun CategorySection(isWide: Boolean) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            ExposedDropdownMenuBox(
+                expanded = categoryDropdownExpanded,
+                onExpandedChange = { categoryDropdownExpanded = it },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = formCategoria,
+                    onValueChange = {
+                        formCategoria = it
+                        categoryDropdownExpanded = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                    label = {
+                        Text(
+                            stringResource(Res.string.category_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = if (isWide) ImeAction.Next else ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            categoryDropdownExpanded = false
+                            focusManager.moveFocus(FocusDirection.Next)
+                        },
+                        onDone = {
+                            categoryDropdownExpanded = false
+                            focusManager.clearFocus()
+                        }
+                    ),
+                    singleLine = true
+                )
+                if (filteredCategories.isNotEmpty() || (formCategoria.trim()
+                        .isNotEmpty() && !allCategories.any {
+                        it.equals(
+                            formCategoria.trim(),
+                            ignoreCase = true
+                        )
+                    })
                 ) {
-                    filteredCategories.forEach { category ->
-                        val isSelected = category.equals(formCategoria.trim(), ignoreCase = true)
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = category,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                )
-                            },
-                            trailingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.check),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            } else null,
-                            onClick = {
-                                formCategoria = category
-                                categoryDropdownExpanded = false
-                            },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                        )
-                    }
-                    if (filteredCategories.isEmpty() && formCategoria.trim().isNotEmpty()) {
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.add),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                    ExposedDropdownMenu(
+                        expanded = categoryDropdownExpanded,
+                        onDismissRequest = { categoryDropdownExpanded = false }
+                    ) {
+                        filteredCategories.forEach { category ->
+                            val isSelected = category.equals(formCategoria.trim(), ignoreCase = true)
+                            DropdownMenuItem(
+                                text = {
                                     Text(
-                                        text = "${stringResource(Res.string.new_category)}: \"${formCategoria.trim()}\"",
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.primary
+                                        text = category,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
-                                }
-                            },
-                            onClick = {
-                                categoryDropdownExpanded = false
-                            },
-                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                        )
+                                },
+                                trailingIcon = if (isSelected) {
+                                    {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.check),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                } else null,
+                                onClick = {
+                                    formCategoria = category
+                                    categoryDropdownExpanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                        if (filteredCategories.isEmpty() && formCategoria.trim().isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.add),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "${stringResource(Res.string.new_category)}: \"${formCategoria.trim()}\"",
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    categoryDropdownExpanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        if (!readOnly && (categorySuggestions.isNotEmpty() || isLookingUpGemini || (geminiGroundingEnabled && geminiApiKey.isNotBlank() && formNombre.trim().length >= 2) || (geminiIsError && geminiErrorMessage != null))) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(Res.string.suggested_categories_title),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (geminiGroundingEnabled && geminiApiKey.isNotBlank() && formNombre.trim().length >= 2 && !isLookingUpGemini) {
-                    TextButton(
-                        onClick = { lookupGeminiCategory(formNombre.trim()) },
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+            if (!readOnly && (categorySuggestions.isNotEmpty() || isLookingUpGemini || (geminiGroundingEnabled && geminiApiKey.isNotBlank() && formNombre.trim().length >= 2) || (geminiIsError && geminiErrorMessage != null))) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.suggested_categories_title),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (geminiGroundingEnabled && geminiApiKey.isNotBlank() && formNombre.trim().length >= 2 && !isLookingUpGemini) {
+                        TextButton(
+                            onClick = { lookupGeminiCategory(formNombre.trim()) },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                text = "✨ " + stringResource(Res.string.gemini_lookup_action),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                if (isLookingUpGemini) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
                     ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "✨ " + stringResource(Res.string.gemini_lookup_action),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = stringResource(Res.string.gemini_lookup_in_progress),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
-            }
 
-            if (isLookingUpGemini) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(Res.string.gemini_lookup_in_progress),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                if (geminiIsError && geminiErrorMessage != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.info),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = geminiErrorMessage.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
                 }
-            }
 
-            if (geminiIsError && geminiErrorMessage != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                ) {
+                if (categorySuggestions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.info),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = geminiErrorMessage.orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
-
-            if (categorySuggestions.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    categorySuggestions.forEach { item ->
-                        val suggestion = item.category
-                        val isSelected = formCategoria.trim().equals(suggestion, ignoreCase = true)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                formCategoria = if (isSelected) {
-                                    ""
-                                } else {
-                                    suggestion
-                                }
-                            },
-                            label = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = suggestion,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                                    )
-                                    if (item.isAi) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                            shape = MaterialTheme.shapes.extraSmall
-                                        ) {
-                                            Text(
-                                                text = "✨ " + stringResource(Res.string.gemini_suggestion_badge),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(
-                                                    horizontal = 4.dp,
-                                                    vertical = 1.dp
+                        categorySuggestions.forEach { item ->
+                            val suggestion = item.category
+                            val isSelected = formCategoria.trim().equals(suggestion, ignoreCase = true)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    formCategoria = if (isSelected) {
+                                        ""
+                                    } else {
+                                        suggestion
+                                    }
+                                },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = suggestion,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                        )
+                                        if (item.isAi) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                                shape = MaterialTheme.shapes.extraSmall
+                                            ) {
+                                                Text(
+                                                    text = "✨ " + stringResource(Res.string.gemini_suggestion_badge),
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 4.dp,
+                                                        vertical = 1.dp
+                                                    )
                                                 )
-                                            )
-                                        }
-                                    } else if (item.isOpenFoodFacts) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
-                                            shape = MaterialTheme.shapes.extraSmall
-                                        ) {
-                                            Text(
-                                                text = "🌐 " + stringResource(Res.string.off_suggestion_badge),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.secondary,
-                                                modifier = Modifier.padding(
-                                                    horizontal = 4.dp,
-                                                    vertical = 1.dp
+                                            }
+                                        } else if (item.isOpenFoodFacts) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
+                                                shape = MaterialTheme.shapes.extraSmall
+                                            ) {
+                                                Text(
+                                                    text = "🌐 " + stringResource(Res.string.off_suggestion_badge),
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 4.dp,
+                                                        vertical = 1.dp
+                                                    )
                                                 )
-                                            )
+                                            }
                                         }
                                     }
-                                }
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(if (isSelected) Res.drawable.check else Res.drawable.category),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(
-                                    alpha = 0.5f
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(if (isSelected) Res.drawable.check else Res.drawable.category),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(
+                                        alpha = 0.5f
+                                    ),
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 ),
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            shape = MaterialTheme.shapes.small
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Checkbox(checked = formActivo, onCheckedChange = { formActivo = it })
-                Text(
-                    stringResource(Res.string.active_label),
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Checkbox(checked = formPorPeso, onCheckedChange = { formPorPeso = it })
-                Text(
-                    stringResource(Res.string.sell_by_weight_label),
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
-            Text(
-                stringResource(Res.string.mark_as_favorite_label),
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-    }
-
-    if (isAndroid()) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        val coroutineScope = rememberCoroutineScope()
-        var isDismissing by remember { mutableStateOf(false) }
-
-        ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
-                isDismissing = true
-                coroutineScope.launch {
-                    try {
-                        sheetState.hide()
-                    } finally {
-                        if (!sheetState.isVisible) {
-                            onDismiss()
-                        } else {
-                            isDismissing = false
+                                shape = MaterialTheme.shapes.small
+                            )
                         }
                     }
                 }
             }
+        }
+    }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 16.dp)
+    @Composable
+    fun ProductOptionsSection(horizontal: Boolean = false) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (horizontal) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { formActivo = !formActivo }
+                    ) {
+                        Checkbox(checked = formActivo, onCheckedChange = { formActivo = it })
+                        Text(
+                            stringResource(Res.string.active_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { formPorPeso = !formPorPeso }
+                    ) {
+                        Checkbox(checked = formPorPeso, onCheckedChange = { formPorPeso = it })
+                        Text(
+                            stringResource(Res.string.sell_by_weight_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { formEsFavorito = !formEsFavorito }
+                    ) {
+                        Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
+                        Text(
+                            stringResource(Res.string.mark_as_favorite_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f).clickable { formActivo = !formActivo }
+                    ) {
+                        Checkbox(checked = formActivo, onCheckedChange = { formActivo = it })
+                        Text(
+                            stringResource(Res.string.active_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f).clickable { formPorPeso = !formPorPeso }
+                    ) {
+                        Checkbox(checked = formPorPeso, onCheckedChange = { formPorPeso = it })
+                        Text(
+                            stringResource(Res.string.sell_by_weight_label),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { formEsFavorito = !formEsFavorito },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
+                    Text(
+                        stringResource(Res.string.mark_as_favorite_label),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun FormFields(isWide: Boolean) {
+        if (isWide) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
-                        Res.string.modify_product_title
-                    ),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // Columna 1: Identificación y Clasificación
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "General",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    BarcodeSection()
+                    ProductNameField()
+                    CategorySection(isWide = true)
+                }
+
+                // Área derecha: Precios y Opciones horizontal debajo
+                Column(
+                    modifier = Modifier.weight(2f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        // Columna 2: Costo y Venta
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Costo y Venta",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            CostAndPiecesSection()
+                            RetailPriceSection()
+                        }
+
+                        // Columna 3: Precios Especiales (Mayoreo y Entrega)
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Precios Especiales",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            WholesalePriceSection()
+                            DeliveryPriceSection(isWide = true)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Opciones",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ProductOptionsSection(horizontal = true)
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                BarcodeSection()
+                ProductNameField()
+                CostAndPiecesSection()
+                RetailPriceSection()
+                WholesalePriceSection()
+                DeliveryPriceSection(isWide = false)
+                CategorySection(isWide = false)
+                ProductOptionsSection(horizontal = false)
+            }
+        }
+    }
+
+    BoxWithConstraints {
+        val isWideScreen = maxWidth >= 760.dp
+        val useBottomSheet = isAndroid() && !isWideScreen
+
+        if (useBottomSheet) {
+            val sheetState = rememberBottomSheetState(
+                initialValue = SheetValue.Hidden,
+                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+            )
+            val coroutineScope = rememberCoroutineScope()
+            var isDismissing by remember { mutableStateOf(false) }
+
+            ModalBottomSheet(
+                onDismissRequest = onDismiss,
+                sheetState = sheetState,
+                sheetMaxWidth = 1120.dp,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
+                    isDismissing = true
+                    coroutineScope.launch {
+                        try {
+                            sheetState.hide()
+                        } finally {
+                            if (!sheetState.isVisible) {
+                                onDismiss()
+                            } else {
+                                isDismissing = false
+                            }
+                        }
+                    }
+                }
 
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 16.dp)
                 ) {
-                    FormFields()
-                }
+                    Text(
+                        text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
+                            Res.string.modify_product_title
+                        ),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                    ) {
+                        val isWide = maxWidth >= 720.dp
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FormFields(isWide = isWide)
+                        }
+                    }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    dismissButtonContent()
-                    Spacer(modifier = Modifier.width(8.dp))
-                    confirmButtonContent()
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        dismissButtonContent()
+                        Spacer(modifier = Modifier.width(8.dp))
+                        confirmButtonContent()
+                    }
                 }
             }
-        }
-    } else {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-            modifier = Modifier
-                .widthIn(min = 340.dp, max = 640.dp)
-                .fillMaxWidth(0.92f)
-                .then(
-                    Modifier.onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            val isEnter =
-                                keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
-                            val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                            isEnter && isCtrlOrMeta && if (formNombre.trim()
-                                    .isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode
-                            ) {
-                                submitForm()
-                                true
+        } else {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+                modifier = Modifier
+                    .widthIn(min = 360.dp, max = 1120.dp)
+                    .fillMaxWidth(0.94f)
+                    .then(
+                        Modifier.onPreviewKeyEvent { keyEvent ->
+                            if (keyEvent.type == KeyEventType.KeyDown) {
+                                val isEnter =
+                                    keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
+                                val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                                isEnter && isCtrlOrMeta && if (formNombre.trim()
+                                        .isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode
+                                ) {
+                                    submitForm()
+                                    true
+                                } else false
                             } else false
-                        } else false
-                    }
-                ),
-            shape = ShapeDefaults.cardShape,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            title = {
-                Text(
-                    text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
-                        Res.string.modify_product_title
+                        }
                     ),
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    FormFields()
-                }
-            },
-            confirmButton = confirmButtonContent,
-            dismissButton = dismissButtonContent
-        )
+                shape = ShapeDefaults.cardShape,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                title = {
+                    Text(
+                        text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
+                            Res.string.modify_product_title
+                        ),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val isWide = maxWidth >= 720.dp
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FormFields(isWide = isWide)
+                        }
+                    }
+                },
+                confirmButton = confirmButtonContent,
+                dismissButton = dismissButtonContent
+            )
+        }
     }
 
     if (showCameraScanner) {

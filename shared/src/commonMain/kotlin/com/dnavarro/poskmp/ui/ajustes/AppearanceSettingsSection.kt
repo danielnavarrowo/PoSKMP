@@ -41,11 +41,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlin.math.abs
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -380,11 +383,20 @@ fun AppearanceSettingsSection(
                         )
                     }
 
-                    Slider(
+                    val scaleSliderState = rememberSliderState(
                         value = appScale,
-                        onValueChange = { onAppScaleChange((it * 100).roundToInt() / 100f) },
-                        valueRange = 0.75f..1.35f,
                         steps = 11,
+                        trackRange = 0.75f..1.35f
+                    )
+                    LaunchedEffect(appScale) {
+                        if (abs(scaleSliderState.value - appScale) > 0.001f) {
+                            scaleSliderState.value = appScale
+                        }
+                    }
+
+                    Slider(
+                        state = scaleSliderState,
+                        onValueChange = { onAppScaleChange((it * 100).roundToInt() / 100f) },
                         modifier = Modifier.weight(1f)
                     )
 

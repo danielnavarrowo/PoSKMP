@@ -73,6 +73,7 @@ class GetSalesSummaryUseCase(
                 java.time.DayOfWeek.FRIDAY -> "Vie"
                 java.time.DayOfWeek.SATURDAY -> "Sáb"
                 java.time.DayOfWeek.SUNDAY -> "Dom"
+                null -> ""
             }
             val monthName = when (currentDate.month) {
                 java.time.Month.JANUARY -> "Ene"
@@ -87,6 +88,7 @@ class GetSalesSummaryUseCase(
                 java.time.Month.OCTOBER -> "Oct"
                 java.time.Month.NOVEMBER -> "Nov"
                 java.time.Month.DECEMBER -> "Dic"
+                null -> ""
             }
 
             val diaLabel = if (totalDays <= 7) {

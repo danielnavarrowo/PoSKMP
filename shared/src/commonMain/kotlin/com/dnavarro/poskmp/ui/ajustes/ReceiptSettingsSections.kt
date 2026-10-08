@@ -20,8 +20,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlin.math.abs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -426,11 +428,20 @@ fun PrinterSettingsSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Slider(
+                val paperWidthSliderState = rememberSliderState(
                     value = settings.paperWidthMm.toFloat(),
-                    onValueChange = { onSettingsChange(settings.copy(paperWidthMm = it.roundToInt().coerceIn(55, 105))) },
-                    valueRange = 55f..105f,
-                    steps = 49
+                    steps = 49,
+                    trackRange = 55f..105f
+                )
+                LaunchedEffect(settings.paperWidthMm) {
+                    val target = settings.paperWidthMm.toFloat()
+                    if (abs(paperWidthSliderState.value - target) > 0.1f) {
+                        paperWidthSliderState.value = target
+                    }
+                }
+                Slider(
+                    state = paperWidthSliderState,
+                    onValueChange = { onSettingsChange(settings.copy(paperWidthMm = it.roundToInt().coerceIn(55, 105))) }
                 )
             }
         }
@@ -458,11 +469,20 @@ fun PrinterSettingsSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Slider(
+                val fontSizeSliderState = rememberSliderState(
                     value = settings.fontSize.toFloat(),
-                    onValueChange = { onSettingsChange(settings.copy(fontSize = it.toInt().coerceIn(8, 32))) },
-                    valueRange = 8f..32f,
-                    steps = 23
+                    steps = 23,
+                    trackRange = 8f..32f
+                )
+                LaunchedEffect(settings.fontSize) {
+                    val target = settings.fontSize.toFloat()
+                    if (abs(fontSizeSliderState.value - target) > 0.1f) {
+                        fontSizeSliderState.value = target
+                    }
+                }
+                Slider(
+                    state = fontSizeSliderState,
+                    onValueChange = { onSettingsChange(settings.copy(fontSize = it.toInt().coerceIn(8, 32))) }
                 )
             }
         }
@@ -490,11 +510,20 @@ fun PrinterSettingsSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Slider(
+                val feedLinesSliderState = rememberSliderState(
                     value = settings.feedLines.toFloat(),
-                    onValueChange = { onSettingsChange(settings.copy(feedLines = it.toInt().coerceIn(0, 10))) },
-                    valueRange = 0f..10f,
-                    steps = 9
+                    steps = 9,
+                    trackRange = 0f..10f
+                )
+                LaunchedEffect(settings.feedLines) {
+                    val target = settings.feedLines.toFloat()
+                    if (abs(feedLinesSliderState.value - target) > 0.1f) {
+                        feedLinesSliderState.value = target
+                    }
+                }
+                Slider(
+                    state = feedLinesSliderState,
+                    onValueChange = { onSettingsChange(settings.copy(feedLines = it.toInt().coerceIn(0, 10))) }
                 )
             }
         }
