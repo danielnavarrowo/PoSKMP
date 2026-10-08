@@ -10,8 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import com.dnavarro.poskmp.theme.ShapeDefaults
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -24,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,13 +40,37 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Cashier
+import com.dnavarro.poskmp.theme.ShapeDefaults
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import poskmp.shared.generated.resources.*
+import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.add
+import poskmp.shared.generated.resources.add_cashier_button
+import poskmp.shared.generated.resources.add_cashier_dialog_title
+import poskmp.shared.generated.resources.cancel
+import poskmp.shared.generated.resources.cashier_management_section_desc
+import poskmp.shared.generated.resources.cashier_management_section_title
+import poskmp.shared.generated.resources.cashier_name_label
+import poskmp.shared.generated.resources.cashier_name_placeholder
+import poskmp.shared.generated.resources.cashier_other_device_hint
+import poskmp.shared.generated.resources.cashier_pin_helper
+import poskmp.shared.generated.resources.cashier_pin_label
+import poskmp.shared.generated.resources.cashier_read_only_badge
+import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.delete
+import poskmp.shared.generated.resources.delete_cashier_confirm_button
+import poskmp.shared.generated.resources.delete_cashier_dialog_message
+import poskmp.shared.generated.resources.delete_cashier_dialog_title
+import poskmp.shared.generated.resources.edit
+import poskmp.shared.generated.resources.edit_cashier_dialog_title
+import poskmp.shared.generated.resources.info
+import poskmp.shared.generated.resources.no_cashiers_found
+import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.save_cashier_button
+import poskmp.shared.generated.resources.warning
 
 @Composable
 fun CashierManagementSection(
@@ -370,10 +396,11 @@ private fun CashierFormDialog(
     onDismiss: () -> Unit
 ) {
     var nameText by remember(cashier) { mutableStateOf(cashier?.nombre ?: "") }
-    var pinText by remember(cashier) { mutableStateOf(cashier?.pin ?: "") }
+    val pinState = remember(cashier) { TextFieldState(cashier?.pin ?: "") }
 
     val isEditing = cashier != null
     val title = if (isEditing) stringResource(Res.string.edit_cashier_dialog_title) else stringResource(Res.string.add_cashier_dialog_title)
+    val pinText = pinState.text.toString()
     val isValid = nameText.isNotBlank() && pinText.length == 4 && pinText.all { it.isDigit() }
 
     AlertDialog(
@@ -403,14 +430,17 @@ private fun CashierFormDialog(
                     shape = MaterialTheme.shapes.medium
                 )
 
-                OutlinedTextField(
-                    value = pinText,
-                    onValueChange = { if (it.length <= 4 && it.all { char -> char.isDigit() }) pinText = it },
+                OutlinedSecureTextField(
+                    state = pinState,
                     label = { Text(stringResource(Res.string.cashier_pin_label)) },
                     supportingText = { Text(stringResource(Res.string.cashier_pin_helper), fontSize = 11.sp) },
-                    visualTransformation = PasswordVisualTransformation(),
+                    inputTransformation = InputTransformation {
+                        val current = asCharSequence()
+                        if (current.length > 4 || !current.all { it.isDigit() }) {
+                            revertAllChanges()
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
@@ -419,7 +449,7 @@ private fun CashierFormDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onConfirm(cashier?.id, nameText.trim(), pinText.trim())
+                    onConfirm(cashier?.id, nameText.trim(), pinState.text.toString().trim())
                 },
                 enabled = isValid && !isLoading,
                 shape = MaterialTheme.shapes.small

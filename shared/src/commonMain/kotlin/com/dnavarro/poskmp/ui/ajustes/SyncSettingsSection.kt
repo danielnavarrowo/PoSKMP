@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextObfuscationMode
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -20,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -28,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,8 +45,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,10 +115,16 @@ fun SyncSettingsSection(
     modifier: Modifier = Modifier
 ) {
     var localSupabaseUrl by remember(supabaseUrl) { mutableStateOf(supabaseUrl) }
-    var localSupabaseKey by remember(supabaseKey) { mutableStateOf(supabaseKey) }
+    val supabaseKeyState = remember(supabaseKey) { TextFieldState(supabaseKey) }
     var localTerminalPrefix by remember(terminalPrefix) { mutableStateOf(terminalPrefix) }
     var isKeyVisible by remember { mutableStateOf(false) }
     var showAuditLogsDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(supabaseKey) {
+        if (supabaseKeyState.text.toString() != supabaseKey) {
+            supabaseKeyState.setTextAndPlaceCursorAtEnd(supabaseKey)
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -291,7 +300,7 @@ fun SyncSettingsSection(
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             // Card 1: Servidor y Credenciales (Top)
-            val isConfigured = localSupabaseUrl.isNotBlank() && localSupabaseKey.isNotBlank()
+            val isConfigured = localSupabaseUrl.isNotBlank() && supabaseKeyState.text.isNotBlank()
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -408,13 +417,11 @@ fun SyncSettingsSection(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // API Key TextField with show/hide toggle
-                    OutlinedTextField(
-                        value = localSupabaseKey,
-                        onValueChange = { localSupabaseKey = it },
+                    OutlinedSecureTextField(
+                        state = supabaseKeyState,
                         label = { Text(stringResource(Res.string.supabase_key_label)) },
                         placeholder = { Text(stringResource(Res.string.supabase_key_placeholder)) },
-                        singleLine = true,
-                        visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        textObfuscationMode = if (isKeyVisible) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
                         trailingIcon = {
                             TextButton(onClick = { isKeyVisible = !isKeyVisible }) {
                                 Text(
@@ -432,7 +439,7 @@ fun SyncSettingsSection(
                     // Test and Save Button
                     Button(
                         onClick = {
-                            onTestAndSaveSupabaseConnection(localSupabaseUrl, localSupabaseKey)
+                            onTestAndSaveSupabaseConnection(localSupabaseUrl, supabaseKeyState.text.toString())
                         },
                         enabled = !isTestingConnection,
                         colors = ButtonDefaults.buttonColors(

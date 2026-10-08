@@ -20,7 +20,9 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     implementation(projects.shared)
 
-    implementation(compose.desktop.currentOs)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.material)
     implementation(libs.kotlinx.coroutinesSwing)
 
     implementation(libs.compose.uiToolingPreview)

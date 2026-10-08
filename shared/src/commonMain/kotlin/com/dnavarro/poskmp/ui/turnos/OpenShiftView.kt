@@ -53,9 +53,11 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,17 +95,17 @@ fun OpenShiftView(
 ) {
     var selectedCashier by remember(cashiers) { mutableStateOf(cashiers.firstOrNull()) }
     var isDropdownExpanded by remember { mutableStateOf(false) }
-    var pinText by remember { mutableStateOf("") }
+    val pinState = remember { TextFieldState("") }
     var initialCashText by remember { mutableStateOf("0") }
 
     val quickAmounts = listOf(0, 200, 500, 1000, 2000)
 
-    val canSubmit = selectedCashier != null && pinText.isNotBlank() && !isOpening
+    val canSubmit = selectedCashier != null && pinState.text.isNotBlank() && !isOpening
     val submit = {
         val cashier = selectedCashier
         val amount = initialCashText.toDoubleOrNull() ?: 0.0
         if (cashier != null && canSubmit) {
-            onOpenShift(cashier.id, pinText, amount)
+            onOpenShift(cashier.id, pinState.text.toString(), amount)
         }
     }
 
@@ -121,7 +123,7 @@ fun OpenShiftView(
         }
     }
 
-    LaunchedEffect(pinText, initialCashText, selectedCashier) {
+    LaunchedEffect(pinState.text.toString(), initialCashText, selectedCashier) {
         if (errorMessage != null) {
             onClearError()
         }
@@ -298,24 +300,25 @@ fun OpenShiftView(
                     }
 
                     // Campo de PIN
-                    OutlinedTextField(
-                        value = pinText,
-                        onValueChange = { if (it.length <= 8) pinText = it },
+                    OutlinedSecureTextField(
+                        state = pinState,
                         label = { Text(stringResource(Res.string.pin_label)) },
                         placeholder = { Text(stringResource(Res.string.pin_placeholder)) },
-                        visualTransformation = PasswordVisualTransformation(),
+                        inputTransformation = InputTransformation {
+                            val current = asCharSequence()
+                            if (current.length > 8) {
+                                revertAllChanges()
+                            }
+                        },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                if (canSubmit) {
-                                    submit()
-                                }
+                        onKeyboardAction = {
+                            if (canSubmit) {
+                                submit()
                             }
-                        ),
-                        singleLine = true,
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(if (!isAndroid()) Modifier.focusRequester(pinFocusRequester) else Modifier),

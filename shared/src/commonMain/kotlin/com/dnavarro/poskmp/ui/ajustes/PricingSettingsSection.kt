@@ -11,24 +11,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextObfuscationMode
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -115,15 +119,46 @@ fun PricingSettingsSection(
     onGoogleSearchApiKeyChange: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var localGeminiApiKey by remember(geminiApiKey) { mutableStateOf(geminiApiKey) }
+    val geminiApiKeyState = remember(geminiApiKey) { TextFieldState(geminiApiKey) }
     var isApiKeyVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(geminiApiKey) {
+        if (geminiApiKeyState.text.toString() != geminiApiKey) {
+            geminiApiKeyState.setTextAndPlaceCursorAtEnd(geminiApiKey)
+        }
+    }
+
+    LaunchedEffect(geminiApiKeyState) {
+        snapshotFlow { geminiApiKeyState.text.toString() }
+            .collect { newText ->
+                if (newText != geminiApiKey) {
+                    onGeminiApiKeyChange(newText)
+                }
+            }
+    }
+
     var localGoogleSearchEngineId by remember(googleSearchEngineId) {
         mutableStateOf(
             googleSearchEngineId
         )
     }
-    var localGoogleSearchApiKey by remember(googleSearchApiKey) { mutableStateOf(googleSearchApiKey) }
+    val googleSearchApiKeyState = remember(googleSearchApiKey) { TextFieldState(googleSearchApiKey) }
     var isSearchApiKeyVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(googleSearchApiKey) {
+        if (googleSearchApiKeyState.text.toString() != googleSearchApiKey) {
+            googleSearchApiKeyState.setTextAndPlaceCursorAtEnd(googleSearchApiKey)
+        }
+    }
+
+    LaunchedEffect(googleSearchApiKeyState) {
+        snapshotFlow { googleSearchApiKeyState.text.toString() }
+            .collect { newText ->
+                if (newText != googleSearchApiKey) {
+                    onGoogleSearchApiKeyChange(newText)
+                }
+            }
+    }
     var retailMarginText by remember(defaultRetailMargin) {
         mutableStateOf(
             if (defaultRetailMargin > 0.0) {
@@ -668,15 +703,12 @@ fun PricingSettingsSection(
                     exit = fadeOut()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                        val isSuspiciousKey = localGeminiApiKey.isNotBlank() &&
-                                !localGeminiApiKey.trim().startsWith("AIzaSy") &&
-                                !localGeminiApiKey.trim().startsWith("AQ.")
-                        OutlinedTextField(
-                            value = localGeminiApiKey,
-                            onValueChange = {
-                                localGeminiApiKey = it
-                                onGeminiApiKeyChange(it)
-                            },
+                        val currentGeminiKey = geminiApiKeyState.text.toString()
+                        val isSuspiciousKey = currentGeminiKey.isNotBlank() &&
+                                !currentGeminiKey.trim().startsWith("AIzaSy") &&
+                                !currentGeminiKey.trim().startsWith("AQ.")
+                        OutlinedSecureTextField(
+                            state = geminiApiKeyState,
                             label = { Text(stringResource(Res.string.gemini_api_key_label)) },
                             placeholder = { Text(stringResource(Res.string.gemini_api_key_placeholder)) },
                             supportingText = {
@@ -690,8 +722,7 @@ fun PricingSettingsSection(
                                 }
                             },
                             isError = isSuspiciousKey,
-                            singleLine = true,
-                            visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            textObfuscationMode = if (isApiKeyVisible) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
                             trailingIcon = {
                                 TextButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
                                     Text(
@@ -723,19 +754,14 @@ fun PricingSettingsSection(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        OutlinedTextField(
-                            value = localGoogleSearchApiKey,
-                            onValueChange = {
-                                localGoogleSearchApiKey = it
-                                onGoogleSearchApiKeyChange(it)
-                            },
+                        OutlinedSecureTextField(
+                            state = googleSearchApiKeyState,
                             label = { Text(stringResource(Res.string.google_search_api_key_label)) },
                             placeholder = { Text(stringResource(Res.string.google_search_api_key_placeholder)) },
                             supportingText = {
                                 Text(stringResource(Res.string.google_search_api_key_helper))
                             },
-                            singleLine = true,
-                            visualTransformation = if (isSearchApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            textObfuscationMode = if (isSearchApiKeyVisible) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
                             trailingIcon = {
                                 TextButton(onClick = {
                                     isSearchApiKeyVisible = !isSearchApiKeyVisible
