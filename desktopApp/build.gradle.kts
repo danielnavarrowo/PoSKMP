@@ -84,6 +84,10 @@ tasks.matching { it.name == "packageReleaseDeb" }.configureEach {
     mustRunAfter(tasks.matching { it.name == "packageReleaseAppImage" })
 }
 
+tasks.matching { it.name == "packageReleaseRpm" }.configureEach {
+    mustRunAfter(tasks.matching { it.name == "packageReleaseAppImage" })
+}
+
 val packagePkgTarGz = tasks.register("packagePkgTarGz") {
     group = "compose desktop"
     description = "Packages the desktop application as an Arch Linux .pkg.tar.gz package"
