@@ -41,8 +41,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -74,6 +79,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,9 +89,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -94,6 +97,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -104,7 +110,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -120,6 +125,7 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -185,7 +191,7 @@ fun CatalogSection(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
-    val latestSearchQuery = remember { mutableStateOf(searchQuery) }
+    val searchQueryState = rememberTextFieldState(searchQuery)
     var sortField by remember { mutableStateOf(ProductSortField.NOMBRE) }
     var sortOrder by remember { mutableStateOf(ProductSortOrder.ASC) }
     var selectedCatalogIndex by remember { mutableIntStateOf(-1) }
@@ -262,8 +268,8 @@ fun CatalogSection(
                 onProductClick(product)
             }
         }
-        if (latestSearchQuery.value.isNotEmpty()) {
-            latestSearchQuery.value = ""
+        if (searchQueryState.text.isNotEmpty()) {
+            searchQueryState.clearText()
             onSearchQueryChange("")
         }
         selectedCatalogIndex = -1
@@ -316,18 +322,20 @@ fun CatalogSection(
     }
 
     LaunchedEffect(searchQuery) {
-        if (latestSearchQuery.value != searchQuery) {
-            latestSearchQuery.value = searchQuery
+        if (searchQueryState.text.toString() != searchQuery) {
+            searchQueryState.setTextAndPlaceCursorAtEnd(searchQuery)
             selectedCatalogIndex = -1
             resetScrollPosition()
         }
     }
 
-    LaunchedEffect(latestSearchQuery.value) {
-        selectedCatalogIndex = -1
-        resetScrollPosition()
-        delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
-        onSearchQueryChange(latestSearchQuery.value)
+    LaunchedEffect(searchQueryState) {
+        snapshotFlow { searchQueryState.text.toString() }.collectLatest { query ->
+            selectedCatalogIndex = -1
+            resetScrollPosition()
+            delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
+            onSearchQueryChange(query)
+        }
     }
 
     LaunchedEffect(selectedCatalogIndex) {
@@ -371,7 +379,7 @@ fun CatalogSection(
             )
     ) {
         AnimatedVisibility(
-            visible = !isCompact || isSearchBarVisible || latestSearchQuery.value.isNotEmpty(),
+            visible = !isCompact || isSearchBarVisible || searchQueryState.text.isNotEmpty(),
             enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
             exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut()
         ) {
@@ -386,7 +394,7 @@ fun CatalogSection(
                     .weight(1f)
                     .height(54.dp)
                 .background(
-                    color = if (latestSearchQuery.value.isNotEmpty())
+                    color = if (searchQueryState.text.isNotEmpty())
                         MaterialTheme.colorScheme.surfaceContainerLowest
                     else
                         MaterialTheme.colorScheme.surfaceContainer,
@@ -411,7 +419,7 @@ fun CatalogSection(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    if (latestSearchQuery.value.isEmpty()) {
+                    if (searchQueryState.text.isEmpty()) {
                         Text(
                             text = stringResource(Res.string.search_placeholder),
                             style = MaterialTheme.typography.titleSmall.copy(
@@ -424,10 +432,14 @@ fun CatalogSection(
                     }
 
                     BasicTextField(
-                        value = latestSearchQuery.value,
-                        onValueChange = { query ->
-                            val sanitized = query.filter { it != '+' && it != '-' }
-                            latestSearchQuery.value = sanitized
+                        state = searchQueryState,
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        inputTransformation = InputTransformation {
+                            val current = asCharSequence()
+                            if (current.any { it == '+' || it == '-' }) {
+                                val sanitized = current.filter { it != '+' && it != '-' }
+                                replace(0, length, sanitized)
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -447,15 +459,15 @@ fun CatalogSection(
                                 val isDown = key == Key.DirectionDown
                                 val isEnter = key == Key.Enter || key == Key.NumPadEnter
 
-                                if (keyEvent.key == Key.Escape && latestSearchQuery.value.isNotEmpty()) {
+                                if (keyEvent.key == Key.Escape && searchQueryState.text.isNotEmpty()) {
                                     if (keyEvent.type == KeyEventType.KeyDown) {
-                                        latestSearchQuery.value = ""
+                                        searchQueryState.clearText()
                                         onSearchQueryChange("")
                                         selectedCatalogIndex = -1
                                         resetScrollPosition()
                                     }
                                     true
-                                } else if (latestSearchQuery.value.isNotEmpty() && (isUp || isDown)) {
+                                } else if (searchQueryState.text.isNotEmpty() && (isUp || isDown)) {
                                     if (keyEvent.type == KeyEventType.KeyDown && displayedProducts.isNotEmpty()) {
                                         selectedCatalogIndex = if (isDown) {
                                             if (selectedCatalogIndex < displayedProducts.lastIndex) {
@@ -472,12 +484,12 @@ fun CatalogSection(
                                         }
                                     }
                                     true
-                                } else if (latestSearchQuery.value.isNotEmpty() && isEnter && selectedCatalogIndex in displayedProducts.indices) {
+                                } else if (searchQueryState.text.isNotEmpty() && isEnter && selectedCatalogIndex in displayedProducts.indices) {
                                     if (keyEvent.type == KeyEventType.KeyDown) {
                                         val selectedProduct =
                                             displayedProducts[selectedCatalogIndex]
                                         onProductClick(selectedProduct)
-                                        latestSearchQuery.value = ""
+                                        searchQueryState.clearText()
                                         onSearchQueryChange("")
                                         selectedCatalogIndex = -1
                                         resetScrollPosition()
@@ -491,8 +503,8 @@ fun CatalogSection(
                                 } else if (isPlus || isMinus) {
                                     true
                                 } else if (keyEvent.type == KeyEventType.KeyDown && isEnter) {
-                                    val scannedText = latestSearchQuery.value
-                                    latestSearchQuery.value = ""
+                                    val scannedText = searchQueryState.text.toString()
+                                    searchQueryState.clearText()
                                     onSearchQueryChange("")
                                     selectedCatalogIndex = -1
                                     resetScrollPosition()
@@ -507,60 +519,38 @@ fun CatalogSection(
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Search
                         ),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                if (latestSearchQuery.value.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
-                                    val selectedProduct = displayedProducts[selectedCatalogIndex]
-                                    onProductClick(selectedProduct)
-                                    latestSearchQuery.value = ""
-                                    onSearchQueryChange("")
-                                    selectedCatalogIndex = -1
-                                    resetScrollPosition()
-                                } else {
-                                    val scannedText = latestSearchQuery.value
-                                    latestSearchQuery.value = ""
-                                    onSearchQueryChange("")
-                                    selectedCatalogIndex = -1
-                                    resetScrollPosition()
-                                    if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                        onBarcodeScan(scannedText)
-                                    }
-                                }
-                            },
-                            onDone = {
-                                if (latestSearchQuery.value.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
-                                    val selectedProduct = displayedProducts[selectedCatalogIndex]
-                                    onProductClick(selectedProduct)
-                                    latestSearchQuery.value = ""
-                                    onSearchQueryChange("")
-                                    selectedCatalogIndex = -1
-                                    resetScrollPosition()
-                                } else {
-                                    val scannedText = latestSearchQuery.value
-                                    latestSearchQuery.value = ""
-                                    onSearchQueryChange("")
-                                    selectedCatalogIndex = -1
-                                    resetScrollPosition()
-                                    if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                        onBarcodeScan(scannedText)
-                                    }
+                        onKeyboardAction = {
+                            if (searchQueryState.text.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
+                                val selectedProduct = displayedProducts[selectedCatalogIndex]
+                                onProductClick(selectedProduct)
+                                searchQueryState.clearText()
+                                onSearchQueryChange("")
+                                selectedCatalogIndex = -1
+                                resetScrollPosition()
+                            } else {
+                                val scannedText = searchQueryState.text.toString()
+                                searchQueryState.clearText()
+                                onSearchQueryChange("")
+                                selectedCatalogIndex = -1
+                                resetScrollPosition()
+                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                    onBarcodeScan(scannedText)
                                 }
                             }
-                        ),
+                        },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Start
                         ),
-                        singleLine = true,
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
                     )
                 }
 
-                if (latestSearchQuery.value.isNotEmpty()) {
+                if (searchQueryState.text.isNotEmpty()) {
                     IconButton(
                         modifier = Modifier.size(32.dp),
                         onClick = {
-                            latestSearchQuery.value = ""
+                            searchQueryState.clearText()
                             onSearchQueryChange("")
                             selectedCatalogIndex = -1
                             resetScrollPosition()
@@ -678,8 +668,8 @@ fun CatalogSection(
                                     showCheckbox = false,
                                     onClick = {
                                         onProductClick(product)
-                                        if (latestSearchQuery.value.isNotEmpty()) {
-                                            latestSearchQuery.value = ""
+                                        if (searchQueryState.text.isNotEmpty()) {
+                                            searchQueryState.clearText()
                                             onSearchQueryChange("")
                                         }
                                         selectedCatalogIndex = -1
@@ -790,8 +780,8 @@ fun CatalogSection(
                                                 showCheckbox = false,
                                                 onClick = {
                                                     onProductClick(product)
-                                                    if (latestSearchQuery.value.isNotEmpty()) {
-                                                        latestSearchQuery.value = ""
+                                                    if (searchQueryState.text.isNotEmpty()) {
+                                                        searchQueryState.clearText()
                                                         onSearchQueryChange("")
                                                     }
                                                     selectedCatalogIndex = -1
@@ -851,8 +841,8 @@ fun CatalogSection(
                                     .combinedClickable(
                                         onClick = {
                                             onProductClick(product)
-                                            if (latestSearchQuery.value.isNotEmpty()) {
-                                                latestSearchQuery.value = ""
+                                            if (searchQueryState.text.isNotEmpty()) {
+                                                searchQueryState.clearText()
                                                 onSearchQueryChange("")
                                             }
                                             selectedCatalogIndex = -1
@@ -1083,24 +1073,22 @@ private fun ProductContextMenu(
     onModifyProduct: (Products) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var quantityText by remember(expanded) {
-        mutableStateOf(
-            TextFieldValue(
-                text = "2",
-                selection = TextRange(0, 1)
-            )
+    val quantityState = remember(expanded) {
+        TextFieldState(
+            initialText = "2",
+            initialSelection = TextRange(0, 1)
         )
     }
     var isInputFocused by remember(expanded) { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
-    val currentQty = quantityText.text.toDoubleOrNull() ?: 0.0
+    val currentQty = quantityState.text.toString().toDoubleOrNull() ?: 0.0
     val step = if (product.por_peso == 1L) 0.5 else 1.0
     val minLimit = if (product.por_peso == 1L) 0.1 else 1.0
     val canDecrease = currentQty > minLimit
 
     val decreaseStep = {
-        val current = quantityText.text.toDoubleOrNull() ?: 1.0
+        val current = quantityState.text.toString().toDoubleOrNull() ?: 1.0
         if (current > minLimit) {
             val next = (current - step).coerceAtLeast(minLimit)
             val formatted = if (product.por_peso == 1L) {
@@ -1109,12 +1097,15 @@ private fun ProductContextMenu(
             } else {
                 next.toInt().toString()
             }
-            quantityText = TextFieldValue(formatted, selection = TextRange(0, formatted.length))
+            quantityState.edit {
+                replace(0, length, formatted)
+                selection = TextRange(0, formatted.length)
+            }
         }
     }
 
     val increaseStep = {
-        val current = quantityText.text.toDoubleOrNull() ?: 0.0
+        val current = quantityState.text.toString().toDoubleOrNull() ?: 0.0
         val next = current + step
         val formatted = if (product.por_peso == 1L) {
             val rounded = (next * 1000.0).roundToInt() / 1000.0
@@ -1122,11 +1113,14 @@ private fun ProductContextMenu(
         } else {
             next.toInt().toString()
         }
-        quantityText = TextFieldValue(formatted, selection = TextRange(0, formatted.length))
+        quantityState.edit {
+            replace(0, length, formatted)
+            selection = TextRange(0, formatted.length)
+        }
     }
 
     val submit = {
-        val qty = quantityText.text.toDoubleOrNull()
+        val qty = quantityState.text.toString().toDoubleOrNull()
         if (qty != null && qty > 0.0) {
             onDismissRequest()
             onAddQuantity(product, qty)
@@ -1266,16 +1260,16 @@ private fun ProductContextMenu(
                             horizontalArrangement = Arrangement.Center
                         ) {
                             BasicTextField(
-                                value = quantityText,
-                                onValueChange = { newValue ->
-                                    val text = newValue.text
+                                state = quantityState,
+                                inputTransformation = InputTransformation {
+                                    val text = asCharSequence()
                                     val isValid = if (product.por_peso == 1L) {
                                         text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,3}$"))
                                     } else {
                                         text.isEmpty() || text.matches(Regex("^\\d+$"))
                                     }
-                                    if (isValid) {
-                                        quantityText = newValue
+                                    if (!isValid) {
+                                        revertAllChanges()
                                     }
                                 },
                                 modifier = Modifier
@@ -1284,9 +1278,9 @@ private fun ProductContextMenu(
                                     .onFocusChanged { focusState ->
                                         isInputFocused = focusState.isFocused
                                         if (focusState.isFocused) {
-                                            quantityText = quantityText.copy(
-                                                selection = TextRange(0, quantityText.text.length)
-                                            )
+                                            quantityState.edit {
+                                                selection = TextRange(0, length)
+                                            }
                                         }
                                     }
                                     .onPreviewKeyEvent(handleKeyEvent),
@@ -1295,18 +1289,16 @@ private fun ProductContextMenu(
                                     textAlign = TextAlign.Center,
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
-                                singleLine = true,
+                                lineLimits = TextFieldLineLimits.SingleLine,
                                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = if (product.por_peso == 1L) KeyboardType.Decimal else KeyboardType.Number,
                                     imeAction = ImeAction.Done
                                 ),
-                                keyboardActions = KeyboardActions(
-                                    onDone = { submit() }
-                                ),
-                                decorationBox = { innerTextField ->
+                                onKeyboardAction = { submit() },
+                                decorator = { innerTextField ->
                                     Box(contentAlignment = Alignment.Center) {
-                                        if (quantityText.text.isEmpty()) {
+                                        if (quantityState.text.isEmpty()) {
                                             Text(
                                                 text = "0",
                                                 style = MaterialTheme.typography.titleMedium.copy(

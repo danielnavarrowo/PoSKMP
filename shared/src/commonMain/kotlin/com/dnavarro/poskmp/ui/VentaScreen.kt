@@ -72,10 +72,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,7 +112,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -241,16 +247,15 @@ fun VentaScreen(
 
     // Weight Dialog state
     var showWeightDialogForProduct by remember { mutableStateOf<Products?>(null) }
-    var weightInput by remember { mutableStateOf("1.000") }
 
     // Checkout Dialog state
     var showCheckoutDialog by remember { mutableStateOf(false) }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.EFECTIVO) }
-    var paymentAmountInput by remember { mutableStateOf(TextFieldValue("")) }
-    var mixedCashInput by remember { mutableStateOf("") }
-    var mixedCardInput by remember { mutableStateOf("") }
-    var mixedTransferInput by remember { mutableStateOf("") }
-    var mixedCreditInput by remember { mutableStateOf("") }
+    val paymentAmountInput = remember { TextFieldState("") }
+    val mixedCashState = remember { TextFieldState("") }
+    val mixedCardState = remember { TextFieldState("") }
+    val mixedTransferState = remember { TextFieldState("") }
+    val mixedCreditState = remember { TextFieldState("") }
     var lastSaleTotal by remember { mutableDoubleStateOf(0.0) }
     var lastSaleChange by remember { mutableDoubleStateOf(0.0) }
     var lastSaleFolio by remember { mutableLongStateOf(0L) }
@@ -258,16 +263,16 @@ fun VentaScreen(
 
     // Unregistered Product Dialog state
     var showUnregisteredDialog by remember { mutableStateOf(false) }
-    var unregisteredName by remember { mutableStateOf("") }
-    var unregisteredPrice by remember { mutableStateOf("") }
-    var unregisteredQuantity by remember { mutableStateOf("1") }
+    val unregisteredNameState = remember { TextFieldState("") }
+    val unregisteredPriceState = remember { TextFieldState("") }
+    val unregisteredQuantityState = remember { TextFieldState("1") }
     var saveUnregisteredToDatabase by remember { mutableStateOf(false) }
     val unregisteredFocusRequester = remember { FocusRequester() }
 
     fun openUnregisteredDialog() {
-        unregisteredName = ""
-        unregisteredPrice = ""
-        unregisteredQuantity = "1"
+        unregisteredNameState.clearText()
+        unregisteredPriceState.clearText()
+        unregisteredQuantityState.setTextAndPlaceCursorAtEnd("1")
         saveUnregisteredToDatabase = false
         showUnregisteredDialog = true
     }
@@ -432,7 +437,6 @@ fun VentaScreen(
             val p = viewModel.findProductByBarcode(trimmed)
             if (p != null) {
                 if (p.por_peso == 1L) {
-                    weightInput = "1.000"
                     showWeightDialogForProduct = p
                 } else {
                     addProductToCart(p, 1.0)
@@ -455,7 +459,6 @@ fun VentaScreen(
             val p = viewModel.findProductByBarcode(trimmed)
             if (p != null) {
                 if (p.por_peso == 1L) {
-                    weightInput = "1.000"
                     showWeightDialogForProduct = p
                     lastScannedProduct = p
                     cameraScannerFeedback = null
@@ -606,7 +609,7 @@ fun VentaScreen(
 
                                 Key.F12 -> {
                                     if (cartItems.isNotEmpty()) {
-                                        paymentAmountInput = TextFieldValue("")
+                                        paymentAmountInput.clearText()
                                         showCheckoutDialog = true
                                         true
                                     } else false
@@ -660,7 +663,6 @@ fun VentaScreen(
                             productsList = productsList,
                             onProductClick = { product ->
                                 if (product.por_peso == 1L) {
-                                    weightInput = "1.000"
                                     showWeightDialogForProduct = product
                                 } else {
                                     addProductToCart(product, 1.0)
@@ -695,7 +697,7 @@ fun VentaScreen(
                             onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
                             onRemoveItem = { item -> removeCartItem(item) },
                             onCheckout = {
-                                paymentAmountInput = TextFieldValue("")
+                                paymentAmountInput.clearText()
                                 showCheckoutDialog = true
                             },
                             selectedIndex = selectedIndex,
@@ -787,7 +789,6 @@ fun VentaScreen(
                                 productsList = productsList,
                                 onProductClick = { product ->
                                     if (product.por_peso == 1L) {
-                                        weightInput = "1.000"
                                         showWeightDialogForProduct = product
                                     } else {
                                         addProductToCart(product, 1.0)
@@ -836,7 +837,7 @@ fun VentaScreen(
                                 onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
                                 onRemoveItem = { item -> removeCartItem(item) },
                                 onCheckout = {
-                                    paymentAmountInput = TextFieldValue("")
+                                    paymentAmountInput.clearText()
                                     showCheckoutDialog = true
                                 },
                                 selectedIndex = selectedIndex,
@@ -962,23 +963,53 @@ fun VentaScreen(
         val weightFocusRequester = remember { FocusRequester() }
         val priceFocusRequester = remember { FocusRequester() }
 
-        var weightInputValue by remember(product.id) {
-            mutableStateOf(
-                TextFieldValue(
-                    text = "1",
-                    selection = TextRange(0, 1)
-                )
-            )
+        val weightState = remember(product.id) {
+            TextFieldState("1", initialSelection = TextRange(0, 1))
         }
-        var priceInputValue by remember(product.id) {
-            val initialPrice = product.precio
-            val text = if (initialPrice % 1.0 == 0.0) initialPrice.toInt().toString() else initialPrice.toString()
-            mutableStateOf(
-                TextFieldValue(
-                    text = text,
-                    selection = TextRange(0, text.length)
-                )
-            )
+        val initialPriceText = if (product.precio % 1.0 == 0.0) product.precio.toInt().toString() else product.precio.toString()
+        val priceState = remember(product.id) {
+            TextFieldState(initialPriceText, initialSelection = TextRange(0, initialPriceText.length))
+        }
+
+        var isWeightFocused by remember(product.id) { mutableStateOf(false) }
+        var isPriceFocused by remember(product.id) { mutableStateOf(false) }
+
+        LaunchedEffect(weightState) {
+            snapshotFlow { weightState.text.toString() }.collect { text ->
+                if (isWeightFocused) {
+                    val weight = text.toDoubleOrNull()
+                    if (weight != null && weight >= 0.0) {
+                        val calcPrice = weight * product.precio
+                        val priceText = if (calcPrice % 1.0 == 0.0) calcPrice.toInt().toString()
+                        else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
+                        priceState.edit {
+                            replace(0, length, priceText)
+                            selection = TextRange(0, priceText.length)
+                        }
+                    } else if (text.isEmpty()) {
+                        priceState.clearText()
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(priceState) {
+            snapshotFlow { priceState.text.toString() }.collect { text ->
+                if (isPriceFocused) {
+                    val price = text.toDoubleOrNull()
+                    if (price != null && price >= 0.0) {
+                        val calcWeight = price / product.precio
+                        val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt().toString()
+                        else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
+                        weightState.edit {
+                            replace(0, length, weightStr)
+                            selection = TextRange(weightStr.length, weightStr.length)
+                        }
+                    } else if (text.isEmpty()) {
+                        weightState.clearText()
+                    }
+                }
+            }
         }
 
         LaunchedEffect(product.id) {
@@ -989,46 +1020,40 @@ fun VentaScreen(
         }
 
         fun handleWeightChange(newWeight: String) {
-            weightInputValue = TextFieldValue(text = newWeight, selection = TextRange(newWeight.length))
+            weightState.edit {
+                replace(0, length, newWeight)
+                selection = TextRange(newWeight.length, newWeight.length)
+            }
             val weight = newWeight.toDoubleOrNull()
             if (weight != null && weight >= 0.0) {
                 val calcPrice = weight * product.precio
-                val priceText = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
-                    .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
-                priceInputValue = TextFieldValue(text = priceText, selection = TextRange(0, priceText.length))
-            } else if (newWeight.isEmpty()) {
-                priceInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
-            }
-        }
-
-        fun handlePriceChange(newValue: TextFieldValue) {
-            val newPrice = newValue.text
-            if (newPrice.isEmpty() || newPrice.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                priceInputValue = newValue
-                val price = newPrice.toDoubleOrNull()
-                if (price != null && price >= 0.0) {
-                    val calcWeight = price / product.precio
-                    val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
-                        .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
-                    weightInputValue = TextFieldValue(text = weightStr, selection = TextRange(weightStr.length))
-                } else if (newPrice.isEmpty()) {
-                    weightInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+                val priceText = if (calcPrice % 1.0 == 0.0) calcPrice.toInt().toString()
+                else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
+                priceState.edit {
+                    replace(0, length, priceText)
+                    selection = TextRange(0, priceText.length)
                 }
+            } else if (newWeight.isEmpty()) {
+                priceState.clearText()
             }
         }
 
         fun handlePricePresetClick(cash: String) {
-            if (cash.isEmpty() || cash.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                priceInputValue = TextFieldValue(text = cash, selection = TextRange(0, cash.length))
-                val price = cash.toDoubleOrNull()
-                if (price != null && price >= 0.0) {
-                    val calcWeight = price / product.precio
-                    val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt()
-                        .toString() else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
-                    weightInputValue = TextFieldValue(text = weightStr, selection = TextRange(weightStr.length))
-                } else if (cash.isEmpty()) {
-                    weightInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
+            priceState.edit {
+                replace(0, length, cash)
+                selection = TextRange(0, cash.length)
+            }
+            val price = cash.toDoubleOrNull()
+            if (price != null && price >= 0.0) {
+                val calcWeight = price / product.precio
+                val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt().toString()
+                else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
+                weightState.edit {
+                    replace(0, length, weightStr)
+                    selection = TextRange(weightStr.length, weightStr.length)
                 }
+            } else if (cash.isEmpty()) {
+                weightState.clearText()
             }
         }
 
@@ -1042,7 +1067,7 @@ fun VentaScreen(
                     if (keyEvent.type == KeyEventType.KeyDown && 
                         (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
                     ) {
-                        val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
+                        val weight = weightState.text.toString().toDoubleOrNull() ?: 1.0
                         addProductToCart(product, weight)
                         showWeightDialogForProduct = null
                         true
@@ -1113,20 +1138,12 @@ fun VentaScreen(
                             )
 
                             OutlinedTextField(
-                                value = weightInputValue,
-                                onValueChange = { newValue ->
-                                    val text = newValue.text
-                                    if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
-                                        weightInputValue = newValue
-                                        val weight = text.toDoubleOrNull()
-                                        if (weight != null && weight >= 0.0) {
-                                            val calcPrice = weight * product.precio
-                                            val priceText = if (calcPrice % 1.0 == 0.0) calcPrice.toInt()
-                                                .toString() else ((calcPrice * 100.0).roundToInt() / 100.0).toString()
-                                            priceInputValue = TextFieldValue(text = priceText, selection = TextRange(0, priceText.length))
-                                        } else if (text.isEmpty()) {
-                                            priceInputValue = TextFieldValue(text = "", selection = TextRange.Zero)
-                                        }
+                                state = weightState,
+                                lineLimits = TextFieldLineLimits.SingleLine,
+                                inputTransformation = InputTransformation {
+                                    val text = asCharSequence()
+                                    if (text.isNotEmpty() && !text.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
+                                        revertAllChanges()
                                     }
                                 },
                                 modifier = Modifier
@@ -1137,10 +1154,11 @@ fun VentaScreen(
                                         next = priceFocusRequester
                                     }
                                     .onFocusChanged { focusState ->
-                                        if (focusState.isFocused && weightInputValue.text.isNotEmpty()) {
-                                            weightInputValue = weightInputValue.copy(
-                                                selection = TextRange(0, weightInputValue.text.length)
-                                            )
+                                        isWeightFocused = focusState.isFocused
+                                        if (focusState.isFocused && weightState.text.isNotEmpty()) {
+                                            weightState.edit {
+                                                selection = TextRange(0, length)
+                                            }
                                         }
                                     }
                                     .onPreviewKeyEvent { keyEvent ->
@@ -1151,8 +1169,7 @@ fun VentaScreen(
                                     },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                                keyboardActions = KeyboardActions(onNext = { priceFocusRequester.requestFocus() }),
-                                singleLine = true,
+                                onKeyboardAction = { priceFocusRequester.requestFocus() },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -1207,8 +1224,14 @@ fun VentaScreen(
                             )
 
                             OutlinedTextField(
-                                value = priceInputValue,
-                                onValueChange = { handlePriceChange(it) },
+                                state = priceState,
+                                lineLimits = TextFieldLineLimits.SingleLine,
+                                inputTransformation = InputTransformation {
+                                    val text = asCharSequence()
+                                    if (text.isNotEmpty() && !text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                        revertAllChanges()
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(MaterialTheme.colorScheme.surface)
@@ -1217,10 +1240,11 @@ fun VentaScreen(
                                         previous = weightFocusRequester
                                     }
                                     .onFocusChanged { focusState ->
-                                        if (focusState.isFocused && priceInputValue.text.isNotEmpty()) {
-                                            priceInputValue = priceInputValue.copy(
-                                                selection = TextRange(0, priceInputValue.text.length)
-                                            )
+                                        isPriceFocused = focusState.isFocused
+                                        if (focusState.isFocused && priceState.text.isNotEmpty()) {
+                                            priceState.edit {
+                                                selection = TextRange(0, length)
+                                            }
                                         }
                                     }
                                     .onPreviewKeyEvent { keyEvent ->
@@ -1232,12 +1256,11 @@ fun VentaScreen(
                                 prefix = { Text("$", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = {
-                                    val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
+                                onKeyboardAction = {
+                                    val weight = weightState.text.toString().toDoubleOrNull() ?: 1.0
                                     addProductToCart(product, weight)
                                     showWeightDialogForProduct = null
-                                }),
-                                singleLine = true,
+                                },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -1262,7 +1285,7 @@ fun VentaScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val weight = weightInputValue.text.toDoubleOrNull() ?: 1.0
+                        val weight = weightState.text.toString().toDoubleOrNull() ?: 1.0
                         addProductToCart(product, weight)
                         showWeightDialogForProduct = null
                     },
@@ -1289,27 +1312,27 @@ fun VentaScreen(
     if (showCheckoutDialog) {
         LaunchedEffect(Unit) {
             val formattedTotal = if (total % 1.0 == 0.0) total.toInt().toString() else ((total * 100.0).roundToInt() / 100.0).toString()
-            paymentAmountInput = TextFieldValue(
-                text = formattedTotal,
+            paymentAmountInput.edit {
+                replace(0, length, formattedTotal)
                 selection = TextRange(0, formattedTotal.length)
-            )
-            mixedCashInput = ""
-            mixedCardInput = ""
-            mixedTransferInput = ""
-            mixedCreditInput = ""
+            }
+            mixedCashState.clearText()
+            mixedCardState.clearText()
+            mixedTransferState.clearText()
+            mixedCreditState.clearText()
             delay(50.milliseconds)
             checkoutFocusRequester.requestFocus()
         }
 
-        val paymentText = paymentAmountInput.text
+        val paymentText = paymentAmountInput.text.toString()
         val paymentAmount = paymentText.toDoubleOrNull() ?: 0.0
         val change = if (paymentAmount >= total) paymentAmount - total else 0.0
         val selectedCustomer = uiState.selectedCustomer
 
-        val mCash = mixedCashInput.toDoubleOrNull() ?: 0.0
-        val mCard = mixedCardInput.toDoubleOrNull() ?: 0.0
-        val mTransfer = mixedTransferInput.toDoubleOrNull() ?: 0.0
-        val mCredit = mixedCreditInput.toDoubleOrNull() ?: 0.0
+        val mCash = mixedCashState.text.toString().toDoubleOrNull() ?: 0.0
+        val mCard = mixedCardState.text.toString().toDoubleOrNull() ?: 0.0
+        val mTransfer = mixedTransferState.text.toString().toDoubleOrNull() ?: 0.0
+        val mCredit = mixedCreditState.text.toString().toDoubleOrNull() ?: 0.0
 
         val totalReceivedMixto = mCash + mCard + mTransfer + mCredit
         val nonCashImmediate = mCard + mTransfer
@@ -1440,7 +1463,7 @@ fun VentaScreen(
                                         onCheckedChange = {
                                             selectedPaymentMethod = method
                                             if (method != PaymentMethod.EFECTIVO) {
-                                                paymentAmountInput = TextFieldValue("")
+                                                paymentAmountInput.clearText()
                                             }
                                         },
                                         colors = ToggleButtonDefaults.toggleButtonColors(
@@ -1598,17 +1621,22 @@ fun VentaScreen(
                     when (selectedPaymentMethod) {
                         PaymentMethod.EFECTIVO -> {
                             OutlinedTextField(
-                                value = paymentAmountInput,
-                                onValueChange = { newValue ->
-                                    val text = newValue.text
-                                    if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                        paymentAmountInput = newValue
-                                    }
-                                },
+                                state = paymentAmountInput,
                                 modifier = Modifier.fillMaxWidth().focusRequester(checkoutFocusRequester),
                                 prefix = { Text("$ ", fontWeight = FontWeight.Bold) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                lineLimits = TextFieldLineLimits.SingleLine,
+                                onKeyboardAction = {
+                                    if (isCheckoutValid) {
+                                        performCheckout(true)
+                                    }
+                                },
+                                inputTransformation = InputTransformation {
+                                    val text = asCharSequence()
+                                    if (text.isNotEmpty() && !text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                        revertAllChanges()
+                                    }
+                                },
                                 label = { Text(stringResource(Res.string.cash_received_label)) },
                                 placeholder = { Text("0.00") },
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -1650,29 +1678,25 @@ fun VentaScreen(
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.money,
                                     label = stringResource(Res.string.checkout_field_efectivo),
-                                    value = mixedCashInput,
-                                    onValueChange = { mixedCashInput = it },
+                                    state = mixedCashState,
                                     placeholder = "0.00"
                                 )
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.card,
                                     label = stringResource(Res.string.checkout_field_tarjeta),
-                                    value = mixedCardInput,
-                                    onValueChange = { mixedCardInput = it },
+                                    state = mixedCardState,
                                     placeholder = "0.00"
                                 )
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.money_transfer,
                                     label = stringResource(Res.string.checkout_field_transferencia),
-                                    value = mixedTransferInput,
-                                    onValueChange = { mixedTransferInput = it },
+                                    state = mixedTransferState,
                                     placeholder = "0.00"
                                 )
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.person,
                                     label = stringResource(Res.string.checkout_field_credito),
-                                    value = mixedCreditInput,
-                                    onValueChange = { mixedCreditInput = it },
+                                    state = mixedCreditState,
                                     placeholder = "0.00"
                                 )
 
@@ -2039,16 +2063,16 @@ fun VentaScreen(
                 if (keyEvent.type == KeyEventType.KeyDown && 
                     (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
                 ) {
-                    val isNameValid = unregisteredName.isNotBlank()
-                    val priceVal = unregisteredPrice.toDoubleOrNull()
+                    val isNameValid = unregisteredNameState.text.isNotBlank()
+                    val priceVal = unregisteredPriceState.text.toString().toDoubleOrNull()
                     val isPriceValid = priceVal != null && priceVal > 0
-                    val qtyVal = unregisteredQuantity.toDoubleOrNull()
+                    val qtyVal = unregisteredQuantityState.text.toString().toDoubleOrNull()
                     val isQtyValid = qtyVal != null && qtyVal > 0
                     if (isNameValid && isPriceValid && isQtyValid) {
                         val dummyProduct = Products(
                             id = "UNREG-${generateUUID()}",
                             codigos = "[]",
-                            nombre = unregisteredName.trim(),
+                            nombre = unregisteredNameState.text.toString().trim(),
                             precio = priceVal,
                             costo = 0.0,
                             categoria = notRegisteredCategory,
@@ -2086,11 +2110,10 @@ fun VentaScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     OutlinedTextField(
-                        value = unregisteredName,
-                        onValueChange = { unregisteredName = it },
+                        state = unregisteredNameState,
                         label = { Text(stringResource(Res.string.header_product_name)) },
                         placeholder = { Text(stringResource(Res.string.unregistered_name_placeholder)) },
-                        singleLine = true,
+                        lineLimits = TextFieldLineLimits.SingleLine,
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2102,16 +2125,17 @@ fun VentaScreen(
                     )
 
                     OutlinedTextField(
-                        value = unregisteredPrice,
-                        onValueChange = { input ->
-                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                unregisteredPrice = input
+                        state = unregisteredPriceState,
+                        inputTransformation = InputTransformation {
+                            val text = asCharSequence()
+                            if (text.isNotEmpty() && !text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                revertAllChanges()
                             }
                         },
                         label = { Text(stringResource(Res.string.unit_price_label)) },
                         placeholder = { Text("0.00") },
                         prefix = { Text("$", fontWeight = FontWeight.Bold) },
-                        singleLine = true,
+                        lineLimits = TextFieldLineLimits.SingleLine,
                         shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
@@ -2122,15 +2146,16 @@ fun VentaScreen(
                     )
 
                     OutlinedTextField(
-                        value = unregisteredQuantity,
-                        onValueChange = { input ->
-                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
-                                unregisteredQuantity = input
+                        state = unregisteredQuantityState,
+                        inputTransformation = InputTransformation {
+                            val text = asCharSequence()
+                            if (text.isNotEmpty() && !text.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
+                                revertAllChanges()
                             }
                         },
                         label = { Text(stringResource(Res.string.quantity_weight_label)) },
                         placeholder = { Text(stringResource(Res.string.default_quantity_placeholder)) },
-                        singleLine = true,
+                        lineLimits = TextFieldLineLimits.SingleLine,
                         shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
@@ -2160,10 +2185,10 @@ fun VentaScreen(
                 }
             },
             confirmButton = {
-                val isNameValid = unregisteredName.isNotBlank()
-                val priceVal = unregisteredPrice.toDoubleOrNull()
+                val isNameValid = unregisteredNameState.text.isNotBlank()
+                val priceVal = unregisteredPriceState.text.toString().toDoubleOrNull()
                 val isPriceValid = priceVal != null && priceVal > 0
-                val qtyVal = unregisteredQuantity.toDoubleOrNull()
+                val qtyVal = unregisteredQuantityState.text.toString().toDoubleOrNull()
                 val isQtyValid = qtyVal != null && qtyVal > 0
 
                 Button(
@@ -2173,7 +2198,7 @@ fun VentaScreen(
                             val dummyProduct = Products(
                                 id = "UNREG-${generateUUID()}",
                                 codigos = "[]",
-                                nombre = unregisteredName.trim(),
+                                nombre = unregisteredNameState.text.toString().trim(),
                                 precio = effectivePrice,
                                 costo = 0.0,
                                 categoria = notRegisteredCategory,
@@ -2268,8 +2293,7 @@ fun VentaScreen(
 private fun MixedPaymentRow(
     iconRes: DrawableResource,
     label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
+    state: TextFieldState,
     placeholder: String = "0.00"
 ) {
     Row(
@@ -2297,10 +2321,11 @@ private fun MixedPaymentRow(
         }
 
         OutlinedTextField(
-            value = value,
-            onValueChange = { text ->
-                if (text.isEmpty() || text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                    onValueChange(text)
+            state = state,
+            inputTransformation = InputTransformation {
+                val text = asCharSequence()
+                if (text.isNotEmpty() && !text.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                    revertAllChanges()
                 }
             },
             placeholder = {
@@ -2312,7 +2337,7 @@ private fun MixedPaymentRow(
                 )
             },
             prefix = { Text("$ ") },
-            singleLine = true,
+            lineLimits = TextFieldLineLimits.SingleLine,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             textStyle = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.End),
             shape = MaterialTheme.shapes.small,

@@ -28,8 +28,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -984,19 +987,30 @@ private fun ItemQuantityControls(
             )
         }
 
-        var textValue by remember(item.quantity) {
-            mutableStateOf(item.quantity.formatQuantity(item.product.por_peso == 1L))
+        val quantityState = remember(item.quantity) {
+            TextFieldState(item.quantity.formatQuantity(item.product.por_peso == 1L))
+        }
+
+        LaunchedEffect(item.quantity) {
+            val formatted = item.quantity.formatQuantity(item.product.por_peso == 1L)
+            if (quantityState.text.toString() != formatted) {
+                quantityState.setTextAndPlaceCursorAtEnd(formatted)
+            }
         }
 
         BasicTextField(
-            value = textValue,
-            onValueChange = { newValue ->
-                val filtered = if (item.product.por_peso == 1L) {
-                    newValue.filter { it.isDigit() || it == '.' }
+            state = quantityState,
+            lineLimits = TextFieldLineLimits.SingleLine,
+            inputTransformation = InputTransformation {
+                val s = asCharSequence()
+                val isValid = if (item.product.por_peso == 1L) {
+                    s.all { it.isDigit() || it == '.' } && s.count { it == '.' } <= 1
                 } else {
-                    newValue.filter { it.isDigit() }
+                    s.all { it.isDigit() }
                 }
-                textValue = filtered
+                if (!isValid) {
+                    revertAllChanges()
+                }
             },
             textStyle = TextStyle(
                 fontSize = 13.sp,
@@ -1008,21 +1022,19 @@ private fun ItemQuantityControls(
                 keyboardType = if (item.product.por_peso == 1L) KeyboardType.Decimal else KeyboardType.Number,
                 imeAction = ImeAction.Done
             ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    val parsed = textValue.toDoubleOrNull()
-                    if (parsed != null && parsed > 0.0) {
-                        onSetQuantity(item, parsed)
-                    } else if (parsed != null && parsed <= 0.0) {
-                        onRemoveItem(item)
-                    } else {
-                        textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
-                    }
-                    if (!isAndroid()) {
-                        focusRequester.requestFocus()
-                    }
+            onKeyboardAction = {
+                val parsed = quantityState.text.toString().toDoubleOrNull()
+                if (parsed != null && parsed > 0.0) {
+                    onSetQuantity(item, parsed)
+                } else if (parsed != null && parsed <= 0.0) {
+                    onRemoveItem(item)
+                } else {
+                    quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
                 }
-            ),
+                if (!isAndroid()) {
+                    focusRequester.requestFocus()
+                }
+            },
             modifier = Modifier
                 .width(44.dp)
                 .background(
@@ -1036,7 +1048,7 @@ private fun ItemQuantityControls(
                         onSelectedIndexChange(index)
                     }
                     if (!focusState.isFocused) {
-                        val parsed = textValue.toDoubleOrNull()
+                        val parsed = quantityState.text.toString().toDoubleOrNull()
                         if (parsed != null && parsed > 0.0) {
                             if (parsed != item.quantity) {
                                 onSetQuantity(item, parsed)
@@ -1044,11 +1056,10 @@ private fun ItemQuantityControls(
                         } else if (parsed != null && parsed <= 0.0) {
                             onRemoveItem(item)
                         } else {
-                            textValue = item.quantity.formatQuantity(item.product.por_peso == 1L)
+                            quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
                         }
                     }
-                },
-            singleLine = true
+                }
         )
 
         IconButton(
