@@ -1,7 +1,6 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -100,7 +98,6 @@ import poskmp.shared.generated.resources.close_button
 import poskmp.shared.generated.resources.customer_action_delete
 import poskmp.shared.generated.resources.customer_action_edit
 import poskmp.shared.generated.resources.customer_action_payment
-import poskmp.shared.generated.resources.customer_action_statement
 import poskmp.shared.generated.resources.customer_balance_format
 import poskmp.shared.generated.resources.customer_credit_limit_format
 import poskmp.shared.generated.resources.customer_no_debt
@@ -589,15 +586,13 @@ fun ClientesContent(
                                 }
                             }
                         } else {
-                            itemsIndexed(state.filteredClientes, key = { _, customer -> customer.id }) { index, customer ->
-                                val isSelected = index == selectedCustomerIndex
+                            itemsIndexed(state.filteredClientes, key = { _, customer -> customer.id }) { _, customer ->
+
                                 CustomerListItem(
                                     customer = customer,
-                                    isSelected = isSelected,
                                     onClick = {
-                                        selectedCustomerIndex = index
+                                        onOpenAccountStatement(customer)
                                     },
-                                    onOpenStatement = { onOpenAccountStatement(customer) },
                                     onOpenPayment = { onOpenRecordPayment(customer) },
                                     onEdit = { onOpenEditCustomer(customer) },
                                     onDelete = { onOpenDeleteConfirm(customer) }
@@ -777,9 +772,7 @@ private fun CustomerKpiCard(
 @Composable
 private fun CustomerListItem(
     customer: Customer,
-    isSelected: Boolean = false,
     onClick: (() -> Unit)? = null,
-    onOpenStatement: () -> Unit,
     onOpenPayment: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -790,19 +783,11 @@ private fun CustomerListItem(
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, ShapeDefaults.cardShape)
-                else Modifier
-            )
-            .then(
                 if (onClick != null) Modifier.clickable(onClick = onClick)
                 else Modifier
             ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-            } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
-            }
         ),
         shape = ShapeDefaults.cardShape
     ) {
@@ -980,16 +965,6 @@ private fun CustomerListItem(
                 }
 
                 Spacer(modifier = Modifier.width(4.dp))
-
-                OutlinedButton(
-                    onClick = onOpenStatement,
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(
-                        stringResource(Res.string.customer_action_statement),
-                        fontSize = 12.sp
-                    )
-                }
 
                 if (hasDebt) {
                     Spacer(modifier = Modifier.width(8.dp))

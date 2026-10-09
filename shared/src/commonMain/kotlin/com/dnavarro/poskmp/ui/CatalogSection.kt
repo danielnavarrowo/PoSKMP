@@ -60,9 +60,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumExtendedFloatingActionButton
+import androidx.compose.material3.MediumFloatingActionButton
 import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
@@ -152,6 +156,7 @@ import poskmp.shared.generated.resources.not_registered_hotkey
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.remove_from_favorites
 import poskmp.shared.generated.resources.sad_face
+import poskmp.shared.generated.resources.scan_with_camera_desc
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
@@ -966,37 +971,30 @@ fun CatalogSection(
                         horizontalAlignment = Alignment.End,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        if (openScanner != null && isCameraScannerAvailable()) {
-                            FloatingActionButton(
-                                onClick = openScanner,
+                        if (isCompact && onViewCartClick != null) {
+                            MediumFloatingActionButton(
+                                onClick = onViewCartClick,
                                 containerColor = MaterialTheme.colorScheme.secondary,
-                                contentColor = MaterialTheme.colorScheme.onSecondary
+                                contentColor = MaterialTheme.colorScheme.onSecondary,
                             ) {
                                 Icon(
-                                    painter = painterResource(Res.drawable.barcode_scanner),
-                                    contentDescription = stringResource(Res.string.close_scanner_desc)
+                                    painter = painterResource(Res.drawable.shopping_cart),
+                                    contentDescription = stringResource(Res.string.tab_ticket),
+                                    modifier = Modifier.size(30.dp)
                                 )
                             }
                         }
 
-                        if (isCompact && onViewCartClick != null) {
-                            ExtendedFloatingActionButton(
-                                onClick = onViewCartClick,
+                        if (openScanner != null && isCameraScannerAvailable()) {
+                            LargeFloatingActionButton(
+                                onClick = openScanner,
                                 containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ) {
                                 Icon(
-                                    painter = painterResource(Res.drawable.shopping_cart),
-                                    contentDescription = stringResource(Res.string.tab_ticket)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    if (cartCount > 0) stringResource(
-                                        Res.string.view_ticket_fab,
-                                        cartCount,
-                                        cartTotal.toString().formatPrice()
-                                    )
-                                    else stringResource(Res.string.tab_ticket)
+                                    painter = painterResource(Res.drawable.barcode_scanner),
+                                    contentDescription = stringResource(Res.string.close_scanner_desc),
+                                    modifier = Modifier.size(38.dp)
                                 )
                             }
                         }

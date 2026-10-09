@@ -52,6 +52,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeExtendedFloatingActionButton
+import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -654,26 +655,25 @@ fun ProductosScreen(
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.add),
-                                    contentDescription = stringResource(Res.string.new_product_button)
+                                    contentDescription = stringResource(Res.string.new_product_button),
+                                    modifier = Modifier.size(28.dp)
                                 )
                             }
                             Spacer(modifier.height(16.dp))
                         }
 
                         if (isCompact) {
-                            ExtendedFloatingActionButton(
+                            LargeFloatingActionButton(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                                 onClick = { showCameraScanner = true },
-                                icon = {
+                                content = {
                                     Icon(
                                         painter = painterResource(Res.drawable.barcode_scanner),
-                                        contentDescription = null
+                                        contentDescription = null,
+                                        modifier = Modifier.size(38.dp)
                                     )
                                 },
-                                text = {
-                                    Text(stringResource(Res.string.scan_with_camera_desc))
-                                }
                             )
                         } else {
                             LargeExtendedFloatingActionButton(
