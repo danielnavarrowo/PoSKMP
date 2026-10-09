@@ -56,17 +56,13 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumExtendedFloatingActionButton
-import androidx.compose.material3.MediumFloatingActionButton
 import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
@@ -129,7 +125,8 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -156,7 +153,6 @@ import poskmp.shared.generated.resources.not_registered_hotkey
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.remove_from_favorites
 import poskmp.shared.generated.resources.sad_face
-import poskmp.shared.generated.resources.scan_with_camera_desc
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
@@ -598,12 +594,12 @@ fun CatalogSection(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(MaterialShapes.Cookie4Sided.toShape())
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.add),
                             contentDescription = stringResource(if (isAndroid()) Res.string.not_registered else Res.string.not_registered_hotkey),
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
@@ -971,16 +967,25 @@ fun CatalogSection(
                         horizontalAlignment = Alignment.End,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+
                         if (isCompact && onViewCartClick != null) {
-                            MediumFloatingActionButton(
+                            ExtendedFloatingActionButton(
                                 onClick = onViewCartClick,
-                                containerColor = MaterialTheme.colorScheme.secondary,
-                                contentColor = MaterialTheme.colorScheme.onSecondary,
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                contentColor = MaterialTheme.colorScheme.onTertiary,
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.shopping_cart),
-                                    contentDescription = stringResource(Res.string.tab_ticket),
-                                    modifier = Modifier.size(30.dp)
+                                    contentDescription = stringResource(Res.string.tab_ticket)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    if (cartCount > 0) stringResource(
+                                        Res.string.view_ticket_fab,
+                                        cartCount,
+                                        cartTotal.toString().formatPrice()
+                                    )
+                                    else stringResource(Res.string.tab_ticket)
                                 )
                             }
                         }
@@ -988,8 +993,8 @@ fun CatalogSection(
                         if (openScanner != null && isCameraScannerAvailable()) {
                             LargeFloatingActionButton(
                                 onClick = openScanner,
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.barcode_scanner),
@@ -998,6 +1003,10 @@ fun CatalogSection(
                                 )
                             }
                         }
+
+
+
+
                     }
                 }
             }

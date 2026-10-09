@@ -650,8 +650,8 @@ fun ProductosScreen(
                                         )
                                     )
                                 },
-                                containerColor = MaterialTheme.colorScheme.secondary,
-                                contentColor = MaterialTheme.colorScheme.onSecondary
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                contentColor = MaterialTheme.colorScheme.onTertiary
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.add),
@@ -664,8 +664,8 @@ fun ProductosScreen(
 
                         if (isCompact) {
                             LargeFloatingActionButton(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                                contentColor = MaterialTheme.colorScheme.onSecondary,
                                 onClick = { showCameraScanner = true },
                                 content = {
                                     Icon(
@@ -827,7 +827,7 @@ fun ProductosScreen(
                                     modifier = Modifier
                                         .size(54.dp)
                                         .clip(MaterialShapes.Clover8Leaf.toShape())
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                        .background(MaterialTheme.colorScheme.secondaryContainer),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     TriStateCheckbox(
@@ -934,16 +934,16 @@ fun ProductosScreen(
                                         .size(56.dp)
                                         .clip(MaterialShapes.Cookie4Sided.toShape())
                                         .background(
-                                            if (uiState.hasActiveFilters) MaterialTheme.colorScheme.primaryContainer
-                                            else MaterialTheme.colorScheme.surfaceContainerHigh
+                                            if (uiState.hasActiveFilters) MaterialTheme.colorScheme.tertiaryContainer
+                                            else MaterialTheme.colorScheme.secondaryContainer
                                         ),
                                 ) {
                                     Icon(
                                         painter = if (uiState.hasActiveFilters) painterResource(Res.drawable.filter_on)
                                         else painterResource(Res.drawable.filter),
                                         contentDescription = stringResource(Res.string.filter_and_sort_title),
-                                        tint = if (uiState.hasActiveFilters) MaterialTheme.colorScheme.onPrimaryContainer
-                                        else MaterialTheme.colorScheme.onSurface
+                                        tint = if (uiState.hasActiveFilters) MaterialTheme.colorScheme.onTertiaryContainer
+                                        else MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
                                 if (uiState.hasActiveFilters) {

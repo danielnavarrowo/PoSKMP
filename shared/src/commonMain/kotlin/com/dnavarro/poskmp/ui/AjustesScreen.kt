@@ -493,9 +493,9 @@ fun AjustesScreen(
                                             .size(42.dp)
                                             .background(
                                                 color = if (isSelected) {
-                                                    MaterialTheme.colorScheme.primary
+                                                    MaterialTheme.colorScheme.secondary
                                                 } else {
-                                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                                    MaterialTheme.colorScheme.secondaryContainer
                                                 },
                                                 shape = MaterialShapes.Gem.toShape()
                                             ),
@@ -505,9 +505,9 @@ fun AjustesScreen(
                                             painter = painterResource(category.icon),
                                             contentDescription = null,
                                             tint = if (isSelected) {
-                                                MaterialTheme.colorScheme.onPrimary
+                                                MaterialTheme.colorScheme.onSecondary
                                             } else {
-                                                MaterialTheme.colorScheme.primary
+                                                MaterialTheme.colorScheme.secondary
                                             },
                                             modifier = Modifier.size(22.dp)
                                         )
