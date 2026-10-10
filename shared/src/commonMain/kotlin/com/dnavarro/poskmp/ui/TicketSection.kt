@@ -177,7 +177,7 @@ fun TicketSection(
     LaunchedEffect(selectedIndex, cartItems) {
         if (selectedIndex in cartItems.indices) {
             try {
-                listState.animateScrollToItem(selectedIndex)
+                listState.scrollToItem(selectedIndex)
             } catch (_: Exception) {}
         }
     }

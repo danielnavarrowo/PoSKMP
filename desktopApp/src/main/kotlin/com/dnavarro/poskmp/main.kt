@@ -10,6 +10,7 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.dnavarro.poskmp.di.initKoin
+import com.dnavarro.poskmp.util.configureSkikoGraphicsEnvironment
 import org.jetbrains.compose.resources.painterResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.app_icon
@@ -24,14 +25,8 @@ fun main() {
         return
     }
 
-    // Check for user-configured renderApi override from settings
-    val renderApiOverrideFile = java.io.File(appDir, "render_api.txt")
-    if (renderApiOverrideFile.exists()) {
-        val overrideApi = renderApiOverrideFile.readText().trim().uppercase()
-        if (overrideApi.isNotEmpty() && overrideApi != "AUTO" && overrideApi != "DEFAULT") {
-            System.setProperty("skiko.renderApi", overrideApi)
-        }
-    }
+    // Configure optimal graphics backend and Skiko renderApi
+    configureSkikoGraphicsEnvironment(appDir)
 
     val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -49,7 +44,7 @@ fun main() {
 
     application {
         val windowState = rememberWindowState(
-            placement = WindowPlacement.Floating
+            placement = WindowPlacement.Fullscreen
         )
         var isClosing by remember { mutableStateOf(false) }
 

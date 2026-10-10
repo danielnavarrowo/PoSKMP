@@ -3,6 +3,44 @@ package com.dnavarro.poskmp.util
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+fun configureSkikoGraphicsEnvironment(appDir: File) {
+    val osName = System.getProperty("os.name")?.lowercase() ?: ""
+    val isWindows = osName.contains("win")
+
+    val renderApiOverrideFile = File(appDir, "render_api.txt")
+    val savedSetting = if (renderApiOverrideFile.exists()) {
+        renderApiOverrideFile.readText().trim().uppercase()
+    } else {
+        "AUTO"
+    }
+
+    if (isWindows) {
+        val detectedGpu = detectWindowsGpu()
+        val isLegacy = isLegacyIntelGpu(detectedGpu)
+
+        val targetApi = when (savedSetting) {
+            "OPENGL", "DIRECT3D", "SOFTWARE" -> savedSetting
+            else -> {
+                // AUTO: On legacy Intel GPUs (without DirectX 12 support), default to OPENGL
+                if (isLegacy) "OPENGL" else "DIRECT3D"
+            }
+        }
+        System.setProperty("skiko.renderApi", targetApi)
+
+        // Disable vsync on Windows for legacy Intel GPUs / OpenGL to prevent SwapBuffers from locking the event dispatch thread
+        if (System.getProperty("skiko.vsync.enabled") == null) {
+            System.setProperty("skiko.vsync.enabled", "false")
+        }
+        if (System.getProperty("skiko.fps") == null) {
+            System.setProperty("skiko.fps", "60")
+        }
+    } else {
+        if (savedSetting in listOf("OPENGL", "SOFTWARE")) {
+            System.setProperty("skiko.renderApi", savedSetting)
+        }
+    }
+}
+
 actual fun getRenderApiInfo(): RenderApiInfo {
     val osName = System.getProperty("os.name")?.lowercase() ?: ""
     val isWindows = osName.contains("win")
@@ -17,9 +55,10 @@ actual fun getRenderApiInfo(): RenderApiInfo {
         "AUTO"
     }
 
-    val currentActive = System.getProperty("skiko.renderApi") ?: if (isWindows) "DIRECT3D" else "OPENGL"
     val detectedGpu = if (isWindows) detectWindowsGpu() else null
     val isLegacy = isLegacyIntelGpu(detectedGpu)
+    val defaultApi = if (isWindows) (if (isLegacy) "OPENGL" else "DIRECT3D") else "OPENGL"
+    val currentActive = System.getProperty("skiko.renderApi") ?: defaultApi
 
     return RenderApiInfo(
         detectedGpu = detectedGpu,

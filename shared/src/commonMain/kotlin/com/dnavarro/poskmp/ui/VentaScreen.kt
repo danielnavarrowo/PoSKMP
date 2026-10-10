@@ -1948,7 +1948,7 @@ fun VentaScreen(
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = clabe.chunked(4).joinToString("  "),
-                                                style = MaterialTheme.typography.headlineSmall.copy(
+                                                style = MaterialTheme.typography.displayLarge.copy(
                                                     fontWeight = FontWeight.ExtraBold,
                                                     letterSpacing = 1.5.sp
                                                 ),

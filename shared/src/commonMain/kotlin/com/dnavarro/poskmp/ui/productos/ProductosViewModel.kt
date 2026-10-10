@@ -118,6 +118,14 @@ class ProductosViewModel(
 
     private val _allProductsFlow: Flow<List<Products>> = repository.getAllProducts()
 
+    private val _allCategoriesFlow: Flow<List<String>> = _allProductsFlow.map { allProducts ->
+        allProducts
+            .mapNotNull { it.categoria }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }.distinctUntilChanged()
+
     private val _needsSalesStats = combine(_displayState, _visibleColumnsFlow) { display, visibleCols ->
         visibleCols.contains(ProductTableColumn.VENTAS_TOTALES) ||
             visibleCols.contains(ProductTableColumn.ULTIMA_VENTA) ||
@@ -145,13 +153,9 @@ class ProductosViewModel(
             _visibleColumnsFlow,
             _salesStatsFlow,
             syncRepository.syncState,
-            _allProductsFlow
-        ) { visibleColumns, salesStats, syncState, allProducts ->
-            val allCats = allProducts
-                .mapNotNull { it.categoria }
-                .filter { it.isNotBlank() }
-                .distinct()
-                .sorted()
+            _allProductsFlow,
+            _allCategoriesFlow
+        ) { visibleColumns, salesStats, syncState, allProducts, allCats ->
             ProductExtraState(
                 visibleColumns = visibleColumns,
                 salesStats = salesStats,

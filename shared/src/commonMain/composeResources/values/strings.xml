@@ -184,12 +184,12 @@
     <string name="new_category">Nueva categoría</string>
     <string name="bulk_deactivate_confirmation">Los %1$d productos seleccionados quedarán inactivos.</string>
     <string name="bulk_delete_confirmation">¿Confirmas la eliminación definitiva de los %1$d productos seleccionados?</string>
-    <string name="bulk_progress_change_prices">Actualizando precios: %1$d de %2$d (%3$d%%)</string>
-    <string name="bulk_progress_set_profit">Estableciendo ganancia: %1$d de %2$d (%3$d%%)</string>
-    <string name="bulk_progress_change_category">Cambiando categoría: %1$d de %2$d (%3$d%%)</string>
-    <string name="bulk_progress_mark_as_favorite">Marcando como favoritos: %1$d de %2$d (%3$d%%)</string>
-    <string name="bulk_progress_deactivate">Desactivando productos: %1$d de %2$d (%3$d%%)</string>
-    <string name="bulk_progress_delete">Eliminando productos: %1$d de %2$d (%3$d%%)</string>
+    <string name="bulk_progress_change_prices">Actualizando precios: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_set_profit">Estableciendo ganancia: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_change_category">Cambiando categoría: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_mark_as_favorite">Marcando como favoritos: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_deactivate">Desactivando productos: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_delete">Eliminando productos: %1$d de %2$d (%3$d%)</string>
     <string name="apply_changes_button">Aplicar cambios</string>
     <string name="apply_changes_button_desktop">Aplicar cambios (Enter)</string>
 
@@ -247,9 +247,9 @@
     <string name="error_wholesale_less_than_cost">El precio de mayoreo no puede ser menor que el costo.</string>
     <string name="error_retail_less_than_wholesale">El precio de venta no puede ser menor que el mayoreo.</string>
     <string name="error_retail_less_than_cost">El precio de venta no puede ser menor que el costo.</string>
-    <string name="warning_retail_margin_below_default">Aviso: El margen de venta (%1$s%) es menor al margen por defecto (%2$s%%)</string>
-    <string name="warning_wholesale_margin_below_default">Aviso: El margen de mayoreo (%1$s%) es menor al margen por defecto (%2$s%%)</string>
-    <string name="warning_delivery_margin_below_default">Aviso: El margen a domicilio (%1$s%) es menor al margen por defecto (%2$s%%)</string>
+    <string name="warning_retail_margin_below_default">Aviso: El margen de venta (%1$s%) es menor al margen por defecto (%2$s%)</string>
+    <string name="warning_wholesale_margin_below_default">Aviso: El margen de mayoreo (%1$s%) es menor al margen por defecto (%2$s%)</string>
+    <string name="warning_delivery_margin_below_default">Aviso: El margen a domicilio (%1$s%) es menor al margen por defecto (%2$s%)</string>
 
     <!-- ProductosScreen -->
     <string name="product_admin_title">Administración de Productos</string>
@@ -490,7 +490,7 @@
     <string name="update_available_title">Nueva versión disponible: %1$s</string>
     <string name="update_notes_title">Novedades de esta versión:</string>
     <string name="download_and_install_button">Descargar e Instalar</string>
-    <string name="downloading_update">Descargando actualización... (%1$d%%)</string>
+    <string name="downloading_update">Descargando actualización... (%1$d%)</string>
     <string name="installing_update">Aplicando actualización y reiniciando...</string>
     <string name="update_error">Error de actualización: %1$s</string>
     <string name="no_compatible_asset">No se encontró un paquete de instalación compatible para tu dispositivo.</string>
@@ -913,7 +913,7 @@
     <string name="delivery_comparison_empty">No hay ventas registradas en este período</string>
     <string name="delivery_channel_local">En Tienda (Local)</string>
     <string name="delivery_channel_delivery">A Domicilio (Entrega)</string>
-    <string name="delivery_stat_format">%1$d tickets • %2$s%% del total</string>
+    <string name="delivery_stat_format">%1$d tickets • %2$s% del total</string>
     <string name="delivery_stat_profit_format">Ganancia: $%1$s • Promedio: $%2$s/ticket</string>
 
     <!-- Calculadora -->

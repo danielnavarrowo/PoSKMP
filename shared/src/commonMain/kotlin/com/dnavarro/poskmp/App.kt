@@ -79,6 +79,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -145,15 +146,12 @@ import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import com.dnavarro.poskmp.util.currentTimeMillis
-import com.dnavarro.poskmp.util.formatCurrentDate
-import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatTimeOnly
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.isCompactWidth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.DrawableResource
@@ -207,7 +205,6 @@ import poskmp.shared.generated.resources.tab_venta_desktop
 import poskmp.shared.generated.resources.tab_ventas_historial
 import poskmp.shared.generated.resources.tab_ventas_historial_desktop
 import poskmp.shared.generated.resources.warning
-import java.time.LocalDateTime
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -376,253 +373,237 @@ fun App(
     val defaultScreen = if (isCheckerOnly) Screen.CHECADOR else ajustesUiState.defaultScreen
     val defaultRoute = remember(defaultScreen) { defaultScreen.toRoute() }
 
-            // 2. Navigation State with Navigation 3
-            val backStack = rememberNavBackStack(navSavedStateConfig, defaultRoute)
-            var hasUserNavigated by rememberSaveable { mutableStateOf(false) }
+    // 2. Navigation State with Navigation 3
+    val backStack = rememberNavBackStack(navSavedStateConfig, defaultRoute)
+    var hasUserNavigated by rememberSaveable { mutableStateOf(false) }
 
-            LaunchedEffect(defaultRoute) {
-                if (!hasUserNavigated && backStack.isNotEmpty() && backStack.size == 1) {
-                    backStack[0] = defaultRoute
-                }
-            }
+    LaunchedEffect(defaultRoute) {
+        if (!hasUserNavigated && backStack.isNotEmpty() && backStack.size == 1) {
+            backStack[0] = defaultRoute
+        }
+    }
 
-            val currentRoute = (backStack.lastOrNull() as? AppRoute) ?: defaultRoute
-            val currentScreen = currentRoute.toScreen()
-            var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
-            var showCalculatorDialog by rememberSaveable { mutableStateOf(false) }
+    val currentRoute = (backStack.lastOrNull() as? AppRoute) ?: defaultRoute
+    val currentScreen = currentRoute.toScreen()
+    var showPriceCheckerDialog by rememberSaveable { mutableStateOf(false) }
+    var showCalculatorDialog by rememberSaveable { mutableStateOf(false) }
 
-            fun navigateTo(route: AppRoute) {
-                hasUserNavigated = true
-                backStack.navigateToTopLevel(route, defaultRoute)
-            }
+    fun navigateTo(route: AppRoute) {
+        hasUserNavigated = true
+        backStack.navigateToTopLevel(route, defaultRoute)
+    }
 
-            val focusRequester = remember { FocusRequester() }
-            var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
-            var productosRefocusTrigger by remember { mutableIntStateOf(0) }
-            var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
-            var productosSearchFocusTrigger by remember { mutableIntStateOf(0) }
+    val focusRequester = remember { FocusRequester() }
+    var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
+    var productosRefocusTrigger by remember { mutableIntStateOf(0) }
+    var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
+    var productosSearchFocusTrigger by remember { mutableIntStateOf(0) }
 
-            fun reclaimCurrentScreenFocus() {
-                if (!isAndroid()) {
-                    when (currentScreen) {
-                        Screen.VENTA -> ventaRefocusTrigger++
-                        Screen.PRODUCTOS -> productosRefocusTrigger++
-                        Screen.CLIENTES -> clientesRefocusTrigger++
-                        else -> {
-                            coroutineScope.launch {
-                                delay(50.milliseconds)
-                                try {
-                                    focusRequester.requestFocus()
-                                } catch (_: Exception) {}
-                            }
-                        }
-                    }
-                }
-            }
-
-            val triggerOpenCashDrawer: () -> Unit = {
-                if (!isOpeningDrawer) {
-                    isOpeningDrawer = true
+    fun reclaimCurrentScreenFocus() {
+        if (!isAndroid()) {
+            when (currentScreen) {
+                Screen.VENTA -> ventaRefocusTrigger++
+                Screen.PRODUCTOS -> productosRefocusTrigger++
+                Screen.CLIENTES -> clientesRefocusTrigger++
+                else -> {
                     coroutineScope.launch {
+                        delay(50.milliseconds)
                         try {
-                            openCashDrawerUseCase()
-                        } finally {
-                            delay(600.milliseconds)
-                            isOpeningDrawer = false
-                        }
+                            focusRequester.requestFocus()
+                        } catch (_: Exception) {}
                     }
                 }
-                reclaimCurrentScreenFocus()
             }
+        }
+    }
 
-            var currentDateText by remember { mutableStateOf(formatCurrentDate()) }
-            var currentTimeText by remember { mutableStateOf(formatCurrentTime()) }
-            val desktopDateTimeText = remember(currentDateText, currentTimeText) {
-                "${currentDateText.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}  •  $currentTimeText"
-            }
-
-            LaunchedEffect(Unit) {
-                while (isActive) {
-                    val now = LocalDateTime.now()
-                    currentDateText = formatCurrentDate(now)
-                    currentTimeText = formatCurrentTime(now)
-                    delay(1.seconds)
+    val triggerOpenCashDrawer: () -> Unit = {
+        if (!isOpeningDrawer) {
+            isOpeningDrawer = true
+            coroutineScope.launch {
+                try {
+                    openCashDrawerUseCase()
+                } finally {
+                    delay(600.milliseconds)
+                    isOpeningDrawer = false
                 }
             }
+        }
+        reclaimCurrentScreenFocus()
+    }
 
-            val isDesktop = !isAndroid()
-            val tabVentaLabel =
-                stringResource(if (isDesktop) Res.string.tab_venta_desktop else Res.string.tab_venta)
-            val tabProductosLabel =
-                stringResource(if (isDesktop) Res.string.tab_productos_desktop else Res.string.tab_productos)
-            val tabClientesLabel =
-                stringResource(if (isDesktop) Res.string.nav_clientes_desktop else Res.string.nav_clientes)
-            val tabVentasLabel =
-                stringResource(if (isDesktop) Res.string.tab_ventas_historial_desktop else Res.string.tab_ventas_historial)
-            val tabChecadorLabel =
-                stringResource(if (isDesktop) Res.string.tab_checador_desktop else Res.string.tab_checador)
-            val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
+    val isDesktop = !isAndroid()
+    val tabVentaLabel =
+        stringResource(if (isDesktop) Res.string.tab_venta_desktop else Res.string.tab_venta)
+    val tabProductosLabel =
+        stringResource(if (isDesktop) Res.string.tab_productos_desktop else Res.string.tab_productos)
+    val tabClientesLabel =
+        stringResource(if (isDesktop) Res.string.nav_clientes_desktop else Res.string.nav_clientes)
+    val tabVentasLabel =
+        stringResource(if (isDesktop) Res.string.tab_ventas_historial_desktop else Res.string.tab_ventas_historial)
+    val tabChecadorLabel =
+        stringResource(if (isDesktop) Res.string.tab_checador_desktop else Res.string.tab_checador)
+    val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
 
-            val isChecadorDialog = !(isCheckerOnly && !isAndroid()) && ajustesUiState.isChecadorDialog
-            val isChecadorFullScreen = currentScreen == Screen.CHECADOR && !isChecadorDialog
-            val useDynamicColor = ajustesUiState.useDynamicColor
-            val seedColor = ajustesUiState.seedColor
-            val isAmoled = ajustesUiState.isAmoled
-            val darkModeConfig = ajustesUiState.darkModeConfig
-            val paletteStyle = ajustesUiState.paletteStyle
+    val isChecadorDialog = !(isCheckerOnly && !isAndroid()) && ajustesUiState.isChecadorDialog
+    val isChecadorFullScreen = currentScreen == Screen.CHECADOR && !isChecadorDialog
+    val useDynamicColor = ajustesUiState.useDynamicColor
+    val seedColor = ajustesUiState.seedColor
+    val isAmoled = ajustesUiState.isAmoled
+    val darkModeConfig = ajustesUiState.darkModeConfig
+    val paletteStyle = ajustesUiState.paletteStyle
 
-            val appScale = ajustesUiState.appScale
+    val appScale = ajustesUiState.appScale
 
-            val saleRepository = koinInject<SaleRepository>()
-            val cancelSaleUseCase = koinInject<CancelSaleUseCase>()
-            val lastSale by saleRepository.getLastSale().collectAsStateWithLifecycle(initialValue = null)
-            var selectedLastSaleForDetail by remember { mutableStateOf<Pair<Sale, List<SaleItem>>?>(null) }
-            var lastSaleToCancel by remember { mutableStateOf<Sale?>(null) }
-            var isCancellingLastSale by remember { mutableStateOf(false) }
+    val saleRepository = koinInject<SaleRepository>()
+    val cancelSaleUseCase = koinInject<CancelSaleUseCase>()
+    val lastSale by saleRepository.getLastSale().collectAsStateWithLifecycle(initialValue = null)
+    var selectedLastSaleForDetail by remember { mutableStateOf<Pair<Sale, List<SaleItem>>?>(null) }
+    var lastSaleToCancel by remember { mutableStateOf<Sale?>(null) }
+    var isCancellingLastSale by remember { mutableStateOf(false) }
 
-            val systemInDark = isSystemInDarkTheme()
-            val darkTheme = when (darkModeConfig) {
-                DarkModeConfig.SYSTEM -> systemInDark
-                DarkModeConfig.LIGHT -> false
-                DarkModeConfig.DARK -> true
-            }
+    val systemInDark = isSystemInDarkTheme()
+    val darkTheme = when (darkModeConfig) {
+        DarkModeConfig.SYSTEM -> systemInDark
+        DarkModeConfig.LIGHT -> false
+        DarkModeConfig.DARK -> true
+    }
 
-            DisposableEffect(darkTheme) {
-                onDarkThemeChanged?.invoke(darkTheme)
-                onDispose {}
-            }
+    DisposableEffect(darkTheme) {
+        onDarkThemeChanged?.invoke(darkTheme)
+        onDispose {}
+    }
 
-            val currentDensity = LocalDensity.current
-            val customDensity = remember(currentDensity, appScale) {
-                Density(
-                    density = currentDensity.density * appScale,
-                    fontScale = currentDensity.fontScale * appScale
-                )
-            }
+    val currentDensity = LocalDensity.current
+    val customDensity = remember(currentDensity, appScale) {
+        Density(
+            density = currentDensity.density * appScale,
+            fontScale = currentDensity.fontScale * appScale
+        )
+    }
 
-            val eventDispatcherOwner = LocalNavigationEventDispatcherOwner.current
-                ?: rememberNavigationEventDispatcherOwner(parent = null)
+    val eventDispatcherOwner = LocalNavigationEventDispatcherOwner.current
+        ?: rememberNavigationEventDispatcherOwner(parent = null)
 
-            CompositionLocalProvider(
-                LocalDensity provides customDensity,
-                LocalNavigationEventDispatcherOwner provides eventDispatcherOwner
+    CompositionLocalProvider(
+        LocalDensity provides customDensity,
+        LocalNavigationEventDispatcherOwner provides eventDispatcherOwner
+    ) {
+        AppTheme(
+            seedColor = seedColor,
+            useDynamicColor = useDynamicColor,
+            isAmoled = isAmoled,
+            paletteStyle = paletteStyle,
+            darkTheme = darkTheme
+        ) {
+            Column(
+                modifier = modifier.fillMaxSize()
             ) {
-                AppTheme(
-                    seedColor = seedColor,
-                    useDynamicColor = useDynamicColor,
-                    isAmoled = isAmoled,
-                    paletteStyle = paletteStyle,
-                    darkTheme = darkTheme
-                ) {
-                    Column(
-                        modifier = modifier.fillMaxSize()
-                    ) {
-                        if (!isAndroid() && !isChecadorFullScreen) {
-                            DesktopTitleBar(
-                                dateTimeText = desktopDateTimeText,
-                                lastSale = lastSale,
-                                onLastSaleClick = {
-                                    lastSale?.let { sale ->
-                                        coroutineScope.launch {
-                                            val items = saleRepository.getItemsBySaleId(sale.id)
-                                            selectedLastSaleForDetail = Pair(sale, items)
+                if (!isAndroid() && !isChecadorFullScreen) {
+                    DesktopTitleBar(
+                        lastSale = lastSale,
+                        onLastSaleClick = {
+                            lastSale?.let { sale ->
+                                coroutineScope.launch {
+                                    val items = saleRepository.getItemsBySaleId(sale.id)
+                                    selectedLastSaleForDetail = Pair(sale, items)
+                                }
+                            }
+                        },
+                        onMinimize = { onMinimize?.invoke() },
+                        onClose = { onClose?.invoke() }
+                    )
+                }
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .then(
+                            if (!isAndroid()) {
+                                Modifier
+                                    .focusRequester(focusRequester)
+                                    .focusable()
+                                    .onPreviewKeyEvent { keyEvent ->
+                                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                            Key.F1 -> {
+                                                if (!isCheckerOnly) {
+                                                    navigateTo(AppRoute.Venta)
+                                                    ventaRefocusTrigger++
+                                                }
+                                                true
+                                            }
+
+                                            Key.F2 -> {
+                                                if (isChecadorDialog) {
+                                                    showPriceCheckerDialog = true
+                                                } else {
+                                                    navigateTo(AppRoute.Checador)
+                                                }
+                                                true
+                                            }
+
+                                            Key.F3 -> {
+                                                if (!isCheckerOnly) {
+                                                    navigateTo(AppRoute.Productos)
+                                                    productosRefocusTrigger++
+                                                }
+                                                true
+                                            }
+
+                                            Key.F4 -> {
+                                                if (!isCheckerOnly) {
+                                                    navigateTo(AppRoute.Ventas)
+                                                }
+                                                true
+                                            }
+
+                                            Key.F5 -> {
+                                                if (!isCheckerOnly) {
+                                                    navigateTo(AppRoute.Clientes)
+                                                    clientesRefocusTrigger++
+                                                }
+                                                true
+                                            }
+
+                                            Key.F6 -> {
+                                                showCalculatorDialog = !showCalculatorDialog
+                                                if (!showCalculatorDialog) {
+                                                    reclaimCurrentScreenFocus()
+                                                }
+                                                true
+                                            }
+
+                                            Key.F9 -> {
+                                                if (!isCheckerOnly) {
+                                                    triggerOpenCashDrawer()
+                                                }
+                                                true
+                                            }
+
+                                            Key.F7 -> {
+                                                if (!isCheckerOnly && activeShift != null) {
+                                                    appCashMovementError = null
+                                                    showAppInflowDialog = true
+                                                    showAppOutflowDialog = false
+                                                }
+                                                true
+                                            }
+
+                                            Key.F8 -> {
+                                                if (!isCheckerOnly && activeShift != null) {
+                                                    appCashMovementError = null
+                                                    showAppInflowDialog = false
+                                                    showAppOutflowDialog = true
+                                                }
+                                                true
+                                            }
+
+                                            else -> false
                                         }
                                     }
-                                },
-                                onMinimize = { onMinimize?.invoke() },
-                                onClose = { onClose?.invoke() }
-                            )
-                        }
-                        BoxWithConstraints(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .then(
-                                if (!isAndroid()) {
-                                    Modifier
-                                        .focusRequester(focusRequester)
-                                        .focusable()
-                                        .onPreviewKeyEvent { keyEvent ->
-                                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-                                                Key.F1 -> {
-                                                    if (!isCheckerOnly) {
-                                                        navigateTo(AppRoute.Venta)
-                                                        ventaRefocusTrigger++
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F2 -> {
-                                                    if (isChecadorDialog) {
-                                                        showPriceCheckerDialog = true
-                                                    } else {
-                                                        navigateTo(AppRoute.Checador)
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F3 -> {
-                                                    if (!isCheckerOnly) {
-                                                        navigateTo(AppRoute.Productos)
-                                                        productosRefocusTrigger++
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F4 -> {
-                                                    if (!isCheckerOnly) {
-                                                        navigateTo(AppRoute.Ventas)
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F5 -> {
-                                                    if (!isCheckerOnly) {
-                                                        navigateTo(AppRoute.Clientes)
-                                                        clientesRefocusTrigger++
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F6 -> {
-                                                    showCalculatorDialog = !showCalculatorDialog
-                                                    if (!showCalculatorDialog) {
-                                                        reclaimCurrentScreenFocus()
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F9 -> {
-                                                    if (!isCheckerOnly) {
-                                                        triggerOpenCashDrawer()
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F7 -> {
-                                                    if (!isCheckerOnly && activeShift != null) {
-                                                        appCashMovementError = null
-                                                        showAppInflowDialog = true
-                                                        showAppOutflowDialog = false
-                                                    }
-                                                    true
-                                                }
-
-                                                Key.F8 -> {
-                                                    if (!isCheckerOnly && activeShift != null) {
-                                                        appCashMovementError = null
-                                                        showAppInflowDialog = false
-                                                        showAppOutflowDialog = true
-                                                    }
-                                                    true
-                                                }
-
-                                                else -> false
-                                            }
-                                        }
-                                } else Modifier
-                            )
-                    ) {
+                            } else Modifier
+                        )
+                ) {
                     val appMaxWidth = maxWidth
                     val isCompact = isCompactWidth(appMaxWidth)
                     val isToolbarNavigation = navigationSuiteTypeForWidth(appMaxWidth) == NavigationSuiteType.None
@@ -920,25 +901,25 @@ fun App(
                                                         )
                                                     }
 
-                                            } else {
-                                                FilledTonalIconButton(
-                                                    onClick = {
-                                                        if (!isSyncing) {
-                                                            coroutineScope.launch(Dispatchers.IO) {
-                                                                syncRepository.syncAll(isManual = true)
+                                                } else {
+                                                    FilledTonalIconButton(
+                                                        onClick = {
+                                                            if (!isSyncing) {
+                                                                coroutineScope.launch(Dispatchers.IO) {
+                                                                    syncRepository.syncAll(isManual = true)
+                                                                }
                                                             }
-                                                        }
-                                                        reclaimCurrentScreenFocus()
-                                                    },
-                                                    enabled = !isSyncing,
-                                                    shape = MaterialTheme.shapes.medium
-                                                ) {
-                                                    SyncIcon(
-                                                        isSyncing = isSyncing,
-                                                        modifier = Modifier.size(26.dp)
-                                                    )
+                                                            reclaimCurrentScreenFocus()
+                                                        },
+                                                        enabled = !isSyncing,
+                                                        shape = MaterialTheme.shapes.medium
+                                                    ) {
+                                                        SyncIcon(
+                                                            isSyncing = isSyncing,
+                                                            modifier = Modifier.size(26.dp)
+                                                        )
+                                                    }
                                                 }
-                                            }
                                                 if (isExpanded) {
                                                     FilledTonalButton(
                                                         onClick = {
@@ -1000,58 +981,10 @@ fun App(
                                                 }
 
 
-                                            if (!isCheckerOnly) {
-                                                // Botón para entrada de efectivo
-                                                if (isExpanded) {
-                                                    FilledTonalButton(
-                                                        onClick = {
-                                                            if (activeShift != null) {
-                                                                appCashMovementError = null
-                                                                showAppInflowDialog = true
-                                                                showAppOutflowDialog = false
-                                                            }
-                                                            reclaimCurrentScreenFocus()
-                                                        },
-                                                        enabled = activeShift != null,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .defaultMinSize(minHeight = 48.dp),
-                                                        contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-                                                        shape = ShapeDefaults.middleListItemShape
-                                                    ) {
-                                                        Box(
-                                                            modifier = Modifier.size(24.dp),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.cash_in),
-                                                                contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
-                                                                modifier = Modifier.size(24.dp)
-                                                            )
-                                                        }
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(
-                                                            text = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            maxLines = 2,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                    }
-                                                } else {
-                                                    TooltipBox(
-                                                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                                                            TooltipAnchorPosition.Above,
-                                                            4.dp
-                                                        ),
-                                                        tooltip = {
-                                                            PlainTooltip {
-                                                                Text(stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow))
-                                                            }
-                                                        },
-                                                        state = rememberTooltipState()
-                                                    ) {
-                                                        FilledTonalIconButton(
+                                                if (!isCheckerOnly) {
+                                                    // Botón para entrada de efectivo
+                                                    if (isExpanded) {
+                                                        FilledTonalButton(
                                                             onClick = {
                                                                 if (activeShift != null) {
                                                                     appCashMovementError = null
@@ -1061,189 +994,25 @@ fun App(
                                                                 reclaimCurrentScreenFocus()
                                                             },
                                                             enabled = activeShift != null,
-                                                            shape = MaterialTheme.shapes.medium
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.cash_in),
-                                                                contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
-                                                                modifier = Modifier.size(20.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-
-
-                                                // Botón para salida de efectivo
-                                                if (isExpanded) {
-                                                    FilledTonalButton(
-                                                        onClick = {
-                                                            if (activeShift != null) {
-                                                                appCashMovementError = null
-                                                                showAppInflowDialog = false
-                                                                showAppOutflowDialog = true
-                                                            }
-                                                            reclaimCurrentScreenFocus()
-                                                        },
-                                                        enabled = activeShift != null,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .defaultMinSize(minHeight = 48.dp),
-                                                        contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-                                                        shape = ShapeDefaults.middleListItemShape
-                                                    ) {
-                                                        Box(
-                                                            modifier = Modifier.size(24.dp),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.cash_in),
-                                                                contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
-                                                                modifier = Modifier.size(24.dp).rotate(180f)
-                                                            )
-                                                        }
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(
-                                                            text = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            maxLines = 2,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                    }
-                                                } else {
-                                                    TooltipBox(
-                                                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                                                            TooltipAnchorPosition.Above,
-                                                            4.dp
-                                                        ),
-                                                        tooltip = {
-                                                            PlainTooltip {
-                                                                Text(stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow))
-                                                            }
-                                                        },
-                                                        state = rememberTooltipState()
-                                                    ) {
-                                                        FilledTonalIconButton(
-                                                            onClick = {
-                                                                if (activeShift != null) {
-                                                                    appCashMovementError = null
-                                                                    showAppInflowDialog = false
-                                                                    showAppOutflowDialog = true
-                                                                }
-                                                                reclaimCurrentScreenFocus()
-                                                            },
-                                                            enabled = activeShift != null,
-                                                            shape = MaterialTheme.shapes.medium
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.cash_in),
-                                                                contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
-                                                                modifier = Modifier.size(20.dp).rotate(180f)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-
-                                                // Botón para abrir cajón de dinero
-                                                if (isExpanded) {
-                                                    FilledTonalButton(
-                                                        onClick = {
-                                                            triggerOpenCashDrawer()
-                                                        },
-                                                        enabled = !isOpeningDrawer,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .defaultMinSize(minHeight = 48.dp),
-                                                        contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-                                                        shape = if (lastSale != null) ShapeDefaults.middleListItemShape else ShapeDefaults.bottomListItemShape
-                                                    ) {
-                                                        Box(
-                                                            modifier = Modifier.size(24.dp),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.point_of_sale),
-                                                                contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                                modifier = Modifier.size(24.dp)
-                                                            )
-                                                        }
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(
-                                                            text = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            maxLines = 2,
-                                                            overflow = TextOverflow.Ellipsis,
-                                                            modifier = Modifier.weight(1f)
-                                                        )
-                                                    }
-                                                } else {
-                                                    TooltipBox(
-                                                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                                                            TooltipAnchorPosition.Above,
-                                                            4.dp
-                                                        ),
-                                                        tooltip = {
-                                                            PlainTooltip {
-                                                                Text(stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button))
-                                                            }
-                                                        },
-                                                        state = rememberTooltipState()
-                                                    ) {
-                                                        FilledTonalIconButton(
-                                                            onClick = {
-                                                                triggerOpenCashDrawer()
-                                                            },
-                                                            enabled = !isOpeningDrawer,
-                                                            shape = MaterialTheme.shapes.medium
-                                                        ) {
-                                                            Icon(
-                                                                painter = painterResource(Res.drawable.point_of_sale),
-                                                                contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
-                                                                modifier = Modifier.size(20.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-
-
-                                                lastSale?.let { sale ->
-                                                    // Botón de reimpresión del último ticket
-                                                    if (isExpanded) {
-                                                        FilledTonalButton(
-                                                            onClick = {
-                                                                if (!isReprintingLastSale) {
-                                                                    isReprintingLastSale = true
-                                                                    coroutineScope.launch {
-                                                                        try {
-                                                                            reprintSaleReceiptUseCase(sale)
-                                                                        } finally {
-                                                                            delay(800.milliseconds)
-                                                                            isReprintingLastSale = false
-                                                                        }
-                                                                    }
-                                                                }
-                                                                reclaimCurrentScreenFocus()
-                                                            },
-                                                            enabled = !isReprintingLastSale,
                                                             modifier = Modifier
                                                                 .fillMaxWidth()
                                                                 .defaultMinSize(minHeight = 48.dp),
                                                             contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
-                                                            shape = ShapeDefaults.bottomListItemShape
+                                                            shape = ShapeDefaults.middleListItemShape
                                                         ) {
                                                             Box(
                                                                 modifier = Modifier.size(24.dp),
                                                                 contentAlignment = Alignment.Center
                                                             ) {
                                                                 Icon(
-                                                                    painter = painterResource(Res.drawable.print),
-                                                                    contentDescription = stringResource(Res.string.reprint_receipt_button),
-                                                                    modifier = Modifier.size(22.dp)
+                                                                    painter = painterResource(Res.drawable.cash_in),
+                                                                    contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
+                                                                    modifier = Modifier.size(24.dp)
                                                                 )
                                                             }
                                                             Spacer(modifier = Modifier.width(8.dp))
                                                             Text(
-                                                                text = stringResource(Res.string.reprint_receipt_button),
+                                                                text = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
                                                                 style = MaterialTheme.typography.labelMedium,
                                                                 maxLines = 2,
                                                                 overflow = TextOverflow.Ellipsis,
@@ -1258,12 +1027,170 @@ fun App(
                                                             ),
                                                             tooltip = {
                                                                 PlainTooltip {
-                                                                    Text(stringResource(Res.string.reprint_receipt_button))
+                                                                    Text(stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow))
                                                                 }
                                                             },
                                                             state = rememberTooltipState()
                                                         ) {
                                                             FilledTonalIconButton(
+                                                                onClick = {
+                                                                    if (activeShift != null) {
+                                                                        appCashMovementError = null
+                                                                        showAppInflowDialog = true
+                                                                        showAppOutflowDialog = false
+                                                                    }
+                                                                    reclaimCurrentScreenFocus()
+                                                                },
+                                                                enabled = activeShift != null,
+                                                                shape = MaterialTheme.shapes.medium
+                                                            ) {
+                                                                Icon(
+                                                                    painter = painterResource(Res.drawable.cash_in),
+                                                                    contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_inflow_desktop else Res.string.btn_cash_inflow),
+                                                                    modifier = Modifier.size(20.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+
+
+                                                    // Botón para salida de efectivo
+                                                    if (isExpanded) {
+                                                        FilledTonalButton(
+                                                            onClick = {
+                                                                if (activeShift != null) {
+                                                                    appCashMovementError = null
+                                                                    showAppInflowDialog = false
+                                                                    showAppOutflowDialog = true
+                                                                }
+                                                                reclaimCurrentScreenFocus()
+                                                            },
+                                                            enabled = activeShift != null,
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .defaultMinSize(minHeight = 48.dp),
+                                                            contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+                                                            shape = ShapeDefaults.middleListItemShape
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier.size(24.dp),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    painter = painterResource(Res.drawable.cash_in),
+                                                                    contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
+                                                                    modifier = Modifier.size(24.dp).rotate(180f)
+                                                                )
+                                                            }
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            Text(
+                                                                text = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
+                                                                style = MaterialTheme.typography.labelMedium,
+                                                                maxLines = 2,
+                                                                overflow = TextOverflow.Ellipsis,
+                                                                modifier = Modifier.weight(1f)
+                                                            )
+                                                        }
+                                                    } else {
+                                                        TooltipBox(
+                                                            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                                TooltipAnchorPosition.Above,
+                                                                4.dp
+                                                            ),
+                                                            tooltip = {
+                                                                PlainTooltip {
+                                                                    Text(stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow))
+                                                                }
+                                                            },
+                                                            state = rememberTooltipState()
+                                                        ) {
+                                                            FilledTonalIconButton(
+                                                                onClick = {
+                                                                    if (activeShift != null) {
+                                                                        appCashMovementError = null
+                                                                        showAppInflowDialog = false
+                                                                        showAppOutflowDialog = true
+                                                                    }
+                                                                    reclaimCurrentScreenFocus()
+                                                                },
+                                                                enabled = activeShift != null,
+                                                                shape = MaterialTheme.shapes.medium
+                                                            ) {
+                                                                Icon(
+                                                                    painter = painterResource(Res.drawable.cash_in),
+                                                                    contentDescription = stringResource(if (isDesktop) Res.string.btn_cash_outflow_desktop else Res.string.btn_cash_outflow),
+                                                                    modifier = Modifier.size(20.dp).rotate(180f)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Botón para abrir cajón de dinero
+                                                    if (isExpanded) {
+                                                        FilledTonalButton(
+                                                            onClick = {
+                                                                triggerOpenCashDrawer()
+                                                            },
+                                                            enabled = !isOpeningDrawer,
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .defaultMinSize(minHeight = 48.dp),
+                                                            contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+                                                            shape = if (lastSale != null) ShapeDefaults.middleListItemShape else ShapeDefaults.bottomListItemShape
+                                                        ) {
+                                                            Box(
+                                                                modifier = Modifier.size(24.dp),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    painter = painterResource(Res.drawable.point_of_sale),
+                                                                    contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                                    modifier = Modifier.size(24.dp)
+                                                                )
+                                                            }
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                            Text(
+                                                                text = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                                style = MaterialTheme.typography.labelMedium,
+                                                                maxLines = 2,
+                                                                overflow = TextOverflow.Ellipsis,
+                                                                modifier = Modifier.weight(1f)
+                                                            )
+                                                        }
+                                                    } else {
+                                                        TooltipBox(
+                                                            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                                TooltipAnchorPosition.Above,
+                                                                4.dp
+                                                            ),
+                                                            tooltip = {
+                                                                PlainTooltip {
+                                                                    Text(stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button))
+                                                                }
+                                                            },
+                                                            state = rememberTooltipState()
+                                                        ) {
+                                                            FilledTonalIconButton(
+                                                                onClick = {
+                                                                    triggerOpenCashDrawer()
+                                                                },
+                                                                enabled = !isOpeningDrawer,
+                                                                shape = MaterialTheme.shapes.medium
+                                                            ) {
+                                                                Icon(
+                                                                    painter = painterResource(Res.drawable.point_of_sale),
+                                                                    contentDescription = stringResource(if (isDesktop) Res.string.open_cash_drawer_button_desktop else Res.string.open_cash_drawer_button),
+                                                                    modifier = Modifier.size(20.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+
+
+                                                    lastSale?.let { sale ->
+                                                        // Botón de reimpresión del último ticket
+                                                        if (isExpanded) {
+                                                            FilledTonalButton(
                                                                 onClick = {
                                                                     if (!isReprintingLastSale) {
                                                                         isReprintingLastSale = true
@@ -1279,20 +1206,74 @@ fun App(
                                                                     reclaimCurrentScreenFocus()
                                                                 },
                                                                 enabled = !isReprintingLastSale,
-                                                                shape = MaterialTheme.shapes.medium
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .defaultMinSize(minHeight = 48.dp),
+                                                                contentPadding = PaddingValues(start = 12.dp, top = 6.dp, end = 8.dp, bottom = 6.dp),
+                                                                shape = ShapeDefaults.bottomListItemShape
                                                             ) {
-                                                                Icon(
-                                                                    painter = painterResource(Res.drawable.print),
-                                                                    contentDescription = stringResource(Res.string.reprint_receipt_button),
-                                                                    modifier = Modifier.size(20.dp)
+                                                                Box(
+                                                                    modifier = Modifier.size(24.dp),
+                                                                    contentAlignment = Alignment.Center
+                                                                ) {
+                                                                    Icon(
+                                                                        painter = painterResource(Res.drawable.print),
+                                                                        contentDescription = stringResource(Res.string.reprint_receipt_button),
+                                                                        modifier = Modifier.size(22.dp)
+                                                                    )
+                                                                }
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Text(
+                                                                    text = stringResource(Res.string.reprint_receipt_button),
+                                                                    style = MaterialTheme.typography.labelMedium,
+                                                                    maxLines = 2,
+                                                                    overflow = TextOverflow.Ellipsis,
+                                                                    modifier = Modifier.weight(1f)
                                                                 )
+                                                            }
+                                                        } else {
+                                                            TooltipBox(
+                                                                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                                                    TooltipAnchorPosition.Above,
+                                                                    4.dp
+                                                                ),
+                                                                tooltip = {
+                                                                    PlainTooltip {
+                                                                        Text(stringResource(Res.string.reprint_receipt_button))
+                                                                    }
+                                                                },
+                                                                state = rememberTooltipState()
+                                                            ) {
+                                                                FilledTonalIconButton(
+                                                                    onClick = {
+                                                                        if (!isReprintingLastSale) {
+                                                                            isReprintingLastSale = true
+                                                                            coroutineScope.launch {
+                                                                                try {
+                                                                                    reprintSaleReceiptUseCase(sale)
+                                                                                } finally {
+                                                                                    delay(800.milliseconds)
+                                                                                    isReprintingLastSale = false
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        reclaimCurrentScreenFocus()
+                                                                    },
+                                                                    enabled = !isReprintingLastSale,
+                                                                    shape = MaterialTheme.shapes.medium
+                                                                ) {
+                                                                    Icon(
+                                                                        painter = painterResource(Res.drawable.print),
+                                                                        contentDescription = stringResource(Res.string.reprint_receipt_button),
+                                                                        modifier = Modifier.size(20.dp)
+                                                                    )
+                                                                }
                                                             }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
                                     }
                                 }
                             } else {
@@ -1528,8 +1509,6 @@ fun App(
                                                 ChecadorScreen(
                                                     repository = repository,
                                                     showExtraPrices = ajustesUiState.showExtraPricesChecador,
-                                                    currentDateText = currentDateText,
-                                                    currentTimeText = currentTimeText,
                                                     onNavigateToAjustes = if (isCheckerOnly) { { navigateTo(AppRoute.Ajustes()) } } else null,
                                                     onOpenScanner = if (isAndroid() && isCameraScannerAvailable()) { { showPriceCheckerDialog = true } } else null
                                                 )
@@ -1813,7 +1792,7 @@ private fun SyncIcon(
     isSyncing: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val rotation = if (isSyncing) {
+    if (isSyncing) {
         val transition = rememberInfiniteTransition(label = "SyncTransition")
         val angle by transition.animateFloat(
             initialValue = 0f,
@@ -1824,14 +1803,16 @@ private fun SyncIcon(
             ),
             label = "SyncRotation"
         )
-        angle
+        Icon(
+            painter = painterResource(Res.drawable.sync),
+            contentDescription = stringResource(Res.string.sync_now_button),
+            modifier = modifier.graphicsLayer { rotationZ = angle }
+        )
     } else {
-        0f
+        Icon(
+            painter = painterResource(Res.drawable.sync),
+            contentDescription = stringResource(Res.string.sync_now_button),
+            modifier = modifier
+        )
     }
-
-    Icon(
-        painter = painterResource(Res.drawable.sync),
-        contentDescription = stringResource(Res.string.sync_now_button),
-        modifier = modifier.rotate(rotation)
-    )
 }

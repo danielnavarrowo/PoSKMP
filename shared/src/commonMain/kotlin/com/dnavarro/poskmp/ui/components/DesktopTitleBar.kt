@@ -19,13 +19,24 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.domain.model.Sale
+import com.dnavarro.poskmp.util.formatCurrentDate
+import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.formatPrice
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import java.time.LocalDateTime
+import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -50,27 +61,42 @@ fun DesktopTitleBar(
     onMinimize: () -> Unit,
     onClose: () -> Unit
 ) {
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(start = 12.dp)
-        ) {
-
-            // Center: Date and Time
-            if (dateTimeText.isNotBlank()) {
-                Text(
-                    text = dateTimeText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.CenterStart),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+    val displayDateTime = dateTimeText.ifBlank {
+        var currentDateText by remember { mutableStateOf(formatCurrentDate()) }
+        var currentTimeText by remember { mutableStateOf(formatCurrentTime()) }
+        LaunchedEffect(Unit) {
+            while (isActive) {
+                val now = LocalDateTime.now()
+                currentDateText = formatCurrentDate(now)
+                currentTimeText = formatCurrentTime(now)
+                delay(1.seconds)
             }
+        }
+        remember(currentDateText, currentTimeText) {
+            "${currentDateText.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}  •  $currentTimeText"
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(start = 12.dp)
+    ) {
+
+        // Center: Date and Time
+        if (displayDateTime.isNotBlank()) {
+            Text(
+                text = displayDateTime,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterStart),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
 
             // Right: Last Sale Info & Window Control Buttons (Minimize & Close)
             Row(

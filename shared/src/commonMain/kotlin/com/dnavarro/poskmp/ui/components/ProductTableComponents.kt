@@ -28,8 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +40,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -55,7 +52,6 @@ import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.arrow_up
 import poskmp.shared.generated.resources.cost_label
@@ -477,15 +473,12 @@ fun ProductSimpleCard(
     showCheckbox: Boolean = false,
     isChecked: Boolean = false,
     onCheckedChange: ((Boolean) -> Unit)? = null,
-    prioritizeDeliveryPrice: Boolean? = null,
+    prioritizeDeliveryPrice: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onSecondaryClick: (() -> Unit)? = null,
     contextMenu: (@Composable () -> Unit)? = null
 ) {
-    val settingsRepository = koinInject<SettingsRepository>()
-    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsState(initial = false)
-    val effectivePrioritizeDelivery = prioritizeDeliveryPrice ?: settingsPrioritizeDelivery
 
     Box(modifier = modifier) {
         Card(
@@ -575,7 +568,7 @@ fun ProductSimpleCard(
                 }
 
                 val hasDeliveryPrice = product.precio_delivery > 0.0
-                val isDeliveryHighlighted = effectivePrioritizeDelivery && hasDeliveryPrice
+                val isDeliveryHighlighted = prioritizeDeliveryPrice && hasDeliveryPrice
                 val isRetailHighlighted = !isDeliveryHighlighted
 
                 val priceItems = buildList {

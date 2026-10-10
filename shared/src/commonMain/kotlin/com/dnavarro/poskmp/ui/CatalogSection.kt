@@ -282,15 +282,15 @@ fun CatalogSection(
             if (f1 != f2) return@sortedWith if (f1) -1 else 1
 
             val primaryComp = when (sortField) {
-                ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
+                ProductSortField.NOMBRE -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
                 ProductSortField.CODIGO -> {
                     val c1 = p1.formatBarcodesForDisplay(emptyFallback = "")
                     val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
-                    c1.lowercase().compareTo(c2.lowercase())
+                    c1.compareTo(c2, ignoreCase = true)
                 }
 
-                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase()
-                    .compareTo((p2.categoria ?: "").lowercase())
+                ProductSortField.CATEGORIA -> (p1.categoria ?: "")
+                    .compareTo(p2.categoria ?: "", ignoreCase = true)
 
                 ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
                 ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
@@ -303,7 +303,7 @@ fun CatalogSection(
                     c1.compareTo(c2)
                 }
                 ProductSortField.FECHA_ACTUALIZACION -> p1.updated_at.compareTo(p2.updated_at)
-                else -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
+                else -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
             }
 
             if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
@@ -330,9 +330,9 @@ fun CatalogSection(
 
     LaunchedEffect(searchQueryState) {
         snapshotFlow { searchQueryState.text.toString() }.collectLatest { query ->
+            delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
             selectedCatalogIndex = -1
             resetScrollPosition()
-            delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
             onSearchQueryChange(query)
         }
     }

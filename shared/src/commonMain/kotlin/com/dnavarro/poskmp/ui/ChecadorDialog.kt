@@ -79,6 +79,8 @@ import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.SoundManager
+import com.dnavarro.poskmp.util.formatCurrentDate
+import com.dnavarro.poskmp.util.formatCurrentTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import kotlinx.coroutines.delay
@@ -342,9 +344,9 @@ fun ChecadorContent(
 
                     if (showExtraPrices) {
                         val renderedPricesCount = (if (product.costo > 0.0) 1 else 0) +
-                            (if (product.precio_mayoreo > 0.0) 1 else 0) +
-                            (if (product.precio > 0.0) 1 else 0) +
-                            (if (hasDeliveryPrice) 1 else 0)
+                                (if (product.precio_mayoreo > 0.0) 1 else 0) +
+                                (if (product.precio > 0.0) 1 else 0) +
+                                (if (hasDeliveryPrice) 1 else 0)
 
                         Row(
                             modifier = Modifier
@@ -682,6 +684,19 @@ fun ChecadorScreen(
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
 
+    var displayDateText by remember(currentDateText) { mutableStateOf(currentDateText.ifEmpty { formatCurrentDate() }) }
+    var displayTimeText by remember(currentTimeText) { mutableStateOf(currentTimeText.ifEmpty { formatCurrentTime() }) }
+
+    if (currentDateText.isEmpty() || currentTimeText.isEmpty()) {
+        LaunchedEffect(Unit) {
+            while (isActive) {
+                displayDateText = formatCurrentDate()
+                displayTimeText = formatCurrentTime()
+                delay(1000.milliseconds)
+            }
+        }
+    }
+
     val requestOpenScanner = {
         if (onOpenScanner != null) {
             onOpenScanner()
@@ -950,7 +965,7 @@ fun ChecadorScreen(
                                     shape = ShapeDefaults.cardShape
                                 ),
 
-                            ) {
+                                ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1048,14 +1063,14 @@ fun ChecadorScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = currentDateText,
+                        text = displayDateText,
                         color = Color.Black,
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
-                        text = currentTimeText,
+                        text = displayTimeText,
                         color = Color.Black,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold

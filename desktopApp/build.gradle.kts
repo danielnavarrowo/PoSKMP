@@ -33,10 +33,14 @@ val appVersion = libs.versions.app.version.get()
 
 val commonJvmArgs = listOf(
     "-Dapp.version=$appVersion",
-    "-XX:+UseParallelGC",
+    "-XX:+UseG1GC",
+    "-XX:MaxGCPauseMillis=16",
+    "-XX:+UseStringDeduplication",
     "-XX:CICompilerCount=2",
-    "-Xms256m",
-    "-Xmx768m"
+    "-Xms512m",
+    "-Xmx1536m",
+    "-Dskiko.vsync.enabled=false",
+    "-Dskiko.fps=60"
 )
 
 compose.desktop {
@@ -57,7 +61,6 @@ compose.desktop {
             packageName = if (isWindows) "Punto de Venta" else "poskmp"
             description = "poskmp - Sistema Punto de Venta"
             packageVersion = appVersion
-            jvmArgs += commonJvmArgs
             windows {
                 iconFile.set(project.file("src/main/resources/icons/icon.ico"))
                 perUserInstall = true
