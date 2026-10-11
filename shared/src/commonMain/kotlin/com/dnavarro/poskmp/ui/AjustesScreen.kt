@@ -80,8 +80,6 @@ import com.dnavarro.poskmp.ui.ajustes.TicketSettingsSection
 import com.dnavarro.poskmp.ui.turnos.CashierManagementSection
 import com.dnavarro.poskmp.util.AdaptiveScaffoldPredictiveBackHandler
 import com.dnavarro.poskmp.util.AppConstants
-import com.dnavarro.poskmp.util.RenderApiInfo
-import com.dnavarro.poskmp.util.getRenderApiInfo
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.launch
@@ -136,8 +134,6 @@ fun AjustesScreen(
         onSwapVentaLayoutOrderChange = { viewModel.setSwapVentaLayoutOrder(it) },
         beepOnBarcodeScan = uiState.beepOnBarcodeScan,
         onBeepOnBarcodeScanChange = { viewModel.setBeepOnBarcodeScan(it) },
-        renderApiInfo = uiState.renderApiInfo,
-        onSetRenderApi = { viewModel.setRenderApi(it) },
         defaultRetailMargin = uiState.defaultRetailMargin,
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
@@ -261,8 +257,6 @@ fun AjustesScreen(
     onSwapVentaLayoutOrderChange: (Boolean) -> Unit = {},
     beepOnBarcodeScan: Boolean = false,
     onBeepOnBarcodeScanChange: (Boolean) -> Unit = {},
-    renderApiInfo: RenderApiInfo = getRenderApiInfo(),
-    onSetRenderApi: (String) -> Unit = {},
     defaultRetailMargin: Double = 0.0,
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
@@ -687,9 +681,7 @@ fun AjustesScreen(
                                         swapVentaLayoutOrder = swapVentaLayoutOrder,
                                         onSwapVentaLayoutOrderChange = onSwapVentaLayoutOrderChange,
                                         beepOnBarcodeScan = beepOnBarcodeScan,
-                                        onBeepOnBarcodeScanChange = onBeepOnBarcodeScanChange,
-                                        renderApiInfo = renderApiInfo,
-                                        onSetRenderApi = onSetRenderApi
+                                        onBeepOnBarcodeScanChange = onBeepOnBarcodeScanChange
                                     )
                                 }
 

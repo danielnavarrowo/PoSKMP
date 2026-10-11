@@ -475,7 +475,7 @@ fun AboutSettingsSection(
                             )
                             Text(
                                 text = if (renderApiInfo.isLegacyGpu) {
-                                    "Se detectó una GPU sin soporte nativo para DirectX 12. Si experimentas lentitud o caídas de fluidez, selecciona OpenGL."
+                                    "Se detectó una GPU Intel antigua sin aceleración D3D12 fluida. El modo Software (CPU) ofrece la mejor estabilidad y rendimiento en Windows."
                                 } else {
                                     "Se detectó una GPU moderna con soporte nativo de DirectX 12. Se recomienda Automático o Direct3D para la mejor fluidez."
                                 },
@@ -493,6 +493,7 @@ fun AboutSettingsSection(
                     ) {
                         val apiOptions = listOf(
                             "AUTO" to "Automático",
+                            "SOFTWARE" to "Software (CPU)",
                             "DIRECT3D" to "Direct3D",
                             "OPENGL" to "OpenGL"
                         )

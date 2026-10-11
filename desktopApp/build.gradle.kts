@@ -33,7 +33,7 @@ val appVersion = libs.versions.app.version.get()
 
 val commonJvmArgs = listOf(
     "-Dapp.version=$appVersion",
-    "-XX:+UseG1GC",
+    "-XX:+UseSerialGC",
     "-XX:MaxGCPauseMillis=16",
     "-XX:+UseStringDeduplication",
     "-XX:CICompilerCount=2",
