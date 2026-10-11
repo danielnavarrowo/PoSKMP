@@ -227,12 +227,12 @@ fun CatalogSection(
                 else -> gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
             }
         }
-        .distinctUntilChanged()
-        .collect { isAtTop ->
-            if (isAtTop && !isSearchBarVisible) {
-                isSearchBarVisible = true
+            .distinctUntilChanged()
+            .collect { isAtTop ->
+                if (isAtTop && !isSearchBarVisible) {
+                    isSearchBarVisible = true
+                }
             }
-        }
     }
 
     fun resetScrollPosition() {
@@ -385,226 +385,226 @@ fun CatalogSection(
             Column {
                 // Search Bar & Fast Codes
                 Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(54.dp)
-                .background(
-                    color = if (searchQueryState.text.isNotEmpty())
-                        MaterialTheme.colorScheme.surfaceContainerLowest
-                    else
-                        MaterialTheme.colorScheme.surfaceContainer,
-                    shape = ShapeDefaults.cardShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.search),
-                    contentDescription = stringResource(Res.string.search_desc),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.CenterStart
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (searchQueryState.text.isEmpty()) {
-                        Text(
-                            text = stringResource(Res.string.search_placeholder),
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            ),
-                            textAlign = TextAlign.Start,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    BasicTextField(
-                        state = searchQueryState,
-                        lineLimits = TextFieldLineLimits.SingleLine,
-                        inputTransformation = InputTransformation {
-                            val current = asCharSequence()
-                            if (current.any { it == '+' || it == '-' }) {
-                                val sanitized = current.filter { it != '+' && it != '-' }
-                                replace(0, length, sanitized)
-                            }
-                        },
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .let { mod ->
-                                if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(
-                                    searchFocusRequester
-                                ) else mod
-                            }
-                            .onPreviewKeyEvent { keyEvent ->
-                                val key = keyEvent.key
-                                val codePoint = keyEvent.utf16CodePoint
-                                val isPlus =
-                                    key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
-                                val isMinus =
-                                    key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
-                                val isUp = key == Key.DirectionUp
-                                val isDown = key == Key.DirectionDown
-                                val isEnter = key == Key.Enter || key == Key.NumPadEnter
+                            .weight(1f)
+                            .height(54.dp)
+                            .background(
+                                color = if (searchQueryState.text.isNotEmpty())
+                                    MaterialTheme.colorScheme.surfaceContainerLowest
+                                else
+                                    MaterialTheme.colorScheme.surfaceContainer,
+                                shape = ShapeDefaults.cardShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.search),
+                                contentDescription = stringResource(Res.string.search_desc),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQueryState.text.isEmpty()) {
+                                    Text(
+                                        text = stringResource(Res.string.search_placeholder),
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        ),
+                                        textAlign = TextAlign.Start,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
 
-                                if (keyEvent.key == Key.Escape && searchQueryState.text.isNotEmpty()) {
-                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                BasicTextField(
+                                    state = searchQueryState,
+                                    lineLimits = TextFieldLineLimits.SingleLine,
+                                    inputTransformation = InputTransformation {
+                                        val current = asCharSequence()
+                                        if (current.any { it == '+' || it == '-' }) {
+                                            val sanitized = current.filter { it != '+' && it != '-' }
+                                            replace(0, length, sanitized)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .let { mod ->
+                                            if (searchFocusRequester != null && !isAndroid()) mod.focusRequester(
+                                                searchFocusRequester
+                                            ) else mod
+                                        }
+                                        .onPreviewKeyEvent { keyEvent ->
+                                            val key = keyEvent.key
+                                            val codePoint = keyEvent.utf16CodePoint
+                                            val isPlus =
+                                                key == Key.Plus || key == Key.NumPadAdd || key == Key.Equals || codePoint == '+'.code
+                                            val isMinus =
+                                                key == Key.Minus || key == Key.NumPadSubtract || codePoint == '-'.code
+                                            val isUp = key == Key.DirectionUp
+                                            val isDown = key == Key.DirectionDown
+                                            val isEnter = key == Key.Enter || key == Key.NumPadEnter
+
+                                            if (keyEvent.key == Key.Escape && searchQueryState.text.isNotEmpty()) {
+                                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                                    searchQueryState.clearText()
+                                                    onSearchQueryChange("")
+                                                    selectedCatalogIndex = -1
+                                                    resetScrollPosition()
+                                                }
+                                                true
+                                            } else if (searchQueryState.text.isNotEmpty() && (isUp || isDown)) {
+                                                if (keyEvent.type == KeyEventType.KeyDown && displayedProducts.isNotEmpty()) {
+                                                    selectedCatalogIndex = if (isDown) {
+                                                        if (selectedCatalogIndex < displayedProducts.lastIndex) {
+                                                            selectedCatalogIndex + 1
+                                                        } else {
+                                                            displayedProducts.lastIndex
+                                                        }
+                                                    } else {
+                                                        if (selectedCatalogIndex > 0) {
+                                                            selectedCatalogIndex - 1
+                                                        } else {
+                                                            -1
+                                                        }
+                                                    }
+                                                }
+                                                true
+                                            } else if (searchQueryState.text.isNotEmpty() && isEnter && selectedCatalogIndex in displayedProducts.indices) {
+                                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                                    val selectedProduct =
+                                                        displayedProducts[selectedCatalogIndex]
+                                                    onProductClick(selectedProduct)
+                                                    searchQueryState.clearText()
+                                                    onSearchQueryChange("")
+                                                    selectedCatalogIndex = -1
+                                                    resetScrollPosition()
+                                                }
+                                                true
+                                            } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(
+                                                    keyEvent
+                                                )
+                                            ) {
+                                                true
+                                            } else if (isPlus || isMinus) {
+                                                true
+                                            } else if (keyEvent.type == KeyEventType.KeyDown && isEnter) {
+                                                val scannedText = searchQueryState.text.toString()
+                                                searchQueryState.clearText()
+                                                onSearchQueryChange("")
+                                                selectedCatalogIndex = -1
+                                                resetScrollPosition()
+                                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                                    onBarcodeScan(scannedText)
+                                                }
+                                                true
+                                            } else {
+                                                false
+                                            }
+                                        },
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Search
+                                    ),
+                                    onKeyboardAction = {
+                                        if (searchQueryState.text.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
+                                            val selectedProduct = displayedProducts[selectedCatalogIndex]
+                                            onProductClick(selectedProduct)
+                                            searchQueryState.clearText()
+                                            onSearchQueryChange("")
+                                            selectedCatalogIndex = -1
+                                            resetScrollPosition()
+                                        } else {
+                                            val scannedText = searchQueryState.text.toString()
+                                            searchQueryState.clearText()
+                                            onSearchQueryChange("")
+                                            selectedCatalogIndex = -1
+                                            resetScrollPosition()
+                                            if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                                onBarcodeScan(scannedText)
+                                            }
+                                        }
+                                    },
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Start
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
+                                )
+                            }
+
+                            if (searchQueryState.text.isNotEmpty()) {
+                                IconButton(
+                                    modifier = Modifier.size(32.dp),
+                                    onClick = {
                                         searchQueryState.clearText()
                                         onSearchQueryChange("")
                                         selectedCatalogIndex = -1
                                         resetScrollPosition()
-                                    }
-                                    true
-                                } else if (searchQueryState.text.isNotEmpty() && (isUp || isDown)) {
-                                    if (keyEvent.type == KeyEventType.KeyDown && displayedProducts.isNotEmpty()) {
-                                        selectedCatalogIndex = if (isDown) {
-                                            if (selectedCatalogIndex < displayedProducts.lastIndex) {
-                                                selectedCatalogIndex + 1
-                                            } else {
-                                                displayedProducts.lastIndex
-                                            }
-                                        } else {
-                                            if (selectedCatalogIndex > 0) {
-                                                selectedCatalogIndex - 1
-                                            } else {
-                                                -1
+                                        if (!isAndroid()) {
+                                            coroutineScope.launch {
+                                                delay(50.milliseconds)
+                                                try {
+                                                    searchFocusRequester?.requestFocus()
+                                                } catch (_: Exception) {
+                                                }
                                             }
                                         }
                                     }
-                                    true
-                                } else if (searchQueryState.text.isNotEmpty() && isEnter && selectedCatalogIndex in displayedProducts.indices) {
-                                    if (keyEvent.type == KeyEventType.KeyDown) {
-                                        val selectedProduct =
-                                            displayedProducts[selectedCatalogIndex]
-                                        onProductClick(selectedProduct)
-                                        searchQueryState.clearText()
-                                        onSearchQueryChange("")
-                                        selectedCatalogIndex = -1
-                                        resetScrollPosition()
-                                    }
-                                    true
-                                } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(
-                                        keyEvent
-                                    )
                                 ) {
-                                    true
-                                } else if (isPlus || isMinus) {
-                                    true
-                                } else if (keyEvent.type == KeyEventType.KeyDown && isEnter) {
-                                    val scannedText = searchQueryState.text.toString()
-                                    searchQueryState.clearText()
-                                    onSearchQueryChange("")
-                                    selectedCatalogIndex = -1
-                                    resetScrollPosition()
-                                    if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                        onBarcodeScan(scannedText)
-                                    }
-                                    true
-                                } else {
-                                    false
+                                    Icon(
+                                        painter = painterResource(Res.drawable.close),
+                                        contentDescription = stringResource(Res.string.clear_desc),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Box {
+                        TooltipBox(
+                            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                                TooltipAnchorPosition.Below,
+                                4.dp
+                            ),
+                            tooltip = {
+                                PlainTooltip {
+                                    Text(if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey))
                                 }
                             },
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Search
-                        ),
-                        onKeyboardAction = {
-                            if (searchQueryState.text.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
-                                val selectedProduct = displayedProducts[selectedCatalogIndex]
-                                onProductClick(selectedProduct)
-                                searchQueryState.clearText()
-                                onSearchQueryChange("")
-                                selectedCatalogIndex = -1
-                                resetScrollPosition()
-                            } else {
-                                val scannedText = searchQueryState.text.toString()
-                                searchQueryState.clearText()
-                                onSearchQueryChange("")
-                                selectedCatalogIndex = -1
-                                resetScrollPosition()
-                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                    onBarcodeScan(scannedText)
-                                }
-                            }
-                        },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Start
-                        ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
-                    )
-                }
-
-                if (searchQueryState.text.isNotEmpty()) {
-                    IconButton(
-                        modifier = Modifier.size(32.dp),
-                        onClick = {
-                            searchQueryState.clearText()
-                            onSearchQueryChange("")
-                            selectedCatalogIndex = -1
-                            resetScrollPosition()
-                            if (!isAndroid()) {
-                                coroutineScope.launch {
-                                    delay(50.milliseconds)
-                                    try {
-                                        searchFocusRequester?.requestFocus()
-                                    } catch (_: Exception) {
-                                    }
-                                }
+                            state = rememberTooltipState()
+                        ) {
+                            IconButton(
+                                onClick = onSellUnregisteredClick,
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(MaterialShapes.Cookie4Sided.toShape())
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.add),
+                                    contentDescription = stringResource(if (isAndroid()) Res.string.not_registered else Res.string.not_registered_hotkey),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
                         }
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.close),
-                            contentDescription = stringResource(Res.string.clear_desc),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
                     }
                 }
-            }
-        }
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            Box {
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                        TooltipAnchorPosition.Below,
-                        4.dp
-                    ),
-                    tooltip = {
-                        PlainTooltip {
-                            Text(if (isAndroid()) stringResource(Res.string.not_registered) else stringResource(Res.string.not_registered_hotkey))
-                        }
-                    },
-                    state = rememberTooltipState()
-                ) {
-                    IconButton(
-                        onClick = onSellUnregisteredClick,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(MaterialShapes.Cookie4Sided.toShape())
-                            .background(MaterialTheme.colorScheme.secondaryContainer),
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.add),
-                            contentDescription = stringResource(if (isAndroid()) Res.string.not_registered else Res.string.not_registered_hotkey),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
-        }
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -654,7 +654,7 @@ fun CatalogSection(
                                     ShapeDefaults.topListItemShape
                                 } else if (index == displayedProducts.lastIndex) {
                                     ShapeDefaults.bottomListItemShape
-                    } else {
+                                } else {
                                     ShapeDefaults.middleListItemShape
                                 }
                                 var showContextMenu by remember { mutableStateOf(false) }
@@ -737,7 +737,8 @@ fun CatalogSection(
                             Card(
                                 modifier = Modifier.fillMaxSize(),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                shape = ShapeDefaults.cardShape
+                                shape = ShapeDefaults.cardShape,
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
                                 Column(modifier = Modifier.fillMaxSize()) {
                                     ProductTableHeaderRow(
@@ -826,6 +827,7 @@ fun CatalogSection(
                                     else MaterialTheme.colorScheme.surfaceContainerLow
                                 ),
                                 shape = ShapeDefaults.cardShape,
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(140.dp)

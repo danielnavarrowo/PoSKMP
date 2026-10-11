@@ -14,6 +14,8 @@ import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 
 import com.dnavarro.poskmp.util.AppConstants
+import com.dnavarro.poskmp.util.RenderApiInfo
+import com.dnavarro.poskmp.util.getRenderApiInfo
 
 /**
  * UI State for Settings screen.
@@ -80,5 +82,6 @@ data class AjustesUiState(
     val remoteAuditLogs: List<RemoteAuditLogDto> = emptyList(),
     val isLoadingAuditLogs: Boolean = false,
     val auditLogsError: String? = null,
-    val currentDeviceId: String = ""
+    val currentDeviceId: String = "",
+    val renderApiInfo: RenderApiInfo = getRenderApiInfo()
 )

@@ -14,6 +14,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
@@ -29,6 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.Screen
+import com.dnavarro.poskmp.util.RenderApiInfo
+import com.dnavarro.poskmp.util.getRenderApiInfo
 import com.dnavarro.poskmp.util.isAndroid
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -78,6 +81,8 @@ fun GeneralSettingsSection(
     onSwapVentaLayoutOrderChange: (Boolean) -> Unit,
     beepOnBarcodeScan: Boolean = false,
     onBeepOnBarcodeScanChange: (Boolean) -> Unit = {},
+    renderApiInfo: RenderApiInfo = getRenderApiInfo(),
+    onSetRenderApi: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -458,7 +463,7 @@ fun GeneralSettingsSection(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            shape = ShapeDefaults.bottomListItemShape,
+            shape = if (renderApiInfo.isAvailable) ShapeDefaults.middleListItemShape else ShapeDefaults.bottomListItemShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -487,6 +492,107 @@ fun GeneralSettingsSection(
                     checked = beepOnBarcodeScan,
                     onCheckedChange = onBeepOnBarcodeScanChange
                 )
+            }
+        }
+
+        // 7. Motor de Renderizado Gráfico (Desktop)
+        if (renderApiInfo.isAvailable) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = ShapeDefaults.bottomListItemShape,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Motor de Renderizado Gráfico",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Configura el backend gráfico (Skiko / Skia). Requiere reiniciar la aplicación para aplicar cambios.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Text(
+                                text = "Activo: ${renderApiInfo.currentActiveApi}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (!renderApiInfo.detectedGpu.isNullOrBlank()) {
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ) {
+                                Text(
+                                    text = renderApiInfo.detectedGpu.take(35),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val renderOptions = listOf(
+                            Pair("AUTO", "Auto"),
+                            Pair("SOFTWARE", "Software (CPU)"),
+                            Pair("DIRECT3D", "Direct3D 12"),
+                            Pair("OPENGL", "OpenGL")
+                        )
+                        renderOptions.forEachIndexed { index, (apiKey, label) ->
+                            val isSelected = renderApiInfo.savedPreference.equals(apiKey, ignoreCase = true)
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onSetRenderApi(apiKey) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    renderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

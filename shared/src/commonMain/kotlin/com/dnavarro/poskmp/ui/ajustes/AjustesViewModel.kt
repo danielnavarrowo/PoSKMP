@@ -19,6 +19,8 @@ import com.dnavarro.poskmp.domain.usecase.ResetAppToFactoryDefaultsUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
+import com.dnavarro.poskmp.util.getRenderApiInfo
+import com.dnavarro.poskmp.util.setSavedRenderApi
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,6 +79,7 @@ class AjustesViewModel(
 ) : ViewModel() {
 
     private val _updateState = MutableStateFlow(UpdateInternalState())
+    private val _renderApiFlow = MutableStateFlow(getRenderApiInfo())
 
     private val _themeFlow = combine(
         combine(
@@ -146,7 +149,12 @@ class AjustesViewModel(
                 repository.swapVentaLayoutOrderFlow,
                 repository.beepOnBarcodeScanFlow
             ) { lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan ->
-                Tuple4(lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan)
+                Tuple4(
+                    lowResourceChecadorShader,
+                    useProductTableInCatalog,
+                    swapVentaLayoutOrder,
+                    beepOnBarcodeScan
+                )
             }
         ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador),
             (lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan) ->
@@ -167,7 +175,12 @@ class AjustesViewModel(
                 repository.defaultDeliveryMarginFlow,
                 repository.isRoundingEnabledFlow
             ) { defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled ->
-                Tuple4(defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled)
+                Tuple4(
+                    defaultRetailMargin,
+                    defaultWholesaleMargin,
+                    defaultDeliveryMargin,
+                    isRoundingEnabled
+                )
             },
             combine(
                 repository.roundProductPricesFlow,
@@ -175,7 +188,12 @@ class AjustesViewModel(
                 repository.disallowCardPaymentOnWholesaleFlow,
                 repository.prioritizeDeliveryPriceFlow
             ) { roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
-                Tuple4(roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+                Tuple4(
+                    roundProductPrices,
+                    roundTicketTotal,
+                    disallowCardPaymentOnWholesale,
+                    prioritizeDeliveryPrice
+                )
             },
             combine(
                 combine(
@@ -185,7 +203,13 @@ class AjustesViewModel(
                     repository.autoWholesaleTicketTotalThresholdFlow,
                     repository.autoLookupBarcodeProductsFlow
                 ) { autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold, autoLookupBarcodeProducts ->
-                    Tuple5(autoWholesaleByQuantity, autoWholesaleQuantityThreshold, autoWholesaleByTicketTotal, autoWholesaleTicketTotalThreshold, autoLookupBarcodeProducts)
+                    Tuple5(
+                        autoWholesaleByQuantity,
+                        autoWholesaleQuantityThreshold,
+                        autoWholesaleByTicketTotal,
+                        autoWholesaleTicketTotalThreshold,
+                        autoLookupBarcodeProducts
+                    )
                 },
                 combine(
                     repository.geminiGroundingEnabledFlow,
@@ -193,7 +217,12 @@ class AjustesViewModel(
                     repository.googleSearchEngineIdFlow,
                     repository.googleSearchApiKeyFlow
                 ) { geminiGroundingEnabled, geminiApiKey, googleSearchEngineId, googleSearchApiKey ->
-                    AiAndSearchState(geminiGroundingEnabled, geminiApiKey, googleSearchEngineId, googleSearchApiKey)
+                    AiAndSearchState(
+                        geminiGroundingEnabled,
+                        geminiApiKey,
+                        googleSearchEngineId,
+                        googleSearchApiKey
+                    )
                 }
             ) { autoWholesaleTuple, aiState ->
                 Pair(autoWholesaleTuple, aiState)
@@ -238,7 +267,15 @@ class AjustesViewModel(
                 Triple(autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
             }
         ) { (supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled), (autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath) ->
-            Tuple7(supabaseUrl, supabaseKey, lastSyncTimestamp, autoSyncEnabled, autoBackupEnabled, lastBackupTimestamp, backupDirectoryPath)
+            Tuple7(
+                supabaseUrl,
+                supabaseKey,
+                lastSyncTimestamp,
+                autoSyncEnabled,
+                autoBackupEnabled,
+                lastBackupTimestamp,
+                backupDirectoryPath
+            )
         }
     ) { generalBehaviorState,
         pricingState,
@@ -284,7 +321,8 @@ class AjustesViewModel(
         viewModelScope.launch {
             try {
                 repository.getOrCreateDeviceId()
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -351,10 +389,12 @@ class AjustesViewModel(
         _baseUiState,
         _updateState,
         syncRepository.syncState,
-        getCashiersUseCase()
-    ) { baseState, updateState, syncState, cashiers ->
+        getCashiersUseCase(),
+        _renderApiFlow
+    ) { baseState, updateState, syncState, cashiers, renderApiInfo ->
         baseState.copy(
             syncState = syncState,
+            renderApiInfo = renderApiInfo,
             currentVersion = updateRepository.getCurrentVersion(),
             isCheckingUpdates = updateState.isCheckingUpdates,
             updateCheckResult = updateState.updateCheckResult,
@@ -519,6 +559,7 @@ class AjustesViewModel(
             }
         }
     }
+
     fun setRoundTicketTotal(enabled: Boolean) {
         viewModelScope.launch {
             repository.setRoundTicketTotal(enabled)
@@ -737,7 +778,8 @@ class AjustesViewModel(
             } else {
                 _updateState.value = _updateState.value.copy(
                     isLoadingAuditLogs = false,
-                    auditLogsError = result.exceptionOrNull()?.message ?: "Error al cargar bitácora del servidor"
+                    auditLogsError = result.exceptionOrNull()?.message
+                        ?: "Error al cargar bitácora del servidor"
                 )
             }
         }
@@ -808,7 +850,8 @@ class AjustesViewModel(
             } else {
                 _updateState.value = _updateState.value.copy(
                     isSavingCashier = false,
-                    cashierActionError = result.exceptionOrNull()?.message ?: "Error al guardar cajero"
+                    cashierActionError = result.exceptionOrNull()?.message
+                        ?: "Error al guardar cajero"
                 )
             }
         }
@@ -833,7 +876,8 @@ class AjustesViewModel(
             } else {
                 _updateState.value = _updateState.value.copy(
                     isDeletingCashier = false,
-                    cashierActionError = result.exceptionOrNull()?.message ?: "Error al eliminar cajero"
+                    cashierActionError = result.exceptionOrNull()?.message
+                        ?: "Error al eliminar cajero"
                 )
             }
         }
@@ -862,10 +906,15 @@ class AjustesViewModel(
             } else {
                 _updateState.value = _updateState.value.copy(
                     isResettingApp = false,
-                    resetAppError = result.exceptionOrNull()?.message ?: "Error al restablecer la aplicación"
+                    resetAppError = result.exceptionOrNull()?.message
+                        ?: "Error al restablecer la aplicación"
                 )
             }
         }
     }
 
+    fun setRenderApi(api: String) {
+        setSavedRenderApi(api)
+        _renderApiFlow.value = getRenderApiInfo()
+    }
 }

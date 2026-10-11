@@ -80,6 +80,8 @@ import com.dnavarro.poskmp.ui.ajustes.TicketSettingsSection
 import com.dnavarro.poskmp.ui.turnos.CashierManagementSection
 import com.dnavarro.poskmp.util.AdaptiveScaffoldPredictiveBackHandler
 import com.dnavarro.poskmp.util.AppConstants
+import com.dnavarro.poskmp.util.RenderApiInfo
+import com.dnavarro.poskmp.util.getRenderApiInfo
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.launch
@@ -134,6 +136,8 @@ fun AjustesScreen(
         onSwapVentaLayoutOrderChange = { viewModel.setSwapVentaLayoutOrder(it) },
         beepOnBarcodeScan = uiState.beepOnBarcodeScan,
         onBeepOnBarcodeScanChange = { viewModel.setBeepOnBarcodeScan(it) },
+        renderApiInfo = uiState.renderApiInfo,
+        onSetRenderApi = { viewModel.setRenderApi(it) },
         defaultRetailMargin = uiState.defaultRetailMargin,
         onDefaultRetailMarginChange = { viewModel.setDefaultRetailMargin(it) },
         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
@@ -257,6 +261,8 @@ fun AjustesScreen(
     onSwapVentaLayoutOrderChange: (Boolean) -> Unit = {},
     beepOnBarcodeScan: Boolean = false,
     onBeepOnBarcodeScanChange: (Boolean) -> Unit = {},
+    renderApiInfo: RenderApiInfo = getRenderApiInfo(),
+    onSetRenderApi: (String) -> Unit = {},
     defaultRetailMargin: Double = 0.0,
     onDefaultRetailMarginChange: (Double) -> Unit = {},
     defaultWholesaleMargin: Double = 0.0,
@@ -448,101 +454,102 @@ fun AjustesScreen(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                             contentPadding = PaddingValues(bottom = 24.dp)
                         ) {
-                        itemsIndexed(categories) { index, category ->
-                            val isSelected = isListAndDetailVisible && currentCategory == category
-                            val shape = when {
-                                categories.size == 1 -> ShapeDefaults.cardShape
-                                index == 0 -> ShapeDefaults.topListItemShape
-                                index == categories.lastIndex -> ShapeDefaults.bottomListItemShape
-                                else -> ShapeDefaults.middleListItemShape
-                            }
-                            Card(
-                                onClick = {
-                                    when (category) {
-                                        AjustesCategory.CLIENTES -> onNavigateToClientes?.invoke()
-                                        AjustesCategory.VENTAS -> onNavigateToVentas?.invoke()
-                                        else -> {
-                                            currentCategory = category
-                                            coroutineScope.launch {
-                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, category)
+                            itemsIndexed(categories) { index, category ->
+                                val isSelected = isListAndDetailVisible && currentCategory == category
+                                val shape = when {
+                                    categories.size == 1 -> ShapeDefaults.cardShape
+                                    index == 0 -> ShapeDefaults.topListItemShape
+                                    index == categories.lastIndex -> ShapeDefaults.bottomListItemShape
+                                    else -> ShapeDefaults.middleListItemShape
+                                }
+                                Card(
+                                    onClick = {
+                                        when (category) {
+                                            AjustesCategory.CLIENTES -> onNavigateToClientes?.invoke()
+                                            AjustesCategory.VENTAS -> onNavigateToVentas?.invoke()
+                                            else -> {
+                                                currentCategory = category
+                                                coroutineScope.launch {
+                                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, category)
+                                                }
                                             }
                                         }
-                                    }
-                                },
-                                shape = shape,
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) {
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainer
                                     },
-                                    contentColor = if (isSelected) {
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    }
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    shape = shape,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) {
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainer
+                                        },
+                                        contentColor = if (isSelected) {
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        }
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(42.dp)
-                                            .background(
-                                                color = if (isSelected) {
-                                                    MaterialTheme.colorScheme.secondary
-                                                } else {
-                                                    MaterialTheme.colorScheme.secondaryContainer
-                                                },
-                                                shape = MaterialShapes.Gem.toShape()
-                                            ),
-                                        contentAlignment = Alignment.Center
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            painter = painterResource(category.icon),
-                                            contentDescription = null,
-                                            tint = if (isSelected) {
-                                                MaterialTheme.colorScheme.onSecondary
-                                            } else {
-                                                MaterialTheme.colorScheme.secondary
-                                            },
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = stringResource(category.titleRes),
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = stringResource(category.subtitleRes),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = if (isSelected) {
-                                                MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    if (!isListAndDetailVisible) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.expand_more),
-                                            contentDescription = null,
+                                        Box(
                                             modifier = Modifier
-                                                .size(20.dp)
-                                                .rotate(-90f),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
+                                                .size(42.dp)
+                                                .background(
+                                                    color = if (isSelected) {
+                                                        MaterialTheme.colorScheme.secondary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.secondaryContainer
+                                                    },
+                                                    shape = MaterialShapes.Gem.toShape()
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(category.icon),
+                                                contentDescription = null,
+                                                tint = if (isSelected) {
+                                                    MaterialTheme.colorScheme.onSecondary
+                                                } else {
+                                                    MaterialTheme.colorScheme.secondary
+                                                },
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stringResource(category.titleRes),
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = stringResource(category.subtitleRes),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (isSelected) {
+                                                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        if (!isListAndDetailVisible) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.expand_more),
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .rotate(-90f),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -550,7 +557,6 @@ fun AjustesScreen(
                     }
                 }
             }
-        }
         },
         detailPane = {
             val detailScrollBehavior = if (!isListAndDetailVisible || isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
@@ -619,210 +625,212 @@ fun AjustesScreen(
                                 .padding(horizontal = if (isListAndDetailVisible) 24.dp else 16.dp)
                                 .padding(bottom = 32.dp)
                         ) {
-                        if (isListAndDetailVisible) {
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.primaryContainer,
-                                            MaterialTheme.shapes.small
-                                        ),
-                                    contentAlignment = Alignment.Center
+                            if (isListAndDetailVisible) {
+                                Spacer(modifier = Modifier.height(20.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        painter = painterResource(currentCategory.icon),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(26.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.primaryContainer,
+                                                MaterialTheme.shapes.small
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(currentCategory.icon),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Text(
+                                            text = stringResource(currentCategory.titleRes),
+                                            fontWeight = FontWeight.ExtraBold,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = stringResource(currentCategory.subtitleRes),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            when (currentCategory) {
+                                AjustesCategory.CLIENTES,
+                                AjustesCategory.VENTAS -> {
+                                    // Handled directly from list
+                                }
+
+                                AjustesCategory.GENERAL -> {
+                                    GeneralSettingsSection(
+                                        defaultScreen = defaultScreen,
+                                        onDefaultScreenChange = onDefaultScreenChange,
+                                        isChecadorDialog = isChecadorDialog,
+                                        onIsChecadorDialogChange = onIsChecadorDialogChange,
+                                        showExtraPricesChecador = showExtraPricesChecador,
+                                        onShowExtraPricesChecadorChange = onShowExtraPricesChecadorChange,
+                                        lowResourceChecadorShader = lowResourceChecadorShader,
+                                        onLowResourceChecadorShaderChange = onLowResourceChecadorShaderChange,
+                                        useProductTableInCatalog = useProductTableInCatalog,
+                                        onUseProductTableInCatalogChange = onUseProductTableInCatalogChange,
+                                        swapVentaLayoutOrder = swapVentaLayoutOrder,
+                                        onSwapVentaLayoutOrderChange = onSwapVentaLayoutOrderChange,
+                                        beepOnBarcodeScan = beepOnBarcodeScan,
+                                        onBeepOnBarcodeScanChange = onBeepOnBarcodeScanChange,
+                                        renderApiInfo = renderApiInfo,
+                                        onSetRenderApi = onSetRenderApi
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column {
-                                    Text(
-                                        text = stringResource(currentCategory.titleRes),
-                                        fontWeight = FontWeight.ExtraBold,
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = stringResource(currentCategory.subtitleRes),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+
+                                AjustesCategory.APARIENCIA -> {
+                                    AppearanceSettingsSection(
+                                        useDynamicColor = useDynamicColor,
+                                        onUseDynamicColorChange = onUseDynamicColorChange,
+                                        seedColor = seedColor,
+                                        onSeedColorChange = onSeedColorChange,
+                                        isAmoled = isAmoled,
+                                        onIsAmoledChange = onIsAmoledChange,
+                                        darkModeConfig = darkModeConfig,
+                                        onDarkModeConfigChange = onDarkModeConfigChange,
+                                        paletteStyle = paletteStyle,
+                                        onPaletteStyleChange = onPaletteStyleChange,
+                                        appScale = appScale,
+                                        onAppScaleChange = onAppScaleChange
                                     )
                                 }
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
 
-                        when (currentCategory) {
-                            AjustesCategory.CLIENTES,
-                            AjustesCategory.VENTAS -> {
-                                // Handled directly from list
-                            }
+                                AjustesCategory.PRECIOS_MARGENES -> {
+                                    PricingSettingsSection(
+                                        defaultRetailMargin = defaultRetailMargin,
+                                        onDefaultRetailMarginChange = onDefaultRetailMarginChange,
+                                        defaultWholesaleMargin = defaultWholesaleMargin,
+                                        onDefaultWholesaleMarginChange = onDefaultWholesaleMarginChange,
+                                        defaultDeliveryMargin = defaultDeliveryMargin,
+                                        onDefaultDeliveryMarginChange = onDefaultDeliveryMarginChange,
+                                        isRoundingEnabled = isRoundingEnabled,
+                                        onIsRoundingEnabledChange = onIsRoundingEnabledChange,
+                                        roundProductPrices = roundProductPrices,
+                                        onRoundProductPricesChange = onRoundProductPricesChange,
+                                        roundTicketTotal = roundTicketTotal,
+                                        onRoundTicketTotalChange = onRoundTicketTotalChange,
+                                        disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
+                                        onDisallowCardPaymentOnWholesaleChange = onDisallowCardPaymentOnWholesaleChange,
+                                        prioritizeDeliveryPrice = prioritizeDeliveryPrice,
+                                        onPrioritizeDeliveryPriceChange = onPrioritizeDeliveryPriceChange,
+                                        autoWholesaleByQuantity = autoWholesaleByQuantity,
+                                        onAutoWholesaleByQuantityChange = onAutoWholesaleByQuantityChange,
+                                        autoWholesaleQuantityThreshold = autoWholesaleQuantityThreshold,
+                                        onAutoWholesaleQuantityThresholdChange = onAutoWholesaleQuantityThresholdChange,
+                                        autoWholesaleByTicketTotal = autoWholesaleByTicketTotal,
+                                        onAutoWholesaleByTicketTotalChange = onAutoWholesaleByTicketTotalChange,
+                                        autoWholesaleTicketTotalThreshold = autoWholesaleTicketTotalThreshold,
+                                        onAutoWholesaleTicketTotalThresholdChange = onAutoWholesaleTicketTotalThresholdChange,
+                                        autoLookupBarcodeProducts = autoLookupBarcodeProducts,
+                                        onAutoLookupBarcodeProductsChange = onAutoLookupBarcodeProductsChange,
+                                        geminiGroundingEnabled = geminiGroundingEnabled,
+                                        onGeminiGroundingEnabledChange = onGeminiGroundingEnabledChange,
+                                        geminiApiKey = geminiApiKey,
+                                        onGeminiApiKeyChange = onGeminiApiKeyChange,
+                                        googleSearchEngineId = googleSearchEngineId,
+                                        onGoogleSearchEngineIdChange = onGoogleSearchEngineIdChange,
+                                        googleSearchApiKey = googleSearchApiKey,
+                                        onGoogleSearchApiKeyChange = onGoogleSearchApiKeyChange
+                                    )
+                                }
 
-                            AjustesCategory.GENERAL -> {
-                                GeneralSettingsSection(
-                                    defaultScreen = defaultScreen,
-                                    onDefaultScreenChange = onDefaultScreenChange,
-                                    isChecadorDialog = isChecadorDialog,
-                                    onIsChecadorDialogChange = onIsChecadorDialogChange,
-                                    showExtraPricesChecador = showExtraPricesChecador,
-                                    onShowExtraPricesChecadorChange = onShowExtraPricesChecadorChange,
-                                    lowResourceChecadorShader = lowResourceChecadorShader,
-                                    onLowResourceChecadorShaderChange = onLowResourceChecadorShaderChange,
-                                    useProductTableInCatalog = useProductTableInCatalog,
-                                    onUseProductTableInCatalogChange = onUseProductTableInCatalogChange,
-                                    swapVentaLayoutOrder = swapVentaLayoutOrder,
-                                    onSwapVentaLayoutOrderChange = onSwapVentaLayoutOrderChange,
-                                    beepOnBarcodeScan = beepOnBarcodeScan,
-                                    onBeepOnBarcodeScanChange = onBeepOnBarcodeScanChange
-                                )
-                            }
+                                AjustesCategory.TICKET_IMPRESORA -> {
+                                    TicketSettingsSection(
+                                        settings = receiptSettings,
+                                        onSettingsChange = onReceiptSettingsChange
+                                    )
+                                }
 
-                            AjustesCategory.APARIENCIA -> {
-                                AppearanceSettingsSection(
-                                    useDynamicColor = useDynamicColor,
-                                    onUseDynamicColorChange = onUseDynamicColorChange,
-                                    seedColor = seedColor,
-                                    onSeedColorChange = onSeedColorChange,
-                                    isAmoled = isAmoled,
-                                    onIsAmoledChange = onIsAmoledChange,
-                                    darkModeConfig = darkModeConfig,
-                                    onDarkModeConfigChange = onDarkModeConfigChange,
-                                    paletteStyle = paletteStyle,
-                                    onPaletteStyleChange = onPaletteStyleChange,
-                                    appScale = appScale,
-                                    onAppScaleChange = onAppScaleChange
-                                )
-                            }
+                                AjustesCategory.CAJEROS -> {
+                                    CashierManagementSection(
+                                        cashiers = cashiers,
+                                        currentDeviceId = currentDeviceId,
+                                        isSaving = isSavingCashier,
+                                        isDeleting = isDeletingCashier,
+                                        actionError = cashierActionError,
+                                        actionSuccess = cashierActionSuccess,
+                                        onSaveCashier = onSaveCashier,
+                                        onDeleteCashier = onDeleteCashier,
+                                        onClearMessage = onClearCashierActionMessage
+                                    )
+                                }
 
-                            AjustesCategory.PRECIOS_MARGENES -> {
-                                PricingSettingsSection(
-                                    defaultRetailMargin = defaultRetailMargin,
-                                    onDefaultRetailMarginChange = onDefaultRetailMarginChange,
-                                    defaultWholesaleMargin = defaultWholesaleMargin,
-                                    onDefaultWholesaleMarginChange = onDefaultWholesaleMarginChange,
-                                    defaultDeliveryMargin = defaultDeliveryMargin,
-                                    onDefaultDeliveryMarginChange = onDefaultDeliveryMarginChange,
-                                    isRoundingEnabled = isRoundingEnabled,
-                                    onIsRoundingEnabledChange = onIsRoundingEnabledChange,
-                                    roundProductPrices = roundProductPrices,
-                                    onRoundProductPricesChange = onRoundProductPricesChange,
-                                    roundTicketTotal = roundTicketTotal,
-                                    onRoundTicketTotalChange = onRoundTicketTotalChange,
-                                    disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
-                                    onDisallowCardPaymentOnWholesaleChange = onDisallowCardPaymentOnWholesaleChange,
-                                    prioritizeDeliveryPrice = prioritizeDeliveryPrice,
-                                    onPrioritizeDeliveryPriceChange = onPrioritizeDeliveryPriceChange,
-                                    autoWholesaleByQuantity = autoWholesaleByQuantity,
-                                    onAutoWholesaleByQuantityChange = onAutoWholesaleByQuantityChange,
-                                    autoWholesaleQuantityThreshold = autoWholesaleQuantityThreshold,
-                                    onAutoWholesaleQuantityThresholdChange = onAutoWholesaleQuantityThresholdChange,
-                                    autoWholesaleByTicketTotal = autoWholesaleByTicketTotal,
-                                    onAutoWholesaleByTicketTotalChange = onAutoWholesaleByTicketTotalChange,
-                                    autoWholesaleTicketTotalThreshold = autoWholesaleTicketTotalThreshold,
-                                    onAutoWholesaleTicketTotalThresholdChange = onAutoWholesaleTicketTotalThresholdChange,
-                                    autoLookupBarcodeProducts = autoLookupBarcodeProducts,
-                                    onAutoLookupBarcodeProductsChange = onAutoLookupBarcodeProductsChange,
-                                    geminiGroundingEnabled = geminiGroundingEnabled,
-                                    onGeminiGroundingEnabledChange = onGeminiGroundingEnabledChange,
-                                    geminiApiKey = geminiApiKey,
-                                    onGeminiApiKeyChange = onGeminiApiKeyChange,
-                                    googleSearchEngineId = googleSearchEngineId,
-                                    onGoogleSearchEngineIdChange = onGoogleSearchEngineIdChange,
-                                    googleSearchApiKey = googleSearchApiKey,
-                                    onGoogleSearchApiKeyChange = onGoogleSearchApiKeyChange
-                                )
-                            }
+                                AjustesCategory.SINCRONIZACION -> {
+                                    SyncSettingsSection(
+                                        supabaseUrl = supabaseUrl,
+                                        supabaseKey = supabaseKey,
+                                        syncState = syncState,
+                                        isTestingConnection = isTestingConnection,
+                                        connectionTestResult = connectionTestResult,
+                                        autoSyncEnabled = autoSyncEnabled,
+                                        onAutoSyncEnabledChange = onAutoSyncEnabledChange,
+                                        onTestAndSaveSupabaseConnection = onTestAndSaveSupabaseConnection,
+                                        onSyncNow = onSyncNow,
+                                        onForceFullSync = onForceFullSync,
+                                        lastSyncTimestamp = lastSyncTimestamp,
+                                        syncMessage = syncMessage,
+                                        remoteAuditLogs = remoteAuditLogs,
+                                        isLoadingAuditLogs = isLoadingAuditLogs,
+                                        auditLogsError = auditLogsError,
+                                        onFetchRemoteAuditLogs = onFetchRemoteAuditLogs,
+                                        deviceRole = deviceRole,
+                                        onDeviceRoleChange = onDeviceRoleChange,
+                                        terminalPrefix = terminalPrefix,
+                                        onTerminalPrefixChange = onTerminalPrefixChange
+                                    )
+                                }
 
-                            AjustesCategory.TICKET_IMPRESORA -> {
-                                TicketSettingsSection(
-                                    settings = receiptSettings,
-                                    onSettingsChange = onReceiptSettingsChange
-                                )
-                            }
+                                AjustesCategory.COPIA_SEGURIDAD -> {
+                                    BackupSettingsSection(
+                                        autoBackupEnabled = autoBackupEnabled,
+                                        onAutoBackupEnabledChange = onAutoBackupEnabledChange,
+                                        backupDirectoryPath = backupDirectoryPath,
+                                        lastBackupTimestamp = lastBackupTimestamp,
+                                        isBackingUp = isBackingUp,
+                                        backupMessage = backupMessage,
+                                        onPerformManualBackup = onPerformManualBackup,
+                                        onDismissBackupMessage = onDismissBackupMessage,
+                                        onBackupDirectoryPathChange = onBackupDirectoryPathChange,
+                                        onResetBackupDirectoryPath = onResetBackupDirectoryPath
+                                    )
+                                }
 
-                            AjustesCategory.CAJEROS -> {
-                                CashierManagementSection(
-                                    cashiers = cashiers,
-                                    currentDeviceId = currentDeviceId,
-                                    isSaving = isSavingCashier,
-                                    isDeleting = isDeletingCashier,
-                                    actionError = cashierActionError,
-                                    actionSuccess = cashierActionSuccess,
-                                    onSaveCashier = onSaveCashier,
-                                    onDeleteCashier = onDeleteCashier,
-                                    onClearMessage = onClearCashierActionMessage
-                                )
-                            }
-
-                            AjustesCategory.SINCRONIZACION -> {
-                                SyncSettingsSection(
-                                    supabaseUrl = supabaseUrl,
-                                    supabaseKey = supabaseKey,
-                                    syncState = syncState,
-                                    isTestingConnection = isTestingConnection,
-                                    connectionTestResult = connectionTestResult,
-                                    autoSyncEnabled = autoSyncEnabled,
-                                    onAutoSyncEnabledChange = onAutoSyncEnabledChange,
-                                    onTestAndSaveSupabaseConnection = onTestAndSaveSupabaseConnection,
-                                    onSyncNow = onSyncNow,
-                                    onForceFullSync = onForceFullSync,
-                                    lastSyncTimestamp = lastSyncTimestamp,
-                                    syncMessage = syncMessage,
-                                    remoteAuditLogs = remoteAuditLogs,
-                                    isLoadingAuditLogs = isLoadingAuditLogs,
-                                    auditLogsError = auditLogsError,
-                                    onFetchRemoteAuditLogs = onFetchRemoteAuditLogs,
-                                    deviceRole = deviceRole,
-                                    onDeviceRoleChange = onDeviceRoleChange,
-                                    terminalPrefix = terminalPrefix,
-                                    onTerminalPrefixChange = onTerminalPrefixChange
-                                )
-                            }
-
-                            AjustesCategory.COPIA_SEGURIDAD -> {
-                                BackupSettingsSection(
-                                    autoBackupEnabled = autoBackupEnabled,
-                                    onAutoBackupEnabledChange = onAutoBackupEnabledChange,
-                                    backupDirectoryPath = backupDirectoryPath,
-                                    lastBackupTimestamp = lastBackupTimestamp,
-                                    isBackingUp = isBackingUp,
-                                    backupMessage = backupMessage,
-                                    onPerformManualBackup = onPerformManualBackup,
-                                    onDismissBackupMessage = onDismissBackupMessage,
-                                    onBackupDirectoryPathChange = onBackupDirectoryPathChange,
-                                    onResetBackupDirectoryPath = onResetBackupDirectoryPath
-                                )
-                            }
-
-                            AjustesCategory.SISTEMA_ACERCA_DE -> {
-                                AboutSettingsSection(
-                                    currentVersion = currentVersion,
-                                    isCheckingUpdates = isCheckingUpdates,
-                                    updateCheckResult = updateCheckResult,
-                                    downloadState = downloadState,
-                                    onCheckForUpdates = onCheckForUpdates,
-                                    onDownloadAndInstallUpdate = onDownloadAndInstallUpdate,
-                                    onDismissUpdateResult = onDismissUpdateResult,
-                                    repository = repository,
-                                    isResettingApp = isResettingApp,
-                                    resetAppError = resetAppError,
-                                    resetAppSuccess = resetAppSuccess,
-                                    onResetApp = onResetApp
-                                )
+                                AjustesCategory.SISTEMA_ACERCA_DE -> {
+                                    AboutSettingsSection(
+                                        currentVersion = currentVersion,
+                                        isCheckingUpdates = isCheckingUpdates,
+                                        updateCheckResult = updateCheckResult,
+                                        downloadState = downloadState,
+                                        onCheckForUpdates = onCheckForUpdates,
+                                        onDownloadAndInstallUpdate = onDownloadAndInstallUpdate,
+                                        onDismissUpdateResult = onDismissUpdateResult,
+                                        repository = repository,
+                                        isResettingApp = isResettingApp,
+                                        resetAppError = resetAppError,
+                                        resetAppSuccess = resetAppSuccess,
+                                        onResetApp = onResetApp
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
         }
     )
 }

@@ -24,7 +24,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -107,6 +109,14 @@ class VentaViewModel(
     }
 
     private val _allActiveProductsFlow = repository.getActiveProducts()
+
+    private val _availableCategoriesFlow = _allActiveProductsFlow.map { products ->
+        products
+            .mapNotNull { it.categoria }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }.distinctUntilChanged()
 
     private val _activeShiftFlow = getActiveShiftUseCase()
 
@@ -268,14 +278,14 @@ class VentaViewModel(
         ) { pricingSettings, receiptSettings, shiftState ->
             Triple(pricingSettings, receiptSettings, shiftState)
         },
-        combine(syncRepository.syncState, _allActiveProductsFlow) { syncState, allActive ->
-            Pair(syncState, allActive)
+        combine(syncRepository.syncState, _allActiveProductsFlow, _availableCategoriesFlow) { syncState, allActive, categories ->
+            Triple(syncState, allActive, categories)
         }
     ) { (q, products, cat, cart, held),
         catalogConfig,
         receiptDialogState,
         (pricingSettings, receiptSettings, shiftState),
-        (syncState, allActiveProducts) ->
+        (syncState, allActiveProducts, allCats) ->
         val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
         val filteredCust = if (cQuery.isBlank()) {
             catalogConfig.customers
@@ -283,15 +293,10 @@ class VentaViewModel(
             val query = cQuery.trim()
             catalogConfig.customers.filter {
                 it.nombre.matchesSearchQuery(query) ||
-                it.telefono.matchesSearchQuery(query) ||
-                it.direccion.matchesSearchQuery(query)
+                        it.telefono.matchesSearchQuery(query) ||
+                        it.direccion.matchesSearchQuery(query)
             }
         }
-        val allCats = allActiveProducts
-            .mapNotNull { it.categoria }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
 
         VentaUiState(
             searchQuery = q,

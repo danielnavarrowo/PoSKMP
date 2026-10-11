@@ -21,8 +21,8 @@ fun configureSkikoGraphicsEnvironment(appDir: File) {
         val targetApi = when (savedSetting) {
             "OPENGL", "DIRECT3D", "SOFTWARE" -> savedSetting
             else -> {
-                // AUTO: On legacy Intel GPUs (without DirectX 12 support), default to OPENGL
-                if (isLegacy) "OPENGL" else "DIRECT3D"
+                // AUTO: On legacy Intel GPUs on Windows (due to SKIKO-792 synchronous glFinish stalls in 2015 drivers), default to SOFTWARE
+                if (isLegacy) "SOFTWARE" else "DIRECT3D"
             }
         }
         System.setProperty("skiko.renderApi", targetApi)
@@ -57,7 +57,7 @@ actual fun getRenderApiInfo(): RenderApiInfo {
 
     val detectedGpu = if (isWindows) detectWindowsGpu() else null
     val isLegacy = isLegacyIntelGpu(detectedGpu)
-    val defaultApi = if (isWindows) (if (isLegacy) "OPENGL" else "DIRECT3D") else "OPENGL"
+    val defaultApi = if (isWindows) (if (isLegacy) "SOFTWARE" else "DIRECT3D") else "OPENGL"
     val currentActive = System.getProperty("skiko.renderApi") ?: defaultApi
 
     return RenderApiInfo(
