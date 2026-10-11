@@ -101,6 +101,7 @@ class SyncRepositoryImpl(
             val deviceRole = settingsRepository.deviceRoleFlow.first()
             val canPushCatalogAndSettings = deviceRole == DeviceRole.ADMIN
             val canPushSalesAndPayments = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
+            val canPushCashiers = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
 
             val lastSync = if (forceFullSync) 0L else settingsRepository.lastSyncTimestampFlow.first()
             var productsAlreadyPulled = false
@@ -249,8 +250,8 @@ class SyncRepositoryImpl(
                 }
             }
 
-            // D) Cajeros (Solo ADMIN puede modificar y subir cajeros)
-            if (canPushCatalogAndSettings) {
+            // D) Cajeros (ADMIN y POS_CLIENT pueden sincronizar cajeros)
+            if (canPushCashiers) {
                 val unsyncedCashiers = queries.selectUnsyncedCashiers().executeAsList()
                 if (unsyncedCashiers.isNotEmpty()) {
                     val cashierDtos = unsyncedCashiers.map { c ->

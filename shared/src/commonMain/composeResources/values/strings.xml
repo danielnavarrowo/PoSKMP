@@ -247,9 +247,9 @@
     <string name="error_wholesale_less_than_cost">El precio de mayoreo no puede ser menor que el costo.</string>
     <string name="error_retail_less_than_wholesale">El precio de venta no puede ser menor que el mayoreo.</string>
     <string name="error_retail_less_than_cost">El precio de venta no puede ser menor que el costo.</string>
-    <string name="warning_retail_margin_below_default">Aviso: El margen de venta (%1$s%) es menor al margen por defecto (%2$s%)</string>
-    <string name="warning_wholesale_margin_below_default">Aviso: El margen de mayoreo (%1$s%) es menor al margen por defecto (%2$s%)</string>
-    <string name="warning_delivery_margin_below_default">Aviso: El margen a domicilio (%1$s%) es menor al margen por defecto (%2$s%)</string>
+    <string name="warning_retail_margin_below_default">El margen de venta (%1$s%) es menor al margen por defecto (%2$s%)</string>
+    <string name="warning_wholesale_margin_below_default">El margen de mayoreo (%1$s%) es menor al margen por defecto (%2$s%)</string>
+    <string name="warning_delivery_margin_below_default">El margen a domicilio (%1$s%) es menor al margen por defecto (%2$s%)</string>
 
     <!-- ProductosScreen -->
     <string name="product_admin_title">Administración de Productos</string>

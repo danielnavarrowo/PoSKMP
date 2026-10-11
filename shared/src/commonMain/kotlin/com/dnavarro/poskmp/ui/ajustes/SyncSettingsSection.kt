@@ -232,7 +232,7 @@ fun SyncSettingsSection(
                             Text(
                                 text = when (deviceRole) {
                                     DeviceRole.ADMIN -> "Terminal Administrador: Puede crear o editar productos, categorías, cajeros y registrar ventas. Los cambios de catálogo y ajustes se sincronizan a la nube."
-                                    DeviceRole.POS_CLIENT -> "Terminal de Caja: Registra ventas, clientes y pagos hacia la nube. El catálogo de productos y cajeros son de solo lectura y se sincronizan desde el Administrador para evitar inconsistencias."
+                                    DeviceRole.POS_CLIENT -> "Terminal de Caja: Registra ventas, clientes, pagos y cajeros locales hacia la nube. El catálogo de productos y ajustes son de solo lectura y se sincronizan desde el Administrador."
                                     DeviceRole.CHECKER_ONLY -> "Terminal de Consulta: Solo muestra el verificador de precios. No realiza ventas ni sube información a la base de datos remota."
                                 },
                                 style = MaterialTheme.typography.bodySmall,

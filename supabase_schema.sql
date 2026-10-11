@@ -275,7 +275,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Triggers automáticos
 DROP TRIGGER IF EXISTS trg_audit_products ON public.products;
@@ -422,11 +422,11 @@ FOR EACH ROW EXECUTE FUNCTION public.sync_product_barcodes_trigger();
 -- En Supabase:
 -- - La llave 'service_role' (Admin / Caja Principal) tiene privilegios de superusuario y salta (BYPASS) RLS automáticamente.
 -- - La llave 'anon' (Cajas Secundarias y Checadores) queda restringida por las siguientes políticas:
---   * products, store_settings, cashiers: Solo lectura (SELECT). No pueden alterar catálogo ni ajustes.
+--   * products, store_settings: Solo lectura (SELECT). No pueden alterar catálogo ni ajustes.
 --   * deleted_records, remote_audit_logs: Solo lectura (SELECT).
 --   * sales, sale_items: Lectura e Inserción/Actualización (SELECT, INSERT, UPDATE) para registrar ventas,
 --     pero eliminación bloqueada (sin DELETE para anon).
---   * customers, customer_payments, shifts, cash_movements: Operación completa (SELECT, INSERT, UPDATE).
+--   * cashiers, customers, customer_payments, shifts, cash_movements: Operación completa (SELECT, INSERT, UPDATE).
 
 -- A) products (Catálogo de Productos - Solo lectura para cajas secundarias y checadores)
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
@@ -443,10 +443,16 @@ ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "store_settings_select_anon" ON public.store_settings;
 CREATE POLICY "store_settings_select_anon" ON public.store_settings FOR SELECT TO anon USING (true);
 
--- C) cashiers (Directorio de Cajeros - Solo lectura para terminales)
+-- C) cashiers (Directorio de Cajeros - Lectura, inserción y actualización para terminales)
 ALTER TABLE public.cashiers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "cashiers_select_anon" ON public.cashiers;
 CREATE POLICY "cashiers_select_anon" ON public.cashiers FOR SELECT TO anon USING (true);
+
+DROP POLICY IF EXISTS "cashiers_insert_anon" ON public.cashiers;
+CREATE POLICY "cashiers_insert_anon" ON public.cashiers FOR INSERT TO anon WITH CHECK (true);
+
+DROP POLICY IF EXISTS "cashiers_update_anon" ON public.cashiers;
+CREATE POLICY "cashiers_update_anon" ON public.cashiers FOR UPDATE TO anon USING (true) WITH CHECK (true);
 
 -- D) deleted_records (Bajas / Tombstones - Solo lectura para que terminales apliquen bajas locales)
 ALTER TABLE public.deleted_records ENABLE ROW LEVEL SECURITY;
@@ -685,7 +691,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_audit_products ON public.products;
 CREATE TRIGGER trg_audit_products AFTER INSERT OR UPDATE OR DELETE ON public.products FOR EACH ROW EXECUTE FUNCTION public.fn_log_remote_audit();
@@ -803,6 +809,10 @@ CREATE POLICY "store_settings_select_anon" ON public.store_settings FOR SELECT T
 ALTER TABLE public.cashiers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "cashiers_select_anon" ON public.cashiers;
 CREATE POLICY "cashiers_select_anon" ON public.cashiers FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "cashiers_insert_anon" ON public.cashiers;
+CREATE POLICY "cashiers_insert_anon" ON public.cashiers FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS "cashiers_update_anon" ON public.cashiers;
+CREATE POLICY "cashiers_update_anon" ON public.cashiers FOR UPDATE TO anon USING (true) WITH CHECK (true);
 
 ALTER TABLE public.deleted_records ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "deleted_records_select_anon" ON public.deleted_records;

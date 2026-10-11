@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -492,7 +493,8 @@ fun ProductosScreen(
             },
             floatingActionButton = {
                 Column(
-                    horizontalAlignment = Alignment.End
+                    horizontalAlignment = Alignment.End,
+                    modifier = if (isAndroid()) Modifier.imePadding() else Modifier
                 ) {
                     // Menu FAB for Bulk Operations (Appears ABOVE when products are selected)
                     AnimatedVisibility(
@@ -659,7 +661,7 @@ fun ProductosScreen(
                                     modifier = Modifier.size(28.dp)
                                 )
                             }
-                            Spacer(modifier.height(16.dp))
+                            Spacer(Modifier.height(16.dp))
                         }
 
                         if (isCompact) {
