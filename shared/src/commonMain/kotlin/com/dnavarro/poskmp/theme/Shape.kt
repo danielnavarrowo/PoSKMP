@@ -7,7 +7,6 @@ import androidx.compose.material3.MaterialTheme.shapes
 import androidx.compose.runtime.Composable
 
 object ShapeDefaults {
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     val topListItemShape: RoundedCornerShape
         @Composable get() =
             RoundedCornerShape(
@@ -20,7 +19,6 @@ object ShapeDefaults {
     val middleListItemShape: RoundedCornerShape
         @Composable get() = RoundedCornerShape(shapes.extraSmall.topStart)
 
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     val bottomListItemShape: RoundedCornerShape
         @Composable get() =
             RoundedCornerShape(
@@ -30,7 +28,6 @@ object ShapeDefaults {
                 bottomEnd = shapes.largeIncreased.bottomEnd
             )
 
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     val cardShape: CornerBasedShape
         @Composable get() = shapes.largeIncreased
 }

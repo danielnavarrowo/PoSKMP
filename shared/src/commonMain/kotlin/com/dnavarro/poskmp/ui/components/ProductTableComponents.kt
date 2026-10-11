@@ -28,8 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +40,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -482,7 +479,6 @@ fun ProductSimpleCard(
     onSecondaryClick: (() -> Unit)? = null,
     contextMenu: (@Composable () -> Unit)? = null
 ) {
-    val effectivePrioritizeDelivery = prioritizeDeliveryPrice
 
     Box(modifier = modifier) {
         Card(
@@ -573,7 +569,7 @@ fun ProductSimpleCard(
                 }
 
                 val hasDeliveryPrice = product.precio_delivery > 0.0
-                val isDeliveryHighlighted = effectivePrioritizeDelivery && hasDeliveryPrice
+                val isDeliveryHighlighted = prioritizeDeliveryPrice && hasDeliveryPrice
                 val isRetailHighlighted = !isDeliveryHighlighted
 
                 val priceItems = buildList {

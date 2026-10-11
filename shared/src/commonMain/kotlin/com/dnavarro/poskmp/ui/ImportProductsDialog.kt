@@ -121,7 +121,6 @@ import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.upload
 import poskmp.shared.generated.resources.warning
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ImportProductsDialog(
     onDismiss: () -> Unit,

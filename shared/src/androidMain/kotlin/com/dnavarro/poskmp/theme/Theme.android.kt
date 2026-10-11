@@ -8,7 +8,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 actual fun SystemDynamicTheme(
     darkTheme: Boolean,

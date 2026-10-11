@@ -20,7 +20,6 @@ import com.dnavarro.poskmp.domain.usecase.SaveCashierUseCase
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.getRenderApiInfo
-import com.dnavarro.poskmp.util.setSavedRenderApi
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -391,10 +390,9 @@ class AjustesViewModel(
         syncRepository.syncState,
         getCashiersUseCase(),
         _renderApiFlow
-    ) { baseState, updateState, syncState, cashiers, renderApiInfo ->
+    ) { baseState, updateState, syncState, cashiers, _ ->
         baseState.copy(
             syncState = syncState,
-            renderApiInfo = renderApiInfo,
             currentVersion = updateRepository.getCurrentVersion(),
             isCheckingUpdates = updateState.isCheckingUpdates,
             updateCheckResult = updateState.updateCheckResult,
@@ -911,10 +909,5 @@ class AjustesViewModel(
                 )
             }
         }
-    }
-
-    fun setRenderApi(api: String) {
-        setSavedRenderApi(api)
-        _renderApiFlow.value = getRenderApiInfo()
     }
 }

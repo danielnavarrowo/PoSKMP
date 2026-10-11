@@ -103,7 +103,6 @@ fun applyBulkProductModification(
     BulkProductOperation.DELETE -> null
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BulkProductModificationDialog(
     selectedCount: Int,
