@@ -1,22 +1,17 @@
 package com.dnavarro.poskmp
 
-import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.core.view.WindowCompat
 import com.dnavarro.poskmp.db.DatabaseDriverFactory
 import com.dnavarro.poskmp.di.initKoin
 import com.dnavarro.poskmp.ui.preview.FormFactorPreviews
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
-        )
+        WindowCompat.enableEdgeToEdge(window)
         window.isNavigationBarContrastEnforced = false
         volumeControlStream = android.media.AudioManager.STREAM_MUSIC
         super.onCreate(savedInstanceState)
@@ -29,19 +24,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 onDarkThemeChanged = { darkTheme ->
-                    enableEdgeToEdge(
-                        statusBarStyle = SystemBarStyle.auto(
-                            Color.TRANSPARENT,
-                            Color.TRANSPARENT,
-                            detectDarkMode = { darkTheme }
-                        ),
-                        navigationBarStyle = SystemBarStyle.auto(
-                            Color.TRANSPARENT,
-                            Color.TRANSPARENT,
-                            detectDarkMode = { darkTheme }
-                        )
-                    )
-                    window.isNavigationBarContrastEnforced = false
+                    val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                    insetsController.isAppearanceLightStatusBars = !darkTheme
+                    insetsController.isAppearanceLightNavigationBars = !darkTheme
                 }
             )
         }
