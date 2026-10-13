@@ -152,6 +152,14 @@ actual fun pickFile(
     onError("Importación de archivos no disponible en Android.")
 }
 
+actual fun pickSingleFile(
+    allowedExtensions: List<String>,
+    onFilePicked: (filePath: String) -> Unit,
+    onError: (String) -> Unit
+) {
+    onError("Selección de archivos no disponible en Android.")
+}
+
 actual fun pickDirectory(
     initialPath: String,
     onDirectoryPicked: (path: String) -> Unit,

@@ -91,7 +91,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -319,11 +321,15 @@ fun VentaScreen(
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
-            coroutineScope.launch {
-                delay(50.milliseconds)
-                try {
-                    searchBarFocusRequester.requestFocus()
-                } catch (_: Exception) {}
+            try {
+                searchBarFocusRequester.requestFocus()
+            } catch (_: Exception) {
+                coroutineScope.launch {
+                    delay(20.milliseconds)
+                    try {
+                        searchBarFocusRequester.requestFocus()
+                    } catch (_: Exception) {}
+                }
             }
         }
     }
@@ -379,10 +385,7 @@ fun VentaScreen(
     val desktopFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
-            delay(100.milliseconds)
-            try {
-                searchBarFocusRequester.requestFocus()
-            } catch (_: Exception) {}
+            reclaimSearchBarFocus()
         } else {
             delay(100.milliseconds)
             focusManager.clearFocus(force = true)
@@ -613,7 +616,19 @@ fun VentaScreen(
                                     } else false
                                 }
 
-                                else -> false
+                                else -> {
+                                    val isAnyDialogOpen = showWeightDialogForProduct != null ||
+                                            showCheckoutDialog ||
+                                            showUnregisteredDialog ||
+                                            showProductDialogFor != null ||
+                                            uiState.showCustomerDialog
+                                    if (!isAnyDialogOpen && keyEvent.type == KeyEventType.KeyDown &&
+                                        !keyEvent.isCtrlPressed && !keyEvent.isAltPressed && !keyEvent.isMetaPressed
+                                    ) {
+                                        reclaimSearchBarFocus()
+                                    }
+                                    false
+                                }
                             }
                         }
                 } else Modifier

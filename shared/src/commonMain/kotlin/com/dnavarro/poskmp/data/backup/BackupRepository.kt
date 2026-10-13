@@ -16,6 +16,8 @@ interface BackupRepository {
     suspend fun resetBackupDirectoryPathToDefault()
     suspend fun performBackup(): Result<String>
     suspend fun checkAndPerformAutoBackup(): Result<Boolean>
+    suspend fun getAvailableBackups(): List<BackupFileInfo>
+    suspend fun restoreBackup(filePath: String): Result<Unit>
 }
 
 class BackupRepositoryImpl(
@@ -81,5 +83,19 @@ class BackupRepositoryImpl(
         } else {
             Result.success(false)
         }
+    }
+
+    override suspend fun getAvailableBackups(): List<BackupFileInfo> = withContext(Dispatchers.IO) {
+        val customPath = settingsRepository.backupDirectoryPathFlow.first()
+        driver.getAvailableBackups(customPath)
+    }
+
+    override suspend fun restoreBackup(filePath: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val customPath = settingsRepository.backupDirectoryPathFlow.first()
+        try {
+            driver.createBackup(customPath)
+        } catch (_: Exception) {}
+
+        driver.restoreBackup(filePath)
     }
 }

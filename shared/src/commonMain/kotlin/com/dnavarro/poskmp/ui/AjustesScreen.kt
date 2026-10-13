@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
+import com.dnavarro.poskmp.data.backup.BackupFileInfo
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.data.updater.ReleaseAsset
@@ -185,6 +186,13 @@ fun AjustesScreen(
         onDismissBackupMessage = { viewModel.dismissBackupMessage() },
         onBackupDirectoryPathChange = { viewModel.setBackupDirectoryPath(it) },
         onResetBackupDirectoryPath = { viewModel.resetBackupDirectoryPathToDefault() },
+        isRestoring = uiState.isRestoring,
+        restoreMessage = uiState.restoreMessage,
+        availableBackups = uiState.availableBackups,
+        isLoadingBackups = uiState.isLoadingBackups,
+        onRestoreBackup = { viewModel.restoreBackup(it) },
+        onDismissRestoreMessage = { viewModel.dismissRestoreMessage() },
+        onRefreshBackups = { viewModel.loadAvailableBackups() },
         syncState = uiState.syncState,
         isTestingConnection = uiState.isTestingConnection,
         connectionTestResult = uiState.connectionTestResult,
@@ -308,6 +316,13 @@ fun AjustesScreen(
     onDismissBackupMessage: () -> Unit = {},
     onBackupDirectoryPathChange: (String) -> Unit = {},
     onResetBackupDirectoryPath: () -> Unit = {},
+    isRestoring: Boolean = false,
+    restoreMessage: String? = null,
+    availableBackups: List<BackupFileInfo> = emptyList(),
+    isLoadingBackups: Boolean = false,
+    onRestoreBackup: (String) -> Unit = {},
+    onDismissRestoreMessage: () -> Unit = {},
+    onRefreshBackups: () -> Unit = {},
     syncState: SyncStateEnum = SyncStateEnum.IDLE,
     isTestingConnection: Boolean = false,
     connectionTestResult: String? = null,
@@ -798,7 +813,14 @@ fun AjustesScreen(
                                         onPerformManualBackup = onPerformManualBackup,
                                         onDismissBackupMessage = onDismissBackupMessage,
                                         onBackupDirectoryPathChange = onBackupDirectoryPathChange,
-                                        onResetBackupDirectoryPath = onResetBackupDirectoryPath
+                                        onResetBackupDirectoryPath = onResetBackupDirectoryPath,
+                                        isRestoring = isRestoring,
+                                        restoreMessage = restoreMessage,
+                                        availableBackups = availableBackups,
+                                        isLoadingBackups = isLoadingBackups,
+                                        onRestoreBackup = onRestoreBackup,
+                                        onDismissRestoreMessage = onDismissRestoreMessage,
+                                        onRefreshBackups = onRefreshBackups
                                     )
                                 }
 

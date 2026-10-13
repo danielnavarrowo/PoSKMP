@@ -194,6 +194,7 @@ fun CatalogSection(
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val searchQueryState = rememberTextFieldState(searchQuery)
+    var lastEmittedQuery by remember { mutableStateOf(searchQuery) }
     var sortField by remember { mutableStateOf(ProductSortField.NOMBRE) }
     var sortOrder by remember { mutableStateOf(ProductSortOrder.ASC) }
     var selectedCatalogIndex by remember { mutableIntStateOf(-1) }
@@ -260,6 +261,14 @@ fun CatalogSection(
         }
     }
 
+    val clearSearch = {
+        searchQueryState.clearText()
+        lastEmittedQuery = ""
+        onSearchQueryChange("")
+        selectedCatalogIndex = -1
+        resetScrollPosition()
+    }
+
     val handleAddQuantity: (Products, Double) -> Unit = { product, qty ->
         if (onAddProductWithQuantity != null) {
             onAddProductWithQuantity(product, qty)
@@ -269,11 +278,11 @@ fun CatalogSection(
             }
         }
         if (searchQueryState.text.isNotEmpty()) {
-            searchQueryState.clearText()
-            onSearchQueryChange("")
+            clearSearch()
+        } else {
+            selectedCatalogIndex = -1
+            resetScrollPosition()
         }
-        selectedCatalogIndex = -1
-        resetScrollPosition()
     }
 
     val sortedProducts = remember(productsList, sortField, sortOrder) {
@@ -322,19 +331,25 @@ fun CatalogSection(
     }
 
     LaunchedEffect(searchQuery) {
-        if (searchQueryState.text.toString() != searchQuery) {
-            searchQueryState.setTextAndPlaceCursorAtEnd(searchQuery)
-            selectedCatalogIndex = -1
-            resetScrollPosition()
+        if (searchQuery != lastEmittedQuery) {
+            lastEmittedQuery = searchQuery
+            if (searchQueryState.text.toString() != searchQuery) {
+                searchQueryState.setTextAndPlaceCursorAtEnd(searchQuery)
+                selectedCatalogIndex = -1
+                resetScrollPosition()
+            }
         }
     }
 
     LaunchedEffect(searchQueryState) {
         snapshotFlow { searchQueryState.text.toString() }.collectLatest { query ->
             delay(SEARCH_DEBOUNCE_MILLIS.milliseconds)
-            selectedCatalogIndex = -1
-            resetScrollPosition()
-            onSearchQueryChange(query)
+            if (query != lastEmittedQuery) {
+                lastEmittedQuery = query
+                selectedCatalogIndex = -1
+                resetScrollPosition()
+                onSearchQueryChange(query)
+            }
         }
     }
 
@@ -461,10 +476,7 @@ fun CatalogSection(
 
                                             if (keyEvent.key == Key.Escape && searchQueryState.text.isNotEmpty()) {
                                                 if (keyEvent.type == KeyEventType.KeyDown) {
-                                                    searchQueryState.clearText()
-                                                    onSearchQueryChange("")
-                                                    selectedCatalogIndex = -1
-                                                    resetScrollPosition()
+                                                    clearSearch()
                                                 }
                                                 true
                                             } else if (searchQueryState.text.isNotEmpty() && (isUp || isDown)) {
@@ -489,10 +501,7 @@ fun CatalogSection(
                                                     val selectedProduct =
                                                         displayedProducts[selectedCatalogIndex]
                                                     onProductClick(selectedProduct)
-                                                    searchQueryState.clearText()
-                                                    onSearchQueryChange("")
-                                                    selectedCatalogIndex = -1
-                                                    resetScrollPosition()
+                                                    clearSearch()
                                                 }
                                                 true
                                             } else if (onSearchKeyIntercept != null && onSearchKeyIntercept(
@@ -502,14 +511,13 @@ fun CatalogSection(
                                                 true
                                             } else if (isPlus || isMinus) {
                                                 true
-                                            } else if (keyEvent.type == KeyEventType.KeyDown && isEnter) {
-                                                val scannedText = searchQueryState.text.toString()
-                                                searchQueryState.clearText()
-                                                onSearchQueryChange("")
-                                                selectedCatalogIndex = -1
-                                                resetScrollPosition()
-                                                if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                                    onBarcodeScan(scannedText)
+                                            } else if (isEnter) {
+                                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                                    val scannedText = searchQueryState.text.toString().trim()
+                                                    clearSearch()
+                                                    if (scannedText.isNotBlank() && onBarcodeScan != null) {
+                                                        onBarcodeScan(scannedText)
+                                                    }
                                                 }
                                                 true
                                             } else {
@@ -520,21 +528,17 @@ fun CatalogSection(
                                         imeAction = ImeAction.Search
                                     ),
                                     onKeyboardAction = {
-                                        if (searchQueryState.text.isNotEmpty() && selectedCatalogIndex in displayedProducts.indices) {
-                                            val selectedProduct = displayedProducts[selectedCatalogIndex]
-                                            onProductClick(selectedProduct)
-                                            searchQueryState.clearText()
-                                            onSearchQueryChange("")
-                                            selectedCatalogIndex = -1
-                                            resetScrollPosition()
-                                        } else {
-                                            val scannedText = searchQueryState.text.toString()
-                                            searchQueryState.clearText()
-                                            onSearchQueryChange("")
-                                            selectedCatalogIndex = -1
-                                            resetScrollPosition()
-                                            if (scannedText.isNotBlank() && onBarcodeScan != null) {
-                                                onBarcodeScan(scannedText)
+                                        val scannedText = searchQueryState.text.toString().trim()
+                                        if (scannedText.isNotEmpty()) {
+                                            if (selectedCatalogIndex in displayedProducts.indices) {
+                                                val selectedProduct = displayedProducts[selectedCatalogIndex]
+                                                onProductClick(selectedProduct)
+                                                clearSearch()
+                                            } else {
+                                                clearSearch()
+                                                if (onBarcodeScan != null) {
+                                                    onBarcodeScan(scannedText)
+                                                }
                                             }
                                         }
                                     },
@@ -550,16 +554,17 @@ fun CatalogSection(
                                 IconButton(
                                     modifier = Modifier.size(32.dp),
                                     onClick = {
-                                        searchQueryState.clearText()
-                                        onSearchQueryChange("")
-                                        selectedCatalogIndex = -1
-                                        resetScrollPosition()
+                                        clearSearch()
                                         if (!isAndroid()) {
-                                            coroutineScope.launch {
-                                                delay(50.milliseconds)
-                                                try {
-                                                    searchFocusRequester?.requestFocus()
-                                                } catch (_: Exception) {
+                                            try {
+                                                searchFocusRequester?.requestFocus()
+                                            } catch (_: Exception) {
+                                                coroutineScope.launch {
+                                                    delay(20.milliseconds)
+                                                    try {
+                                                        searchFocusRequester?.requestFocus()
+                                                    } catch (_: Exception) {
+                                                    }
                                                 }
                                             }
                                         }
@@ -669,11 +674,11 @@ fun CatalogSection(
                                     onClick = {
                                         onProductClick(product)
                                         if (searchQueryState.text.isNotEmpty()) {
-                                            searchQueryState.clearText()
-                                            onSearchQueryChange("")
+                                            clearSearch()
+                                        } else {
+                                            selectedCatalogIndex = -1
+                                            resetScrollPosition()
                                         }
-                                        selectedCatalogIndex = -1
-                                        resetScrollPosition()
                                     },
                                     onLongClick = { showContextMenu = true },
                                     onSecondaryClick = { showContextMenu = true },
@@ -782,11 +787,11 @@ fun CatalogSection(
                                                 onClick = {
                                                     onProductClick(product)
                                                     if (searchQueryState.text.isNotEmpty()) {
-                                                        searchQueryState.clearText()
-                                                        onSearchQueryChange("")
+                                                        clearSearch()
+                                                    } else {
+                                                        selectedCatalogIndex = -1
+                                                        resetScrollPosition()
                                                     }
-                                                    selectedCatalogIndex = -1
-                                                    resetScrollPosition()
                                                 },
                                                 onLongClick = { showContextMenu = true },
                                                 onSecondaryClick = { showContextMenu = true },
@@ -844,11 +849,11 @@ fun CatalogSection(
                                         onClick = {
                                             onProductClick(product)
                                             if (searchQueryState.text.isNotEmpty()) {
-                                                searchQueryState.clearText()
-                                                onSearchQueryChange("")
+                                                clearSearch()
+                                            } else {
+                                                selectedCatalogIndex = -1
+                                                resetScrollPosition()
                                             }
-                                            selectedCatalogIndex = -1
-                                            resetScrollPosition()
                                         },
                                         onLongClick = { showContextMenu = true }
                                     )

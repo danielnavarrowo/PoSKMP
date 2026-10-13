@@ -770,6 +770,20 @@
     <string name="exit_backup_sync_success">¡Copia de seguridad y sincronización completadas con éxito!</string>
     <string name="exit_backup_sync_error">Hubo un problema al respaldar o sincronizar: %1$s</string>
 
+    <!-- Restore Database Backup -->
+    <string name="restore_section_title">Restaurar Copia de Seguridad</string>
+    <string name="restore_section_subtitle">Restaura la base de datos local desde una copia previa o un archivo .db externo.</string>
+    <string name="restore_available_backups_title">Copias de seguridad disponibles en la carpeta</string>
+    <string name="restore_no_backups_found">No se encontraron copias de seguridad (.db) en la carpeta.</string>
+    <string name="restore_pick_file_button">Seleccionar Otro Archivo (.db)…</string>
+    <string name="restore_button">Restaurar</string>
+    <string name="restore_progress">Restaurando base de datos...</string>
+    <string name="restore_confirm_dialog_title">¿Restaurar Copia de Seguridad?</string>
+    <string name="restore_confirm_dialog_desc">Esta acción reemplazará todos los datos actuales de la aplicación (productos, clientes, ventas y turnos) con los datos del respaldo seleccionado:\n\n%1$s\n\nSe creará una copia de seguridad automática de tus datos actuales antes de restaurar.\n\n¿Deseas continuar?</string>
+    <string name="restore_confirm_dialog_confirm">Sí, Restaurar Datos</string>
+    <string name="restore_success_message">Base de datos restaurada con éxito desde:\n%1$s</string>
+    <string name="restore_error_message">Error al restaurar la copia de seguridad: %1$s</string>
+
     <!-- Turnos de Cajero y Movimientos de Caja -->
     <string name="open_shift_dialog_title">Apertura de Turno</string>
     <string name="open_shift_dialog_subtitle">Selecciona el cajero e ingresa el fondo de caja para comenzar a vender.</string>

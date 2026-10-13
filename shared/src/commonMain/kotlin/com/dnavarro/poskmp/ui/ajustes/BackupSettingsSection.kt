@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,12 +40,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.data.backup.BackupFileInfo
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.pickDirectory
+import com.dnavarro.poskmp.util.pickSingleFile
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -68,8 +73,22 @@ import poskmp.shared.generated.resources.last_backup_never
 import poskmp.shared.generated.resources.perform_backup_button
 import poskmp.shared.generated.resources.reset_backup_path_button
 import poskmp.shared.generated.resources.restore
+import poskmp.shared.generated.resources.restore_available_backups_title
+import poskmp.shared.generated.resources.restore_button
+import poskmp.shared.generated.resources.restore_confirm_dialog_confirm
+import poskmp.shared.generated.resources.restore_confirm_dialog_desc
+import poskmp.shared.generated.resources.restore_confirm_dialog_title
+import poskmp.shared.generated.resources.restore_error_message
+import poskmp.shared.generated.resources.restore_no_backups_found
+import poskmp.shared.generated.resources.restore_pick_file_button
+import poskmp.shared.generated.resources.restore_progress
+import poskmp.shared.generated.resources.restore_section_subtitle
+import poskmp.shared.generated.resources.restore_section_title
+import poskmp.shared.generated.resources.restore_success_message
 import poskmp.shared.generated.resources.save_button
+import poskmp.shared.generated.resources.sync
 import poskmp.shared.generated.resources.undo
+import poskmp.shared.generated.resources.upload
 import poskmp.shared.generated.resources.warning
 
 @Composable
@@ -84,14 +103,26 @@ fun BackupSettingsSection(
     onDismissBackupMessage: () -> Unit,
     onBackupDirectoryPathChange: (String) -> Unit = {},
     onResetBackupDirectoryPath: () -> Unit = {},
+    isRestoring: Boolean = false,
+    restoreMessage: String? = null,
+    availableBackups: List<BackupFileInfo> = emptyList(),
+    isLoadingBackups: Boolean = false,
+    onRestoreBackup: (filePath: String) -> Unit = {},
+    onDismissRestoreMessage: () -> Unit = {},
+    onRefreshBackups: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showEditPathDialog by remember { mutableStateOf(false) }
+    var pendingRestoreFilePath by remember { mutableStateOf<String?>(null) }
+    var showRestoreConfirmDialog by remember { mutableStateOf(false) }
+    var filePickerError by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
-        // --- Categoría: Copia de Seguridad ---
+        // ==========================================
+        // --- Grupo 1: Copias de Seguridad Locales ---
+        // ==========================================
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -257,7 +288,7 @@ fun BackupSettingsSection(
                         )
                     }
 
-                    // Banner de Feedback si existe
+                    // Banner de Feedback de Backup si existe
                     if (backupMessage != null) {
                         Spacer(modifier = Modifier.height(12.dp))
                         val isSuccess = backupMessage.startsWith("BACKUP_SUCCESS:")
@@ -315,7 +346,7 @@ fun BackupSettingsSection(
                     // Botón para respaldar manualmente
                     Button(
                         onClick = onPerformManualBackup,
-                        enabled = !isBackingUp,
+                        enabled = !isBackingUp && !isRestoring,
                         shape = MaterialTheme.shapes.small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -346,8 +377,319 @@ fun BackupSettingsSection(
                 }
             }
         }
+
+        // ==========================================
+        // --- Grupo 2: Restaurar Copia de Seguridad ---
+        // ==========================================
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.restore_section_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            shape = ShapeDefaults.cardShape,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.restore_section_title),
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(Res.string.restore_section_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onRefreshBackups,
+                        enabled = !isLoadingBackups && !isRestoring
+                    ) {
+                        if (isLoadingBackups) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(Res.drawable.sync),
+                                contentDescription = "Actualizar lista de respaldos",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Banner de Feedback de Restauración si existe
+                if (restoreMessage != null) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    val isSuccess = restoreMessage.startsWith("RESTORE_SUCCESS:")
+                    val messageContent = if (isSuccess) {
+                        val path = restoreMessage.removePrefix("RESTORE_SUCCESS:")
+                        stringResource(Res.string.restore_success_message, path)
+                    } else {
+                        val error = restoreMessage.removePrefix("RESTORE_ERROR:")
+                        stringResource(Res.string.restore_error_message, error)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (isSuccess) Color(0xFFD1FAE5) else Color(0xFFFEE2E2),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(if (isSuccess) Res.drawable.check else Res.drawable.warning),
+                                contentDescription = null,
+                                tint = if (isSuccess) Color(0xFF065F46) else Color(0xFF991B1B),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = messageContent,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isSuccess) Color(0xFF065F46) else Color(0xFF991B1B),
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = onDismissRestoreMessage,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.close),
+                                    contentDescription = null,
+                                    tint = if (isSuccess) Color(0xFF065F46) else Color(0xFF991B1B),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (filePickerError != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFFEE2E2), RoundedCornerShape(8.dp))
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.warning),
+                                contentDescription = null,
+                                tint = Color(0xFF991B1B),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = filePickerError ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF991B1B),
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { filePickerError = null },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.close),
+                                    contentDescription = null,
+                                    tint = Color(0xFF991B1B),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(Res.string.restore_available_backups_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (availableBackups.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.restore_no_backups_found),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        availableBackups.forEach { backup ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        modifier = Modifier.weight(1f).padding(end = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.restore),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Column {
+                                            Text(
+                                                text = backup.fileName,
+                                                fontWeight = FontWeight.Medium,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontSize = 13.sp
+                                                ),
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "${formatEpochMillisToDateTime(backup.lastModifiedEpochMillis)} • ${formatFileSize(backup.sizeBytes)}",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+
+                                    FilledTonalButton(
+                                        onClick = {
+                                            pendingRestoreFilePath = backup.filePath
+                                            showRestoreConfirmDialog = true
+                                        },
+                                        enabled = !isRestoring && !isBackingUp,
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                        shape = MaterialTheme.shapes.small
+                                    ) {
+                                        Text(
+                                            text = stringResource(Res.string.restore_button),
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!isAndroid()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            filePickerError = null
+                            pickSingleFile(
+                                allowedExtensions = listOf("db"),
+                                onFilePicked = { pickedPath ->
+                                    pendingRestoreFilePath = pickedPath
+                                    showRestoreConfirmDialog = true
+                                },
+                                onError = { err ->
+                                    filePickerError = err
+                                }
+                            )
+                        },
+                        enabled = !isRestoring && !isBackingUp,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.upload),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.restore_pick_file_button),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                if (isRestoring) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.restore_progress),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
     }
 
+    // Dialog: Editar Ruta de Respaldos
     if (showEditPathDialog) {
         var tempPath by remember { mutableStateOf(backupDirectoryPath) }
         var pathError by remember { mutableStateOf<String?>(null) }
@@ -447,4 +789,75 @@ fun BackupSettingsSection(
             }
         )
     }
+
+    // Dialog: Confirmación de Restauración
+    if (showRestoreConfirmDialog && pendingRestoreFilePath != null) {
+        AlertDialog(
+            onDismissRequest = { if (!isRestoring) showRestoreConfirmDialog = false },
+            modifier = Modifier.widthIn(max = 500.dp).fillMaxWidth(),
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            icon = {
+                Icon(
+                    painter = painterResource(Res.drawable.warning),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = stringResource(Res.string.restore_confirm_dialog_title),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(
+                            Res.string.restore_confirm_dialog_desc,
+                            pendingRestoreFilePath ?: ""
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val path = pendingRestoreFilePath
+                        showRestoreConfirmDialog = false
+                        if (path != null) {
+                            onRestoreBackup(path)
+                        }
+                    },
+                    enabled = !isRestoring,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) {
+                    Text(stringResource(Res.string.restore_confirm_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRestoreConfirmDialog = false },
+                    enabled = !isRestoring
+                ) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+private fun formatFileSize(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "${((kb * 10).toLong()) / 10.0} KB"
+    val mb = kb / 1024.0
+    return "${((mb * 10).toLong()) / 10.0} MB"
 }

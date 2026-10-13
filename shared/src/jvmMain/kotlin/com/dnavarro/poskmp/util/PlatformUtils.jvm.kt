@@ -128,6 +128,35 @@ actual fun pickFile(
     }
 }
 
+actual fun pickSingleFile(
+    allowedExtensions: List<String>,
+    onFilePicked: (filePath: String) -> Unit,
+    onError: (String) -> Unit
+) {
+    SwingUtilities.invokeLater {
+        try {
+            val title = runBlocking { getString(Res.string.select_file_dialog_title) }
+            val dialog = FileDialog(null as Frame?, title, FileDialog.LOAD)
+            dialog.isVisible = true
+            val file = dialog.file
+            val directory = dialog.directory
+            if (file != null && directory != null) {
+                val selectedFile = File(directory, file)
+                val extension = selectedFile.extension.lowercase()
+                if (allowedExtensions.isEmpty() || allowedExtensions.any { it.equals(extension, ignoreCase = true) }) {
+                    onFilePicked(selectedFile.absolutePath)
+                } else {
+                    val err = runBlocking { getString(Res.string.unsupported_file_format, extension) }
+                    onError(err)
+                }
+            }
+        } catch (e: Exception) {
+            val err = runBlocking { getString(Res.string.file_explorer_open_error, e.message ?: "") }
+            onError(err)
+        }
+    }
+}
+
 actual fun saveFile(
     defaultFileName: String,
     content: String,

@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.SettingsRepository
+import com.dnavarro.poskmp.data.backup.BackupFileInfo
 import com.dnavarro.poskmp.data.backup.BackupRepository
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.sync.SyncRepository
@@ -38,6 +39,10 @@ private data class UpdateInternalState(
     val syncMessage: String? = null,
     val isBackingUp: Boolean = false,
     val backupMessage: String? = null,
+    val isRestoring: Boolean = false,
+    val restoreMessage: String? = null,
+    val availableBackups: List<BackupFileInfo> = emptyList(),
+    val isLoadingBackups: Boolean = false,
     val isSavingCashier: Boolean = false,
     val isDeletingCashier: Boolean = false,
     val cashierActionError: String? = null,
@@ -323,6 +328,7 @@ class AjustesViewModel(
             } catch (_: Exception) {
             }
         }
+        loadAvailableBackups()
     }
 
     private data class DeviceTerminalState(
@@ -402,6 +408,10 @@ class AjustesViewModel(
             syncMessage = updateState.syncMessage,
             isBackingUp = updateState.isBackingUp,
             backupMessage = updateState.backupMessage,
+            isRestoring = updateState.isRestoring,
+            restoreMessage = updateState.restoreMessage,
+            availableBackups = updateState.availableBackups,
+            isLoadingBackups = updateState.isLoadingBackups,
             cashiers = cashiers,
             isSavingCashier = updateState.isSavingCashier,
             isDeletingCashier = updateState.isDeletingCashier,
@@ -803,6 +813,7 @@ class AjustesViewModel(
                     isBackingUp = false,
                     backupMessage = "BACKUP_SUCCESS:$path"
                 )
+                loadAvailableBackups()
             } else {
                 val error = result.exceptionOrNull()?.message ?: "Error desconocido"
                 _updateState.value = _updateState.value.copy(
@@ -820,13 +831,54 @@ class AjustesViewModel(
     fun setBackupDirectoryPath(path: String) {
         viewModelScope.launch {
             backupRepository.setBackupDirectoryPath(path)
+            loadAvailableBackups()
         }
     }
 
     fun resetBackupDirectoryPathToDefault() {
         viewModelScope.launch {
             backupRepository.resetBackupDirectoryPathToDefault()
+            loadAvailableBackups()
         }
+    }
+
+    fun loadAvailableBackups() {
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(isLoadingBackups = true)
+            val backups = backupRepository.getAvailableBackups()
+            _updateState.value = _updateState.value.copy(
+                availableBackups = backups,
+                isLoadingBackups = false
+            )
+        }
+    }
+
+    fun restoreBackup(filePath: String) {
+        if (_updateState.value.isRestoring || _updateState.value.isBackingUp) return
+        viewModelScope.launch {
+            _updateState.value = _updateState.value.copy(
+                isRestoring = true,
+                restoreMessage = null
+            )
+            val result = backupRepository.restoreBackup(filePath)
+            if (result.isSuccess) {
+                _updateState.value = _updateState.value.copy(
+                    isRestoring = false,
+                    restoreMessage = "RESTORE_SUCCESS:$filePath"
+                )
+                loadAvailableBackups()
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Error al restaurar la copia de seguridad"
+                _updateState.value = _updateState.value.copy(
+                    isRestoring = false,
+                    restoreMessage = "RESTORE_ERROR:$error"
+                )
+            }
+        }
+    }
+
+    fun dismissRestoreMessage() {
+        _updateState.value = _updateState.value.copy(restoreMessage = null)
     }
 
     fun saveCashier(id: String?, nombre: String, pin: String) {

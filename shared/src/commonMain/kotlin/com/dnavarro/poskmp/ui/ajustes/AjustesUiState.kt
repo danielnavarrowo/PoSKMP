@@ -9,6 +9,7 @@ import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.isAndroid
 import com.materialkolor.PaletteStyle
 
+import com.dnavarro.poskmp.data.backup.BackupFileInfo
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
@@ -64,6 +65,10 @@ data class AjustesUiState(
     val backupDirectoryPath: String = "",
     val isBackingUp: Boolean = false,
     val backupMessage: String? = null,
+    val isRestoring: Boolean = false,
+    val restoreMessage: String? = null,
+    val availableBackups: List<BackupFileInfo> = emptyList(),
+    val isLoadingBackups: Boolean = false,
     val syncState: com.dnavarro.poskmp.data.sync.SyncStateEnum = com.dnavarro.poskmp.data.sync.SyncStateEnum.IDLE,
     val isTestingConnection: Boolean = false,
     val connectionTestResult: String? = null,

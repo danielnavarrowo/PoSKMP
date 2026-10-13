@@ -27,6 +27,12 @@ expect fun pickFile(
     onError: (String) -> Unit
 )
 
+expect fun pickSingleFile(
+    allowedExtensions: List<String>,
+    onFilePicked: (filePath: String) -> Unit,
+    onError: (String) -> Unit
+)
+
 expect fun saveFile(
     defaultFileName: String,
     content: String,

@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.di
 
+import app.cash.sqldelight.db.SqlDriver
 import com.dnavarro.poskmp.data.CustomerRepository
 import com.dnavarro.poskmp.data.CustomerRepositoryImpl
 import com.dnavarro.poskmp.data.ProductRepository
@@ -67,7 +68,8 @@ import org.koin.dsl.module
 
 val dataModule = module {
     single { DatabaseDriverFactory() }
-    single { createDatabase(get()) }
+    single<SqlDriver> { get<DatabaseDriverFactory>().createDriver() }
+    single { createDatabase(get<SqlDriver>()) }
     single { getDataStore() }
     singleOf(::SqlDelightProductDataSource) bind ProductLocalDataSource::class
     singleOf(::ProductRepositoryImpl) bind ProductRepository::class

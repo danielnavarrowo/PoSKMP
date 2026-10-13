@@ -8,6 +8,11 @@ expect class DatabaseDriverFactory() {
 
 fun createDatabase(driverFactory: DatabaseDriverFactory): AppDatabase {
     val driver = driverFactory.createDriver()
+    return createDatabase(driver)
+}
+
+fun createDatabase(driver: SqlDriver): AppDatabase {
     DatabaseMigrator.migrate(driver)
     return AppDatabase(driver)
 }
+
