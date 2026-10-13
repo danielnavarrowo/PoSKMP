@@ -64,7 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
-import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.isDynamicColorSupported
 import com.materialkolor.PaletteStyle
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -175,12 +175,14 @@ fun AppearanceSettingsSection(
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
     var styleForDescriptionDialog by remember { mutableStateOf<PaletteStyle?>(null) }
+    val isDynamicSupported = isDynamicColorSupported()
+    val isDynamicActive = useDynamicColor && isDynamicSupported
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        if (isAndroid()) {
+        if (isDynamicSupported) {
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -211,7 +213,7 @@ fun AppearanceSettingsSection(
                     Switch(
                         checked = useDynamicColor,
                         onCheckedChange = onUseDynamicColorChange,
-                        enabled = isAndroid()
+                        enabled = true
                     )
                 }
             }
@@ -222,7 +224,7 @@ fun AppearanceSettingsSection(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            shape = if (isAndroid()) ShapeDefaults.middleListItemShape else ShapeDefaults.topListItemShape,
+            shape = if (isDynamicSupported) ShapeDefaults.middleListItemShape else ShapeDefaults.topListItemShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
@@ -423,7 +425,7 @@ fun AppearanceSettingsSection(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
-            shape = if (useDynamicColor) ShapeDefaults.bottomListItemShape else ShapeDefaults.middleListItemShape,
+            shape = if (isDynamicActive) ShapeDefaults.bottomListItemShape else ShapeDefaults.middleListItemShape,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -453,9 +455,9 @@ fun AppearanceSettingsSection(
             }
         }
 
-        // Seed Color Picker & Palette Style (visible when Dynamic Color is disabled)
+        // Seed Color Picker & Palette Style (visible when Dynamic Color is disabled or unsupported)
         AnimatedVisibility(
-            visible = !useDynamicColor,
+            visible = !isDynamicActive,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
@@ -493,7 +495,7 @@ fun AppearanceSettingsSection(
                             items(presetColorItems) { preset ->
                                 val color = preset.color
                                 val shape = preset.shape
-                                val isSelected = !useDynamicColor && seedColor == color
+                                val isSelected = !isDynamicActive && seedColor == color
                                 Box(
                                     modifier = Modifier
                                         .size(42.dp)

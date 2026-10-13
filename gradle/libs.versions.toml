@@ -1,10 +1,10 @@
 [versions]
-app-version = "1.0.10"
-app-versionCode = "11"
+app-version = "1.0.11"
+app-versionCode = "12"
 agp = "9.4.1"
 android-compileSdk = "37"
 android-compileSdkMinor = "2"
-android-minSdk = "31"
+android-minSdk = "28"
 android-targetSdk = "37"
 androidx-activity = "1.14.0-alpha03"
 androidx-lifecycle = "2.11.0"

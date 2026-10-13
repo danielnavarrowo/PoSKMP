@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.util
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -31,6 +32,9 @@ actual fun generateUUID(): String = UUID.randomUUID().toString()
 
 @Suppress("SameReturnValue")
 actual fun isAndroid(): Boolean = true
+
+actual fun isDynamicColorSupported(): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {

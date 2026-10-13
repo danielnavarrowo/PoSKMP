@@ -9,6 +9,7 @@ import com.dnavarro.poskmp.db.Products
 expect fun currentTimeMillis(): Long
 expect fun generateUUID(): String
 expect fun isAndroid(): Boolean
+expect fun isDynamicColorSupported(): Boolean
 expect fun playSoundAlert(bytes: ByteArray)
 
 @Composable

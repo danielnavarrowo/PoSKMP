@@ -1,20 +1,19 @@
 package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.ui.graphics.Color
-import com.dnavarro.poskmp.domain.model.Cashier
-import com.dnavarro.poskmp.domain.model.DeviceRole
-import com.dnavarro.poskmp.domain.model.ReceiptSettings
-import com.dnavarro.poskmp.theme.DarkModeConfig
-import com.dnavarro.poskmp.ui.Screen
-import com.dnavarro.poskmp.util.isAndroid
-import com.materialkolor.PaletteStyle
-
 import com.dnavarro.poskmp.data.backup.BackupFileInfo
 import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.updater.UpdateCheckResult
 import com.dnavarro.poskmp.data.updater.UpdateDownloadState
-
+import com.dnavarro.poskmp.domain.model.Cashier
+import com.dnavarro.poskmp.domain.model.DeviceRole
+import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.theme.DEFAULT_SEED_COLOR
+import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.AppConstants
+import com.dnavarro.poskmp.util.isDynamicColorSupported
+import com.materialkolor.PaletteStyle
 
 /**
  * UI State for Settings screen.
@@ -22,8 +21,8 @@ import com.dnavarro.poskmp.util.AppConstants
 data class AjustesUiState(
     val deviceRole: DeviceRole = DeviceRole.ADMIN,
     val terminalPrefix: String = "",
-    val useDynamicColor: Boolean = isAndroid(),
-    val seedColor: Color = Color(0xFF0061A4),
+    val useDynamicColor: Boolean = isDynamicColorSupported(),
+    val seedColor: Color = DEFAULT_SEED_COLOR,
     val isAmoled: Boolean = false,
     val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
     val paletteStyle: PaletteStyle = PaletteStyle.Fidelity,

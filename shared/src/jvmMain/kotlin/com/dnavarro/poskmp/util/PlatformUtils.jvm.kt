@@ -53,6 +53,9 @@ actual fun generateUUID(): String = UUID.randomUUID().toString()
 @Suppress("SameReturnValue")
 actual fun isAndroid(): Boolean = false
 
+@Suppress("SameReturnValue")
+actual fun isDynamicColorSupported(): Boolean = false
+
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
     // No-op on Desktop JVM

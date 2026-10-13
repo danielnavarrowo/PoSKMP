@@ -17,11 +17,13 @@ import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.MAX_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.theme.DEFAULT_SEED_COLOR
 import com.dnavarro.poskmp.theme.DarkModeConfig
+import com.dnavarro.poskmp.theme.PRESET_SEED_COLORS
 import com.dnavarro.poskmp.ui.Screen
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
-import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.isDynamicColorSupported
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -275,12 +277,16 @@ class SettingsRepositoryImpl(
     }
 
     override val useDynamicColorFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: isAndroid()
+        isDynamicColorSupported() && preferences[PreferenceKeys.USE_DYNAMIC_COLOR] ?: true
     }
 
     override val seedColorFlow: Flow<Color> = dataStore.data.map { preferences ->
-        val argb = preferences[PreferenceKeys.SEED_COLOR] ?: 0xFF0061A4.toInt()
-        Color(argb)
+        val argb = preferences[PreferenceKeys.SEED_COLOR]
+        if (argb != null && PRESET_SEED_COLORS.any { it.toArgb() == argb }) {
+            Color(argb)
+        } else {
+            DEFAULT_SEED_COLOR
+        }
     }
 
     override val isAmoledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -525,7 +531,7 @@ class SettingsRepositoryImpl(
 
     override suspend fun setUseDynamicColor(useDynamic: Boolean) {
         dataStore.edit { preferences ->
-            preferences[PreferenceKeys.USE_DYNAMIC_COLOR] = useDynamic
+            preferences[PreferenceKeys.USE_DYNAMIC_COLOR] = isDynamicColorSupported() && useDynamic
         }
     }
 

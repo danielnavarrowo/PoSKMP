@@ -67,6 +67,7 @@ import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.theme.DEFAULT_SEED_COLOR
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.ajustes.AboutSettingsSection
@@ -82,6 +83,7 @@ import com.dnavarro.poskmp.ui.turnos.CashierManagementSection
 import com.dnavarro.poskmp.util.AdaptiveScaffoldPredictiveBackHandler
 import com.dnavarro.poskmp.util.AppConstants
 import com.dnavarro.poskmp.util.isAndroid
+import com.dnavarro.poskmp.util.isDynamicColorSupported
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -239,9 +241,9 @@ fun AjustesScreen(
     initialCategory: AjustesCategory? = null,
     onNavigateToClientes: (() -> Unit)? = null,
     onNavigateToVentas: (() -> Unit)? = null,
-    useDynamicColor: Boolean = isAndroid(),
+    useDynamicColor: Boolean = isDynamicColorSupported(),
     onUseDynamicColorChange: (Boolean) -> Unit = {},
-    seedColor: Color = Color(0xFF0061A4),
+    seedColor: Color = DEFAULT_SEED_COLOR,
     onSeedColorChange: (Color) -> Unit = {},
     isAmoled: Boolean = false,
     onIsAmoledChange: (Boolean) -> Unit = {},

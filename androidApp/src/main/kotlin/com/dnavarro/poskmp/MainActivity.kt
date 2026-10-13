@@ -12,7 +12,6 @@ import com.dnavarro.poskmp.ui.preview.FormFactorPreviews
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.enableEdgeToEdge(window)
-        window.isNavigationBarContrastEnforced = false
         volumeControlStream = android.media.AudioManager.STREAM_MUSIC
         super.onCreate(savedInstanceState)
 
