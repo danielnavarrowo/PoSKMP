@@ -932,7 +932,7 @@ class SyncRepositoryImpl(
                 resolveLocalProductConflicts(queries, remote, catalog, remoteProductNames)
 
                 val local = catalog.productsById[remote.id]
-                if (local == null || remote.updatedAt >= local.updated_at) {
+                if ((local == null) || (remote.updatedAt >= local.updated_at)) {
                     val effectiveCreatedAt = local?.created_at?.takeIf { it > 0L } ?: remote.updatedAt
                     queries.upsertSyncedProduct(
                         id = remote.id,
@@ -1001,6 +1001,13 @@ class SyncRepositoryImpl(
                     barcode = code,
                     product_id = productId
                 )
+                val norm = normalizeBarcode(code)
+                if (norm.isNotEmpty() && norm != code) {
+                    queries.insertProductBarcode(
+                        barcode = norm,
+                        product_id = productId
+                    )
+                }
             }
         } catch (_: Exception) {}
     }

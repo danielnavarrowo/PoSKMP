@@ -762,6 +762,10 @@ class VentaViewModel(
         return findProductByBarcodeUseCase(barcode)
     }
 
+    suspend fun validateBarcodes(codes: List<String>, excludeProductId: String?): Pair<String, Products>? {
+        return repository.findConflictingProductForBarcodes(codes, excludeProductId)
+    }
+
     fun putCurrentTicketOnHold() {
         val currentCart = _cartItems.value
         if (currentCart.isEmpty()) return

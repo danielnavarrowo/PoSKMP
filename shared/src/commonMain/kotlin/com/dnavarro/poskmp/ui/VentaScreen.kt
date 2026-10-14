@@ -2256,6 +2256,9 @@ fun VentaScreen(
                 viewModel.updateProduct(updatedProduct)
                 showProductDialogFor = null
             },
+            onValidateBarcodes = { codes ->
+                viewModel.validateBarcodes(codes, showProductDialogFor?.id?.ifEmpty { null })
+            },
             existingCategories = uiState.availableCategories,
             existingProducts = uiState.allActiveProducts.ifEmpty { uiState.activeProducts },
             defaultRetailMarginPercentage = uiState.defaultRetailMargin,

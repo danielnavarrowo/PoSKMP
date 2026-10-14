@@ -397,9 +397,8 @@ class ProductosViewModel(
         uiState.value.rawProducts.firstOrNull { product ->
             product.parseBarcodes().matchesBarcode(trimmed) || product.id == trimmed
         } ?: withContext(Dispatchers.IO) {
-            repository.getAllProductsList().firstOrNull { product ->
-                product.parseBarcodes().matchesBarcode(trimmed) || product.id == trimmed
-            }
+            repository.findProductByBarcode(trimmed)
+                ?: repository.getProductById(trimmed)
         }
     }
 }

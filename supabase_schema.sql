@@ -358,15 +358,16 @@ BEGIN
             FOR v_code IN SELECT json_array_elements_text(NEW.codigos::json)
             LOOP
                 IF v_code IS NOT NULL AND TRIM(v_code) != '' THEN
-                    SELECT id, nombre INTO v_dup_id, v_dup_name
-                    FROM public.products
-                    WHERE id != NEW.id
-                      AND activo = true
-                      AND codigos::jsonb ? v_code
+                    SELECT p.id, p.nombre INTO v_dup_id, v_dup_name
+                    FROM public.product_barcodes pb
+                    JOIN public.products p ON p.id = pb.product_id
+                    WHERE pb.barcode = TRIM(v_code)
+                      AND pb.product_id != NEW.id
+                      AND p.activo = true
                     LIMIT 1;
 
                     IF v_dup_id IS NOT NULL THEN
-                        RAISE EXCEPTION 'Código de barras duplicado: "%" ya está asignado al producto activo "%" (ID: %)', v_code, v_dup_name, v_dup_id;
+                        RAISE EXCEPTION 'Código de barras duplicado: "%" ya está asignado al producto activo "%" (ID: %)', TRIM(v_code), v_dup_name, v_dup_id;
                     END IF;
                 END IF;
             END LOOP;
