@@ -46,6 +46,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.sqldelight.android)
+            implementation("com.github.requery:sqlite-android:3.45.0")
             implementation(libs.accompanist.permissions)
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.camera2)

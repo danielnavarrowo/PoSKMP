@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 
 actual class DatabaseDriverFactory actual constructor() {
     actual fun createDriver(): SqlDriver {
@@ -12,6 +13,7 @@ actual class DatabaseDriverFactory actual constructor() {
             schema = AppDatabase.Schema,
             context = context,
             name = "pos_database.db",
+            factory = RequerySQLiteOpenHelperFactory(),
             callback = object : AndroidSqliteDriver.Callback(AppDatabase.Schema) {
                 override fun onConfigure(db: SupportSQLiteDatabase) {
                     super.onConfigure(db)
