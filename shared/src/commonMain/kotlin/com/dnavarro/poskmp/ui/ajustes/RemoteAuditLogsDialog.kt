@@ -1,4 +1,6 @@
 package com.dnavarro.poskmp.ui.ajustes
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -178,58 +180,46 @@ fun RemoteAuditLogsDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Filter chips
-                LazyRow(
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
                 ) {
-                    item {
-                        FilterChip(
-                            selected = selectedFilter == "ALL",
-                            onClick = { selectedFilter = "ALL" },
-                            label = { Text(stringResource(Res.string.supabase_remote_logs_filter_all)) },
-                            shape = FilterChipDefaults.shape
-                        )
-                    }
-                    item {
-                        FilterChip(
-                            selected = selectedFilter == "sales",
-                            onClick = { selectedFilter = "sales" },
-                            label = { Text(stringResource(Res.string.supabase_remote_logs_filter_sales)) },
-                            shape = FilterChipDefaults.shape
-                        )
-                    }
-                    item {
-                        FilterChip(
-                            selected = selectedFilter == "products",
-                            onClick = { selectedFilter = "products" },
-                            label = { Text(stringResource(Res.string.supabase_remote_logs_filter_products)) },
-                            shape = FilterChipDefaults.shape
-                        )
-                    }
-                    item {
-                        FilterChip(
-                            selected = selectedFilter == "customers",
-                            onClick = { selectedFilter = "customers" },
-                            label = { Text(stringResource(Res.string.supabase_remote_logs_filter_customers)) },
-                            shape = FilterChipDefaults.shape
-                        )
-                    }
-                    item {
-                        FilterChip(
-                            selected = selectedFilter == "cashiers",
-                            onClick = { selectedFilter = "cashiers" },
-                            label = { Text(stringResource(Res.string.supabase_remote_logs_filter_cashiers)) },
-                            shape = FilterChipDefaults.shape
-                        )
-                    }
-                    item {
-                        FilterChip(
-                            selected = selectedFilter == "store_settings",
-                            onClick = { selectedFilter = "store_settings" },
-                            label = { Text(stringResource(Res.string.supabase_remote_logs_filter_settings)) },
-                            shape = FilterChipDefaults.shape
-                        )
-                    }
+                    FilterChip(
+                        selected = selectedFilter == "ALL",
+                        onClick = { selectedFilter = "ALL" },
+                        label = { Text(stringResource(Res.string.supabase_remote_logs_filter_all)) },
+                        shape = FilterChipDefaults.shape
+                    )
+                    FilterChip(
+                        selected = selectedFilter == "sales",
+                        onClick = { selectedFilter = "sales" },
+                        label = { Text(stringResource(Res.string.supabase_remote_logs_filter_sales)) },
+                        shape = FilterChipDefaults.shape
+                    )
+                    FilterChip(
+                        selected = selectedFilter == "products",
+                        onClick = { selectedFilter = "products" },
+                        label = { Text(stringResource(Res.string.supabase_remote_logs_filter_products)) },
+                        shape = FilterChipDefaults.shape
+                    )
+                    FilterChip(
+                        selected = selectedFilter == "customers",
+                        onClick = { selectedFilter = "customers" },
+                        label = { Text(stringResource(Res.string.supabase_remote_logs_filter_customers)) },
+                        shape = FilterChipDefaults.shape
+                    )
+                    FilterChip(
+                        selected = selectedFilter == "cashiers",
+                        onClick = { selectedFilter = "cashiers" },
+                        label = { Text(stringResource(Res.string.supabase_remote_logs_filter_cashiers)) },
+                        shape = FilterChipDefaults.shape
+                    )
+                    FilterChip(
+                        selected = selectedFilter == "store_settings",
+                        onClick = { selectedFilter = "store_settings" },
+                        label = { Text(stringResource(Res.string.supabase_remote_logs_filter_settings)) },
+                        shape = FilterChipDefaults.shape
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -317,7 +307,11 @@ fun RemoteAuditLogsDialog(
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(bottom = 8.dp)
                         ) {
-                            items(filteredLogs, key = { it.id }) { log ->
+                            items(
+                                filteredLogs,
+                                key = { it.id },
+                                contentType = { "audit_log_item" }
+                            ) { log ->
                                 RemoteAuditLogItem(log = log)
                             }
                         }

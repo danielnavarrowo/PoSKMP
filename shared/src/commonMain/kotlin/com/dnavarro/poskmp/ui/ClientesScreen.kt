@@ -585,8 +585,11 @@ fun ClientesContent(
                                     }
                                 }
                             }
-                        } else {
-                            itemsIndexed(state.filteredClientes, key = { _, customer -> customer.id }) { _, customer ->
+                            itemsIndexed(
+                                state.filteredClientes,
+                                key = { _, customer -> customer.id },
+                                contentType = { _, _ -> "customer_card" }
+                            ) { _, customer ->
 
                                 CustomerListItem(
                                     customer = customer,

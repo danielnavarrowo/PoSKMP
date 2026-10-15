@@ -886,11 +886,11 @@ fun ProductFormDialog(
 
             if (formBarcodes.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(6.dp))
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(formBarcodes, key = { it }) { code ->
+                    formBarcodes.forEach { code ->
                         InputChip(
                             selected = false,
                             onClick = { },

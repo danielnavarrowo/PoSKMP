@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui.ventas
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -72,6 +73,11 @@ fun ProductosVendidosScreen(
 ) {
     var isAscending by rememberSaveable { mutableStateOf(false) }
 
+    val sortArrowRotation by animateFloatAsState(
+        targetValue = if (isAscending) 0f else 180f,
+        label = "SortArrowRotation"
+    )
+
     val sortedProducts = remember(soldProducts, isAscending) {
         if (isAscending) {
             soldProducts.sortedBy { it.totalUnidades }
@@ -130,7 +136,7 @@ fun ProductosVendidosScreen(
                                 modifier = Modifier
                                     .size(16.dp)
                                     .graphicsLayer {
-                                        rotationZ = if (isAscending) 0f else 180f
+                                        rotationZ = sortArrowRotation
                                     }
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -286,7 +292,7 @@ fun ProductosVendidosScreen(
                             modifier = Modifier
                                 .size(14.dp)
                                 .graphicsLayer {
-                                    rotationZ = if (isAscending) 0f else 180f
+                                    rotationZ = sortArrowRotation
                                 }
                         )
                     }
@@ -299,7 +305,8 @@ fun ProductosVendidosScreen(
                 ) {
                     itemsIndexed(
                         sortedProducts,
-                        key = { _, item -> item.productId ?: item.productNombre }
+                        key = { _, item -> item.productId ?: item.productNombre },
+                        contentType = { _, _ -> "sold_product_row" }
                     ) { index, metric ->
                         val unitPrice = if (metric.totalUnidades > 0) metric.totalRecaudado / metric.totalUnidades else 0.0
                         val qtyFormatted = if (metric.totalUnidades % 1.0 == 0.0) {

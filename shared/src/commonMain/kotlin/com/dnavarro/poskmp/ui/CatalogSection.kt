@@ -649,7 +649,11 @@ fun CatalogSection(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             contentPadding = PaddingValues(bottom = 220.dp)
                         ) {
-                            itemsIndexed(displayedProducts, key = { _, product -> product.id }) { index, product ->
+                            itemsIndexed(
+                                displayedProducts,
+                                key = { _, product -> product.id },
+                                contentType = { _, _ -> "compact_product" }
+                            ) { index, product ->
                                 val shape = if (displayedProducts.size == 1) {
                                     ShapeDefaults.cardShape
                                 } else if (index == 0) {
@@ -760,7 +764,11 @@ fun CatalogSection(
                                         verticalArrangement = Arrangement.spacedBy(2.dp),
                                         contentPadding = PaddingValues(bottom = 220.dp)
                                     ) {
-                                        itemsIndexed(displayedProducts, key = { _, product -> product.id }) { index, product ->
+                                        itemsIndexed(
+                                            displayedProducts,
+                                            key = { _, product -> product.id },
+                                            contentType = { _, _ -> "table_product" }
+                                        ) { index, product ->
                                             val shape =
                                                 if (displayedProducts.size == 1 || index == displayedProducts.lastIndex) ShapeDefaults.bottomListItemShape
                                                 else ShapeDefaults.middleListItemShape
@@ -817,7 +825,11 @@ fun CatalogSection(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 220.dp)
                     ) {
-                        itemsIndexed(displayedProducts, key = { _, product -> product.id }) { index, product ->
+                        itemsIndexed(
+                            displayedProducts,
+                            key = { _, product -> product.id },
+                            contentType = { _, _ -> "grid_product" }
+                        ) { index, product ->
                             var showContextMenu by remember { mutableStateOf(false) }
                             val isHighlighted = selectedCatalogIndex == index
 

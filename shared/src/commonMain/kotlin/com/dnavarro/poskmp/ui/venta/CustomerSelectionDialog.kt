@@ -340,7 +340,11 @@ fun CustomerSelectionDialog(
                             }
                         }
                     } else {
-                        itemsIndexed(customers, key = { _, it -> it.id }) { index, customer ->
+                        itemsIndexed(
+                            customers,
+                            key = { _, it -> it.id },
+                            contentType = { _, _ -> "customer_selection_item" }
+                        ) { index, customer ->
                             val itemIndex = index + 1
                             val isHighlighted = highlightedIndex == itemIndex
                             val isSelected = selectedCustomer?.id == customer.id

@@ -395,8 +395,11 @@ fun ImportProductsDialog(
                                         }
                                     }
 
-                                    // Table Content
-                                    items(parsedProducts.take(20)) { product ->
+                                    items(
+                                        parsedProducts.take(20),
+                                        key = { it.id },
+                                        contentType = { "import_preview_row" }
+                                    ) { product ->
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -1112,7 +1115,11 @@ fun ImportProductsDialog(
                                                 .heightIn(max = if (hasErrors) 160.dp else 240.dp),
                                             verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            items(modifiedProductsList) { item ->
+                                            items(
+                                                modifiedProductsList,
+                                                key = { it.product.id },
+                                                contentType = { "modified_import_item" }
+                                            ) { item ->
                                                 Card(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     shape = MaterialTheme.shapes.extraSmall,
@@ -1210,7 +1217,11 @@ fun ImportProductsDialog(
                                                 .heightIn(max = if (hasModified) 160.dp else 280.dp),
                                             verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            items(failedProductsList) { item ->
+                                            items(
+                                                failedProductsList,
+                                                key = { it.product.id },
+                                                contentType = { "failed_import_item" }
+                                            ) { item ->
                                                 Card(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     shape = MaterialTheme.shapes.extraSmall,

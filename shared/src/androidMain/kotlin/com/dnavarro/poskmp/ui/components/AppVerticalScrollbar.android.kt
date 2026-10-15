@@ -25,8 +25,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
@@ -70,10 +70,9 @@ actual fun AppVerticalScrollbar(
 
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 300)
+        animationSpec = tween(durationMillis = 300),
+        label = "ScrollbarAlpha"
     )
-
-    if (alpha <= 0f) return
 
     val density = LocalDensity.current
     val minThumbHeightPx = with(density) { 40.dp.toPx() }
@@ -86,13 +85,16 @@ actual fun AppVerticalScrollbar(
         modifier = modifier
             .width(32.dp) // Área táctil accesible de 32.dp
             .fillMaxHeight()
-            .alpha(alpha)
+            .graphicsLayer {
+                this.alpha = alpha
+            }
     ) {
         // Capa de interacción táctil en toda el área accesible
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .pointerInput(isVisible) {
+                    if (!isVisible) return@pointerInput
                     detectVerticalDragGestures(
                         onDragStart = { offset ->
                             isDragging = true
@@ -260,10 +262,9 @@ actual fun AppVerticalScrollbar(
 
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = 300)
+        animationSpec = tween(durationMillis = 300),
+        label = "ScrollbarGridAlpha"
     )
-
-    if (alpha <= 0f) return
 
     val density = LocalDensity.current
     val minThumbHeightPx = with(density) { 40.dp.toPx() }
@@ -276,12 +277,15 @@ actual fun AppVerticalScrollbar(
         modifier = modifier
             .width(32.dp)
             .fillMaxHeight()
-            .alpha(alpha)
+            .graphicsLayer {
+                this.alpha = alpha
+            }
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .pointerInput(isVisible) {
+                    if (!isVisible) return@pointerInput
                     detectVerticalDragGestures(
                         onDragStart = { offset ->
                             isDragging = true

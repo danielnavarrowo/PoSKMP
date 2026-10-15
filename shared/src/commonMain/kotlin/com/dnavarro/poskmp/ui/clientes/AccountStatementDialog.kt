@@ -255,7 +255,11 @@ fun AccountStatementDialog(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(statementItems, key = { it.id }) { item ->
+                            items(
+                                statementItems,
+                                key = { it.id },
+                                contentType = { "statement_item" }
+                            ) { item ->
                                 StatementItemRow(
                                     item = item,
                                     onDeletePayment = { paymentToDelete = item }

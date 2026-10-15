@@ -6,6 +6,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -487,12 +489,14 @@ fun AppearanceSettingsSection(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            items(presetColorItems) { preset ->
+                            presetColorItems.forEach { preset ->
                                 val color = preset.color
                                 val shape = preset.shape
                                 val isSelected = !isDynamicActive && seedColor == color

@@ -1705,7 +1705,11 @@ internal fun SaleDetailDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn(modifier = Modifier.height(240.dp)) {
-                    items(items, key = { it.id }) { item ->
+                    items(
+                        items,
+                        key = { it.id },
+                        contentType = { "ticket_detail_item" }
+                    ) { item ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

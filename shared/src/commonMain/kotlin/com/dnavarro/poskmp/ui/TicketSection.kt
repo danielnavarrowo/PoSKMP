@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -377,11 +376,11 @@ fun TicketSection(
         // Held Tickets Row (if any)
         if (heldTickets.isNotEmpty()) {
             Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                LazyRow(
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    contentPadding = PaddingValues(horizontal = 2.dp)
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
                 ) {
-                    itemsIndexed(heldTickets) { _, ticket ->
+                    heldTickets.forEach { ticket ->
                         val piecesFormatted = if (ticket.totalItemsCount % 1.0 == 0.0) ticket.totalItemsCount.toLong().toString() else ticket.totalItemsCount.toString()
                         Surface(
                             onClick = { onResumeHeldTicket(ticket) },
@@ -445,7 +444,11 @@ fun TicketSection(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                itemsIndexed(cartItems, key = { _, item -> item.product.id }) { index, item ->
+                itemsIndexed(
+                    cartItems,
+                    key = { _, item -> item.product.id },
+                    contentType = { _, _ -> "cart_item" }
+                ) { index, item ->
                     val shape = if (cartItems.size == 1) {
                         MaterialTheme.shapes.medium
                     } else if (index == 0) {

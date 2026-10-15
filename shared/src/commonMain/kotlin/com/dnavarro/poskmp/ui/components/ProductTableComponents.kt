@@ -27,12 +27,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.toShape
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -99,11 +101,15 @@ fun RowScope.TableHeader(
             )
             if (field != null && field == currentField) {
                 Spacer(modifier = Modifier.width(4.dp))
+                val rotation by animateFloatAsState(
+                    targetValue = if (currentOrder == ProductSortOrder.ASC) 0f else 180f,
+                    label = "SortOrderRotation"
+                )
                 Icon(
                     painter = painterResource(Res.drawable.arrow_up),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.rotate(if (currentOrder == ProductSortOrder.ASC) 0f else 180f)
+                    modifier = Modifier.graphicsLayer { rotationZ = rotation }
                 )
             }
         }

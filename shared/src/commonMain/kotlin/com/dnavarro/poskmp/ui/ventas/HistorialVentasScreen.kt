@@ -277,7 +277,11 @@ fun HistorialVentasScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(filteredSales, key = { it.id }) { sale ->
+                        items(
+                            filteredSales,
+                            key = { it.id },
+                            contentType = { "sale_ticket_card" }
+                        ) { sale ->
                             SaleTicketCard(
                                 sale = sale,
                                 onClick = { onSelectSale(sale) },

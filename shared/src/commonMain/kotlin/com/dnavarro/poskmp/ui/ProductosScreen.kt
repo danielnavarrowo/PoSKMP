@@ -1035,7 +1035,11 @@ fun ProductosScreen(
                                             verticalArrangement = Arrangement.spacedBy(4.dp),
                                             contentPadding = PaddingValues(bottom = 156.dp)
                                         ) {
-                                            itemsIndexed(sortedProducts) { index, product ->
+                                            itemsIndexed(
+                                                sortedProducts,
+                                                key = { _, product -> product.id },
+                                                contentType = { _, _ -> "product_card" }
+                                            ) { index, product ->
                                                 val shape = if (sortedProducts.size == 1) {
                                                     ShapeDefaults.cardShape
                                                 } else if (index == 0) {
@@ -1137,7 +1141,11 @@ fun ProductosScreen(
                                                 verticalArrangement = Arrangement.spacedBy(2.dp),
                                                 contentPadding = PaddingValues(bottom = if (isAndroid()) 160.dp else 192.dp)
                                             ) {
-                                                itemsIndexed(sortedProducts) { index, product ->
+                                                itemsIndexed(
+                                                    sortedProducts,
+                                                    key = { _, product -> product.id },
+                                                    contentType = { _, _ -> "product_table_row" }
+                                                ) { index, product ->
                                                     val shape =
                                                         if (sortedProducts.size == 1 || index == sortedProducts.lastIndex) ShapeDefaults.bottomListItemShape
                                                         else ShapeDefaults.middleListItemShape
