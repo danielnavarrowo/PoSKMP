@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -38,14 +40,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Sale
+import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import org.jetbrains.compose.resources.painterResource
@@ -53,8 +55,6 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.btn_back
-import poskmp.shared.generated.resources.cancel_sale_button
-import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.delivery
 import poskmp.shared.generated.resources.empty_recent_sales_history
 import poskmp.shared.generated.resources.filter_sales_all
@@ -76,11 +76,11 @@ fun HistorialVentasScreen(
     isSyncing: Boolean = false,
     onRefresh: () -> Unit = {},
     onSelectSale: (Sale) -> Unit,
-    onCancelSale: (Sale) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedFilter by remember { mutableIntStateOf(0) }
+    val listState = rememberLazyListState()
     val activeSalesCount = remember(sales) { sales.count { !it.isCancelled } }
     val totalRevenue = remember(sales) { sales.filter { !it.isCancelled }.sumOf { it.total } }
     val localSalesCount = remember(sales) { sales.count { !it.esForanea } }
@@ -161,58 +161,6 @@ fun HistorialVentasScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            ),
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = "Tickets Emitidos",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "${sales.size} tickets",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                            ),
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = "Total Vendido",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "$${totalRevenue.toString().formatPrice()}",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-
-                    // Filter chips row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -272,22 +220,32 @@ fun HistorialVentasScreen(
                         )
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(
-                            filteredSales,
-                            key = { it.id },
-                            contentType = { "sale_ticket_card" }
-                        ) { sale ->
-                            SaleTicketCard(
-                                sale = sale,
-                                onClick = { onSelectSale(sale) },
-                                onCancelSale = { onCancelSale(sale) }
-                            )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                filteredSales,
+                                key = { it.id },
+                                contentType = { "sale_ticket_card" }
+                            ) { sale ->
+                                SaleTicketCard(
+                                    sale = sale,
+                                    onClick = { onSelectSale(sale) }
+                                )
+                            }
                         }
+
+                        AppVerticalScrollbar(
+                            state = listState,
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .fillMaxHeight()
+                                .padding(vertical = 4.dp, horizontal = 2.dp)
+                        )
                     }
                 }
             }
@@ -299,7 +257,6 @@ fun HistorialVentasScreen(
 fun SaleTicketCard(
     sale: Sale,
     onClick: () -> Unit,
-    onCancelSale: (Sale) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isCancelled = sale.isCancelled
@@ -310,7 +267,7 @@ fun SaleTicketCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isCancelled) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = MaterialTheme.shapes.medium
+        shape = ShapeDefaults.cardShape
     ) {
         Row(
             modifier = Modifier
@@ -323,30 +280,16 @@ fun SaleTicketCard(
                 modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    color = if (isCancelled) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            "#${sale.folio}",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isCancelled) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             stringResource(Res.string.ticket_folio_format, sale.folio),
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -437,32 +380,17 @@ fun SaleTicketCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "$${sale.total.toString().formatPrice()}",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 16.sp,
+                       style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
                         color = if (isCancelled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                        style = if (isCancelled) TextStyle(textDecoration = TextDecoration.LineThrough) else TextStyle.Default,
                         maxLines = 1
                     )
                     Text(
                         stringResource(Res.string.ticket_profit_label, sale.ganancia.toString().formatPrice()),
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
-                }
-
-                if (!isCancelled) {
-                    IconButton(
-                        onClick = { onCancelSale(sale) },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.close),
-                            contentDescription = stringResource(Res.string.cancel_sale_button),
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
                 }
             }
         }

@@ -1,22 +1,80 @@
 package com.dnavarro.poskmp.util
 
+/**
+ * Formats an integer digit string with comma thousands separators (e.g. "1234567" -> "1,234,567").
+ * Preserves leading negative sign if present.
+ */
+fun formatWithThousandsSeparator(intPart: String): String {
+    val isNegative = intPart.startsWith('-')
+    val digits = if (isNegative) intPart.substring(1) else intPart
+    if (digits.isEmpty() || !digits.all { it.isDigit() }) return intPart
+    if (digits.length <= 3) return intPart
+
+    val sb = StringBuilder()
+    if (isNegative) sb.append('-')
+    val firstGroupLen = if (digits.length % 3 == 0) 3 else digits.length % 3
+    sb.append(digits, 0, firstGroupLen)
+    var i = firstGroupLen
+    while (i < digits.length) {
+        sb.append(',')
+        sb.append(digits, i, i + 3)
+        i += 3
+    }
+    return sb.toString()
+}
+
+/**
+ * Formats a Double into a price string with comma thousands separators and 2 decimal places
+ * according to the Spanish/Mexican format (e.g. 123456.78 -> "123,456.78").
+ */
+fun Double.formatPrice(): String {
+    if (this.isNaN() || this.isInfinite()) return "0.00"
+    val isNegative = this < 0.0
+    val absVal = kotlin.math.abs(this)
+    val totalCents = kotlin.math.round(absVal * 100.0).toLong()
+    val longPart = totalCents / 100L
+    val decPart = totalCents % 100L
+    val formattedInt = formatWithThousandsSeparator(longPart.toString())
+    val formattedDec = decPart.toString().padStart(2, '0')
+    val sign = if (isNegative && totalCents > 0L) "-" else ""
+    return "$sign$formattedInt.$formattedDec"
+}
+
+fun Float.formatPrice(): String = this.toDouble().formatPrice()
+fun Long.formatPrice(): String = this.toDouble().formatPrice()
+fun Int.formatPrice(): String = this.toDouble().formatPrice()
+
+/**
+ * Formats a numeric price string with comma thousands separators and 2 decimal places
+ * according to the Spanish/Mexican format (e.g. "123456.78" -> "123,456.78").
+ */
 fun String.formatPrice(): String {
     return try {
-        val parts = this.split(".")
-        if (parts.size == 1) {
-            "${parts[0]}.00"
+        val trimmed = this.trim()
+        if (trimmed.isEmpty()) return this
+        val normalized = trimmed.replace(",", "")
+        val doubleVal = normalized.toDoubleOrNull()
+        if (doubleVal != null) {
+            doubleVal.formatPrice()
         } else {
-            val decimals = parts[1]
-            if (decimals.length >= 2) {
-                "${parts[0]}.${decimals.substring(0, 2)}"
+            val parts = trimmed.split(".")
+            val formattedInt = formatWithThousandsSeparator(parts[0])
+            if (parts.size == 1) {
+                "$formattedInt.00"
             } else {
-                "${parts[0]}.${decimals}0"
+                val decimals = parts[1]
+                if (decimals.length >= 2) {
+                    "$formattedInt.${decimals.substring(0, 2)}"
+                } else {
+                    "$formattedInt.${decimals}0"
+                }
             }
         }
     } catch (_: Exception) {
         this
     }
 }
+
 
 fun Double.formatQuantity(isWeight: Boolean): String {
     return if (isWeight) {

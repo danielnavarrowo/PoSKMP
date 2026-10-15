@@ -117,6 +117,7 @@ import com.dnavarro.poskmp.ui.ventas.VentasUiState
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.formatWithThousandsSeparator
 import com.dnavarro.poskmp.util.formatShiftInterval
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.isCompactWidth
@@ -389,7 +390,6 @@ fun VentasScreen(
                     isSyncing = state.isSyncing,
                     onRefresh = onRefresh,
                     onSelectSale = onSelectSaleForDetail,
-                    onCancelSale = onOpenCancelSaleDialog,
                     onNavigateBack = {
                         if (subBackStack.size > 1) {
                             subBackStack.removeLastOrNull()
@@ -771,7 +771,7 @@ fun VentasScreen(
 
                                 KpiCard(
                                     title = stringResource(Res.string.kpi_issued_tickets),
-                                    value = "${state.summary.totalTicketCount}",
+                                    value = formatWithThousandsSeparator(state.summary.totalTicketCount.toString()),
                                     subtitle = stringResource(Res.string.kpi_average_ticket, state.summary.promedioTicket.toString().formatPrice()),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -800,7 +800,7 @@ fun VentasScreen(
 
                             KpiCard(
                                 title = stringResource(Res.string.kpi_issued_tickets),
-                                value = "${state.summary.totalTicketCount}",
+                                value = formatWithThousandsSeparator(state.summary.totalTicketCount.toString()),
                                 subtitle = stringResource(Res.string.kpi_average_ticket, state.summary.promedioTicket.toString().formatPrice()),
                                 modifier = Modifier.weight(1f)
                             )
@@ -1391,9 +1391,9 @@ private fun SoldProductsNavButton(
     modifier: Modifier = Modifier
 ) {
     val piecesFormatted = if (totalPieces % 1.0 == 0.0) {
-        totalPieces.toLong().toString()
+        formatWithThousandsSeparator(totalPieces.toLong().toString())
     } else {
-        totalPieces.toString().formatPrice()
+        totalPieces.formatPrice()
     }
     Card(
         onClick = onClick,
@@ -1509,7 +1509,7 @@ private fun SalesHistoryNavButton(
                     )
                     Text(
                         text = if (salesCount > 0) {
-                            "$salesCount tickets emitidos ($activeSalesCount activos)"
+                            "${formatWithThousandsSeparator(salesCount.toString())} tickets emitidos (${formatWithThousandsSeparator(activeSalesCount.toString())} activos)"
                         } else {
                             stringResource(Res.string.empty_recent_sales_history)
                         },
