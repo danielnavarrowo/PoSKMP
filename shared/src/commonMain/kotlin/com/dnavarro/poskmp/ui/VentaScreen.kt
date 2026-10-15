@@ -72,6 +72,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -285,8 +286,8 @@ fun VentaScreen(
     var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
     var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(cameraScannerFeedback) {
-        if (cameraScannerFeedback != null) {
+    if (cameraScannerFeedback != null) {
+        LaunchedEffect(cameraScannerFeedback) {
             delay(2500.milliseconds)
             cameraScannerFeedback = null
         }
@@ -320,8 +321,8 @@ fun VentaScreen(
     var userCatalogWidthDp by remember { mutableStateOf<Dp?>(null) }
     var isCartItemQuantityFocused by remember { mutableStateOf(false) }
 
-    LaunchedEffect(cartItems.isEmpty()) {
-        if (cartItems.isEmpty()) {
+    if (cartItems.isEmpty() && isCartItemQuantityFocused) {
+        SideEffect {
             isCartItemQuantityFocused = false
         }
     }
@@ -344,16 +345,16 @@ fun VentaScreen(
 
     var showBarcodeNotFoundQuery by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(showBarcodeNotFoundQuery) {
-        if (showBarcodeNotFoundQuery != null) {
+    if (showBarcodeNotFoundQuery != null) {
+        LaunchedEffect(showBarcodeNotFoundQuery) {
             SoundManager.playErrorSound()
             delay(3000.milliseconds)
             showBarcodeNotFoundQuery = null
         }
     }
 
-    LaunchedEffect(showWeightDialogForProduct) {
-        if (showWeightDialogForProduct != null) {
+    if (showWeightDialogForProduct != null) {
+        LaunchedEffect(showWeightDialogForProduct) {
             SoundManager.playInfoSound()
         }
     }

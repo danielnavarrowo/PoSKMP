@@ -616,10 +616,13 @@ fun SyncSettingsSection(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Last Sync Timestamp
-                    val lastSyncText = if (lastSyncTimestamp > 0L) {
-                        java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", LocalLocale.current.platformLocale)
-                            .format(java.util.Date(lastSyncTimestamp))
-                    } else null
+                    val locale = LocalLocale.current.platformLocale
+                    val lastSyncText = remember(lastSyncTimestamp, locale) {
+                        if (lastSyncTimestamp > 0L) {
+                            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", locale)
+                                .format(java.util.Date(lastSyncTimestamp))
+                        } else null
+                    }
 
                     Text(
                         text = if (lastSyncText != null) {

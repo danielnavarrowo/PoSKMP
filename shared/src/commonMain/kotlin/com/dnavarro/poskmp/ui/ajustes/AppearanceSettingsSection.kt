@@ -6,9 +6,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonGroupDefaults
@@ -46,11 +44,10 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import kotlin.math.abs
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,6 +112,7 @@ import poskmp.shared.generated.resources.seed_color_subtitle
 import poskmp.shared.generated.resources.seed_color_title
 import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.undo
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 data class PresetColorItem(
@@ -392,7 +390,7 @@ fun AppearanceSettingsSection(
                         steps = 11,
                         trackRange = 0.75f..1.35f
                     )
-                    LaunchedEffect(appScale) {
+                    SideEffect {
                         if (abs(scaleSliderState.value - appScale) > 0.001f) {
                             scaleSliderState.value = appScale
                         }

@@ -69,6 +69,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -308,42 +309,42 @@ fun VentasScreen(
     onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    LaunchedEffect(state.shiftActionSuccess) {
-        if (state.shiftActionSuccess != null) {
+    val currentOnClearShiftActionResult by rememberUpdatedState(onClearShiftActionResult)
+    if (state.shiftActionSuccess != null) {
+        LaunchedEffect(state.shiftActionSuccess) {
             delay(3000.milliseconds)
-            onClearShiftActionResult()
+            currentOnClearShiftActionResult()
         }
     }
 
     val desktopFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) {
-        if (!isAndroid()) {
+    if (!isAndroid()) {
+        LaunchedEffect(Unit) {
             try {
                 desktopFocusRequester.requestFocus()
             } catch (_: Exception) {}
         }
-    }
 
-    LaunchedEffect(
-        state.showInflowDialog,
-        state.showOutflowDialog,
-        state.showCloseShiftDialog,
-        state.showDateRangePicker,
-        state.selectedSaleDetails,
-        state.saleToCancel
-    ) {
-        if (!state.showInflowDialog &&
-            !state.showOutflowDialog &&
-            !state.showCloseShiftDialog &&
-            !state.showDateRangePicker &&
-            state.selectedSaleDetails == null &&
-            state.saleToCancel == null &&
-            !isAndroid()
+        LaunchedEffect(
+            state.showInflowDialog,
+            state.showOutflowDialog,
+            state.showCloseShiftDialog,
+            state.showDateRangePicker,
+            state.selectedSaleDetails,
+            state.saleToCancel
         ) {
-            try {
-                desktopFocusRequester.requestFocus()
-            } catch (_: Exception) {}
+            if (!state.showInflowDialog &&
+                !state.showOutflowDialog &&
+                !state.showCloseShiftDialog &&
+                !state.showDateRangePicker &&
+                state.selectedSaleDetails == null &&
+                state.saleToCancel == null
+            ) {
+                try {
+                    desktopFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
         }
     }
 
@@ -1168,20 +1169,20 @@ private fun convertUtcDatesToLocalMillis(utcStartMillis: Long, utcEndMillis: Lon
     return Pair(startMillis, endMillis)
 }
 
+private val DATE_DISPLAY_FORMATTER = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
 private fun formatDateDisplayUtc(utcEpochMillis: Long): String {
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
     return java.time.Instant.ofEpochMilli(utcEpochMillis)
         .atZone(java.time.ZoneOffset.UTC)
         .toLocalDate()
-        .format(formatter)
+        .format(DATE_DISPLAY_FORMATTER)
 }
 
 private fun formatDateDisplay(epochMillis: Long): String {
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
     return java.time.Instant.ofEpochMilli(epochMillis)
         .atZone(java.time.ZoneId.systemDefault())
         .toLocalDate()
-        .format(formatter)
+        .format(DATE_DISPLAY_FORMATTER)
 }
 
 private fun formatShiftDisplay(shift: CashierShift): String {

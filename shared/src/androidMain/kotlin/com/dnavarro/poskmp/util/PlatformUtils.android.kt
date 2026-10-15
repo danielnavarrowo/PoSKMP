@@ -19,6 +19,7 @@ import android.view.Window
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.findViewTreeOnBackPressedDispatcherOwner
+import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +34,7 @@ actual fun generateUUID(): String = UUID.randomUUID().toString()
 @Suppress("SameReturnValue")
 actual fun isAndroid(): Boolean = true
 
+@ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
 actual fun isDynamicColorSupported(): Boolean =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 

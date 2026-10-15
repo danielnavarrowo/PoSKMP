@@ -63,14 +63,15 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -469,9 +470,13 @@ fun App(
         DarkModeConfig.DARK -> true
     }
 
-    DisposableEffect(darkTheme) {
-        onDarkThemeChanged?.invoke(darkTheme)
-        onDispose {}
+    val currentOnDarkThemeChanged by rememberUpdatedState(onDarkThemeChanged)
+    var lastReportedDarkTheme by remember { mutableStateOf<Boolean?>(null) }
+    SideEffect {
+        if (lastReportedDarkTheme != darkTheme) {
+            lastReportedDarkTheme = darkTheme
+            currentOnDarkThemeChanged?.invoke(darkTheme)
+        }
     }
 
     val currentDensity = LocalDensity.current

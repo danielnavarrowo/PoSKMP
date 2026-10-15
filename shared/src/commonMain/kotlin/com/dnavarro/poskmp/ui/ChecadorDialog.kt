@@ -39,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -74,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
@@ -123,8 +123,8 @@ fun ChecadorContent(
     modifier: Modifier = Modifier
 ) {
     val settingsRepository = koinInject<SettingsRepository>()
-    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsState(initial = false)
-    val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsState(initial = false)
+    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsStateWithLifecycle(initialValue = false)
+    val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsStateWithLifecycle(initialValue = false)
     val effectivePrioritizeDelivery = prioritizeDeliveryPrice ?: settingsPrioritizeDelivery
 
     val barcodeState = rememberTextFieldState()
@@ -671,7 +671,7 @@ fun ChecadorScreen(
     modifier: Modifier = Modifier
 ) {
     val settingsRepository = koinInject<SettingsRepository>()
-    val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsState(initial = false)
+    val beepOnBarcodeScan by settingsRepository.beepOnBarcodeScanFlow.collectAsStateWithLifecycle(initialValue = false)
 
     val barcodeState = rememberTextFieldState()
     var searchedProduct by remember { mutableStateOf<Products?>(null) }

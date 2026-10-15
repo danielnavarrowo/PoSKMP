@@ -61,7 +61,6 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +86,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -229,7 +229,7 @@ fun CameraPreviewScreen(
     var camera by remember { mutableStateOf<Camera?>(null) }
     var lastScannedBarcode by remember { mutableStateOf<String?>(null) }
     val settingsRepository = koinInject<SettingsRepository>()
-    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsState(initial = false)
+    val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsStateWithLifecycle(initialValue = false)
     val effectivePrioritizeDelivery = prioritizeDeliveryPrice || settingsPrioritizeDelivery
 
     LaunchedEffect(lastScannedProduct) {

@@ -42,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,9 +123,10 @@ fun OpenShiftView(
         }
     }
 
-    LaunchedEffect(pinState.text.toString(), initialCashText, selectedCashier) {
-        if (errorMessage != null) {
-            onClearError()
+    val currentOnClearError by rememberUpdatedState(onClearError)
+    if (errorMessage != null) {
+        LaunchedEffect(pinState.text, initialCashText, selectedCashier) {
+            currentOnClearError()
         }
     }
 

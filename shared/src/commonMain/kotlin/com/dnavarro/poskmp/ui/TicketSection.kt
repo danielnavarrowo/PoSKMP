@@ -52,6 +52,7 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -1026,14 +1027,16 @@ private fun ItemQuantityControls(
             )
         }
 
-        val quantityState = remember(item.quantity) {
+        val quantityState = remember(item.product.id) {
             TextFieldState(item.quantity.formatQuantity(item.product.por_peso == 1L))
         }
 
-        LaunchedEffect(item.quantity) {
-            val formatted = item.quantity.formatQuantity(item.product.por_peso == 1L)
-            if (quantityState.text.toString() != formatted) {
-                quantityState.setTextAndPlaceCursorAtEnd(formatted)
+        val formattedQuantity = remember(item.quantity, item.product.por_peso) {
+            item.quantity.formatQuantity(item.product.por_peso == 1L)
+        }
+        SideEffect {
+            if (quantityState.text.toString() != formattedQuantity) {
+                quantityState.setTextAndPlaceCursorAtEnd(formattedQuantity)
             }
         }
 

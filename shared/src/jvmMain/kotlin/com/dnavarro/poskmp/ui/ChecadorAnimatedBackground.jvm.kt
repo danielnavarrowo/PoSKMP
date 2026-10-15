@@ -1,6 +1,6 @@
 package com.dnavarro.poskmp.ui
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,8 +11,9 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asComposeShader
 import com.dnavarro.poskmp.data.SettingsRepository
 import kotlinx.coroutines.delay
@@ -399,16 +400,25 @@ actual fun ChecadorAnimatedBackground(
         RuntimeShaderBuilder(effect)
     }
 
-    Canvas(modifier = modifier.fillMaxSize()) {
-        if (size.width > 0f && size.height > 0f) {
-            builder.uniform("uResolution", size.width, size.height)
-            builder.uniform("uTime", time)
-            builder.uniform("uColor1", currentTheme.color1.red, currentTheme.color1.green, currentTheme.color1.blue)
-            builder.uniform("uColor2", currentTheme.color2.red, currentTheme.color2.green, currentTheme.color2.blue)
-            builder.uniform("uColor3", currentTheme.color3.red, currentTheme.color3.green, currentTheme.color3.blue)
-            builder.uniform("uColor4", currentTheme.color4.red, currentTheme.color4.green, currentTheme.color4.blue)
-            val shader = builder.makeShader().asComposeShader()
-            drawRect(brush = ShaderBrush(shader))
-        }
-    }
+    val paint = remember { Paint() }
+
+    Spacer(
+        modifier = modifier
+            .fillMaxSize()
+            .drawWithCache {
+                builder.uniform("uResolution", size.width, size.height)
+                builder.uniform("uColor1", currentTheme.color1.red, currentTheme.color1.green, currentTheme.color1.blue)
+                builder.uniform("uColor2", currentTheme.color2.red, currentTheme.color2.green, currentTheme.color2.blue)
+                builder.uniform("uColor3", currentTheme.color3.red, currentTheme.color3.green, currentTheme.color3.blue)
+                builder.uniform("uColor4", currentTheme.color4.red, currentTheme.color4.green, currentTheme.color4.blue)
+
+                onDrawBehind {
+                    if (size.width > 0f && size.height > 0f) {
+                        builder.uniform("uTime", time)
+                        paint.shader = builder.makeShader().asComposeShader()
+                        drawContext.canvas.drawRect(0f, 0f, size.width, size.height, paint)
+                    }
+                }
+            }
+    )
 }

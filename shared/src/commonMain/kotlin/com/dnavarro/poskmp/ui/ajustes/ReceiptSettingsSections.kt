@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import kotlin.math.abs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,13 +89,9 @@ fun StoreInfoSettingsSection(
     var storeAddressFocused by remember { mutableStateOf(false) }
     var storePhoneFocused by remember { mutableStateOf(false) }
 
-    LaunchedEffect(settings.storeName) {
+    SideEffect {
         if (!storeNameFocused && settings.storeName != storeName) storeName = settings.storeName
-    }
-    LaunchedEffect(settings.storeAddress) {
         if (!storeAddressFocused && settings.storeAddress != storeAddress) storeAddress = settings.storeAddress
-    }
-    LaunchedEffect(settings.storePhone) {
         if (!storePhoneFocused && settings.storePhone != storePhone) storePhone = settings.storePhone
     }
 
@@ -215,10 +212,8 @@ fun TransferSettingsSection(
     var clabeFocused by remember { mutableStateOf(false) }
     var beneficiaryFocused by remember { mutableStateOf(false) }
 
-    LaunchedEffect(settings.transferClabe) {
+    SideEffect {
         if (!clabeFocused && settings.transferClabe != transferClabe) transferClabe = settings.transferClabe
-    }
-    LaunchedEffect(settings.transferBeneficiary) {
         if (!beneficiaryFocused && settings.transferBeneficiary != transferBeneficiary) transferBeneficiary = settings.transferBeneficiary
     }
 
@@ -433,7 +428,7 @@ fun PrinterSettingsSection(
                     steps = 49,
                     trackRange = 55f..105f
                 )
-                LaunchedEffect(settings.paperWidthMm) {
+                SideEffect {
                     val target = settings.paperWidthMm.toFloat()
                     if (abs(paperWidthSliderState.value - target) > 0.1f) {
                         paperWidthSliderState.value = target
@@ -474,7 +469,7 @@ fun PrinterSettingsSection(
                     steps = 23,
                     trackRange = 8f..32f
                 )
-                LaunchedEffect(settings.fontSize) {
+                SideEffect {
                     val target = settings.fontSize.toFloat()
                     if (abs(fontSizeSliderState.value - target) > 0.1f) {
                         fontSizeSliderState.value = target
@@ -515,7 +510,7 @@ fun PrinterSettingsSection(
                     steps = 9,
                     trackRange = 0f..10f
                 )
-                LaunchedEffect(settings.feedLines) {
+                SideEffect {
                     val target = settings.feedLines.toFloat()
                     if (abs(feedLinesSliderState.value - target) > 0.1f) {
                         feedLinesSliderState.value = target

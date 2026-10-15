@@ -30,6 +30,7 @@ import androidx.compose.material3.toShape
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -257,7 +258,7 @@ fun ProductTableRow(
                 }.coerceAtLeast(0.01f)
                 when (col) {
                     ProductTableColumn.CODIGO -> {
-                        val codesDisplay = product.formatBarcodesForDisplay()
+                        val codesDisplay = remember(product.codigos) { product.formatBarcodesForDisplay() }
                         Text(
                             text = codesDisplay,
                             modifier = Modifier.weight(weight),
@@ -574,56 +575,62 @@ fun ProductSimpleCard(
                     }
                 }
 
-                val hasDeliveryPrice = product.precio_delivery > 0.0
-                val isDeliveryHighlighted = prioritizeDeliveryPrice && hasDeliveryPrice
-                val isRetailHighlighted = !isDeliveryHighlighted
+                val costLabel = stringResource(Res.string.cost_label)
+                val wholesaleLabel = stringResource(Res.string.wholesale)
+                val retailLabel = stringResource(Res.string.header_retail_price)
+                val deliveryLabel = stringResource(Res.string.header_delivery_price)
 
-                val priceItems = buildList {
-                    if (product.costo > 0.0) {
-                        add(
-                            ProductPriceItem(
-                                label = stringResource(Res.string.cost_label),
-                                price = "$${product.costo.toString().formatPrice()}",
-                                isHighlighted = false
+                val priceItems = remember(product, prioritizeDeliveryPrice, costLabel, wholesaleLabel, retailLabel, deliveryLabel) {
+                    val hasDeliveryPrice = product.precio_delivery > 0.0
+                    val isDeliveryHighlighted = prioritizeDeliveryPrice && hasDeliveryPrice
+                    val isRetailHighlighted = !isDeliveryHighlighted
+                    buildList {
+                        if (product.costo > 0.0) {
+                            add(
+                                ProductPriceItem(
+                                    label = costLabel,
+                                    price = "$${product.costo.toString().formatPrice()}",
+                                    isHighlighted = false
+                                )
                             )
-                        )
-                    }
-                    if (product.precio_mayoreo > 0.0) {
-                        add(
-                            ProductPriceItem(
-                                label = stringResource(Res.string.wholesale),
-                                price = "$${product.precio_mayoreo.toString().formatPrice()}",
-                                isHighlighted = false
-                            )
-                        )
-                    }
-                    if (product.precio > 0.0) {
-                        val priceText = if (product.por_peso == 1L) {
-                            "$${product.precio.toString().formatPrice()} / Kg"
-                        } else {
-                            "$${product.precio.toString().formatPrice()}"
                         }
-                        add(
-                            ProductPriceItem(
-                                label = stringResource(Res.string.header_retail_price),
-                                price = priceText,
-                                isHighlighted = isRetailHighlighted
+                        if (product.precio_mayoreo > 0.0) {
+                            add(
+                                ProductPriceItem(
+                                    label = wholesaleLabel,
+                                    price = "$${product.precio_mayoreo.toString().formatPrice()}",
+                                    isHighlighted = false
+                                )
                             )
-                        )
-                    }
-                    if (hasDeliveryPrice) {
-                        val priceText = if (product.por_peso == 1L) {
-                            "$${product.precio_delivery.toString().formatPrice()} / Kg"
-                        } else {
-                            "$${product.precio_delivery.toString().formatPrice()}"
                         }
-                        add(
-                            ProductPriceItem(
-                                label = stringResource(Res.string.header_delivery_price),
-                                price = priceText,
-                                isHighlighted = isDeliveryHighlighted
+                        if (product.precio > 0.0) {
+                            val priceText = if (product.por_peso == 1L) {
+                                "$${product.precio.toString().formatPrice()} / Kg"
+                            } else {
+                                "$${product.precio.toString().formatPrice()}"
+                            }
+                            add(
+                                ProductPriceItem(
+                                    label = retailLabel,
+                                    price = priceText,
+                                    isHighlighted = isRetailHighlighted
+                                )
                             )
-                        )
+                        }
+                        if (hasDeliveryPrice) {
+                            val priceText = if (product.por_peso == 1L) {
+                                "$${product.precio_delivery.toString().formatPrice()} / Kg"
+                            } else {
+                                "$${product.precio_delivery.toString().formatPrice()}"
+                            }
+                            add(
+                                ProductPriceItem(
+                                    label = deliveryLabel,
+                                    price = priceText,
+                                    isHighlighted = isDeliveryHighlighted
+                                )
+                            )
+                        }
                     }
                 }
 

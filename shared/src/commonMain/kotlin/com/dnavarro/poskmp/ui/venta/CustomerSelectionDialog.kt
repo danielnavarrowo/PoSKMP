@@ -115,12 +115,16 @@ fun CustomerSelectionDialog(
 
     LaunchedEffect(searchQuery) {
         highlightedIndex = 0
-        listState.resetScroll(coroutineScope)
+        try {
+            listState.scrollToItem(0)
+        } catch (_: Exception) {}
     }
 
     LaunchedEffect(customers) {
         if (highlightedIndex <= 0) {
-            listState.resetScroll(coroutineScope)
+            try {
+                listState.scrollToItem(0)
+            } catch (_: Exception) {}
         }
     }
 
