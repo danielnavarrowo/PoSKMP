@@ -468,7 +468,8 @@ fun ProductosScreen(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val isCompact = isCompactWidth(maxWidth)
+        val screenMaxWidth = maxWidth
+        val isCompact = isCompactWidth(screenMaxWidth)
         val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
 
         Scaffold(
@@ -801,13 +802,11 @@ fun ProductosScreen(
                     .fillMaxSize()
                     .padding(top = innerPadding.calculateTopPadding())
             ) {
-                BoxWithConstraints(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    val isCompact = isCompactWidth(maxWidth)
-                    val availableWidth = maxWidth
                     val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
                     val selectAllState = when {
                         sortedProducts.isEmpty() -> ToggleableState.Off
@@ -1087,7 +1086,7 @@ fun ProductosScreen(
                                             mutableStateOf(activeColumns.map { (it.defaultWeight / totalDefaultWeight) * 0.95f })
                                         }
                                         val tableWidthPx =
-                                            with(LocalDensity.current) { availableWidth.toPx() }
+                                            with(LocalDensity.current) { screenMaxWidth.toPx() }
                                         val resizeColumn = { index: Int, dragAmount: Float ->
                                             if (index in 0 until activeColumns.lastIndex) {
                                                 val weightDelta = dragAmount / tableWidthPx

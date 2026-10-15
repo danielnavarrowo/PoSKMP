@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -1873,19 +1874,18 @@ fun ProductFormDialog(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    BoxWithConstraints(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f, fill = false)
                     ) {
-                        val isWide = maxWidth >= 720.dp
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FormFields(isWide = isWide)
+                            FormFields(isWide = false)
                         }
                     }
 
@@ -1935,15 +1935,14 @@ fun ProductFormDialog(
                     )
                 },
                 text = {
-                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                        val isWide = maxWidth >= 720.dp
+                    Box(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FormFields(isWide = isWide)
+                            FormFields(isWide = isWideScreen)
                         }
                     }
                 },

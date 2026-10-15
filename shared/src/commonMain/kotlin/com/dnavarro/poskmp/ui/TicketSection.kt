@@ -200,12 +200,18 @@ fun TicketSection(
         previousSize = cartItems.size
     }
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .widthIn(min = 280.dp)
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
     ) {
+        val isNarrow = maxWidth < 380.dp
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
+        ) {
         // Section Header
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -536,6 +542,7 @@ fun TicketSection(
                                 onUpdateQuantity = onUpdateQuantity,
                                 onSetQuantity = onSetQuantity,
                                 onRemoveItem = onRemoveItem,
+                                isNarrow = isNarrow,
                                 onQuantityFocusChanged = { focused ->
                                     if (focused) {
                                         focusedQuantityItemIndex = index
@@ -560,6 +567,7 @@ fun TicketSection(
                             onUpdateQuantity = onUpdateQuantity,
                             onSetQuantity = onSetQuantity,
                             onRemoveItem = onRemoveItem,
+                            isNarrow = isNarrow,
                             onQuantityFocusChanged = { focused ->
                                 if (focused) {
                                     focusedQuantityItemIndex = index
@@ -772,6 +780,7 @@ fun TicketSection(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -787,12 +796,13 @@ private fun TicketItemRow(
     onUpdateQuantity: (CartItem, Double) -> Unit,
     onSetQuantity: (CartItem, Double) -> Unit,
     onRemoveItem: (CartItem) -> Unit,
+    isNarrow: Boolean = false,
     onQuantityFocusChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var isTextFieldFocused by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
@@ -871,8 +881,6 @@ private fun TicketItemRow(
             )
             .padding(12.dp)
     ) {
-        val isNarrow = maxWidth < 380.dp
-
         if (isNarrow) {
             // NARROW VIEW (< 380dp): 2-Row Layout
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1071,32 +1079,32 @@ private fun ItemQuantityControls(
                 )
                 .padding(vertical = 2.dp)
                 .onPreviewKeyEvent { keyEvent ->
-                    if (keyEvent.type == KeyEventType.KeyDown) {
-                        when (keyEvent.key) {
-                            Key.Enter, Key.NumPadEnter -> {
-                                val parsed = quantityState.text.toString().toDoubleOrNull()
-                                if (parsed != null && parsed > 0.0) {
-                                    onSetQuantity(item, parsed)
-                                } else if (parsed != null && parsed <= 0.0) {
-                                    onRemoveItem(item)
-                                } else {
-                                    quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
-                                }
-                                if (!isAndroid()) {
-                                    focusRequester.requestFocus()
-                                }
-                                true
-                            }
-                            Key.Escape -> {
+                    keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                        Key.Enter, Key.NumPadEnter -> {
+                            val parsed = quantityState.text.toString().toDoubleOrNull()
+                            if (parsed != null && parsed > 0.0) {
+                                onSetQuantity(item, parsed)
+                            } else if (parsed != null && parsed <= 0.0) {
+                                onRemoveItem(item)
+                            } else {
                                 quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
-                                if (!isAndroid()) {
-                                    focusRequester.requestFocus()
-                                }
-                                true
                             }
-                            else -> false
+                            if (!isAndroid()) {
+                                focusRequester.requestFocus()
+                            }
+                            true
                         }
-                    } else false
+
+                        Key.Escape -> {
+                            quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
+                            if (!isAndroid()) {
+                                focusRequester.requestFocus()
+                            }
+                            true
+                        }
+
+                        else -> false
+                    }
                 }
                 .onFocusChanged { focusState ->
                     onFocusChanged(focusState.isFocused)
