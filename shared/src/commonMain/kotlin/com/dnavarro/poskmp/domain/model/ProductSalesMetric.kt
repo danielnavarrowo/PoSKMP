@@ -5,5 +5,6 @@ data class ProductSalesMetric(
     val productNombre: String,
     val totalUnidades: Double,
     val totalRecaudado: Double,
-    val gananciaGenerada: Double
+    val gananciaGenerada: Double,
+    val codigos: String? = null
 )

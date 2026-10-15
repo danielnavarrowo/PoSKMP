@@ -169,7 +169,8 @@ class SqlDelightSaleDataSource(
                 productNombre = row.product_nombre,
                 totalUnidades = row.total_unidades ?: 0.0,
                 totalRecaudado = row.total_recaudado ?: 0.0,
-                gananciaGenerada = row.ganancia_generada ?: 0.0
+                gananciaGenerada = row.ganancia_generada ?: 0.0,
+                codigos = row.codigos
             )
         }
     }
@@ -191,7 +192,8 @@ class SqlDelightSaleDataSource(
                 productNombre = row.product_nombre,
                 totalUnidades = row.total_unidades ?: 0.0,
                 totalRecaudado = row.total_recaudado ?: 0.0,
-                gananciaGenerada = row.ganancia_generada ?: 0.0
+                gananciaGenerada = row.ganancia_generada ?: 0.0,
+                codigos = row.codigos
             )
         }
     }
@@ -213,7 +215,8 @@ class SqlDelightSaleDataSource(
                 productNombre = row.product_nombre,
                 totalUnidades = row.total_unidades ?: 0.0,
                 totalRecaudado = row.total_recaudado ?: 0.0,
-                gananciaGenerada = row.ganancia_generada ?: 0.0
+                gananciaGenerada = row.ganancia_generada ?: 0.0,
+                codigos = row.codigos
             )
         }
     }

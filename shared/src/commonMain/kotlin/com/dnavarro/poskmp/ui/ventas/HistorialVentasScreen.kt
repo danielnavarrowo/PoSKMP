@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -225,16 +226,26 @@ fun HistorialVentasScreen(
                             state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            items(
+                            itemsIndexed(
                                 filteredSales,
-                                key = { it.id },
-                                contentType = { "sale_ticket_card" }
-                            ) { sale ->
+                                key = { _, sale -> sale.id },
+                                contentType = { _, _ -> "sale_ticket_card" }
+                            ) { index, sale ->
+                                val shape = if (filteredSales.size == 1) {
+                                    ShapeDefaults.cardShape
+                                } else if (index == 0) {
+                                    ShapeDefaults.topListItemShape
+                                } else if (index == filteredSales.lastIndex) {
+                                    ShapeDefaults.bottomListItemShape
+                                } else {
+                                    ShapeDefaults.middleListItemShape
+                                }
                                 SaleTicketCard(
                                     sale = sale,
-                                    onClick = { onSelectSale(sale) }
+                                    onClick = { onSelectSale(sale) },
+                                    shape = shape
                                 )
                             }
                         }
@@ -257,7 +268,8 @@ fun HistorialVentasScreen(
 fun SaleTicketCard(
     sale: Sale,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shape: Shape = ShapeDefaults.cardShape
 ) {
     val isCancelled = sale.isCancelled
     Card(
@@ -267,7 +279,7 @@ fun SaleTicketCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isCancelled) MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = ShapeDefaults.cardShape
+        shape = shape
     ) {
         Row(
             modifier = Modifier
