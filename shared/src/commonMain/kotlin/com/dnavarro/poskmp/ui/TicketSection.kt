@@ -55,7 +55,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -173,7 +172,7 @@ fun TicketSection(
         }
     }
 
-    val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
+    val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
     var focusedQuantityItemIndex by remember { mutableStateOf<Int?>(null) }
     var previousSize by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()

@@ -285,7 +285,7 @@ fun CatalogSection(
         }
     }
 
-    val sortedProducts = remember(productsList, sortField, sortOrder) {
+    val displayedProducts = remember(productsList, sortField, sortOrder) {
         productsList.sortedWith { p1, p2 ->
             val f1 = p1.es_favorito == 1L
             val f2 = p2.es_favorito == 1L
@@ -317,14 +317,10 @@ fun CatalogSection(
             }
 
             if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
-        }
+        }.take(50)
     }
 
-    val displayedProducts = remember(sortedProducts) {
-        sortedProducts.take(50)
-    }
-
-    LaunchedEffect(displayedProducts) {
+    LaunchedEffect(productsList, sortField, sortOrder) {
         if (selectedCatalogIndex <= 0) {
             resetScrollPosition()
         }

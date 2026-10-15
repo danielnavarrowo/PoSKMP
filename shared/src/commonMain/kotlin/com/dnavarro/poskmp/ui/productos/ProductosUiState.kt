@@ -89,82 +89,90 @@ data class ProductosUiState(
     val googleSearchApiKey: String = "",
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
-    val canEditProducts: Boolean = true
+    val canEditProducts: Boolean = true,
+    val sortedProducts: List<Products> = emptyList()
 ) {
     val hasActiveFilters: Boolean
         get() = selectedCategory != null || favoriteFilter != FavoriteFilterOption.ALL || statusFilter != StatusFilterOption.ALL
+}
 
-    val sortedProducts: List<Products>
-        get() {
-            return rawProducts
-                .filter { product ->
-                    val matchesCategory = when (selectedCategory) {
-                        null -> true
-                        "NO_CATEGORY" -> product.categoria.isNullOrBlank()
-                        else -> product.categoria == selectedCategory
-                    }
-                    val matchesFavorite = when (favoriteFilter) {
-                        FavoriteFilterOption.ALL -> true
-                        FavoriteFilterOption.ONLY_FAVORITES -> product.es_favorito == 1L
-                        FavoriteFilterOption.ONLY_NON_FAVORITES -> product.es_favorito == 0L
-                    }
-                    val matchesStatus = when (statusFilter) {
-                        StatusFilterOption.ALL -> true
-                        StatusFilterOption.ONLY_ACTIVE -> product.activo == 1L
-                        StatusFilterOption.ONLY_INACTIVE -> product.activo == 0L
-                    }
-                    matchesCategory && matchesFavorite && matchesStatus
+fun computeSortedProducts(
+    rawProducts: List<Products>,
+    selectedCategory: String?,
+    favoriteFilter: FavoriteFilterOption,
+    statusFilter: StatusFilterOption,
+    sortField: ProductSortField,
+    sortOrder: ProductSortOrder,
+    salesStats: Map<String, ProductSalesStats>
+): List<Products> {
+    return rawProducts
+        .filter { product ->
+            val matchesCategory = when (selectedCategory) {
+                null -> true
+                "NO_CATEGORY" -> product.categoria.isNullOrBlank()
+                else -> product.categoria == selectedCategory
+            }
+            val matchesFavorite = when (favoriteFilter) {
+                FavoriteFilterOption.ALL -> true
+                FavoriteFilterOption.ONLY_FAVORITES -> product.es_favorito == 1L
+                FavoriteFilterOption.ONLY_NON_FAVORITES -> product.es_favorito == 0L
+            }
+            val matchesStatus = when (statusFilter) {
+                StatusFilterOption.ALL -> true
+                StatusFilterOption.ONLY_ACTIVE -> product.activo == 1L
+                StatusFilterOption.ONLY_INACTIVE -> product.activo == 0L
+            }
+            matchesCategory && matchesFavorite && matchesStatus
+        }
+        .sortedWith { p1, p2 ->
+            val primaryComp = when (sortField) {
+                ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
+                ProductSortField.CODIGO -> {
+                    val c1 = p1.formatBarcodesForDisplay(emptyFallback = "")
+                    val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
+                    c1.lowercase().compareTo(c2.lowercase())
                 }
-                .sortedWith { p1, p2 ->
-                    val primaryComp = when (sortField) {
-                        ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
-                        ProductSortField.CODIGO -> {
-                            val c1 = p1.formatBarcodesForDisplay(emptyFallback = "")
-                            val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
-                            c1.lowercase().compareTo(c2.lowercase())
-                        }
-                        ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
-                        ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
-                        ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
-                        ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
-                        ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
-                        ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
-                        ProductSortField.MARGEN_VENTA -> {
-                            val m1 = if (p1.costo > 0.0 && p1.precio > 0.0) ((p1.precio - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
-                            val m2 = if (p2.costo > 0.0 && p2.precio > 0.0) ((p2.precio - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
-                            m1.compareTo(m2)
-                        }
-                        ProductSortField.MARGEN_MAYOREO -> {
-                            val m1 = if (p1.costo > 0.0 && p1.precio_mayoreo > 0.0) ((p1.precio_mayoreo - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
-                            val m2 = if (p2.costo > 0.0 && p2.precio_mayoreo > 0.0) ((p2.precio_mayoreo - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
-                            m1.compareTo(m2)
-                        }
-                        ProductSortField.MARGEN_DOMICILIO -> {
-                            val m1 = if (p1.costo > 0.0 && p1.precio_delivery > 0.0) ((p1.precio_delivery - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
-                            val m2 = if (p2.costo > 0.0 && p2.precio_delivery > 0.0) ((p2.precio_delivery - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
-                            m1.compareTo(m2)
-                        }
-                        ProductSortField.VENTAS_TOTALES -> {
-                            val v1 = salesStats[p1.id]?.totalVentas ?: 0.0
-                            val v2 = salesStats[p2.id]?.totalVentas ?: 0.0
-                            v1.compareTo(v2)
-                        }
-                        ProductSortField.ULTIMA_VENTA -> {
-                            val d1 = salesStats[p1.id]?.ultimaVenta ?: 0L
-                            val d2 = salesStats[p2.id]?.ultimaVenta ?: 0L
-                            d1.compareTo(d2)
-                        }
-                        ProductSortField.FECHA_CREACION -> {
-                            val c1 = if (p1.created_at > 0L) p1.created_at else p1.updated_at
-                            val c2 = if (p2.created_at > 0L) p2.created_at else p2.updated_at
-                            c1.compareTo(c2)
-                        }
-                        ProductSortField.FECHA_ACTUALIZACION -> {
-                            p1.updated_at.compareTo(p2.updated_at)
-                        }
-                    }
+                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
+                ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
+                ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
+                ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
+                ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
+                ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
+                ProductSortField.MARGEN_VENTA -> {
+                    val m1 = if (p1.costo > 0.0 && p1.precio > 0.0) ((p1.precio - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                    val m2 = if (p2.costo > 0.0 && p2.precio > 0.0) ((p2.precio - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                    m1.compareTo(m2)
+                }
+                ProductSortField.MARGEN_MAYOREO -> {
+                    val m1 = if (p1.costo > 0.0 && p1.precio_mayoreo > 0.0) ((p1.precio_mayoreo - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                    val m2 = if (p2.costo > 0.0 && p2.precio_mayoreo > 0.0) ((p2.precio_mayoreo - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                    m1.compareTo(m2)
+                }
+                ProductSortField.MARGEN_DOMICILIO -> {
+                    val m1 = if (p1.costo > 0.0 && p1.precio_delivery > 0.0) ((p1.precio_delivery - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                    val m2 = if (p2.costo > 0.0 && p2.precio_delivery > 0.0) ((p2.precio_delivery - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                    m1.compareTo(m2)
+                }
+                ProductSortField.VENTAS_TOTALES -> {
+                    val v1 = salesStats[p1.id]?.totalVentas ?: 0.0
+                    val v2 = salesStats[p2.id]?.totalVentas ?: 0.0
+                    v1.compareTo(v2)
+                }
+                ProductSortField.ULTIMA_VENTA -> {
+                    val d1 = salesStats[p1.id]?.ultimaVenta ?: 0L
+                    val d2 = salesStats[p2.id]?.ultimaVenta ?: 0L
+                    d1.compareTo(d2)
+                }
+                ProductSortField.FECHA_CREACION -> {
+                    val c1 = if (p1.created_at > 0L) p1.created_at else p1.updated_at
+                    val c2 = if (p2.created_at > 0L) p2.created_at else p2.updated_at
+                    c1.compareTo(c2)
+                }
+                ProductSortField.FECHA_ACTUALIZACION -> {
+                    p1.updated_at.compareTo(p2.updated_at)
+                }
+            }
 
-                    if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
-                }
+            if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
         }
 }

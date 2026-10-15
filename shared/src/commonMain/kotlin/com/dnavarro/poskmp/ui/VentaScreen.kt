@@ -205,7 +205,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 data class CartItem(
     val product: Products,
-    var quantity: Double,
+    val quantity: Double,
     val originalPrice: Double = product.precio,
     val isManualWholesale: Boolean? = null
 )

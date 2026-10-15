@@ -141,6 +141,54 @@ class ProductosViewModel(
         }
     }
 
+    private var lastRawProducts: List<Products>? = null
+    private var lastCategory: String? = null
+    private var lastFavorite: FavoriteFilterOption? = null
+    private var lastStatus: StatusFilterOption? = null
+    private var lastSortField: ProductSortField? = null
+    private var lastSortOrder: ProductSortOrder? = null
+    private var lastSalesStats: Map<String, ProductSalesStats>? = null
+    private var cachedSortedProducts: List<Products> = emptyList()
+
+    private fun getOrComputeSortedProducts(
+        products: List<Products>,
+        display: DisplayState,
+        salesStats: Map<String, ProductSalesStats>
+    ): List<Products> {
+        val sameInputs = products === lastRawProducts &&
+            display.selectedCategory == lastCategory &&
+            display.favoriteFilter == lastFavorite &&
+            display.statusFilter == lastStatus &&
+            display.sortField == lastSortField &&
+            display.sortOrder == lastSortOrder &&
+            salesStats === lastSalesStats
+
+        if (sameInputs) {
+            return cachedSortedProducts
+        }
+
+        val computed = computeSortedProducts(
+            rawProducts = products,
+            selectedCategory = display.selectedCategory,
+            favoriteFilter = display.favoriteFilter,
+            statusFilter = display.statusFilter,
+            sortField = display.sortField,
+            sortOrder = display.sortOrder,
+            salesStats = salesStats
+        )
+
+        lastRawProducts = products
+        lastCategory = display.selectedCategory
+        lastFavorite = display.favoriteFilter
+        lastStatus = display.statusFilter
+        lastSortField = display.sortField
+        lastSortOrder = display.sortOrder
+        lastSalesStats = salesStats
+        cachedSortedProducts = computed
+
+        return computed
+    }
+
     val uiState: StateFlow<ProductosUiState> = combine(
         combine(
             _searchQuery,
@@ -198,6 +246,7 @@ class ProductosViewModel(
             )
         }
     ) { (query, products, display), extra, settings ->
+        val sorted = getOrComputeSortedProducts(products, display, extra.salesStats)
         ProductosUiState(
             searchQuery = query,
             rawProducts = products,
@@ -225,7 +274,8 @@ class ProductosViewModel(
             googleSearchApiKey = settings.googleSearchApiKey,
             isLoading = false,
             isSyncing = extra.syncState == SyncStateEnum.SYNCING,
-            canEditProducts = settings.canEditProducts
+            canEditProducts = settings.canEditProducts,
+            sortedProducts = sorted
         )
     }.stateIn(
         scope = viewModelScope,
