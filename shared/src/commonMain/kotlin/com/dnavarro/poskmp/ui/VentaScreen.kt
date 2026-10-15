@@ -318,8 +318,16 @@ fun VentaScreen(
     }
     val paneExpansionState = rememberPaneExpansionState()
     var userCatalogWidthDp by remember { mutableStateOf<Dp?>(null) }
+    var isCartItemQuantityFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cartItems.isEmpty()) {
+        if (cartItems.isEmpty()) {
+            isCartItemQuantityFocused = false
+        }
+    }
 
     fun reclaimSearchBarFocus() {
+        isCartItemQuantityFocused = false
         if (!isAndroid()) {
             try {
                 searchBarFocusRequester.requestFocus()
@@ -622,7 +630,7 @@ fun VentaScreen(
                                             showUnregisteredDialog ||
                                             showProductDialogFor != null ||
                                             uiState.showCustomerDialog
-                                    if (!isAnyDialogOpen && keyEvent.type == KeyEventType.KeyDown &&
+                                    if (!isAnyDialogOpen && !isCartItemQuantityFocused && keyEvent.type == KeyEventType.KeyDown &&
                                         !keyEvent.isCtrlPressed && !keyEvent.isAltPressed && !keyEvent.isMetaPressed
                                     ) {
                                         reclaimSearchBarFocus()
@@ -743,7 +751,8 @@ fun VentaScreen(
                                     reclaimSearchBarFocus()
                                 }
                             },
-                            onApplyWholesaleClick = { toggleWholesalePrice() }
+                            onApplyWholesaleClick = { toggleWholesalePrice() },
+                            onQuantityFocusChanged = { isCartItemQuantityFocused = it }
                         )
                     }
                 }
@@ -893,7 +902,8 @@ fun VentaScreen(
                                         reclaimSearchBarFocus()
                                     }
                                 },
-                                onApplyWholesaleClick = { toggleWholesalePrice() }
+                                onApplyWholesaleClick = { toggleWholesalePrice() },
+                                onQuantityFocusChanged = { isCartItemQuantityFocused = it }
                             )
                         }
                     }

@@ -70,9 +70,11 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -157,7 +159,8 @@ fun TicketSection(
     onClearCustomerClick: () -> Unit = {},
     isDeliveryMode: Boolean = false,
     onApplyItemWholesaleClick: () -> Unit = {},
-    onApplyWholesaleClick: () -> Unit = {}
+    onApplyWholesaleClick: () -> Unit = {},
+    onQuantityFocusChanged: (Boolean) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -171,6 +174,7 @@ fun TicketSection(
     }
 
     val focusRequesters = remember { mutableStateMapOf<Int, FocusRequester>() }
+    var focusedQuantityItemIndex by remember { mutableStateOf<Int?>(null) }
     var previousSize by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
 
@@ -532,7 +536,16 @@ fun TicketSection(
                                 onSelectedIndexChange = onSelectedIndexChange,
                                 onUpdateQuantity = onUpdateQuantity,
                                 onSetQuantity = onSetQuantity,
-                                onRemoveItem = onRemoveItem
+                                onRemoveItem = onRemoveItem,
+                                onQuantityFocusChanged = { focused ->
+                                    if (focused) {
+                                        focusedQuantityItemIndex = index
+                                        onQuantityFocusChanged(true)
+                                    } else if (focusedQuantityItemIndex == index) {
+                                        focusedQuantityItemIndex = null
+                                        onQuantityFocusChanged(false)
+                                    }
+                                }
                             )
                         }
                     } else {
@@ -548,6 +561,15 @@ fun TicketSection(
                             onUpdateQuantity = onUpdateQuantity,
                             onSetQuantity = onSetQuantity,
                             onRemoveItem = onRemoveItem,
+                            onQuantityFocusChanged = { focused ->
+                                if (focused) {
+                                    focusedQuantityItemIndex = index
+                                    onQuantityFocusChanged(true)
+                                } else if (focusedQuantityItemIndex == index) {
+                                    focusedQuantityItemIndex = null
+                                    onQuantityFocusChanged(false)
+                                }
+                            },
                             modifier = Modifier.animateItem()
                         )
                     }
@@ -766,6 +788,7 @@ private fun TicketItemRow(
     onUpdateQuantity: (CartItem, Double) -> Unit,
     onSetQuantity: (CartItem, Double) -> Unit,
     onRemoveItem: (CartItem) -> Unit,
+    onQuantityFocusChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var isTextFieldFocused by remember { mutableStateOf(false) }
@@ -875,7 +898,10 @@ private fun TicketItemRow(
                         item = item,
                         index = index,
                         isTextFieldFocused = isTextFieldFocused,
-                        onFocusChanged = { isTextFieldFocused = it },
+                        onFocusChanged = { focused ->
+                            isTextFieldFocused = focused
+                            onQuantityFocusChanged(focused)
+                        },
                         onUpdateQuantity = onUpdateQuantity,
                         onSetQuantity = onSetQuantity,
                         onRemoveItem = onRemoveItem,
@@ -903,7 +929,10 @@ private fun TicketItemRow(
                         item = item,
                         index = index,
                         isTextFieldFocused = isTextFieldFocused,
-                        onFocusChanged = { isTextFieldFocused = it },
+                        onFocusChanged = { focused ->
+                            isTextFieldFocused = focused
+                            onQuantityFocusChanged(focused)
+                        },
                         onUpdateQuantity = onUpdateQuantity,
                         onSetQuantity = onSetQuantity,
                         onRemoveItem = onRemoveItem,
@@ -1042,10 +1071,41 @@ private fun ItemQuantityControls(
                     else Color.Transparent,
                 )
                 .padding(vertical = 2.dp)
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        when (keyEvent.key) {
+                            Key.Enter, Key.NumPadEnter -> {
+                                val parsed = quantityState.text.toString().toDoubleOrNull()
+                                if (parsed != null && parsed > 0.0) {
+                                    onSetQuantity(item, parsed)
+                                } else if (parsed != null && parsed <= 0.0) {
+                                    onRemoveItem(item)
+                                } else {
+                                    quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
+                                }
+                                if (!isAndroid()) {
+                                    focusRequester.requestFocus()
+                                }
+                                true
+                            }
+                            Key.Escape -> {
+                                quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
+                                if (!isAndroid()) {
+                                    focusRequester.requestFocus()
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    } else false
+                }
                 .onFocusChanged { focusState ->
                     onFocusChanged(focusState.isFocused)
                     if (focusState.isFocused) {
                         onSelectedIndexChange(index)
+                        quantityState.edit {
+                            selection = TextRange(0, length)
+                        }
                     }
                     if (!focusState.isFocused) {
                         val parsed = quantityState.text.toString().toDoubleOrNull()
