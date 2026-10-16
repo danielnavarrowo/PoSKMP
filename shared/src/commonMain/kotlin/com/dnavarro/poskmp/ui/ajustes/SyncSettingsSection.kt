@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -648,6 +649,16 @@ fun SyncSettingsSection(
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFF10B981),
                                 modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        } else if (syncMessage.startsWith("SYNC_COOLDOWN")) {
+                            val msg = syncMessage.removePrefix("SYNC_COOLDOWN:")
+                            Text(
+                                text = msg,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
+                                textAlign = TextAlign.Center
                             )
                         } else if (syncMessage.startsWith("SYNC_ERROR")) {
                             val err = syncMessage.removePrefix("SYNC_ERROR:")

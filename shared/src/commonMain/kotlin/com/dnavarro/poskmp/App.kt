@@ -327,7 +327,7 @@ fun App(
             exitStep = ExitProgressStep.SYNCING_CLOUD
             val syncResult = withContext(Dispatchers.IO) {
                 try {
-                    syncRepository.syncAll(isManual = true)
+                    syncRepository.syncAll(isManual = true, force = true)
                 } catch (e: Exception) {
                     Result.failure(e)
                 }
@@ -1721,7 +1721,7 @@ fun App(
                                             withContext(Dispatchers.IO) {
                                                 try {
                                                     backupRepository.performBackup()
-                                                    syncRepository.syncAll(isManual = true)
+                                                    syncRepository.syncAll(isManual = true, force = true)
                                                 } catch (_: Exception) {}
                                             }
                                         }

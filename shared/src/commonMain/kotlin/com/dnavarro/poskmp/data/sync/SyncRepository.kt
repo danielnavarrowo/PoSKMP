@@ -23,12 +23,20 @@ import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class SyncStateEnum {
     IDLE,
@@ -41,7 +49,8 @@ data class SyncReport(
     val success: Boolean,
     val message: String = "",
     val itemsPushed: Int = 0,
-    val itemsPulled: Int = 0
+    val itemsPulled: Int = 0,
+    val isThrottled: Boolean = false
 )
 
 interface SyncRepository {
@@ -49,7 +58,11 @@ interface SyncRepository {
     val lastError: StateFlow<String?>
 
     suspend fun testConnection(url: String, key: String): Result<Boolean>
-    suspend fun syncAll(forceFullSync: Boolean = false, isManual: Boolean = false): Result<SyncReport>
+    suspend fun syncAll(
+        forceFullSync: Boolean = false,
+        isManual: Boolean = false,
+        force: Boolean = false
+    ): Result<SyncReport>
     suspend fun getRemoteAuditLogs(limit: Int = 100): Result<List<RemoteAuditLogDto>>
 }
 
@@ -65,13 +78,34 @@ class SyncRepositoryImpl(
     private val _lastError = MutableStateFlow<String?>(null)
     override val lastError: StateFlow<String?> = _lastError.asStateFlow()
 
+    private val syncMutex = Mutex()
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var pendingDebouncedSyncJob: Job? = null
+    private var lastAttemptTimestamp: Long = 0L
+
+    companion object {
+        const val MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000L // 5 minutos de intervalo mínimo
+    }
+
+    private fun schedulePendingSync(delayMs: Long) {
+        if (pendingDebouncedSyncJob?.isActive == true) return
+        pendingDebouncedSyncJob = syncScope.launch {
+            delay(maxOf(1000L, delayMs + 500L).milliseconds)
+            syncAll(forceFullSync = false, isManual = false, force = false)
+        }
+    }
+
     override suspend fun testConnection(url: String, key: String): Result<Boolean> = withContext(Dispatchers.IO) {
         remoteDataSource.testConnection(url, key)
     }
 
-    override suspend fun syncAll(forceFullSync: Boolean, isManual: Boolean): Result<SyncReport> = withContext(Dispatchers.IO) {
+    override suspend fun syncAll(
+        forceFullSync: Boolean,
+        isManual: Boolean,
+        force: Boolean
+    ): Result<SyncReport> = withContext(Dispatchers.IO) {
         val autoSync = settingsRepository.autoSyncEnabledFlow.first()
-        if (!isManual && !autoSync) {
+        if (!isManual && !autoSync && !force) {
             // Sincronización automática desactivada por el usuario en Ajustes
             return@withContext Result.success(SyncReport(success = true, message = "Auto sync disabled"))
         }
@@ -90,10 +124,67 @@ class SyncRepositoryImpl(
             }
         }
 
-        _syncState.value = SyncStateEnum.SYNCING
-        _lastError.value = null
+        // 1. Evitar ejecuciones simultáneas / spam concurrente
+        if (syncMutex.isLocked || _syncState.value == SyncStateEnum.SYNCING) {
+            if (!isManual) {
+                schedulePendingSync(MIN_SYNC_INTERVAL_MS)
+            }
+            return@withContext Result.success(
+                SyncReport(
+                    success = true,
+                    message = "Sincronización en curso",
+                    isThrottled = true
+                )
+            )
+        }
 
-        try {
+        val now = currentTimeMillis()
+
+        // 2. Control de intervalo / cooldown (5 minutos entre sincronizaciones)
+        if (!force && !forceFullSync) {
+            val elapsedSinceAttempt = now - lastAttemptTimestamp
+            if (lastAttemptTimestamp > 0L && elapsedSinceAttempt in 0..5000L) {
+                return@withContext Result.success(
+                    SyncReport(
+                        success = true,
+                        message = "Espera unos segundos antes de reintentar",
+                        isThrottled = true
+                    )
+                )
+            }
+
+            val lastSync = settingsRepository.lastSyncTimestampFlow.first()
+            val elapsedSinceSuccess = now - lastSync
+            if (lastSync > 0L && elapsedSinceSuccess in 0 until MIN_SYNC_INTERVAL_MS) {
+                val remainingMs = MIN_SYNC_INTERVAL_MS - elapsedSinceSuccess
+                val remainingMin = remainingMs / 60_000L
+                val remainingSec = (remainingMs / 1000L) % 60
+                val formattedTime = if (remainingMin > 0) "${remainingMin}m ${remainingSec}s" else "${remainingSec}s"
+                val msg = "Sincronizado recientemente. Espera $formattedTime para la siguiente sincronización."
+
+                if (!isManual) {
+                    schedulePendingSync(remainingMs)
+                }
+
+                return@withContext Result.success(
+                    SyncReport(
+                        success = true,
+                        message = msg,
+                        isThrottled = true
+                    )
+                )
+            }
+        }
+
+        syncMutex.withLock {
+            pendingDebouncedSyncJob?.cancel()
+            pendingDebouncedSyncJob = null
+
+            _syncState.value = SyncStateEnum.SYNCING
+            _lastError.value = null
+            lastAttemptTimestamp = currentTimeMillis()
+
+            try {
             val queries = database.appDatabaseQueries
             var totalPushed = 0
             var totalPulled = 0
@@ -750,6 +841,7 @@ class SyncRepositoryImpl(
             _lastError.value = msg
             _syncState.value = SyncStateEnum.ERROR
             Result.failure(e)
+        }
         }
     }
 

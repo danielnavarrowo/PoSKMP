@@ -759,9 +759,15 @@ class AjustesViewModel(
             val result = syncRepository.syncAll(forceFullSync = forceFullSync, isManual = true)
             if (result.isSuccess) {
                 val report = result.getOrNull()
-                _updateState.value = _updateState.value.copy(
-                    syncMessage = "SYNC_SUCCESS:${report?.itemsPushed ?: 0}:${report?.itemsPulled ?: 0}"
-                )
+                if (report?.isThrottled == true) {
+                    _updateState.value = _updateState.value.copy(
+                        syncMessage = "SYNC_COOLDOWN:${report.message}"
+                    )
+                } else {
+                    _updateState.value = _updateState.value.copy(
+                        syncMessage = "SYNC_SUCCESS:${report?.itemsPushed ?: 0}:${report?.itemsPulled ?: 0}"
+                    )
+                }
             } else {
                 _updateState.value = _updateState.value.copy(
                     syncMessage = "SYNC_ERROR:${result.exceptionOrNull()?.message ?: "Error"}"
