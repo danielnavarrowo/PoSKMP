@@ -9,7 +9,7 @@ class ResetAppToFactoryDefaultsUseCase(
     private val settingsRepository: SettingsRepository,
     private val database: AppDatabase
 ) {
-    suspend operator fun invoke(): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend operator fun invoke(preserveSupabaseCredentials: Boolean = false): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // 1. Wipe all database tables within a transaction
             database.transaction {
@@ -29,7 +29,7 @@ class ResetAppToFactoryDefaultsUseCase(
             }
 
             // 2. Clear all user preferences in DataStore back to defaults
-            settingsRepository.clearAllSettings()
+            settingsRepository.clearAllSettings(preserveSupabaseCredentials)
 
             Result.success(Unit)
         } catch (e: Exception) {

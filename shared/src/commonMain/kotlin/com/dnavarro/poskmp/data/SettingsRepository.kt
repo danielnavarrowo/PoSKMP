@@ -157,7 +157,7 @@ interface SettingsRepository {
     suspend fun setLastBackupTimestamp(timestamp: Long)
     suspend fun setBackupDirectoryPath(path: String)
     suspend fun setReceiptSettings(settings: ReceiptSettings)
-    suspend fun clearAllSettings()
+    suspend fun clearAllSettings(preserveSupabaseCredentials: Boolean = false)
 }
 
 /**
@@ -846,9 +846,21 @@ class SettingsRepositoryImpl(
         }
     }
 
-    override suspend fun clearAllSettings() {
+    override suspend fun clearAllSettings(preserveSupabaseCredentials: Boolean) {
         dataStore.edit { preferences ->
+            val supabaseUrl = if (preserveSupabaseCredentials) preferences[PreferenceKeys.SUPABASE_URL] else null
+            val supabaseKey = if (preserveSupabaseCredentials) preferences[PreferenceKeys.SUPABASE_KEY] else null
+
             preferences.clear()
+
+            if (preserveSupabaseCredentials) {
+                if (!supabaseUrl.isNullOrBlank()) {
+                    preferences[PreferenceKeys.SUPABASE_URL] = supabaseUrl
+                }
+                if (!supabaseKey.isNullOrBlank()) {
+                    preferences[PreferenceKeys.SUPABASE_KEY] = supabaseKey
+                }
+            }
         }
     }
 }

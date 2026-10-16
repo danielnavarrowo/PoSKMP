@@ -31,6 +31,12 @@ import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Checkbox
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import poskmp.shared.generated.resources.factory_reset_preserve_supabase_credentials
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.delete
@@ -50,10 +56,11 @@ fun FactoryResetSettingsSection(
     isResettingApp: Boolean,
     resetAppError: String?,
     resetAppSuccess: String?,
-    onResetApp: () -> Unit,
+    onResetApp: (preserveSupabaseCredentials: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var preserveSupabaseCredentials by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
 
@@ -81,7 +88,10 @@ fun FactoryResetSettingsSection(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
-                    onClick = { showConfirmDialog = true },
+                    onClick = {
+                        preserveSupabaseCredentials = false
+                        showConfirmDialog = true
+                    },
                     enabled = !isResettingApp,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
@@ -133,7 +143,10 @@ fun FactoryResetSettingsSection(
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = {
-                if (!isResettingApp) showConfirmDialog = false
+                if (!isResettingApp) {
+                    showConfirmDialog = false
+                    preserveSupabaseCredentials = false
+                }
             },
             icon = {
                 Icon(
@@ -150,16 +163,39 @@ fun FactoryResetSettingsSection(
                 )
             },
             text = {
-                Text(
-                    text = stringResource(Res.string.factory_reset_dialog_message),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column {
+                    Text(
+                        text = stringResource(Res.string.factory_reset_dialog_message),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable { preserveSupabaseCredentials = !preserveSupabaseCredentials }
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Checkbox(
+                            checked = preserveSupabaseCredentials,
+                            onCheckedChange = { preserveSupabaseCredentials = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.factory_reset_preserve_supabase_credentials),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
+                        val preserve = preserveSupabaseCredentials
                         showConfirmDialog = false
-                        onResetApp()
+                        preserveSupabaseCredentials = false
+                        onResetApp(preserve)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
@@ -175,7 +211,10 @@ fun FactoryResetSettingsSection(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showConfirmDialog = false },
+                    onClick = {
+                        showConfirmDialog = false
+                        preserveSupabaseCredentials = false
+                    },
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(stringResource(Res.string.cancel))

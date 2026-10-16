@@ -386,7 +386,7 @@ class SupabaseRemoteDataSourceImpl(
         try {
             val cleanUrl = normalizeUrl(url)
             val query = if (sinceTimestamp > 0) {
-                "created_at=gt.$sinceTimestamp&order=created_at.asc"
+                "or=(created_at.gt.$sinceTimestamp,estado.eq.CANCELADA)&order=created_at.asc"
             } else {
                 "order=created_at.asc"
             }

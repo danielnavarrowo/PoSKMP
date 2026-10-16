@@ -98,7 +98,7 @@ fun AboutSettingsSection(
     isResettingApp: Boolean,
     resetAppError: String?,
     resetAppSuccess: String?,
-    onResetApp: () -> Unit,
+    onResetApp: (preserveSupabaseCredentials: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()

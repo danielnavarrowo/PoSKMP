@@ -893,6 +893,7 @@
     <string name="factory_reset_in_progress">Restableciendo aplicación...</string>
     <string name="factory_reset_success">La aplicación se ha restablecido a los valores de fábrica exitosamente.</string>
     <string name="factory_reset_error">Error al restablecer la aplicación: %1$s</string>
+    <string name="factory_reset_preserve_supabase_credentials">Conservar credenciales de Supabase (URL y clave API / token)</string>
     <string name="minimize_window">Minimizar</string>
 
     <!-- Categorías de Ajustes (ListDetailPaneScaffold) -->

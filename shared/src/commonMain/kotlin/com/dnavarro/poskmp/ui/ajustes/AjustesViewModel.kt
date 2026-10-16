@@ -946,14 +946,14 @@ class AjustesViewModel(
         )
     }
 
-    fun resetAppToFactoryDefaults() {
+    fun resetAppToFactoryDefaults(preserveSupabaseCredentials: Boolean = false) {
         viewModelScope.launch {
             _updateState.value = _updateState.value.copy(
                 isResettingApp = true,
                 resetAppError = null,
                 resetAppSuccess = null
             )
-            val result = resetAppToFactoryDefaultsUseCase()
+            val result = resetAppToFactoryDefaultsUseCase(preserveSupabaseCredentials)
             if (result.isSuccess) {
                 _updateState.value = _updateState.value.copy(
                     isResettingApp = false,

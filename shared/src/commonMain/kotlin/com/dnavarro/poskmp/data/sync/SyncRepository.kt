@@ -704,44 +704,49 @@ class SyncRepositoryImpl(
                 throw pulledSalesResult.exceptionOrNull() ?: Exception("Error al descargar ventas")
             }
             val remoteSales = pulledSalesResult.getOrDefault(emptyList())
+            var salesPulledCount = 0
             if (remoteSales.isNotEmpty()) {
                 val existingCustomerIds = queries.selectAllCustomerIds().executeAsList().toHashSet()
                 val existingShiftIds = queries.selectAllShiftIds().executeAsList().toHashSet()
                 queries.transaction {
                     for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado, esForanea, shiftId) in remoteSales) {
-                        val validCustomerId = if (customerId != null && existingCustomerIds.contains(customerId)) {
-                            customerId
-                        } else {
-                            null
+                        val localSale = queries.selectSaleById(id).executeAsOneOrNull()
+                        if (forceFullSync || localSale == null || localSale.estado != estado) {
+                            val validCustomerId = if (customerId != null && existingCustomerIds.contains(customerId)) {
+                                customerId
+                            } else {
+                                null
+                            }
+                            val validShiftId = if (shiftId != null && existingShiftIds.contains(shiftId)) {
+                                shiftId
+                            } else {
+                                null
+                            }
+                            queries.upsertSyncedSale(
+                                id = id,
+                                folio = folio,
+                                total = total,
+                                total_original = totalOriginal,
+                                total_costo = totalCosto,
+                                ganancia = ganancia,
+                                pago_con = pagoCon,
+                                cambio = cambio,
+                                metodo_pago = metodoPago,
+                                total_items = totalItems,
+                                customer_id = validCustomerId,
+                                created_at = createdAt,
+                                shift_id = validShiftId,
+                                cashier_id = localSale?.cashier_id,
+                                cashier_name = cashierName,
+                                estado = estado,
+                                es_foranea = if (esForanea) 1L else 0L
+                            )
+                            salesPulledCount++
                         }
-                        val validShiftId = if (shiftId != null && existingShiftIds.contains(shiftId)) {
-                            shiftId
-                        } else {
-                            null
-                        }
-                        queries.upsertSyncedSale(
-                            id = id,
-                            folio = folio,
-                            total = total,
-                            total_original = totalOriginal,
-                            total_costo = totalCosto,
-                            ganancia = ganancia,
-                            pago_con = pagoCon,
-                            cambio = cambio,
-                            metodo_pago = metodoPago,
-                            total_items = totalItems,
-                            customer_id = validCustomerId,
-                            created_at = createdAt,
-                            shift_id = validShiftId,
-                            cashier_id = null,
-                            cashier_name = cashierName,
-                            estado = estado,
-                            es_foranea = if (esForanea) 1L else 0L
-                        )
                     }
                 }
             }
-            totalPulled += remoteSales.size
+            totalPulled += salesPulledCount
 
             val pulledItemsResult = remoteDataSource.pullSaleItems(url, key, lastSync)
             if (pulledItemsResult.isFailure) {

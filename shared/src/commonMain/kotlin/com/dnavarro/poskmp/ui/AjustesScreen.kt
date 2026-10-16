@@ -226,7 +226,7 @@ fun AjustesScreen(
         isResettingApp = uiState.isResettingApp,
         resetAppError = uiState.resetAppError,
         resetAppSuccess = uiState.resetAppSuccess,
-        onResetApp = { viewModel.resetAppToFactoryDefaults() }
+        onResetApp = { preserveCredentials -> viewModel.resetAppToFactoryDefaults(preserveCredentials) }
     )
 }
 
@@ -356,7 +356,7 @@ fun AjustesScreen(
     isResettingApp: Boolean = false,
     resetAppError: String? = null,
     resetAppSuccess: String? = null,
-    onResetApp: () -> Unit = {},
+    onResetApp: (preserveSupabaseCredentials: Boolean) -> Unit = {},
     repository: ProductRepository = koinInject()
 ) {
     val coroutineScope = rememberCoroutineScope()
