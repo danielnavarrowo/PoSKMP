@@ -105,7 +105,7 @@ class RecordSaleUseCase(
         if (metodoPago == "CREDITO" && customerId.isNullOrBlank()) {
             throw IllegalArgumentException("Las ventas a crédito requieren un cliente registrado.")
         }
-        if (metodoPago == "MIXTO" && (finalCredit > 0.0 || pagoCon < finalTotal) && customerId.isNullOrBlank()) {
+        if (metodoPago == "MIXTO" && finalCredit > 0.0 && customerId.isNullOrBlank()) {
             throw IllegalArgumentException("Las ventas mixtas con saldo a crédito requieren un cliente registrado.")
         }
 

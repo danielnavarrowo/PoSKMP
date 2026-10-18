@@ -198,7 +198,7 @@ SELECT c.*,
     COALESCE((SELECT SUM(
         CASE 
             WHEN s.metodo_pago = 'CREDITO' THEN s.total
-            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN s.monto_credito > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
+            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN (s.monto_efectivo + s.monto_tarjeta + s.monto_transferencia + s.monto_credito) > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
             ELSE 0.0 
         END
     ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
@@ -213,7 +213,7 @@ SELECT c.*,
     COALESCE((SELECT SUM(
         CASE 
             WHEN s.metodo_pago = 'CREDITO' THEN s.total
-            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN s.monto_credito > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
+            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN (s.monto_efectivo + s.monto_tarjeta + s.monto_transferencia + s.monto_credito) > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
             ELSE 0.0 
         END
     ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
@@ -227,7 +227,7 @@ SELECT c.*,
     COALESCE((SELECT SUM(
         CASE 
             WHEN s.metodo_pago = 'CREDITO' THEN s.total
-            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN s.monto_credito > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
+            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN (s.monto_efectivo + s.monto_tarjeta + s.monto_transferencia + s.monto_credito) > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
             ELSE 0.0 
         END
     ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
@@ -244,7 +244,7 @@ SELECT c.*,
     COALESCE((SELECT SUM(
         CASE 
             WHEN s.metodo_pago = 'CREDITO' THEN s.total
-            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN s.monto_credito > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
+            WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN (s.monto_efectivo + s.monto_tarjeta + s.monto_transferencia + s.monto_credito) > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
             ELSE 0.0 
         END
     ) FROM sales s WHERE s.customer_id = c.id AND s.estado != 'CANCELADA'), 0.0) -
@@ -344,7 +344,7 @@ LEFT JOIN (
         COALESCE((SELECT SUM(
             CASE 
                 WHEN s.metodo_pago = 'CREDITO' THEN s.total
-                WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN s.monto_credito > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
+                WHEN s.metodo_pago = 'MIXTO' THEN (CASE WHEN (s.monto_efectivo + s.monto_tarjeta + s.monto_transferencia + s.monto_credito) > 0.0 THEN s.monto_credito WHEN s.total > s.pago_con THEN (s.total - s.pago_con) ELSE 0.0 END)
                 ELSE 0.0 
             END
         ) FROM sales s WHERE s.customer_id = c2.id AND s.estado != 'CANCELADA'), 0.0) -
@@ -467,7 +467,7 @@ ORDER BY created_at DESC;
 
 selectCreditSalesByCustomerId:
 SELECT * FROM sales
-WHERE customer_id = ? AND estado != 'CANCELADA' AND (metodo_pago = 'CREDITO' OR (metodo_pago = 'MIXTO' AND (monto_credito > 0.0 OR total > pago_con)))
+WHERE customer_id = ? AND estado != 'CANCELADA' AND (metodo_pago = 'CREDITO' OR (metodo_pago = 'MIXTO' AND (monto_credito > 0.0 OR ((monto_efectivo + monto_tarjeta + monto_transferencia + monto_credito) = 0.0 AND total > pago_con))))
 ORDER BY created_at DESC;
 
 insertSaleItem:
@@ -621,14 +621,14 @@ ORDER BY total_recaudado DESC;
 
 selectPaymentMethodBreakdownBetween:
 SELECT 
-    COALESCE(SUM(CASE WHEN metodo_pago = 'EFECTIVO' THEN (CASE WHEN monto_efectivo > 0.0 THEN monto_efectivo ELSE total END) WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN monto_efectivo > 0.0 THEN monto_efectivo ELSE (pago_con - cambio) END) ELSE 0.0 END), 0.0) AS total_efectivo,
-    COUNT(CASE WHEN metodo_pago = 'EFECTIVO' OR (metodo_pago = 'MIXTO' AND (monto_efectivo > 0.0 OR (pago_con - cambio) > 0.0)) THEN 1 END) AS count_efectivo,
+    COALESCE(SUM(CASE WHEN metodo_pago = 'EFECTIVO' THEN (CASE WHEN monto_efectivo > 0.0 THEN monto_efectivo ELSE total END) WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN (monto_efectivo + monto_tarjeta + monto_transferencia + monto_credito) > 0.0 THEN monto_efectivo ELSE (pago_con - cambio) END) ELSE 0.0 END), 0.0) AS total_efectivo,
+    COUNT(CASE WHEN metodo_pago = 'EFECTIVO' OR (metodo_pago = 'MIXTO' AND (monto_efectivo > 0.0 OR ((monto_efectivo + monto_tarjeta + monto_transferencia + monto_credito) = 0.0 AND (pago_con - cambio) > 0.0))) THEN 1 END) AS count_efectivo,
     COALESCE(SUM(CASE WHEN metodo_pago = 'TARJETA' THEN (CASE WHEN monto_tarjeta > 0.0 THEN monto_tarjeta ELSE total END) WHEN metodo_pago = 'MIXTO' THEN monto_tarjeta ELSE 0.0 END), 0.0) AS total_tarjeta,
     COUNT(CASE WHEN metodo_pago = 'TARJETA' OR (metodo_pago = 'MIXTO' AND monto_tarjeta > 0.0) THEN 1 END) AS count_tarjeta,
     COALESCE(SUM(CASE WHEN metodo_pago = 'TRANSFERENCIA' THEN (CASE WHEN monto_transferencia > 0.0 THEN monto_transferencia ELSE total END) WHEN metodo_pago = 'MIXTO' THEN monto_transferencia ELSE 0.0 END), 0.0) AS total_transferencia,
     COUNT(CASE WHEN metodo_pago = 'TRANSFERENCIA' OR (metodo_pago = 'MIXTO' AND monto_transferencia > 0.0) THEN 1 END) AS count_transferencia,
-    COALESCE(SUM(CASE WHEN metodo_pago = 'CREDITO' THEN (CASE WHEN monto_credito > 0.0 THEN monto_credito ELSE total END) WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN monto_credito > 0.0 THEN monto_credito WHEN total > pago_con THEN (total - pago_con) ELSE 0.0 END) ELSE 0.0 END), 0.0) AS total_credito,
-    COUNT(CASE WHEN metodo_pago = 'CREDITO' OR (metodo_pago = 'MIXTO' AND (monto_credito > 0.0 OR total > pago_con)) THEN 1 END) AS count_credito
+    COALESCE(SUM(CASE WHEN metodo_pago = 'CREDITO' THEN (CASE WHEN monto_credito > 0.0 THEN monto_credito ELSE total END) WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN (monto_efectivo + monto_tarjeta + monto_transferencia + monto_credito) > 0.0 THEN monto_credito WHEN total > pago_con THEN (total - pago_con) ELSE 0.0 END) ELSE 0.0 END), 0.0) AS total_credito,
+    COUNT(CASE WHEN metodo_pago = 'CREDITO' OR (metodo_pago = 'MIXTO' AND (monto_credito > 0.0 OR ((monto_efectivo + monto_tarjeta + monto_transferencia + monto_credito) = 0.0 AND total > pago_con))) THEN 1 END) AS count_credito
 FROM sales
 WHERE estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
@@ -936,7 +936,7 @@ SELECT
     COALESCE(SUM(
         CASE 
             WHEN metodo_pago = 'EFECTIVO' THEN (CASE WHEN monto_efectivo > 0.0 THEN monto_efectivo ELSE total END)
-            WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN monto_efectivo > 0.0 THEN monto_efectivo ELSE (pago_con - cambio) END)
+            WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN (monto_efectivo + monto_tarjeta + monto_transferencia + monto_credito) > 0.0 THEN monto_efectivo ELSE (pago_con - cambio) END)
             ELSE 0.0 
         END
     ), 0.0) AS ventas_efectivo,
@@ -957,7 +957,7 @@ SELECT
     COALESCE(SUM(
         CASE 
             WHEN metodo_pago = 'CREDITO' THEN (CASE WHEN monto_credito > 0.0 THEN monto_credito ELSE total END)
-            WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN monto_credito > 0.0 THEN monto_credito WHEN total > pago_con THEN (total - pago_con) ELSE 0.0 END)
+            WHEN metodo_pago = 'MIXTO' THEN (CASE WHEN (monto_efectivo + monto_tarjeta + monto_transferencia + monto_credito) > 0.0 THEN monto_credito WHEN total > pago_con THEN (total - pago_con) ELSE 0.0 END)
             ELSE 0.0 
         END
     ), 0.0) AS ventas_credito,

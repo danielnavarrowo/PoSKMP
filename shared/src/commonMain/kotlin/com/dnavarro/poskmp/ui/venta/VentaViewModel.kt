@@ -819,7 +819,8 @@ class VentaViewModel(
             montoTransferencia = montoTransferencia,
             montoCredito = montoCredito
         )
-        val isCashPayment = metodoPago == "EFECTIVO" || (metodoPago == "MIXTO" && (montoEfectivo > 0.0 || pagoCon > 0.0))
+        val hasExplicitBreakdown = montoEfectivo > 0.0 || montoTarjeta > 0.0 || montoTransferencia > 0.0 || montoCredito > 0.0
+        val isCashPayment = metodoPago == "EFECTIVO" || (metodoPago == "MIXTO" && if (hasExplicitBreakdown) montoEfectivo > 0.0 else pagoCon > 0.0)
         val shouldOpenDrawer = uiState.value.receiptSettings.openCashDrawerOnCashSale && isCashPayment
 
         if (printReceipt) {

@@ -1085,7 +1085,7 @@ fun VentaScreen(
         AlertDialog(
             onDismissRequest = { showWeightDialogForProduct = null },
             modifier = Modifier
-                .widthIn(max = if (isCompact) 420.dp else 560.dp)
+                .widthIn(max = if (isCompact) 460.dp else 680.dp)
                 .fillMaxWidth()
                 .onPreviewKeyEvent { keyEvent ->
                     if (keyEvent.type == KeyEventType.KeyDown && 
@@ -1131,6 +1131,7 @@ fun VentaScreen(
                                         "${if (qty % 1.0 == 0.0) qty.toInt().toString() else qty.toString()}$kgSuffix"
                                     Box(
                                         modifier = Modifier
+                                            .weight(1f)
                                             .focusProperties { canFocus = false }
                                             .border(
                                                 1.dp,
@@ -1140,14 +1141,16 @@ fun VentaScreen(
                                             .clip(MaterialTheme.shapes.small)
                                             .background(MaterialTheme.colorScheme.surface)
                                             .clickable { handleWeightChange(qty.toString()) }
-                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            .padding(horizontal = 4.dp, vertical = 6.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = label,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     }
                                 }
@@ -1202,7 +1205,7 @@ fun VentaScreen(
                         }
 
                         if (!isCompact) {
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(20.dp))
                         } else {
                             Spacer(modifier = Modifier.height(16.dp))
                         }
@@ -1217,6 +1220,7 @@ fun VentaScreen(
                                     val label = "$${cash}"
                                     Box(
                                         modifier = Modifier
+                                            .weight(1f)
                                             .focusProperties { canFocus = false }
                                             .border(
                                                 1.dp,
@@ -1226,14 +1230,16 @@ fun VentaScreen(
                                             .clip(MaterialTheme.shapes.small)
                                             .background(MaterialTheme.colorScheme.surface)
                                             .clickable { handlePricePresetClick(cash.toString()) }
-                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            .padding(horizontal = 4.dp, vertical = 6.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = label,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     }
                                 }
@@ -1384,7 +1390,7 @@ fun VentaScreen(
                 )
                 PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> Pair(total, 0.0)
                 PaymentMethod.MIXTO -> Pair(
-                    if (mCash > 0) mCash else (total - mCredit).coerceAtLeast(0.0),
+                    mCash + mCard + mTransfer,
                     cambioMixto
                 )
                 PaymentMethod.CREDITO -> Pair(0.0, 0.0)

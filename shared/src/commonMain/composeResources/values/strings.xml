@@ -827,11 +827,11 @@
     <string name="shift_total_tickets">Total tickets emitidos:</string>
     <string name="shift_credit_sales">Crédito:</string>
     <string name="counted_cash_label">Efectivo contado en caja</string>
-    <string name="difference_balanced">Caja cuadrada ($0.00)</string>
+    <string name="difference_balanced">Todo correcto</string>
     <string name="difference_surplus">Sobrante: +%1$s</string>
     <string name="difference_shortage">Faltante: -%1$s</string>
     <string name="close_shift_notes_label">Observaciones (Opcional)</string>
-    <string name="close_shift_notes_placeholder">Ej. Billetes dañados, aclaraciones del turno</string>
+    <string name="close_shift_notes_placeholder">Ej. Aclaraciones del turno</string>
     <string name="close_shift_button">Cerrar Turno y Guardar Corte</string>
     <string name="shift_start_time_label">Inicio de turno</string>
     <string name="shift_summary_cancelled_section">Ventas Canceladas en el Turno</string>

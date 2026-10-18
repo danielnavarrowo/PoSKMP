@@ -152,7 +152,7 @@ fun CloseShiftDialog(
                         summary.shift.cashierName,
                         formatEpochMillisToDateTime(summary.shift.startTime)
                     ),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -165,71 +165,6 @@ fun CloseShiftDialog(
                     .padding(top = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Card 1: Balance de Efectivo en Caja
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = ShapeDefaults.cardShape,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.shift_summary_cash_section),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                        ShiftRowItem(
-                            label = stringResource(Res.string.initial_cash_label),
-                            value = summary.shift.initialCash.toString().formatPrice()
-                        )
-                        ShiftRowItem(
-                            label = stringResource(Res.string.shift_cash_sales),
-                            value = "(+) ${summary.ventasEfectivo.toString().formatPrice()}",
-                            valueColor = Color(0xFF10B981)
-                        )
-                        if (summary.totalEntradas > 0.0) {
-                            ShiftRowItem(
-                                label = stringResource(Res.string.shift_cash_inflows),
-                                value = "(+) ${summary.totalEntradas.toString().formatPrice()}",
-                                valueColor = Color(0xFF10B981)
-                            )
-                        }
-                        if (summary.totalSalidas > 0.0) {
-                            ShiftRowItem(
-                                label = stringResource(Res.string.shift_cash_outflows),
-                                value = "(-) ${summary.totalSalidas.toString().formatPrice()}",
-                                valueColor = MaterialTheme.colorScheme.error
-                            )
-                        }
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                        // Efectivo Esperado Destacado
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(Res.string.expected_cash_label),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = expectedCash.toString().formatPrice(),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
 
                 // Card 2: Otros medios de pago y total ventas
                 Card(
@@ -274,7 +209,7 @@ fun CloseShiftDialog(
                 if (summary.totalTicketsCancelados > 0L || summary.cancelledSales.isNotEmpty()) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)),
-                        shape = MaterialTheme.shapes.medium,
+                        shape = ShapeDefaults.cardShape,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -372,6 +307,72 @@ fun CloseShiftDialog(
                     }
                 }
 
+                // Card 1: Balance de Efectivo en Caja
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    shape = ShapeDefaults.cardShape,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.shift_summary_cash_section),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        ShiftRowItem(
+                            label = stringResource(Res.string.initial_cash_label),
+                            value = summary.shift.initialCash.toString().formatPrice()
+                        )
+                        ShiftRowItem(
+                            label = stringResource(Res.string.shift_cash_sales),
+                            value = "+ ${summary.ventasEfectivo.toString().formatPrice()}",
+                            valueColor = Color(0xFF10B981)
+                        )
+                        if (summary.totalEntradas > 0.0) {
+                            ShiftRowItem(
+                                label = stringResource(Res.string.shift_cash_inflows),
+                                value = "+ ${summary.totalEntradas.toString().formatPrice()}",
+                                valueColor = Color(0xFF10B981)
+                            )
+                        }
+                        if (summary.totalSalidas > 0.0) {
+                            ShiftRowItem(
+                                label = stringResource(Res.string.shift_cash_outflows),
+                                value = "- ${summary.totalSalidas.toString().formatPrice()}",
+                                valueColor = MaterialTheme.colorScheme.error
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // Efectivo Esperado Destacado
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.expected_cash_label),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = expectedCash.toString().formatPrice(),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
                 // Campo: Efectivo Contado
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     OutlinedTextField(
@@ -411,7 +412,7 @@ fun CloseShiftDialog(
                         ) {
                             Text(
                                 text = diffText,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = diffColor,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
