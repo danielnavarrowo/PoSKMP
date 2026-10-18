@@ -74,7 +74,9 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -121,6 +123,7 @@ import com.dnavarro.poskmp.ui.productos.ProductTableColumn
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
+import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.isCompactWidth
 import com.dnavarro.poskmp.util.resetScroll
@@ -225,17 +228,23 @@ fun ProductosScreen(
     val selectedProductIds = uiState.selectedProductIds
 
     val searchQueryState = rememberTextFieldState(searchQuery)
+    var lastEmittedQuery by remember { mutableStateOf(searchQuery) }
+    val isSearchNotEmpty by remember { derivedStateOf { searchQueryState.text.isNotEmpty() } }
 
     LaunchedEffect(searchQuery) {
-        if (searchQueryState.text.toString() != searchQuery) {
+        if (searchQuery != lastEmittedQuery && searchQueryState.text.toString() != searchQuery) {
+            lastEmittedQuery = searchQuery
             searchQueryState.setTextAndPlaceCursorAtEnd(searchQuery)
         }
     }
 
     LaunchedEffect(searchQueryState) {
         snapshotFlow { searchQueryState.text.toString() }.collectLatest { query ->
-            if (query != uiState.searchQuery) {
-                delay(150.milliseconds)
+            if (query != lastEmittedQuery) {
+                if (query.isNotEmpty()) {
+                    delay(200.milliseconds)
+                }
+                lastEmittedQuery = query
                 viewModel.onSearchQueryChanged(query)
             }
         }
@@ -243,6 +252,9 @@ fun ProductosScreen(
 
     var isFabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var showCameraScanner by remember { mutableStateOf(false) }
+    var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
+    var scannerQuantity by remember { mutableDoubleStateOf(1.0) }
+    var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     val fabContainerColor = MaterialTheme.colorScheme.tertiary
 
@@ -252,6 +264,15 @@ fun ProductosScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    fun clearSearch() {
+        lastEmittedQuery = ""
+        searchQueryState.clearText()
+        viewModel.onSearchQueryChanged("")
+        selectedProductIndex = -1
+        selectionAnchorIndex = -1
+        listState.resetScroll(coroutineScope)
+    }
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
@@ -316,15 +337,7 @@ fun ProductosScreen(
                 listState.scrollItemIntoView(selectedProductIndex)
             } catch (_: Exception) {
             }
-        } else if (selectedProductIndex == -1) {
-            listState.resetScroll(coroutineScope)
         }
-    }
-
-    LaunchedEffect(searchQuery) {
-        selectedProductIndex = -1
-        selectionAnchorIndex = -1
-        listState.resetScroll(coroutineScope)
     }
 
     LaunchedEffect(sortedProducts) {
@@ -343,11 +356,7 @@ fun ProductosScreen(
                 coroutineScope.launch {
                     val matchingProduct = viewModel.findProductByBarcode(trimmed)
                     if (matchingProduct != null) {
-                        searchQueryState.clearText()
-                        viewModel.onSearchQueryChanged("")
-                        selectedProductIndex = -1
-                        selectionAnchorIndex = -1
-                        listState.resetScroll(coroutineScope)
+                        clearSearch()
                         viewModel.onShowProductDialog(matchingProduct)
                     }
                 }
@@ -360,11 +369,7 @@ fun ProductosScreen(
         keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
             Key.Escape -> {
                 if (searchQueryState.text.isNotEmpty()) {
-                    searchQueryState.clearText()
-                    viewModel.onSearchQueryChanged("")
-                    selectedProductIndex = -1
-                    selectionAnchorIndex = -1
-                    listState.resetScroll(coroutineScope)
+                    clearSearch()
                     true
                 } else if (selectedProductIndex != -1) {
                     selectedProductIndex = -1
@@ -807,12 +812,17 @@ fun ProductosScreen(
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
-                    val selectAllState = when {
-                        sortedProducts.isEmpty() -> ToggleableState.Off
-                        selectedFilteredCount == sortedProducts.size -> ToggleableState.On
-                        selectedFilteredCount > 0 -> ToggleableState.Indeterminate
-                        else -> ToggleableState.Off
+                    val selectAllState = remember(sortedProducts, selectedProductIds) {
+                        if (sortedProducts.isEmpty() || selectedProductIds.isEmpty()) {
+                            ToggleableState.Off
+                        } else {
+                            val selectedFilteredCount = sortedProducts.count { it.id in selectedProductIds }
+                            when {
+                                selectedFilteredCount == sortedProducts.size -> ToggleableState.On
+                                selectedFilteredCount > 0 -> ToggleableState.Indeterminate
+                                else -> ToggleableState.Off
+                            }
+                        }
                     }
 
                     Column(
@@ -847,7 +857,7 @@ fun ProductosScreen(
                                     .height(54.dp)
                                     .weight(1f)
                                     .background(
-                                        color = if (searchQueryState.text.isNotEmpty())
+                                        color = if (isSearchNotEmpty)
                                             MaterialTheme.colorScheme.surfaceContainerLowest
                                         else
                                             MaterialTheme.colorScheme.surfaceContainer,
@@ -872,7 +882,7 @@ fun ProductosScreen(
                                         modifier = Modifier.weight(1f),
                                         contentAlignment = Alignment.CenterStart
                                     ) {
-                                        if (searchQueryState.text.isEmpty()) {
+                                        if (!isSearchNotEmpty) {
                                             Text(
                                                 text = stringResource(Res.string.search_placeholder),
                                                 style = MaterialTheme.typography.titleSmall.copy(
@@ -904,16 +914,12 @@ fun ProductosScreen(
                                         )
                                     }
 
-                                    if (searchQueryState.text.isNotEmpty()) {
+                                    if (isSearchNotEmpty) {
                                         IconButton(
                                             modifier = Modifier
                                                 .size(32.dp),
                                             onClick = {
-                                                searchQueryState.clearText()
-                                                viewModel.onSearchQueryChanged("")
-                                                selectedProductIndex = -1
-                                                selectionAnchorIndex = -1
-                                                listState.resetScroll(coroutineScope)
+                                                clearSearch()
                                                 reclaimSearchBarFocus()
                                             }
                                         ) {
@@ -980,7 +986,7 @@ fun ProductosScreen(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Text(
-                                        text = "Catálogo en modo solo lectura. Esta terminal no realiza modificaciones en los productos ni sincroniza cambios de catálogo a la nube.",
+                                        text = "Catálogo en modo solo lectura.",
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1239,23 +1245,36 @@ fun ProductosScreen(
             if (showCameraScanner) {
                 PlatformBarcodeScanner(
                     onScanResult = { scannedCode ->
-                        showCameraScanner = false
                         val code = scannedCode.trim()
                         if (code.isNotEmpty()) {
                             coroutineScope.launch {
                                 val matched = viewModel.findProductByBarcode(code)
                                 if (matched != null) {
-                                    viewModel.onSearchQueryChanged("")
-                                    selectedProductIndex = -1
-                                    selectionAnchorIndex = -1
-                                    viewModel.onShowProductDialog(matched)
+                                    SoundManager.playBeepSound()
+                                    lastScannedProduct = matched
+                                    scannerQuantity = 1.0
+                                    cameraScannerFeedback = null
                                 } else {
-                                    viewModel.onSearchQueryChanged(code)
+                                    lastScannedProduct = null
+                                    cameraScannerFeedback = "Producto no encontrado: $code"
+                                    SoundManager.playErrorSound()
                                 }
                             }
                         }
                     },
-                    onClose = { showCameraScanner = false }
+                    onClose = {
+                        showCameraScanner = false
+                        lastScannedProduct = null
+                        cameraScannerFeedback = null
+                    },
+                    statusMessage = cameraScannerFeedback,
+                    lastScannedProduct = lastScannedProduct,
+                    lastScannedQuantity = scannerQuantity,
+                    onQuantityChange = { delta ->
+                        val minQty = if (lastScannedProduct?.por_peso == 1L) 0.1 else 1.0
+                        scannerQuantity = (scannerQuantity + delta).coerceAtLeast(minQty)
+                    },
+                    isChecadorMode = true
                 )
             }
 

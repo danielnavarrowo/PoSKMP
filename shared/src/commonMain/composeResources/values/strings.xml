@@ -418,7 +418,7 @@
     <string name="per_kg_suffix"> / Kg</string>
 
     <!-- VentasScreen / Analytics -->
-    <string name="ventas_title">Ventas y Reportes</string>
+    <string name="ventas_title">Reportes</string>
     <string name="period_today">Hoy</string>
     <string name="period_yesterday">Ayer</string>
     <string name="period_this_week">Esta Semana</string>
@@ -899,6 +899,8 @@
     <!-- Categorías de Ajustes (ListDetailPaneScaffold) -->
     <string name="settings_cat_clientes_title">Clientes</string>
     <string name="settings_cat_clientes_subtitle">Gestión de clientes y cuentas por cobrar</string>
+    <string name="settings_cat_checador_title">Checador de Precios</string>
+    <string name="settings_cat_checador_subtitle">Consulta de precios y códigos de barra</string>
     <string name="settings_cat_ventas_title">Historial de Ventas</string>
     <string name="settings_cat_ventas_subtitle">Métricas, reportes y corte de turno</string>
     <string name="settings_cat_general_title">General y Comportamiento</string>

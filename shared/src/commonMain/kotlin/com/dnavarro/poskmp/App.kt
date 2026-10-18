@@ -399,6 +399,8 @@ fun App(
     var productosRefocusTrigger by remember { mutableIntStateOf(0) }
     var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
     var productosSearchFocusTrigger by remember { mutableIntStateOf(0) }
+    var ventasScrollToTopTrigger by remember { mutableIntStateOf(0) }
+    var ajustesScrollToTopTrigger by remember { mutableIntStateOf(0) }
 
     fun reclaimCurrentScreenFocus() {
         if (!isAndroid()) {
@@ -698,10 +700,11 @@ fun App(
                                     icon = Res.drawable.analytics,
                                     isSelected = currentScreen == Screen.VENTAS,
                                     onCheckedChange = {
-                                        if (it) {
+                                        if (currentScreen != Screen.VENTAS) {
                                             navigateTo(AppRoute.Ventas)
-                                            reclaimCurrentScreenFocus()
                                         }
+                                        ventasScrollToTopTrigger++
+                                        reclaimCurrentScreenFocus()
                                     }
                                 ),
                                 ToolbarItem(
@@ -719,15 +722,16 @@ fun App(
                                     label = tabAjustesLabel,
                                     icon = Res.drawable.settings,
                                     isSelected = if (isToolbarNavigation) {
-                                        currentScreen == Screen.AJUSTES || currentScreen == Screen.CLIENTES || currentScreen == Screen.VENTAS
+                                        currentScreen == Screen.AJUSTES || currentScreen == Screen.CLIENTES || (!isChecadorDialog && currentScreen == Screen.CHECADOR)
                                     } else {
                                         currentScreen == Screen.AJUSTES
                                     },
                                     onCheckedChange = {
-                                        if (it) {
+                                        if (currentScreen != Screen.AJUSTES) {
                                             navigateTo(AppRoute.Ajustes())
-                                            reclaimCurrentScreenFocus()
                                         }
+                                        ajustesScrollToTopTrigger++
+                                        reclaimCurrentScreenFocus()
                                     }
                                 )
                             )
@@ -738,19 +742,15 @@ fun App(
                         toolbarItems,
                         isCheckerOnly,
                         tabVentaLabel,
-                        tabChecadorLabel,
                         tabProductosLabel,
+                        tabVentasLabel,
                         tabAjustesLabel
                     ) {
                         if (isCheckerOnly) {
                             toolbarItems
                         } else {
-                            toolbarItems.filter { item ->
-                                item.label == tabVentaLabel ||
-                                        item.label == tabChecadorLabel ||
-                                        item.label == tabProductosLabel ||
-                                        item.label == tabAjustesLabel
-                            }
+                            val desiredOrder = listOf(tabVentaLabel, tabProductosLabel, tabVentasLabel, tabAjustesLabel)
+                            desiredOrder.mapNotNull { label -> toolbarItems.firstOrNull { it.label == label } }
                         }
                     }
 
@@ -1476,14 +1476,8 @@ fun App(
                                         entry<AppRoute.Ventas> {
                                             VentasScreen(
                                                 viewModel = koinViewModel<VentasViewModel>(),
-                                                onNavigateBack = if (isToolbarNavigation) {
-                                                    {
-                                                        if (backStack.size > 1) {
-                                                            backStack.removeLastOrNull()
-                                                            reclaimCurrentScreenFocus()
-                                                        }
-                                                    }
-                                                } else null
+                                                scrollToTopTrigger = ventasScrollToTopTrigger,
+                                                onNavigateBack = null
                                             )
                                         }
                                         entry<AppRoute.Ajustes> { route ->
@@ -1491,10 +1485,19 @@ fun App(
                                                 viewModel = ajustesViewModel,
                                                 isCompact = isToolbarNavigation,
                                                 initialCategory = route.category,
+                                                scrollToTopTrigger = ajustesScrollToTopTrigger,
                                                 onNavigateToClientes = {
                                                     if (!isCheckerOnly && backStack.lastOrNull() != AppRoute.Clientes) {
                                                         backStack.add(AppRoute.Clientes)
                                                     }
+                                                },
+                                                onNavigateToChecador = {
+                                                    if (isChecadorDialog) {
+                                                        showPriceCheckerDialog = true
+                                                    } else if (backStack.lastOrNull() != AppRoute.Checador) {
+                                                        backStack.add(AppRoute.Checador)
+                                                    }
+                                                    reclaimCurrentScreenFocus()
                                                 },
                                                 onNavigateToVentas = {
                                                     if (!isCheckerOnly && backStack.lastOrNull() != AppRoute.Ventas) {

@@ -338,7 +338,7 @@ fun ChecadorContent(
                     val highlightedModifier = Modifier
                         .background(
                             color = MaterialTheme.colorScheme.surfaceContainer,
-                            shape = MaterialShapes.Slanted.toShape()
+                            shape = ShapeDefaults.cardShape
                         )
                         .padding(horizontal = 12.dp, vertical = 8.dp)
 

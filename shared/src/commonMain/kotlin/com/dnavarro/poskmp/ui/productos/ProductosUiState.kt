@@ -105,8 +105,13 @@ fun computeSortedProducts(
     sortOrder: ProductSortOrder,
     salesStats: Map<String, ProductSalesStats>
 ): List<Products> {
-    return rawProducts
-        .filter { product ->
+    val filtered = if (selectedCategory == null &&
+        favoriteFilter == FavoriteFilterOption.ALL &&
+        statusFilter == StatusFilterOption.ALL
+    ) {
+        rawProducts
+    } else {
+        rawProducts.filter { product ->
             val matchesCategory = when (selectedCategory) {
                 null -> true
                 "NO_CATEGORY" -> product.categoria.isNullOrBlank()
@@ -124,15 +129,24 @@ fun computeSortedProducts(
             }
             matchesCategory && matchesFavorite && matchesStatus
         }
+    }
+
+    val formattedBarcodesById = if (sortField == ProductSortField.CODIGO) {
+        filtered.associate { it.id to it.formatBarcodesForDisplay(emptyFallback = "") }
+    } else {
+        emptyMap()
+    }
+
+    return filtered
         .sortedWith { p1, p2 ->
             val primaryComp = when (sortField) {
-                ProductSortField.NOMBRE -> p1.nombre.lowercase().compareTo(p2.nombre.lowercase())
+                ProductSortField.NOMBRE -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
                 ProductSortField.CODIGO -> {
-                    val c1 = p1.formatBarcodesForDisplay(emptyFallback = "")
-                    val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
-                    c1.lowercase().compareTo(c2.lowercase())
+                    val c1 = formattedBarcodesById[p1.id] ?: ""
+                    val c2 = formattedBarcodesById[p2.id] ?: ""
+                    c1.compareTo(c2, ignoreCase = true)
                 }
-                ProductSortField.CATEGORIA -> (p1.categoria ?: "").lowercase().compareTo((p2.categoria ?: "").lowercase())
+                ProductSortField.CATEGORIA -> (p1.categoria ?: "").compareTo(p2.categoria ?: "", ignoreCase = true)
                 ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
                 ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
                 ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)

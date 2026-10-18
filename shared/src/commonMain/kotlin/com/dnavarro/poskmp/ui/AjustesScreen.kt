@@ -99,7 +99,9 @@ fun AjustesScreen(
     isCompact: Boolean = false,
     initialCategory: AjustesCategory? = null,
     onNavigateToClientes: (() -> Unit)? = null,
+    onNavigateToChecador: (() -> Unit)? = null,
     onNavigateToVentas: (() -> Unit)? = null,
+    scrollToTopTrigger: Int = 0
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     AjustesScreen(
@@ -107,7 +109,9 @@ fun AjustesScreen(
         isCompact = isCompact,
         initialCategory = initialCategory,
         onNavigateToClientes = onNavigateToClientes,
+        onNavigateToChecador = onNavigateToChecador,
         onNavigateToVentas = onNavigateToVentas,
+        scrollToTopTrigger = scrollToTopTrigger,
         useDynamicColor = uiState.useDynamicColor,
         onUseDynamicColorChange = { viewModel.setUseDynamicColor(it) },
         seedColor = uiState.seedColor,
@@ -237,7 +241,9 @@ fun AjustesScreen(
     isCompact: Boolean = false,
     initialCategory: AjustesCategory? = null,
     onNavigateToClientes: (() -> Unit)? = null,
+    onNavigateToChecador: (() -> Unit)? = null,
     onNavigateToVentas: (() -> Unit)? = null,
+    scrollToTopTrigger: Int = 0,
     useDynamicColor: Boolean = isDynamicColorSupported(),
     onUseDynamicColorChange: (Boolean) -> Unit = {},
     seedColor: Color = DEFAULT_SEED_COLOR,
@@ -393,12 +399,22 @@ fun AjustesScreen(
 
     AdaptiveScaffoldPredictiveBackHandler(navigator = navigator)
 
+    val listScrollState = rememberScrollState()
+
     val categories = remember(isCompact) {
         val base = if (isCompact) {
-            listOf(AjustesCategory.CLIENTES, AjustesCategory.VENTAS) +
-                    AjustesCategory.entries.filter { it != AjustesCategory.CLIENTES && it != AjustesCategory.VENTAS }
+            listOf(AjustesCategory.CLIENTES, AjustesCategory.CHECADOR) +
+                    AjustesCategory.entries.filter {
+                        it != AjustesCategory.CLIENTES &&
+                                it != AjustesCategory.CHECADOR &&
+                                it != AjustesCategory.VENTAS
+                    }
         } else {
-            AjustesCategory.entries.filter { it != AjustesCategory.CLIENTES && it != AjustesCategory.VENTAS }
+            AjustesCategory.entries.filter {
+                it != AjustesCategory.CLIENTES &&
+                        it != AjustesCategory.CHECADOR &&
+                        it != AjustesCategory.VENTAS
+            }
         }
         if (isAndroid()) base.filter { it != AjustesCategory.COPIA_SEGURIDAD } else base
     }
@@ -409,6 +425,28 @@ fun AjustesScreen(
         scaffoldState = navigator.scaffoldState,
         listPane = {
             val listScrollBehavior = if (!isListAndDetailVisible || isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+
+            LaunchedEffect(scrollToTopTrigger) {
+                if (scrollToTopTrigger > 0) {
+                    if (navigator.canNavigateBack()) {
+                        while (navigator.canNavigateBack()) {
+                            navigator.navigateBack()
+                        }
+                    } else if (navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.Detail) {
+                        navigator.navigateTo(ListDetailPaneScaffoldRole.List)
+                    }
+                    if (listScrollBehavior != null) {
+                        try {
+                            listScrollBehavior.state.heightOffset = 0f
+                            listScrollBehavior.state.contentOffset = 0f
+                        } catch (_: Exception) {}
+                    }
+                    try {
+                        listScrollState.animateScrollTo(0)
+                    } catch (_: Exception) {}
+                }
+            }
+
             AnimatedPane(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
                     modifier = Modifier
@@ -457,7 +495,7 @@ fun AjustesScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
+                                .verticalScroll(listScrollState)
                                 .padding(bottom = innerPadding.calculateBottomPadding() + 24.dp)
                                 .padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -474,6 +512,7 @@ fun AjustesScreen(
                                     onClick = {
                                         when (category) {
                                             AjustesCategory.CLIENTES -> onNavigateToClientes?.invoke()
+                                            AjustesCategory.CHECADOR -> onNavigateToChecador?.invoke()
                                             AjustesCategory.VENTAS -> onNavigateToVentas?.invoke()
                                             else -> {
                                                 currentCategory = category
@@ -676,6 +715,7 @@ fun AjustesScreen(
 
                             when (currentCategory) {
                                 AjustesCategory.CLIENTES,
+                                AjustesCategory.CHECADOR,
                                 AjustesCategory.VENTAS -> {
                                     // Handled directly from list
                                 }

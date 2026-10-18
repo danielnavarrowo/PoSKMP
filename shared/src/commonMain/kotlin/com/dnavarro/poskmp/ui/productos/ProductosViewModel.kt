@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
+import com.dnavarro.poskmp.data.sync.SyncRepository
+import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.model.DeviceRole
+import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.domain.usecase.ApplyBulkModificationUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
@@ -13,6 +17,8 @@ import com.dnavarro.poskmp.ui.BulkProductOperation
 import com.dnavarro.poskmp.ui.BulkProgressState
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
+import com.dnavarro.poskmp.util.matchesBarcode
+import com.dnavarro.poskmp.util.parseBarcodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -21,23 +27,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-import com.dnavarro.poskmp.data.sync.SyncRepository
-import com.dnavarro.poskmp.data.sync.SyncStateEnum
-import com.dnavarro.poskmp.domain.model.DeviceRole
-import com.dnavarro.poskmp.domain.model.ProductSalesStats
-import com.dnavarro.poskmp.util.matchesBarcode
-import com.dnavarro.poskmp.util.parseBarcodes
 
 private data class DisplayState(
     val sortField: ProductSortField = ProductSortField.NOMBRE,
@@ -108,12 +107,10 @@ class ProductosViewModel(
             parsed.ifEmpty { DEFAULT_PRODUCT_TABLE_COLUMNS }
         }.distinctUntilChanged()
 
-    private val _debouncedSearchQuery = _searchQuery.debounce { query ->
-        if (query.isEmpty()) 0L else 300L
-    }
-
-    private val _productsFlow = _debouncedSearchQuery.flatMapLatest { query ->
-        getProductsUseCase(query = query, activeOnly = false)
+    private val _queryAndProductsFlow = _searchQuery.flatMapLatest { query ->
+        getProductsUseCase(query = query, activeOnly = false).map { products ->
+            query to products
+        }
     }
 
     private val _allProductsFlow: Flow<List<Products>> = repository.getAllProducts()
@@ -124,7 +121,7 @@ class ProductosViewModel(
             .filter { it.isNotBlank() }
             .distinct()
             .sorted()
-    }.distinctUntilChanged()
+    }.distinctUntilChanged().flowOn(Dispatchers.Default)
 
     private val _needsSalesStats = combine(_displayState, _visibleColumnsFlow) { display, visibleCols ->
         visibleCols.contains(ProductTableColumn.VENTAS_TOTALES) ||
@@ -191,10 +188,9 @@ class ProductosViewModel(
 
     val uiState: StateFlow<ProductosUiState> = combine(
         combine(
-            _searchQuery,
-            _productsFlow,
+            _queryAndProductsFlow,
             _displayState
-        ) { query, products, display ->
+        ) { (query, products), display ->
             Triple(query, products, display)
         },
         combine(
@@ -277,7 +273,7 @@ class ProductosViewModel(
             canEditProducts = settings.canEditProducts,
             sortedProducts = sorted
         )
-    }.stateIn(
+    }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ProductosUiState(isLoading = true)

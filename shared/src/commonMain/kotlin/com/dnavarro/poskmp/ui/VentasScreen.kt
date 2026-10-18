@@ -252,7 +252,8 @@ val ventasNavSavedStateConfig = SavedStateConfiguration {
 fun VentasScreen(
     viewModel: VentasViewModel,
     modifier: Modifier = Modifier,
-    onNavigateBack: (() -> Unit)? = null
+    onNavigateBack: (() -> Unit)? = null,
+    scrollToTopTrigger: Int = 0
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -282,6 +283,7 @@ fun VentasScreen(
         onClearShiftActionResult = { viewModel.clearShiftActionResult() },
         onReprintSaleReceipt = { sale, items -> viewModel.reprintSaleReceipt(sale, items) },
         onNavigateBack = onNavigateBack,
+        scrollToTopTrigger = scrollToTopTrigger,
         modifier = modifier
     )
 }
@@ -308,6 +310,7 @@ fun VentasScreen(
     onClearShiftActionResult: () -> Unit = {},
     onReprintSaleReceipt: (Sale, List<SaleItem>) -> Unit = { _, _ -> },
     onNavigateBack: (() -> Unit)? = null,
+    scrollToTopTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val currentOnClearShiftActionResult by rememberUpdatedState(onClearShiftActionResult)
@@ -350,6 +353,20 @@ fun VentasScreen(
     }
 
     val subBackStack = rememberNavBackStack(ventasNavSavedStateConfig, VentasSubRoute.Main)
+    val mainListState = rememberLazyListState()
+
+    LaunchedEffect(scrollToTopTrigger) {
+        if (scrollToTopTrigger > 0) {
+            if (subBackStack.size > 1) {
+                while (subBackStack.size > 1) {
+                    subBackStack.removeLastOrNull()
+                }
+            }
+            try {
+                mainListState.animateScrollToItem(0)
+            } catch (_: Exception) {}
+        }
+    }
 
     NavDisplay(
         backStack = subBackStack,
@@ -402,7 +419,15 @@ fun VentasScreen(
                 BoxWithConstraints(modifier = modifier.fillMaxSize()) {
                     val isCompact = isCompactWidth(maxWidth)
                     val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
-                    val listState = rememberLazyListState()
+
+                    LaunchedEffect(scrollToTopTrigger) {
+                        if (scrollToTopTrigger > 0 && scrollBehavior != null) {
+                            try {
+                                scrollBehavior.state.heightOffset = 0f
+                                scrollBehavior.state.contentOffset = 0f
+                            } catch (_: Exception) {}
+                        }
+                    }
 
                     Scaffold(
                         topBar = {
@@ -479,7 +504,7 @@ fun VentasScreen(
                                 .padding(top = innerPadding.calculateTopPadding())
                         ) {
                             LazyColumn(
-                                state = listState,
+                                state = mainListState,
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(horizontal = 16.dp),
@@ -859,7 +884,7 @@ fun VentasScreen(
             }
 
             AppVerticalScrollbar(
-                state = listState,
+                state = mainListState,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()

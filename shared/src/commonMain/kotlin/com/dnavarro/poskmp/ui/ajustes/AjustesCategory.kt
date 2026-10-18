@@ -4,6 +4,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.analytics
+import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.info
 import poskmp.shared.generated.resources.light_mode
 import poskmp.shared.generated.resources.payments
@@ -19,6 +20,8 @@ import poskmp.shared.generated.resources.settings_cat_backup_subtitle
 import poskmp.shared.generated.resources.settings_cat_backup_title
 import poskmp.shared.generated.resources.settings_cat_cashiers_subtitle
 import poskmp.shared.generated.resources.settings_cat_cashiers_title
+import poskmp.shared.generated.resources.settings_cat_checador_subtitle
+import poskmp.shared.generated.resources.settings_cat_checador_title
 import poskmp.shared.generated.resources.settings_cat_clientes_subtitle
 import poskmp.shared.generated.resources.settings_cat_clientes_title
 import poskmp.shared.generated.resources.settings_cat_general_subtitle
@@ -44,6 +47,11 @@ enum class AjustesCategory(
         titleRes = Res.string.settings_cat_clientes_title,
         subtitleRes = Res.string.settings_cat_clientes_subtitle,
         icon = Res.drawable.person
+    ),
+    CHECADOR(
+        titleRes = Res.string.settings_cat_checador_title,
+        subtitleRes = Res.string.settings_cat_checador_subtitle,
+        icon = Res.drawable.barcode_scanner
     ),
     VENTAS(
         titleRes = Res.string.settings_cat_ventas_title,

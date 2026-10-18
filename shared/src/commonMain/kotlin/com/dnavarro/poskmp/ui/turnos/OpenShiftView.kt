@@ -307,7 +307,7 @@ fun OpenShiftView(
                         placeholder = { Text(stringResource(Res.string.pin_placeholder)) },
                         inputTransformation = InputTransformation {
                             val current = asCharSequence()
-                            if (current.length > 8) {
+                            if (current.length > 4) {
                                 revertAllChanges()
                             }
                         },
