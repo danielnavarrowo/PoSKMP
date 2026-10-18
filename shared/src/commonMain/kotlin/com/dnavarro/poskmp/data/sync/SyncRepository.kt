@@ -713,41 +713,45 @@ class SyncRepositoryImpl(
                 val existingCustomerIds = queries.selectAllCustomerIds().executeAsList().toHashSet()
                 val existingShiftIds = queries.selectAllShiftIds().executeAsList().toHashSet()
                 queries.transaction {
-                    for (remoteSale in remoteSales) {
-                        val localSale = queries.selectSaleById(remoteSale.id).executeAsOneOrNull()
-                        if (forceFullSync || localSale == null || localSale.estado != remoteSale.estado) {
-                            val validCustomerId = if (remoteSale.customerId != null && existingCustomerIds.contains(remoteSale.customerId)) {
-                                remoteSale.customerId
+                    for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado, esForanea, shiftId, montoEfectivo, montoTarjeta, montoTransferencia, montoCredito) in remoteSales) {
+                        val localSale = queries.selectSaleById(id).executeAsOneOrNull()
+                        if (forceFullSync || localSale == null || localSale.estado != estado) {
+                            val validCustomerId = if (customerId != null && existingCustomerIds.contains(
+                                    customerId
+                                )) {
+                                customerId
                             } else {
                                 null
                             }
-                            val validShiftId = if (remoteSale.shiftId != null && existingShiftIds.contains(remoteSale.shiftId)) {
-                                remoteSale.shiftId
+                            val validShiftId = if (shiftId != null && existingShiftIds.contains(
+                                    shiftId
+                                )) {
+                                shiftId
                             } else {
                                 null
                             }
                             queries.upsertSyncedSale(
-                                id = remoteSale.id,
-                                folio = remoteSale.folio,
-                                total = remoteSale.total,
-                                total_original = remoteSale.totalOriginal,
-                                total_costo = remoteSale.totalCosto,
-                                ganancia = remoteSale.ganancia,
-                                pago_con = remoteSale.pagoCon,
-                                cambio = remoteSale.cambio,
-                                metodo_pago = remoteSale.metodoPago,
-                                total_items = remoteSale.totalItems,
+                                id = id,
+                                folio = folio,
+                                total = total,
+                                total_original = totalOriginal,
+                                total_costo = totalCosto,
+                                ganancia = ganancia,
+                                pago_con = pagoCon,
+                                cambio = cambio,
+                                metodo_pago = metodoPago,
+                                total_items = totalItems,
                                 customer_id = validCustomerId,
-                                created_at = remoteSale.createdAt,
+                                created_at = createdAt,
                                 shift_id = validShiftId,
                                 cashier_id = localSale?.cashier_id,
-                                cashier_name = remoteSale.cashierName,
-                                estado = remoteSale.estado,
-                                es_foranea = if (remoteSale.esForanea) 1L else 0L,
-                                monto_efectivo = remoteSale.montoEfectivo,
-                                monto_tarjeta = remoteSale.montoTarjeta,
-                                monto_transferencia = remoteSale.montoTransferencia,
-                                monto_credito = remoteSale.montoCredito
+                                cashier_name = cashierName,
+                                estado = estado,
+                                es_foranea = if (esForanea) 1L else 0L,
+                                monto_efectivo = montoEfectivo,
+                                monto_tarjeta = montoTarjeta,
+                                monto_transferencia = montoTransferencia,
+                                monto_credito = montoCredito
                             )
                             salesPulledCount++
                         }

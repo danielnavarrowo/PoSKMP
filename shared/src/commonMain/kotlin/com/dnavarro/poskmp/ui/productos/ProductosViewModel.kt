@@ -82,7 +82,7 @@ private data class ProductExtraState(
 /**
  * ViewModel for Productos screen, hosting state and handling UI events according to Google UI & Domain Layer architecture.
  */
-@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class ProductosViewModel(
     private val repository: ProductRepository,
     private val settingsRepository: SettingsRepository,
