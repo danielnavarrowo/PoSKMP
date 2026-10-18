@@ -97,7 +97,15 @@ data class SaleDto(
     @SerialName("es_foranea")
     val esForanea: Boolean = false,
     @SerialName("shift_id")
-    val shiftId: String? = null
+    val shiftId: String? = null,
+    @SerialName("monto_efectivo")
+    val montoEfectivo: Double = 0.0,
+    @SerialName("monto_tarjeta")
+    val montoTarjeta: Double = 0.0,
+    @SerialName("monto_transferencia")
+    val montoTransferencia: Double = 0.0,
+    @SerialName("monto_credito")
+    val montoCredito: Double = 0.0
 )
 
 @Serializable

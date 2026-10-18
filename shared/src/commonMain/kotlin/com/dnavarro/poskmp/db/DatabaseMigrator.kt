@@ -71,6 +71,10 @@ object DatabaseMigrator {
                 cashier_name   TEXT    DEFAULT NULL,
                 estado         TEXT    NOT NULL DEFAULT 'COMPLETADA',
                 es_foranea     INTEGER NOT NULL DEFAULT 0,
+                monto_efectivo REAL    NOT NULL DEFAULT 0.0,
+                monto_tarjeta  REAL    NOT NULL DEFAULT 0.0,
+                monto_transferencia REAL NOT NULL DEFAULT 0.0,
+                monto_credito  REAL    NOT NULL DEFAULT 0.0,
                 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
             );
             """.trimIndent(),
@@ -189,6 +193,30 @@ object DatabaseMigrator {
         ensureColumnExists(driver, "sales", "estado", "TEXT NOT NULL DEFAULT 'COMPLETADA'")
         ensureColumnExists(driver, "sales", "sync_state", "TEXT NOT NULL DEFAULT 'PENDING_INSERT'")
         ensureColumnExists(driver, "sales", "es_foranea", "INTEGER NOT NULL DEFAULT 0")
+        ensureColumnExists(driver, "sales", "monto_efectivo", "REAL NOT NULL DEFAULT 0.0")
+        ensureColumnExists(driver, "sales", "monto_tarjeta", "REAL NOT NULL DEFAULT 0.0")
+        ensureColumnExists(driver, "sales", "monto_transferencia", "REAL NOT NULL DEFAULT 0.0")
+        ensureColumnExists(driver, "sales", "monto_credito", "REAL NOT NULL DEFAULT 0.0")
+
+        try {
+            driver.execute(null, """
+                UPDATE sales
+                SET 
+                    monto_efectivo = CASE 
+                        WHEN metodo_pago = 'EFECTIVO' THEN total
+                        WHEN metodo_pago = 'MIXTO' THEN COALESCE(pago_con - cambio, total)
+                        ELSE 0.0 
+                    END,
+                    monto_tarjeta = CASE WHEN metodo_pago = 'TARJETA' THEN total ELSE 0.0 END,
+                    monto_transferencia = CASE WHEN metodo_pago = 'TRANSFERENCIA' THEN total ELSE 0.0 END,
+                    monto_credito = CASE 
+                        WHEN metodo_pago = 'CREDITO' THEN total
+                        WHEN metodo_pago = 'MIXTO' AND total > pago_con THEN (total - pago_con)
+                        ELSE 0.0 
+                    END
+                WHERE monto_efectivo = 0.0 AND monto_tarjeta = 0.0 AND monto_transferencia = 0.0 AND monto_credito = 0.0 AND total > 0.0;
+            """.trimIndent(), 0)
+        } catch (_: Exception) {}
 
         // Migrate sale_items columns
         ensureColumnExists(driver, "sale_items", "es_delivery", "INTEGER NOT NULL DEFAULT 0")

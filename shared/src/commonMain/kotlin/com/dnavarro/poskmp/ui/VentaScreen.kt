@@ -1384,11 +1384,25 @@ fun VentaScreen(
                 )
                 PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> Pair(total, 0.0)
                 PaymentMethod.MIXTO -> Pair(
-                    (total - mCredit).coerceAtLeast(0.0),
+                    if (mCash > 0) mCash else (total - mCredit).coerceAtLeast(0.0),
                     cambioMixto
                 )
                 PaymentMethod.CREDITO -> Pair(0.0, 0.0)
             }
+
+            val (montoEfectivo, montoTarjeta, montoTransferencia, montoCredito) = when (selectedPaymentMethod) {
+                PaymentMethod.EFECTIVO -> listOf(total, 0.0, 0.0, 0.0)
+                PaymentMethod.TARJETA -> listOf(0.0, total, 0.0, 0.0)
+                PaymentMethod.TRANSFERENCIA -> listOf(0.0, 0.0, total, 0.0)
+                PaymentMethod.CREDITO -> listOf(0.0, 0.0, 0.0, total)
+                PaymentMethod.MIXTO -> listOf(
+                    (mCash - cambioMixto).coerceAtLeast(0.0),
+                    mCard,
+                    mTransfer,
+                    mCredit
+                )
+            }
+
             lastSaleTotal = total
             lastSaleChange = finalChange
             showCheckoutDialog = false
@@ -1398,7 +1412,11 @@ fun VentaScreen(
                     cambio = finalChange,
                     metodoPago = selectedPaymentMethod.name,
                     customerId = selectedCustomer?.id,
-                    printReceipt = printReceipt
+                    printReceipt = printReceipt,
+                    montoEfectivo = montoEfectivo,
+                    montoTarjeta = montoTarjeta,
+                    montoTransferencia = montoTransferencia,
+                    montoCredito = montoCredito
                 )
                 lastSaleFolio = folio
                 if (folio > 0L) {

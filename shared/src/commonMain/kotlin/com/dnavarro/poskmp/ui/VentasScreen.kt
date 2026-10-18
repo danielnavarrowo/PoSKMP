@@ -1701,7 +1701,66 @@ internal fun SaleDetailDialog(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Método: ${sale.metodoPago}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (sale.pagoCon > 0.0 && sale.cambio > 0.0) {
+                        Text(
+                            text = "Pagó: $${sale.pagoCon.toString().formatPrice()} • Cambio: $${sale.cambio.toString().formatPrice()}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (sale.metodoPago == "MIXTO") {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (sale.montoEfectivo > 0.0) {
+                            Text(
+                                text = "Efectivo: $${sale.montoEfectivo.toString().formatPrice()}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        if (sale.montoTarjeta > 0.0) {
+                            Text(
+                                text = "Tarjeta: $${sale.montoTarjeta.toString().formatPrice()}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                        if (sale.montoTransferencia > 0.0) {
+                            Text(
+                                text = "Transferencia: $${sale.montoTransferencia.toString().formatPrice()}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        if (sale.montoCredito > 0.0) {
+                            Text(
+                                text = "Crédito: $${sale.montoCredito.toString().formatPrice()}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(8.dp))
 

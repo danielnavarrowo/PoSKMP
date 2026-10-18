@@ -797,7 +797,11 @@ class VentaViewModel(
         cambio: Double,
         metodoPago: String = "EFECTIVO",
         customerId: String? = null,
-        printReceipt: Boolean = true
+        printReceipt: Boolean = true,
+        montoEfectivo: Double = 0.0,
+        montoTarjeta: Double = 0.0,
+        montoTransferencia: Double = 0.0,
+        montoCredito: Double = 0.0
     ): Long {
         val currentItems = _cartItems.value
         if (currentItems.isEmpty()) return 0L
@@ -809,9 +813,13 @@ class VentaViewModel(
             metodoPago = metodoPago,
             customerId = effectiveCustomerId,
             roundTicketTotal = uiState.value.roundTicketTotal,
-            esForanea = uiState.value.prioritizeDeliveryPrice
+            esForanea = uiState.value.prioritizeDeliveryPrice,
+            montoEfectivo = montoEfectivo,
+            montoTarjeta = montoTarjeta,
+            montoTransferencia = montoTransferencia,
+            montoCredito = montoCredito
         )
-        val isCashPayment = metodoPago == "EFECTIVO" || (metodoPago == "MIXTO" && pagoCon > 0.0)
+        val isCashPayment = metodoPago == "EFECTIVO" || (metodoPago == "MIXTO" && (montoEfectivo > 0.0 || pagoCon > 0.0))
         val shouldOpenDrawer = uiState.value.receiptSettings.openCashDrawerOnCashSale && isCashPayment
 
         if (printReceipt) {
@@ -839,7 +847,11 @@ class VentaViewModel(
                 change = cambio,
                 paymentMethod = metodoPago,
                 customerName = _selectedCustomer.value?.nombre,
-                settings = receiptSettings.copy(openCashDrawerOnCashSale = shouldOpenDrawer)
+                settings = receiptSettings.copy(openCashDrawerOnCashSale = shouldOpenDrawer),
+                montoEfectivo = montoEfectivo,
+                montoTarjeta = montoTarjeta,
+                montoTransferencia = montoTransferencia,
+                montoCredito = montoCredito
             )
             _lastReceipt.value = receipt
             viewModelScope.launch {

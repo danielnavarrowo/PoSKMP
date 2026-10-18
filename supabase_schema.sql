@@ -139,7 +139,11 @@ CREATE TABLE IF NOT EXISTS public.sales (
     cashier_id     TEXT,
     cashier_name   TEXT,
     estado         TEXT NOT NULL DEFAULT 'COMPLETADA',
-    es_foranea     BOOLEAN NOT NULL DEFAULT false
+    es_foranea     BOOLEAN NOT NULL DEFAULT false,
+    monto_efectivo NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    monto_tarjeta  NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    monto_transferencia NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    monto_credito  NUMERIC(12, 2) NOT NULL DEFAULT 0.00
 );
 
 CREATE INDEX IF NOT EXISTS idx_sales_created_at ON public.sales(created_at);
@@ -580,9 +584,30 @@ ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS cashier_id TEXT REFERENCES pub
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS cashier_name TEXT;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS estado TEXT NOT NULL DEFAULT 'COMPLETADA';
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS es_foranea BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_efectivo NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_tarjeta NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_transferencia NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_credito NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
 CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON public.sales(shift_id);
 CREATE INDEX IF NOT EXISTS idx_sales_estado ON public.sales(estado);
 CREATE INDEX IF NOT EXISTS idx_sales_es_foranea ON public.sales(es_foranea);
+
+-- Migración segura para rellenar montos en ventas existentes (backfill)
+UPDATE public.sales
+SET 
+    monto_efectivo = CASE 
+        WHEN metodo_pago = 'EFECTIVO' THEN total
+        WHEN metodo_pago = 'MIXTO' THEN COALESCE(pago_con - cambio, total)
+        ELSE 0.00 
+    END,
+    monto_tarjeta = CASE WHEN metodo_pago = 'TARJETA' THEN total ELSE 0.00 END,
+    monto_transferencia = CASE WHEN metodo_pago = 'TRANSFERENCIA' THEN total ELSE 0.00 END,
+    monto_credito = CASE 
+        WHEN metodo_pago = 'CREDITO' THEN total
+        WHEN metodo_pago = 'MIXTO' AND total > pago_con THEN (total - pago_con)
+        ELSE 0.00 
+    END
+WHERE monto_efectivo = 0.00 AND monto_tarjeta = 0.00 AND monto_transferencia = 0.00 AND monto_credito = 0.00 AND total > 0.00;
 
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS siempre_mayoreo BOOLEAN NOT NULL DEFAULT false;
 

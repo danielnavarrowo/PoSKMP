@@ -37,7 +37,11 @@ class SaleRepositoryImpl(
             cashier_id = sale.cashierId,
             cashier_name = sale.cashierName,
             estado = sale.estado,
-            es_foranea = if (sale.esForanea) 1L else 0L
+            es_foranea = if (sale.esForanea) 1L else 0L,
+            monto_efectivo = sale.montoEfectivo,
+            monto_tarjeta = sale.montoTarjeta,
+            monto_transferencia = sale.montoTransferencia,
+            monto_credito = sale.montoCredito
         )
         val dbItems = items.map { item ->
             Sale_items(
@@ -113,7 +117,11 @@ class SaleRepositoryImpl(
                 cashierId = row.cashier_id,
                 cashierName = row.cashier_name,
                 estado = row.estado,
-                esForanea = row.es_foranea == 1L
+                esForanea = row.es_foranea == 1L,
+                montoEfectivo = row.monto_efectivo,
+                montoTarjeta = row.monto_tarjeta,
+                montoTransferencia = row.monto_transferencia,
+                montoCredito = row.monto_credito
             )
         }
     }
@@ -144,7 +152,11 @@ class SaleRepositoryImpl(
                 cashierId = row.cashier_id,
                 cashierName = row.cashier_name,
                 estado = row.estado,
-                esForanea = row.es_foranea == 1L
+                esForanea = row.es_foranea == 1L,
+                montoEfectivo = row.monto_efectivo,
+                montoTarjeta = row.monto_tarjeta,
+                montoTransferencia = row.monto_transferencia,
+                montoCredito = row.monto_credito
             )
         }
     }
@@ -190,7 +202,11 @@ class SaleRepositoryImpl(
             cashierId = row.cashier_id,
             cashierName = row.cashier_name,
             estado = row.estado,
-            esForanea = row.es_foranea == 1L
+            esForanea = row.es_foranea == 1L,
+            montoEfectivo = row.monto_efectivo,
+            montoTarjeta = row.monto_tarjeta,
+            montoTransferencia = row.monto_transferencia,
+            montoCredito = row.monto_credito
         )
     }
 
@@ -238,7 +254,11 @@ class SaleRepositoryImpl(
                     cashierId = it.cashier_id,
                     cashierName = it.cashier_name,
                     estado = it.estado,
-                    esForanea = it.es_foranea == 1L
+                    esForanea = it.es_foranea == 1L,
+                    montoEfectivo = it.monto_efectivo,
+                    montoTarjeta = it.monto_tarjeta,
+                    montoTransferencia = it.monto_transferencia,
+                    montoCredito = it.monto_credito
                 )
             }
         }

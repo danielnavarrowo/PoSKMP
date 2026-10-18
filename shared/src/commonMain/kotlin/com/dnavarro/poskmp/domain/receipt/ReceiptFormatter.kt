@@ -40,7 +40,11 @@ object ReceiptFormatter {
             paymentMethod = sale.metodoPago,
             customerName = customerName,
             settings = settings,
-            overrideTotalPieces = sale.totalItems
+            overrideTotalPieces = sale.totalItems,
+            montoEfectivo = sale.montoEfectivo,
+            montoTarjeta = sale.montoTarjeta,
+            montoTransferencia = sale.montoTransferencia,
+            montoCredito = sale.montoCredito
         )
     }
 
@@ -54,7 +58,11 @@ object ReceiptFormatter {
         paymentMethod: String,
         customerName: String?,
         settings: ReceiptSettings,
-        overrideTotalPieces: Double? = null
+        overrideTotalPieces: Double? = null,
+        montoEfectivo: Double = 0.0,
+        montoTarjeta: Double = 0.0,
+        montoTransferencia: Double = 0.0,
+        montoCredito: Double = 0.0
     ): ReceiptDocument {
         val baseCharsPer80mm = when {
             settings.fontSize >= 25 -> 16
@@ -153,6 +161,12 @@ object ReceiptFormatter {
 
         // 7. Payment breakdown
         twoColumn("Pago", paymentMethod)
+        if (paymentMethod == "MIXTO") {
+            if (montoEfectivo > 0.0) twoColumn("  Efectivo", money(montoEfectivo))
+            if (montoTarjeta > 0.0) twoColumn("  Tarjeta", money(montoTarjeta))
+            if (montoTransferencia > 0.0) twoColumn("  Transferencia", money(montoTransferencia))
+            if (montoCredito > 0.0) twoColumn("  Crédito", money(montoCredito))
+        }
         if (paid > 0.0) twoColumn("Recibido", money(paid))
         if (change > 0.0) twoColumn("Cambio", money(change), emphasized = true)
 

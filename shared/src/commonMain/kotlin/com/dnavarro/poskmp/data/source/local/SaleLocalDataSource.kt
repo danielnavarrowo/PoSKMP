@@ -60,7 +60,11 @@ class SqlDelightSaleDataSource(
                 cashier_id = sale.cashier_id,
                 cashier_name = sale.cashier_name,
                 estado = sale.estado,
-                es_foranea = sale.es_foranea
+                es_foranea = sale.es_foranea,
+                monto_efectivo = sale.monto_efectivo,
+                monto_tarjeta = sale.monto_tarjeta,
+                monto_transferencia = sale.monto_transferencia,
+                monto_credito = sale.monto_credito
             )
 
             items.forEach { item ->
@@ -246,17 +250,32 @@ class SqlDelightSaleDataSource(
         endTime: Long,
         shiftId: String?
     ): List<PaymentMethodMetric> = withContext(Dispatchers.IO) {
-        queries.selectPaymentMethodSalesBetween(
+        val row = queries.selectPaymentMethodBreakdownBetween(
             shiftId = shiftId,
             startTime = startTime,
             endTime = endTime
-        ).executeAsList().map { row ->
-            PaymentMethodMetric(
-                metodoPago = row.metodo_pago,
-                totalRecaudado = row.total_recaudado,
-                transaccionesCount = row.total_transacciones
-            )
+        ).executeAsOne()
+
+        val totalEfectivo = row.total_efectivo ?: 0.0
+        val totalTarjeta = row.total_tarjeta ?: 0.0
+        val totalTransferencia = row.total_transferencia ?: 0.0
+        val totalCredito = row.total_credito ?: 0.0
+
+        val list = mutableListOf<PaymentMethodMetric>()
+        if (totalEfectivo > 0.0) {
+            list.add(PaymentMethodMetric("EFECTIVO", totalEfectivo, row.count_efectivo))
         }
+        if (totalTarjeta > 0.0) {
+            list.add(PaymentMethodMetric("TARJETA", totalTarjeta, row.count_tarjeta))
+        }
+        if (totalTransferencia > 0.0) {
+            list.add(PaymentMethodMetric("TRANSFERENCIA", totalTransferencia, row.count_transferencia))
+        }
+        if (totalCredito > 0.0) {
+            list.add(PaymentMethodMetric("CREDITO", totalCredito, row.count_credito))
+        }
+        list.sortByDescending { it.totalRecaudado }
+        list
     }
 
     override suspend fun getCategorySalesBetween(

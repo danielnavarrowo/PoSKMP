@@ -274,7 +274,11 @@ class ShiftRepositoryImpl(
                     cashierId = row.cashier_id,
                     cashierName = row.cashier_name,
                     estado = row.estado,
-                    esForanea = row.es_foranea == 1L
+                    esForanea = row.es_foranea == 1L,
+                    montoEfectivo = row.monto_efectivo,
+                    montoTarjeta = row.monto_tarjeta,
+                    montoTransferencia = row.monto_transferencia,
+                    montoCredito = row.monto_credito
                 )
             }
 

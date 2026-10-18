@@ -23,7 +23,11 @@ class RecordSaleUseCase(
         shiftId: String? = null,
         cashierId: String? = null,
         cashierName: String? = null,
-        esForanea: Boolean = false
+        esForanea: Boolean = false,
+        montoEfectivo: Double = 0.0,
+        montoTarjeta: Double = 0.0,
+        montoTransferencia: Double = 0.0,
+        montoCredito: Double = 0.0
     ): Long {
         if (cartItems.isEmpty()) return 0L
 
@@ -81,10 +85,27 @@ class RecordSaleUseCase(
 
         val finalTotal = if (roundTicketTotal) roundPrice(total) else total
 
+        val (finalCash, finalCard, finalTransfer, finalCredit) = when (metodoPago) {
+            "EFECTIVO" -> listOf(finalTotal, 0.0, 0.0, 0.0)
+            "TARJETA" -> listOf(0.0, finalTotal, 0.0, 0.0)
+            "TRANSFERENCIA" -> listOf(0.0, 0.0, finalTotal, 0.0)
+            "CREDITO" -> listOf(0.0, 0.0, 0.0, finalTotal)
+            "MIXTO" -> {
+                if (montoEfectivo == 0.0 && montoTarjeta == 0.0 && montoTransferencia == 0.0 && montoCredito == 0.0) {
+                    val cashPart = (pagoCon - cambio).coerceAtLeast(0.0)
+                    val creditPart = if (finalTotal > pagoCon) (finalTotal - pagoCon) else 0.0
+                    listOf(cashPart, 0.0, 0.0, creditPart)
+                } else {
+                    listOf(montoEfectivo, montoTarjeta, montoTransferencia, montoCredito)
+                }
+            }
+            else -> listOf(finalTotal, 0.0, 0.0, 0.0)
+        }
+
         if (metodoPago == "CREDITO" && customerId.isNullOrBlank()) {
             throw IllegalArgumentException("Las ventas a crédito requieren un cliente registrado.")
         }
-        if (metodoPago == "MIXTO" && pagoCon < finalTotal && customerId.isNullOrBlank()) {
+        if (metodoPago == "MIXTO" && (finalCredit > 0.0 || pagoCon < finalTotal) && customerId.isNullOrBlank()) {
             throw IllegalArgumentException("Las ventas mixtas con saldo a crédito requieren un cliente registrado.")
         }
 
@@ -107,7 +128,11 @@ class RecordSaleUseCase(
             shiftId = finalShiftId,
             cashierId = finalCashierId,
             cashierName = finalCashierName,
-            esForanea = esForanea
+            esForanea = esForanea,
+            montoEfectivo = finalCash,
+            montoTarjeta = finalCard,
+            montoTransferencia = finalTransfer,
+            montoCredito = finalCredit
         )
 
         return saleRepository.recordSale(sale, saleItems)

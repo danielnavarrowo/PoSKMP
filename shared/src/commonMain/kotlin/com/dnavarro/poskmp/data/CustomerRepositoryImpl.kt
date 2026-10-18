@@ -61,7 +61,9 @@ class CustomerRepositoryImpl(
 
         creditSales.forEach { sale ->
             val isMixto = sale.metodo_pago == "MIXTO"
-            val cargoMonto = if (isMixto) (sale.total - sale.pago_con).coerceAtLeast(0.0) else sale.total
+            val cargoMonto = if (isMixto) {
+                if (sale.monto_credito > 0.0) sale.monto_credito else (sale.total - sale.pago_con).coerceAtLeast(0.0)
+            } else sale.total
             val descripcion = if (isMixto) {
                 "Ticket #${sale.folio} (Pago Mixto - Resto a Crédito)"
             } else {
