@@ -863,7 +863,7 @@ fun VentasScreen(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .padding(vertical = 4.dp, horizontal = 6.dp)
+                    .padding(vertical = 4.dp, horizontal = 8.dp)
             )
         }
         }

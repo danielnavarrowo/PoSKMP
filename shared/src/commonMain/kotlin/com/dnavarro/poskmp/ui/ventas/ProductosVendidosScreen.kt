@@ -72,26 +72,78 @@ import com.dnavarro.poskmp.util.matchesSearchQuery
 import com.dnavarro.poskmp.util.parseBarcodes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.Badge
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.toShape
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import com.dnavarro.poskmp.util.PlatformBackHandler
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.launch
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.apply_filters_button
 import poskmp.shared.generated.resources.arrow_up
 import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.btn_back
+import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.empty_sold_products
+import poskmp.shared.generated.resources.filter
+import poskmp.shared.generated.resources.filter_and_sort_title
+import poskmp.shared.generated.resources.filter_category_all
+import poskmp.shared.generated.resources.filter_category_title
+import poskmp.shared.generated.resources.filter_off
+import poskmp.shared.generated.resources.filter_on
 import poskmp.shared.generated.resources.header_price
 import poskmp.shared.generated.resources.header_product_name
 import poskmp.shared.generated.resources.header_sold_pieces
+import poskmp.shared.generated.resources.no_category
+import poskmp.shared.generated.resources.reset_filters
 import poskmp.shared.generated.resources.search
 import poskmp.shared.generated.resources.search_desc
 import poskmp.shared.generated.resources.search_placeholder
 import poskmp.shared.generated.resources.sold_products_total_summary
+import poskmp.shared.generated.resources.sort_order_asc
+import poskmp.shared.generated.resources.sort_order_desc
+import poskmp.shared.generated.resources.sort_order_section_title
+import poskmp.shared.generated.resources.sort_section_title
 import poskmp.shared.generated.resources.title_sold_products
 
-enum class SoldProductSortColumn {
-    NAME,
-    PRICE,
-    PIECES
+enum class SoldProductSortField(val label: String) {
+    PIECES("Piezas vendidas"),
+    REVENUE("Total recaudado"),
+    PROFIT("Ganancia generada"),
+    NAME("Nombre del producto")
+}
+
+enum class SoldProductUnitTypeFilter(val label: String) {
+    ALL("Todos"),
+    BY_PIECE("Por pieza"),
+    BY_WEIGHT("Por peso / a granel")
+}
+
+enum class SoldProductCatalogFilter(val label: String) {
+    ALL("Todos"),
+    CATALOG("En catálogo"),
+    CUSTOM("Venta rápida")
 }
 
 @Composable
@@ -102,12 +154,35 @@ fun ProductosVendidosScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var sortColumn by rememberSaveable { mutableStateOf(SoldProductSortColumn.PIECES) }
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
+    var sortField by rememberSaveable { mutableStateOf(SoldProductSortField.PIECES) }
     var isAscending by rememberSaveable { mutableStateOf(false) }
+    var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var unitTypeFilter by rememberSaveable { mutableStateOf(SoldProductUnitTypeFilter.ALL) }
+    var catalogFilter by rememberSaveable { mutableStateOf(SoldProductCatalogFilter.ALL) }
+
+    val availableCategories = remember(soldProducts) {
+        soldProducts.mapNotNull { it.categoria }
+            .filter { it.isNotBlank() && !it.equals("Sin categoría", ignoreCase = true) && !it.equals("Sin categoria", ignoreCase = true) }
+            .distinct()
+            .sorted()
+    }
+
     val listState = rememberLazyListState()
     val searchQueryState = rememberTextFieldState()
     val searchBarFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    val hasActiveFilters = sortField != SoldProductSortField.PIECES || isAscending || selectedCategory != null || unitTypeFilter != SoldProductUnitTypeFilter.ALL || catalogFilter != SoldProductCatalogFilter.ALL
+
+    val resetFilters = {
+        sortField = SoldProductSortField.PIECES
+        isAscending = false
+        selectedCategory = null
+        unitTypeFilter = SoldProductUnitTypeFilter.ALL
+        catalogFilter = SoldProductCatalogFilter.ALL
+        searchQueryState.clearText()
+    }
 
     val sortArrowRotation by animateFloatAsState(
         targetValue = if (isAscending) 0f else 180f,
@@ -116,13 +191,21 @@ fun ProductosVendidosScreen(
 
     val searchQuery = searchQueryState.text.toString()
 
-    val filteredProducts = remember(soldProducts, searchQuery, sortColumn, isAscending) {
+    val filteredProducts = remember(
+        soldProducts,
+        searchQuery,
+        sortField,
+        isAscending,
+        selectedCategory,
+        unitTypeFilter,
+        catalogFilter
+    ) {
         val trimmed = searchQuery.trim()
-        val baseList = if (trimmed.isEmpty()) {
-            soldProducts
-        } else {
-            val tokens = trimmed.split("\\s+".toRegex()).filter { it.isNotEmpty() }
-            soldProducts.filter { metric ->
+        val baseList = soldProducts.filter { metric ->
+            val matchesSearch = if (trimmed.isEmpty()) {
+                true
+            } else {
+                val tokens = trimmed.split("\\s+".toRegex()).filter { it.isNotEmpty() }
                 val barcodes = parseBarcodes(metric.codigos)
                 if (tokens.size > 1) {
                     tokens.all { token ->
@@ -136,23 +219,41 @@ fun ProductosVendidosScreen(
                     barcodes.any { it.contains(trimmed, ignoreCase = true) }
                 }
             }
+
+            val matchesCategory = when (selectedCategory) {
+                null -> true
+                "NO_CATEGORY" -> metric.categoria.isNullOrBlank() ||
+                        metric.categoria.equals("Sin categoría", ignoreCase = true) ||
+                        metric.categoria.equals("Sin categoria", ignoreCase = true)
+                else -> metric.categoria.equals(selectedCategory, ignoreCase = true)
+            }
+
+            val matchesUnitType = when (unitTypeFilter) {
+                SoldProductUnitTypeFilter.ALL -> true
+                SoldProductUnitTypeFilter.BY_PIECE -> metric.totalUnidades % 1.0 == 0.0
+                SoldProductUnitTypeFilter.BY_WEIGHT -> metric.totalUnidades % 1.0 != 0.0
+            }
+
+            val matchesCatalog = when (catalogFilter) {
+                SoldProductCatalogFilter.ALL -> true
+                SoldProductCatalogFilter.CATALOG -> metric.productId != null
+                SoldProductCatalogFilter.CUSTOM -> metric.productId == null
+            }
+
+            matchesSearch && matchesCategory && matchesUnitType && matchesCatalog
         }
-        when (sortColumn) {
-            SoldProductSortColumn.PIECES -> {
-                if (isAscending) {
-                    baseList.sortedBy { it.totalUnidades }
-                } else {
-                    baseList.sortedByDescending { it.totalUnidades }
-                }
+
+        when (sortField) {
+            SoldProductSortField.PIECES -> {
+                if (isAscending) baseList.sortedBy { it.totalUnidades } else baseList.sortedByDescending { it.totalUnidades }
             }
-            SoldProductSortColumn.PRICE -> {
-                if (isAscending) {
-                    baseList.sortedBy { if (it.totalUnidades > 0) it.totalRecaudado / it.totalUnidades else 0.0 }
-                } else {
-                    baseList.sortedByDescending { if (it.totalUnidades > 0) it.totalRecaudado / it.totalUnidades else 0.0 }
-                }
+            SoldProductSortField.REVENUE -> {
+                if (isAscending) baseList.sortedBy { it.totalRecaudado } else baseList.sortedByDescending { it.totalRecaudado }
             }
-            SoldProductSortColumn.NAME -> {
+            SoldProductSortField.PROFIT -> {
+                if (isAscending) baseList.sortedBy { it.gananciaGenerada } else baseList.sortedByDescending { it.gananciaGenerada }
+            }
+            SoldProductSortField.NAME -> {
                 if (isAscending) {
                     baseList.sortedBy { it.productNombre.lowercase() }
                 } else {
@@ -162,7 +263,7 @@ fun ProductosVendidosScreen(
         }
     }
 
-    LaunchedEffect(searchQuery, sortColumn, isAscending) {
+    LaunchedEffect(searchQuery, sortField, isAscending, selectedCategory, unitTypeFilter, catalogFilter) {
         try {
             listState.scrollToItem(0)
         } catch (_: Exception) {}
@@ -234,93 +335,131 @@ fun ProductosVendidosScreen(
                     .fillMaxSize()
                     .padding(bottom = paddingValues.calculateBottomPadding())
             ) {
-                // Search Bar
-                Box(
+                // Search Bar and Filter Button
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .height(54.dp)
-                        .background(
-                            color = if (searchQueryState.text.isNotEmpty())
-                                MaterialTheme.colorScheme.surfaceContainerLowest
-                            else
-                                MaterialTheme.colorScheme.surfaceContainer,
-                            shape = ShapeDefaults.cardShape
-                        ),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .weight(1f)
+                            .height(54.dp)
+                            .background(
+                                color = if (searchQueryState.text.isNotEmpty())
+                                    MaterialTheme.colorScheme.surfaceContainerLowest
+                                else
+                                    MaterialTheme.colorScheme.surfaceContainer,
+                                shape = ShapeDefaults.cardShape
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.search),
-                            contentDescription = stringResource(Res.string.search_desc),
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.CenterStart
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (searchQueryState.text.isEmpty()) {
-                                Text(
-                                    text = stringResource(Res.string.search_placeholder),
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        color = MaterialTheme.colorScheme.onSurface.copy(
-                                            alpha = 0.6f
-                                        )
+                            Icon(
+                                painter = painterResource(Res.drawable.search),
+                                contentDescription = stringResource(Res.string.search_desc),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQueryState.text.isEmpty()) {
+                                    Text(
+                                        text = stringResource(Res.string.search_placeholder),
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            color = MaterialTheme.colorScheme.onSurface.copy(
+                                                alpha = 0.6f
+                                            )
+                                        ),
+                                        textAlign = TextAlign.Start
+                                    )
+                                }
+
+                                BasicTextField(
+                                    state = searchQueryState,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(searchBarFocusRequester)
+                                        .onPreviewKeyEvent { keyEvent ->
+                                            keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.Escape && if (searchQueryState.text.isNotEmpty()) {
+                                                searchQueryState.clearText()
+                                                true
+                                            } else false
+                                        },
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Search
                                     ),
-                                    textAlign = TextAlign.Start
+                                    onKeyboardAction = {
+                                        keyboardController?.hide()
+                                    },
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Start
+                                    ),
+                                    lineLimits = TextFieldLineLimits.SingleLine
                                 )
                             }
 
-                            BasicTextField(
-                                state = searchQueryState,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(searchBarFocusRequester)
-                                    .onPreviewKeyEvent { keyEvent ->
-                                        keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.Escape && if (searchQueryState.text.isNotEmpty()) {
-                                            searchQueryState.clearText()
-                                            true
-                                        } else false
-                                    },
-                                keyboardOptions = KeyboardOptions(
-                                    imeAction = ImeAction.Search
-                                ),
-                                onKeyboardAction = {
-                                    keyboardController?.hide()
-                                },
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    textAlign = TextAlign.Start
-                                ),
-                                lineLimits = TextFieldLineLimits.SingleLine
+                            if (searchQueryState.text.isNotEmpty()) {
+                                IconButton(
+                                    modifier = Modifier.size(32.dp),
+                                    onClick = {
+                                        searchQueryState.clearText()
+                                    }
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.close),
+                                        contentDescription = stringResource(Res.string.clear_desc),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Box {
+                        IconButton(
+                            onClick = { showFilterBottomSheet = true },
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(MaterialShapes.Cookie4Sided.toShape())
+                                .background(
+                                    if (hasActiveFilters) MaterialTheme.colorScheme.tertiaryContainer
+                                    else MaterialTheme.colorScheme.secondaryContainer
+                                )
+                        ) {
+                            Icon(
+                                painter = if (hasActiveFilters) painterResource(Res.drawable.filter_on)
+                                else painterResource(Res.drawable.filter),
+                                contentDescription = stringResource(Res.string.filter_and_sort_title),
+                                tint = if (hasActiveFilters) MaterialTheme.colorScheme.onTertiaryContainer
+                                else MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
-
-                        if (searchQueryState.text.isNotEmpty()) {
-                            IconButton(
-                                modifier = Modifier.size(32.dp),
-                                onClick = {
-                                    searchQueryState.clearText()
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.close),
-                                    contentDescription = stringResource(Res.string.clear_desc),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                        if (hasActiveFilters) {
+                            Badge(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-2).dp, y = 2.dp)
+                                    .size(10.dp),
+                                containerColor = MaterialTheme.colorScheme.tertiary
+                            )
                         }
                     }
                 }
 
-                if (filteredProducts.isEmpty()) {
+                if (soldProducts.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -334,6 +473,37 @@ fun ProductosVendidosScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
+                    }
+                } else if (filteredProducts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "No se encontraron productos que coincidan con los filtros aplicados.",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            if (hasActiveFilters || searchQuery.isNotEmpty()) {
+                                OutlinedButton(onClick = resetFilters) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.filter_off),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(stringResource(Res.string.reset_filters))
+                                }
+                            }
+                        }
                     }
                 } else {
                     // Table Header
@@ -352,10 +522,10 @@ fun ProductosVendidosScreen(
                                 .weight(0.45f)
                                 .clip(MaterialTheme.shapes.extraSmall)
                                 .clickable {
-                                    if (sortColumn == SoldProductSortColumn.NAME) {
+                                    if (sortField == SoldProductSortField.NAME) {
                                         isAscending = !isAscending
                                     } else {
-                                        sortColumn = SoldProductSortColumn.NAME
+                                        sortField = SoldProductSortField.NAME
                                         isAscending = true
                                     }
                                 }
@@ -366,11 +536,11 @@ fun ProductosVendidosScreen(
                                 text = stringResource(Res.string.header_product_name),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (sortColumn == SoldProductSortColumn.NAME) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (sortField == SoldProductSortField.NAME) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            if (sortColumn == SoldProductSortColumn.NAME) {
+                            if (sortField == SoldProductSortField.NAME) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Icon(
                                     painter = painterResource(Res.drawable.arrow_up),
@@ -389,15 +559,6 @@ fun ProductosVendidosScreen(
                         Row(
                             modifier = Modifier
                                 .weight(0.25f)
-                                .clip(MaterialTheme.shapes.extraSmall)
-                                .clickable {
-                                    if (sortColumn == SoldProductSortColumn.PRICE) {
-                                        isAscending = !isAscending
-                                    } else {
-                                        sortColumn = SoldProductSortColumn.PRICE
-                                        isAscending = false
-                                    }
-                                }
                                 .padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
@@ -406,24 +567,11 @@ fun ProductosVendidosScreen(
                                 text = stringResource(Res.string.header_price),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (sortColumn == SoldProductSortColumn.PRICE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.End,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            if (sortColumn == SoldProductSortColumn.PRICE) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    painter = painterResource(Res.drawable.arrow_up),
-                                    contentDescription = if (isAscending) "Menor a mayor" else "Mayor a menor",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .size(14.dp)
-                                        .graphicsLayer {
-                                            rotationZ = sortArrowRotation
-                                        }
-                                )
-                            }
                         }
 
                         // Column 3: Piezas Vendidas
@@ -432,10 +580,10 @@ fun ProductosVendidosScreen(
                                 .weight(0.30f)
                                 .clip(MaterialTheme.shapes.extraSmall)
                                 .clickable {
-                                    if (sortColumn == SoldProductSortColumn.PIECES) {
+                                    if (sortField == SoldProductSortField.PIECES) {
                                         isAscending = !isAscending
                                     } else {
-                                        sortColumn = SoldProductSortColumn.PIECES
+                                        sortField = SoldProductSortField.PIECES
                                         isAscending = false
                                     }
                                 }
@@ -447,12 +595,12 @@ fun ProductosVendidosScreen(
                                 text = stringResource(Res.string.header_sold_pieces),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (sortColumn == SoldProductSortColumn.PIECES) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (sortField == SoldProductSortField.PIECES) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.End,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            if (sortColumn == SoldProductSortColumn.PIECES) {
+                            if (sortField == SoldProductSortField.PIECES) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Icon(
                                     painter = painterResource(Res.drawable.arrow_up),
@@ -559,10 +707,366 @@ fun ProductosVendidosScreen(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
-                                .padding(vertical = 4.dp, horizontal = 6.dp)
+                                .padding(vertical = 4.dp, horizontal = 8.dp)
                         )
                     }
                 }
+            }
+        }
+
+        if (showFilterBottomSheet) {
+            SoldProductFilterAndSortBottomSheet(
+                sortField = sortField,
+                isAscending = isAscending,
+                selectedCategory = selectedCategory,
+                availableCategories = availableCategories,
+                unitTypeFilter = unitTypeFilter,
+                catalogFilter = catalogFilter,
+                onSortFieldSelected = { sortField = it },
+                onSortOrderSelected = { isAscending = it },
+                onCategorySelected = { selectedCategory = it },
+                onUnitTypeFilterSelected = { unitTypeFilter = it },
+                onCatalogFilterSelected = { catalogFilter = it },
+                onResetFilters = resetFilters,
+                onDismissRequest = { showFilterBottomSheet = false }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SoldProductFilterAndSortBottomSheet(
+    sortField: SoldProductSortField,
+    isAscending: Boolean,
+    selectedCategory: String?,
+    availableCategories: List<String>,
+    unitTypeFilter: SoldProductUnitTypeFilter,
+    catalogFilter: SoldProductCatalogFilter,
+    onSortFieldSelected: (SoldProductSortField) -> Unit,
+    onSortOrderSelected: (Boolean) -> Unit,
+    onCategorySelected: (String?) -> Unit,
+    onUnitTypeFilterSelected: (SoldProductUnitTypeFilter) -> Unit,
+    onCatalogFilterSelected: (SoldProductCatalogFilter) -> Unit,
+    onResetFilters: () -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
+    val coroutineScope = rememberCoroutineScope()
+    var isDismissing by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.then(
+            if (!isAndroid()) {
+                Modifier.onPreviewKeyEvent { keyEvent ->
+                    keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                        Key.Enter, Key.NumPadEnter -> {
+                            onDismissRequest()
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            } else Modifier
+        )
+    ) {
+        PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
+            isDismissing = true
+            coroutineScope.launch {
+                try {
+                    sheetState.hide()
+                } finally {
+                    if (!sheetState.isVisible) {
+                        onDismissRequest()
+                    } else {
+                        isDismissing = false
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(Res.string.filter_and_sort_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(
+                    onClick = onResetFilters,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(MaterialShapes.Ghostish.toShape())
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.filter_off),
+                        contentDescription = stringResource(Res.string.reset_filters)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Scrollable Content
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Section 1: Sorting Field
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.sort_section_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            SoldProductSortField.entries.forEach { field ->
+                                FilterChip(
+                                    selected = sortField == field,
+                                    onClick = { onSortFieldSelected(field) },
+                                    label = { Text(field.label) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Section 2: Sort Direction (Connected ToggleButtons)
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.sort_order_section_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val orderOptions = listOf(
+                                false to "▼ " + stringResource(Res.string.sort_order_desc),
+                                true to "▲ " + stringResource(Res.string.sort_order_asc)
+                            )
+                            orderOptions.forEachIndexed { index, (order, label) ->
+                                val isSelected = isAscending == order
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onSortOrderSelected(order) },
+                                    colors = ToggleButtonDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        orderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 3: Categoría
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(Res.string.filter_category_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedCategory == null,
+                                onClick = { onCategorySelected(null) },
+                                label = { Text(stringResource(Res.string.filter_category_all)) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                            availableCategories.forEach { cat ->
+                                FilterChip(
+                                    selected = selectedCategory == cat,
+                                    onClick = { onCategorySelected(cat) },
+                                    label = { Text(cat) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                            FilterChip(
+                                selected = selectedCategory == "NO_CATEGORY",
+                                onClick = { onCategorySelected("NO_CATEGORY") },
+                                label = { Text(stringResource(Res.string.no_category)) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Section 4: Tipo de Cobro / Unidad
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Tipo de cobro / Unidad",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            SoldProductUnitTypeFilter.entries.forEachIndexed { index, option ->
+                                val isSelected = unitTypeFilter == option
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onUnitTypeFilterSelected(option) },
+                                    colors = ToggleButtonDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        SoldProductUnitTypeFilter.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = option.label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 5: Tipo de Producto (Catálogo vs Venta rápida)
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Tipo de producto",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            SoldProductCatalogFilter.entries.forEachIndexed { index, option ->
+                                val isSelected = catalogFilter == option
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onCatalogFilterSelected(option) },
+                                    colors = ToggleButtonDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        SoldProductCatalogFilter.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = option.label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply Button
+            ElevatedButton(
+                onClick = onDismissRequest,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.elevatedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary
+                )
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.check),
+                    contentDescription = stringResource(Res.string.apply_filters_button),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(Res.string.apply_filters_button),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

@@ -542,7 +542,8 @@ SELECT
     SUM(si.cantidad) AS total_unidades,
     SUM(si.subtotal) AS total_recaudado,
     SUM(si.ganancia) AS ganancia_generada,
-    p.codigos AS codigos
+    p.codigos AS codigos,
+    p.categoria AS categoria
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
@@ -550,7 +551,7 @@ WHERE s.estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 )
-GROUP BY si.product_id, si.product_nombre, p.codigos
+GROUP BY si.product_id, si.product_nombre, p.codigos, p.categoria
 ORDER BY total_unidades DESC
 LIMIT :limit;
 
@@ -561,7 +562,8 @@ SELECT
     SUM(si.cantidad) AS total_unidades,
     SUM(si.subtotal) AS total_recaudado,
     SUM(si.ganancia) AS ganancia_generada,
-    p.codigos AS codigos
+    p.codigos AS codigos,
+    p.categoria AS categoria
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
@@ -569,7 +571,7 @@ WHERE s.estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 )
-GROUP BY si.product_id, si.product_nombre, p.codigos
+GROUP BY si.product_id, si.product_nombre, p.codigos, p.categoria
 ORDER BY total_unidades ASC
 LIMIT :limit;
 
@@ -580,7 +582,8 @@ SELECT
     SUM(si.cantidad) AS total_unidades,
     SUM(si.subtotal) AS total_recaudado,
     SUM(si.ganancia) AS ganancia_generada,
-    p.codigos AS codigos
+    p.codigos AS codigos,
+    p.categoria AS categoria
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
@@ -588,7 +591,7 @@ WHERE s.estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 )
-GROUP BY si.product_id, si.product_nombre, p.codigos
+GROUP BY si.product_id, si.product_nombre, p.codigos, p.categoria
 ORDER BY total_unidades DESC;
 
 selectRecentSales:

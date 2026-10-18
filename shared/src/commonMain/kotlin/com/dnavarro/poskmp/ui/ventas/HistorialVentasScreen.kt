@@ -1,15 +1,19 @@
 package com.dnavarro.poskmp.ui.ventas
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,30 +23,55 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Badge
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,21 +81,27 @@ import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.ui.getPaymentMethodColor
+import com.dnavarro.poskmp.ui.getPaymentMethodIcon
+import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.apply_filters_button
 import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.btn_back
-import com.dnavarro.poskmp.ui.getPaymentMethodIcon
+import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.delivery
 import poskmp.shared.generated.resources.empty_recent_sales_history
-import poskmp.shared.generated.resources.filter_sales_all
-import poskmp.shared.generated.resources.filter_sales_delivery
-import poskmp.shared.generated.resources.filter_sales_local
+import poskmp.shared.generated.resources.filter
+import poskmp.shared.generated.resources.filter_off
+import poskmp.shared.generated.resources.filter_on
+import poskmp.shared.generated.resources.filter_section_title
 import poskmp.shared.generated.resources.person
-import poskmp.shared.generated.resources.products
+import poskmp.shared.generated.resources.reset_filters
 import poskmp.shared.generated.resources.sale_badge_delivery
 import poskmp.shared.generated.resources.sale_status_cancelled
 import poskmp.shared.generated.resources.sales_history_total_summary
@@ -75,6 +110,18 @@ import poskmp.shared.generated.resources.ticket_folio_format
 import poskmp.shared.generated.resources.ticket_items_and_method
 import poskmp.shared.generated.resources.ticket_profit_label
 import poskmp.shared.generated.resources.title_recent_sales_history
+
+enum class SaleTypeFilterOption {
+    ALL,
+    LOCAL,
+    DELIVERY
+}
+
+enum class SaleStatusFilterOption {
+    ALL,
+    COMPLETED,
+    CANCELLED
+}
 
 @Composable
 fun HistorialVentasScreen(
@@ -85,20 +132,62 @@ fun HistorialVentasScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedFilter by remember { mutableIntStateOf(0) }
-    val listState = rememberLazyListState()
-    val activeSalesCount = remember(sales) { sales.count { !it.isCancelled } }
-    val totalRevenue = remember(sales) { sales.filter { !it.isCancelled }.sumOf { it.total } }
-    val localSalesCount = remember(sales) { sales.count { !it.esForanea } }
-    val deliverySalesCount = remember(sales) { sales.count { it.esForanea } }
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
+    var typeFilter by rememberSaveable { mutableStateOf(SaleTypeFilterOption.ALL) }
+    var statusFilter by rememberSaveable { mutableStateOf(SaleStatusFilterOption.ALL) }
+    var selectedPaymentMethod by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedCashier by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val filteredSales = remember(sales, selectedFilter) {
-        when (selectedFilter) {
-            1 -> sales.filter { !it.esForanea }
-            2 -> sales.filter { it.esForanea }
-            else -> sales
+    val availableCashiers = remember(sales) {
+        sales.mapNotNull { it.cashierName }.filter { it.isNotBlank() }.distinct().sorted()
+    }
+
+    val hasActiveFilters = typeFilter != SaleTypeFilterOption.ALL ||
+            statusFilter != SaleStatusFilterOption.ALL ||
+            selectedPaymentMethod != null ||
+            selectedCashier != null
+
+    val resetFilters = {
+        typeFilter = SaleTypeFilterOption.ALL
+        statusFilter = SaleStatusFilterOption.ALL
+        selectedPaymentMethod = null
+        selectedCashier = null
+    }
+
+    val listState = rememberLazyListState()
+
+    val filteredSales = remember(
+        sales,
+        typeFilter,
+        statusFilter,
+        selectedPaymentMethod,
+        selectedCashier
+    ) {
+        sales.filter { sale ->
+            val matchesType = when (typeFilter) {
+                SaleTypeFilterOption.ALL -> true
+                SaleTypeFilterOption.LOCAL -> !sale.esForanea
+                SaleTypeFilterOption.DELIVERY -> sale.esForanea
+            }
+            val matchesStatus = when (statusFilter) {
+                SaleStatusFilterOption.ALL -> true
+                SaleStatusFilterOption.COMPLETED -> !sale.isCancelled
+                SaleStatusFilterOption.CANCELLED -> sale.isCancelled
+            }
+            val matchesPayment = selectedPaymentMethod == null || sale.metodoPago.equals(selectedPaymentMethod, ignoreCase = true)
+            val matchesCashier = selectedCashier == null || sale.cashierName == selectedCashier
+            matchesType && matchesStatus && matchesPayment && matchesCashier
         }
     }
+
+    LaunchedEffect(typeFilter, statusFilter, selectedPaymentMethod, selectedCashier) {
+        try {
+            listState.scrollToItem(0)
+        } catch (_: Exception) {}
+    }
+
+    val activeSalesCount = remember(filteredSales) { filteredSales.count { !it.isCancelled } }
+    val totalRevenue = remember(filteredSales) { filteredSales.filter { !it.isCancelled }.sumOf { it.total } }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -111,11 +200,11 @@ fun HistorialVentasScreen(
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
-                        if (sales.isNotEmpty()) {
+                        if (filteredSales.isNotEmpty()) {
                             Text(
                                 text = stringResource(
                                     Res.string.sales_history_total_summary,
-                                    sales.size,
+                                    filteredSales.size,
                                     activeSalesCount,
                                     totalRevenue.toString().formatPrice()
                                 ),
@@ -133,6 +222,37 @@ fun HistorialVentasScreen(
                             contentDescription = stringResource(Res.string.btn_back),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
+                    }
+                },
+                actions = {
+                    Box(modifier = Modifier.padding(end = 8.dp)) {
+                        IconButton(
+                            onClick = { showFilterBottomSheet = true },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(MaterialShapes.Cookie4Sided.toShape())
+                                .background(
+                                    if (hasActiveFilters) MaterialTheme.colorScheme.tertiaryContainer
+                                    else MaterialTheme.colorScheme.secondaryContainer
+                                )
+                        ) {
+                            Icon(
+                                painter = if (hasActiveFilters) painterResource(Res.drawable.filter_on)
+                                else painterResource(Res.drawable.filter),
+                                contentDescription = stringResource(Res.string.filter_section_title),
+                                tint = if (hasActiveFilters) MaterialTheme.colorScheme.onTertiaryContainer
+                                else MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        if (hasActiveFilters) {
+                            Badge(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-2).dp, y = 2.dp)
+                                    .size(10.dp),
+                                containerColor = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -162,38 +282,6 @@ fun HistorialVentasScreen(
                     .fillMaxSize()
                     .padding(bottom = paddingValues.calculateBottomPadding())
             ) {
-                // Quick Summary Cards
-                if (sales.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = selectedFilter == 0,
-                            onClick = { selectedFilter = 0 },
-                            label = { Text(stringResource(Res.string.filter_sales_all, sales.size)) }
-                        )
-                        FilterChip(
-                            selected = selectedFilter == 1,
-                            onClick = { selectedFilter = 1 },
-                            label = { Text(stringResource(Res.string.filter_sales_local, localSalesCount)) }
-                        )
-                        FilterChip(
-                            selected = selectedFilter == 2,
-                            onClick = { selectedFilter = 2 },
-                            label = { Text(stringResource(Res.string.filter_sales_delivery, deliverySalesCount)) },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.delivery),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        )
-                    }
-                }
 
                 if (sales.isEmpty()) {
                     Box(
@@ -218,12 +306,28 @@ fun HistorialVentasScreen(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "No hay tickets que coincidan con el filtro seleccionado.",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "No hay tickets que coincidan con los filtros seleccionados.",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            if (hasActiveFilters) {
+                                OutlinedButton(onClick = resetFilters) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.filter_off),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(stringResource(Res.string.reset_filters))
+                                }
+                            }
+                        }
                     }
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -260,11 +364,27 @@ fun HistorialVentasScreen(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
-                                .padding(vertical = 4.dp, horizontal = 6.dp)
+                                .padding(vertical = 4.dp, horizontal = 8.dp)
                         )
                     }
                 }
             }
+        }
+
+        if (showFilterBottomSheet) {
+            SaleFilterBottomSheet(
+                typeFilter = typeFilter,
+                statusFilter = statusFilter,
+                selectedPaymentMethod = selectedPaymentMethod,
+                selectedCashier = selectedCashier,
+                availableCashiers = availableCashiers,
+                onTypeFilterSelected = { typeFilter = it },
+                onStatusFilterSelected = { statusFilter = it },
+                onPaymentMethodSelected = { selectedPaymentMethod = it },
+                onCashierSelected = { selectedCashier = it },
+                onResetFilters = resetFilters,
+                onDismissRequest = { showFilterBottomSheet = false }
+            )
         }
     }
 }
@@ -427,6 +547,318 @@ fun SaleTicketCard(
                         maxLines = 1
                     )
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SaleFilterBottomSheet(
+    typeFilter: SaleTypeFilterOption,
+    statusFilter: SaleStatusFilterOption,
+    selectedPaymentMethod: String?,
+    selectedCashier: String?,
+    availableCashiers: List<String>,
+    onTypeFilterSelected: (SaleTypeFilterOption) -> Unit,
+    onStatusFilterSelected: (SaleStatusFilterOption) -> Unit,
+    onPaymentMethodSelected: (String?) -> Unit,
+    onCashierSelected: (String?) -> Unit,
+    onResetFilters: () -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
+    val coroutineScope = rememberCoroutineScope()
+    var isDismissing by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.then(
+            if (!isAndroid()) {
+                Modifier.onPreviewKeyEvent { keyEvent ->
+                    keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                        Key.Enter, Key.NumPadEnter -> {
+                            onDismissRequest()
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            } else Modifier
+        )
+    ) {
+        PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
+            isDismissing = true
+            coroutineScope.launch {
+                try {
+                    sheetState.hide()
+                } finally {
+                    if (!sheetState.isVisible) {
+                        onDismissRequest()
+                    } else {
+                        isDismissing = false
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(Res.string.filter_section_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(
+                    onClick = onResetFilters,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(MaterialShapes.Ghostish.toShape())
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.filter_off),
+                        contentDescription = stringResource(Res.string.reset_filters)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Scrollable Content
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Section 1: Tipo de venta
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Tipo de venta",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val typeOptions = listOf(
+                                SaleTypeFilterOption.ALL to "Todos",
+                                SaleTypeFilterOption.LOCAL to "En Tienda",
+                                SaleTypeFilterOption.DELIVERY to "A Domicilio"
+                            )
+                            typeOptions.forEachIndexed { index, (option, label) ->
+                                val isSelected = typeFilter == option
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onTypeFilterSelected(option) },
+                                    colors = ToggleButtonDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        typeOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 4: Estado del Ticket
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Estado del ticket",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val statusOptions = listOf(
+                                SaleStatusFilterOption.ALL to "Todos",
+                                SaleStatusFilterOption.COMPLETED to "Activos",
+                                SaleStatusFilterOption.CANCELLED to "Cancelados"
+                            )
+                            statusOptions.forEachIndexed { index, (option, label) ->
+                                val isSelected = statusFilter == option
+                                ToggleButton(
+                                    checked = isSelected,
+                                    onCheckedChange = { onStatusFilterSelected(option) },
+                                    colors = ToggleButtonDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .semantics { role = Role.RadioButton },
+                                    shapes = when (index) {
+                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                        statusOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                    }
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 5: Método de Pago
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Método de pago",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            val methods = listOf(
+                                null to "Todos",
+                                "EFECTIVO" to "Efectivo",
+                                "TARJETA" to "Tarjeta",
+                                "TRANSFERENCIA" to "Transferencia",
+                                "MIXTO" to "Mixto",
+                                "CREDITO" to "Crédito"
+                            )
+                            methods.forEach { (method, label) ->
+                                val isSelected = selectedPaymentMethod == method
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { onPaymentMethodSelected(method) },
+                                    label = { Text(label) },
+                                    leadingIcon = if (method != null) {
+                                        {
+                                            Icon(
+                                                painter = painterResource(getPaymentMethodIcon(method)),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    } else null,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Section 6: Cajero (if available)
+                if (availableCashiers.size > 1) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Cajero",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                FilterChip(
+                                    selected = selectedCashier == null,
+                                    onClick = { onCashierSelected(null) },
+                                    label = { Text("Todos") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                                availableCashiers.forEach { cashier ->
+                                    FilterChip(
+                                        selected = selectedCashier == cashier,
+                                        onClick = { onCashierSelected(cashier) },
+                                        label = { Text(cashier) },
+                                        leadingIcon = {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.person),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply Button
+            ElevatedButton(
+                onClick = onDismissRequest,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.elevatedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary
+                )
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.check),
+                    contentDescription = stringResource(Res.string.apply_filters_button),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(Res.string.apply_filters_button),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
