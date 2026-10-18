@@ -1859,16 +1859,25 @@ internal fun SaleDetailDialog(
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = if (!isAndroid()) Modifier.focusRequester(closeButtonFocusRequester) else Modifier
+                ) {
+                    Text(
+                        if (isAndroid()) stringResource(Res.string.close_button)
+                        else "${stringResource(Res.string.close_button)} (Enter)"
+                    )
+                }
                 if (!isCancelled) {
-                    androidx.compose.material3.OutlinedButton(
+                    androidx.compose.material3.FilledTonalButton(
                         onClick = {
                             onDismiss()
                             onCancelSale()
                         },
                         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                     ) {
                         Text(stringResource(Res.string.cancel_sale_button))
                     }
@@ -1890,15 +1899,6 @@ internal fun SaleDetailDialog(
                     ) {
                         Text(stringResource(Res.string.reprint_receipt_button))
                     }
-                }
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = if (!isAndroid()) Modifier.focusRequester(closeButtonFocusRequester) else Modifier
-                ) {
-                    Text(
-                        if (isAndroid()) stringResource(Res.string.close_button)
-                        else "${stringResource(Res.string.close_button)} (Enter)"
-                    )
                 }
             }
         }
