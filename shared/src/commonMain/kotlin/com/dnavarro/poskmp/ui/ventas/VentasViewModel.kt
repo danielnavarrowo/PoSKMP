@@ -405,7 +405,7 @@ class VentasViewModel(
             val paymentMethodMetrics = getSalesSummaryUseCase.getPaymentMethodMetrics(startTime, endTime, summary.totalVentas, shiftId = effectiveShiftId)
             val categorySalesMetrics = getSalesSummaryUseCase.getCategorySalesMetrics(startTime, endTime, summary.totalVentas, shiftId = effectiveShiftId)
             val dailySalesMetrics = getSalesSummaryUseCase.getDailySalesMetrics(startTime, endTime, shiftId = effectiveShiftId)
-            val recentSales = saleRepository.getSalesBetween(startTime, endTime, limit = 50, offset = 0, shiftId = effectiveShiftId)
+            val recentSales = saleRepository.getSalesBetween(startTime, endTime, limit = -1, offset = 0, shiftId = effectiveShiftId)
 
             _uiState.update {
                 it.copy(
