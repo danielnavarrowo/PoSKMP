@@ -863,7 +863,7 @@ fun VentasScreen(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .padding(vertical = 4.dp, horizontal = 2.dp)
+                    .padding(vertical = 4.dp, horizontal = 6.dp)
             )
         }
         }
@@ -2497,8 +2497,8 @@ private fun CategorySalesMetricRow(
     }
 }
 
-private fun getPaymentMethodDisplayName(methodName: String): StringResource {
-    return when (methodName.uppercase()) {
+internal fun getPaymentMethodDisplayName(methodName: String): StringResource {
+    return when (methodName.trim().uppercase()) {
         "EFECTIVO" -> Res.string.payment_method_efectivo
         "TARJETA" -> Res.string.payment_method_tarjeta
         "TRANSFERENCIA" -> Res.string.payment_method_transferencia
@@ -2508,14 +2508,26 @@ private fun getPaymentMethodDisplayName(methodName: String): StringResource {
     }
 }
 
-private fun getPaymentMethodIcon(methodName: String): DrawableResource {
-    return when (methodName.uppercase()) {
+internal fun getPaymentMethodIcon(methodName: String): DrawableResource {
+    return when (methodName.trim().uppercase()) {
         "EFECTIVO" -> Res.drawable.money
         "TARJETA" -> Res.drawable.card
         "TRANSFERENCIA" -> Res.drawable.money_transfer
         "MIXTO" -> Res.drawable.payments
         "CREDITO" -> Res.drawable.card
         else -> Res.drawable.payments
+    }
+}
+
+@Composable
+internal fun getPaymentMethodColor(methodName: String): Color {
+    return when (methodName.trim().uppercase()) {
+        "EFECTIVO" -> MaterialTheme.colorScheme.primary
+        "TARJETA" -> MaterialTheme.colorScheme.secondary
+        "TRANSFERENCIA" -> MaterialTheme.colorScheme.secondary
+        "MIXTO" -> MaterialTheme.colorScheme.tertiary
+        "CREDITO" -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.primary
     }
 }
 

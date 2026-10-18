@@ -559,7 +559,7 @@ fun ProductosVendidosScreen(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
-                                .padding(vertical = 4.dp, horizontal = 2.dp)
+                                .padding(vertical = 4.dp, horizontal = 6.dp)
                         )
                     }
                 }

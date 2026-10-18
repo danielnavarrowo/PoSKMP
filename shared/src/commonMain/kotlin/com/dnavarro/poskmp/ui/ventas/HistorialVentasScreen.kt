@@ -24,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -33,6 +34,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
+import com.dnavarro.poskmp.ui.getPaymentMethodColor
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import org.jetbrains.compose.resources.painterResource
@@ -56,12 +59,14 @@ import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.back
 import poskmp.shared.generated.resources.btn_back
+import com.dnavarro.poskmp.ui.getPaymentMethodIcon
 import poskmp.shared.generated.resources.delivery
 import poskmp.shared.generated.resources.empty_recent_sales_history
 import poskmp.shared.generated.resources.filter_sales_all
 import poskmp.shared.generated.resources.filter_sales_delivery
 import poskmp.shared.generated.resources.filter_sales_local
 import poskmp.shared.generated.resources.person
+import poskmp.shared.generated.resources.products
 import poskmp.shared.generated.resources.sale_badge_delivery
 import poskmp.shared.generated.resources.sale_status_cancelled
 import poskmp.shared.generated.resources.sales_history_total_summary
@@ -255,7 +260,7 @@ fun HistorialVentasScreen(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
-                                .padding(vertical = 4.dp, horizontal = 2.dp)
+                                .padding(vertical = 4.dp, horizontal = 6.dp)
                         )
                     }
                 }
@@ -281,6 +286,7 @@ fun SaleTicketCard(
         ),
         shape = shape
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -288,10 +294,27 @@ fun SaleTicketCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Row(
                 modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = MaterialShapes.Pill.toShape(),
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(getPaymentMethodIcon(sale.metodoPago)),
+                            contentDescription = sale.metodoPago,
+                            tint = getPaymentMethodColor(sale.metodoPago),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Row(
@@ -353,7 +376,7 @@ fun SaleTicketCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        stringResource(Res.string.ticket_items_and_method, sale.totalItems.toString().formatPrice(), sale.metodoPago),
+                        stringResource(Res.string.ticket_items_and_method, sale.totalItems.toString().formatPrice()),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -392,7 +415,7 @@ fun SaleTicketCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         "$${sale.total.toString().formatPrice()}",
-                       style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black,
                         color = if (isCancelled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
                         maxLines = 1
