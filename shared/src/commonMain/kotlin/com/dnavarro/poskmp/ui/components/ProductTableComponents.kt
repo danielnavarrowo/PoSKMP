@@ -654,7 +654,7 @@ fun ProductSimpleCard(
                                 .background(
                                     color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                     else MaterialTheme.colorScheme.tertiaryContainer,
-                                    shape = ShapeDefaults.cardShape
+                                    shape = androidx.compose.material3.ShapeDefaults.Small
                                 )
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
 

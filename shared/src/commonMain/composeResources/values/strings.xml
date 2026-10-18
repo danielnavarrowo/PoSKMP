@@ -21,7 +21,7 @@
     <string name="tab_venta_desktop">Venta (F1)</string>
     <string name="tab_productos">Productos</string>
     <string name="tab_productos_desktop">Productos (F3)</string>
-    <string name="tab_ventas_historial">Historial de Ventas</string>
+    <string name="tab_ventas_historial">Reportes</string>
     <string name="tab_ventas_historial_desktop">Ventas y Reportes (F4)</string>
     <string name="nav_clientes_desktop">Clientes (F5)</string>
     <string name="tab_checador">Checador</string>
@@ -418,7 +418,7 @@
     <string name="per_kg_suffix"> / Kg</string>
 
     <!-- VentasScreen / Analytics -->
-    <string name="ventas_title">Reportes</string>
+    <string name="ventas_title">Ventas y Reportes</string>
     <string name="period_today">Hoy</string>
     <string name="period_yesterday">Ayer</string>
     <string name="period_this_week">Esta Semana</string>

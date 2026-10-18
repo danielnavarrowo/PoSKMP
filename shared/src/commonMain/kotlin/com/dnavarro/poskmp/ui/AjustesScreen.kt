@@ -309,7 +309,7 @@ fun AjustesScreen(
     supabaseUrl: String = "",
     supabaseKey: String = "",
     lastSyncTimestamp: Long = 0L,
-    autoSyncEnabled: Boolean = true,
+    autoSyncEnabled: Boolean = false,
     onAutoSyncEnabledChange: (Boolean) -> Unit = {},
     autoBackupEnabled: Boolean = true,
     onAutoBackupEnabledChange: (Boolean) -> Unit = {},

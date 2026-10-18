@@ -443,7 +443,7 @@ class SettingsRepositoryImpl(
     }
 
     override val autoSyncEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[PreferenceKeys.AUTO_SYNC_ENABLED] ?: true
+        preferences[PreferenceKeys.AUTO_SYNC_ENABLED] ?: false
     }
 
     override val autoBackupEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->

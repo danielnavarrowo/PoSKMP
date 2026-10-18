@@ -58,7 +58,7 @@ data class AjustesUiState(
     val supabaseUrl: String = "",
     val supabaseKey: String = "",
     val lastSyncTimestamp: Long = 0L,
-    val autoSyncEnabled: Boolean = true,
+    val autoSyncEnabled: Boolean = false,
     val autoBackupEnabled: Boolean = true,
     val lastBackupTimestamp: Long = 0L,
     val backupDirectoryPath: String = "",
