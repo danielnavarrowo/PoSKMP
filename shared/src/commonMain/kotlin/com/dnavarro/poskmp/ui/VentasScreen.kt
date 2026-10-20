@@ -1423,7 +1423,7 @@ private fun SoldProductsNavButton(
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
         ),
         shape = ShapeDefaults.cardShape,
         modifier = modifier
@@ -1441,7 +1441,7 @@ private fun SoldProductsNavButton(
                 modifier = Modifier.weight(1f)
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    color = MaterialTheme.colorScheme.surfaceBright,
                     shape = MaterialShapes.Bun.toShape(),
                     modifier = Modifier.size(44.dp)
                 ) {
@@ -1449,7 +1449,7 @@ private fun SoldProductsNavButton(
                         Icon(
                             painter = painterResource(Res.drawable.products),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1459,7 +1459,7 @@ private fun SoldProductsNavButton(
                         text = stringResource(Res.string.btn_view_sold_products),
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Text(
                         text = if (soldProductsCount > 0) {
@@ -1468,14 +1468,14 @@ private fun SoldProductsNavButton(
                             stringResource(Res.string.empty_sold_products)
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
             Icon(
                 painter = painterResource(Res.drawable.arrow_up),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = 90f }
@@ -1494,7 +1494,7 @@ private fun SalesHistoryNavButton(
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
         ),
         shape = ShapeDefaults.cardShape,
         modifier = modifier
@@ -1512,7 +1512,7 @@ private fun SalesHistoryNavButton(
                 modifier = Modifier.weight(1f)
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    color = MaterialTheme.colorScheme.surfaceBright,
                     shape = MaterialShapes.Arch.toShape(),
                     modifier = Modifier.size(44.dp)
                 ) {
@@ -1520,7 +1520,7 @@ private fun SalesHistoryNavButton(
                         Icon(
                             painter = painterResource(Res.drawable.print),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1530,7 +1530,7 @@ private fun SalesHistoryNavButton(
                         text = stringResource(Res.string.btn_view_sales_history),
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
                     Text(
                         text = if (salesCount > 0) {
@@ -1539,14 +1539,14 @@ private fun SalesHistoryNavButton(
                             stringResource(Res.string.empty_recent_sales_history)
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
                 }
             }
             Icon(
                 painter = painterResource(Res.drawable.arrow_up),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = 90f }
