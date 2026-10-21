@@ -64,6 +64,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -83,6 +84,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.CategorySuggester
 import com.dnavarro.poskmp.util.PlatformBackHandler
+import com.dnavarro.poskmp.util.applySmartWordCapitalization
 import com.dnavarro.poskmp.util.capitalizeWords
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
@@ -934,10 +936,24 @@ fun ProductFormDialog(
 
     @Composable
     fun ProductNameField() {
+        var isShiftPressedName by remember { mutableStateOf(false) }
+
         OutlinedTextField(
             value = formNombre,
-            onValueChange = { formNombre = it.capitalizeWords() },
-            modifier = Modifier.fillMaxWidth(),
+            onValueChange = {
+                formNombre = applySmartWordCapitalization(
+                    oldText = formNombre,
+                    newText = it,
+                    isShiftPressed = isShiftPressedName,
+                    isDesktop = !isAndroid()
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .onPreviewKeyEvent { event ->
+                    isShiftPressedName = event.isShiftPressed
+                    false
+                },
             label = {
                 Text(
                     stringResource(Res.string.product_name_label),
@@ -1385,6 +1401,8 @@ fun ProductFormDialog(
 
     @Composable
     fun CategorySection(isWide: Boolean) {
+        var isShiftPressedCategory by remember { mutableStateOf(false) }
+
         Column(modifier = Modifier.fillMaxWidth()) {
             ExposedDropdownMenuBox(
                 expanded = categoryDropdownExpanded,
@@ -1394,12 +1412,21 @@ fun ProductFormDialog(
                 OutlinedTextField(
                     value = formCategoria,
                     onValueChange = {
-                        formCategoria = it.capitalizeWords()
+                        formCategoria = applySmartWordCapitalization(
+                            oldText = formCategoria,
+                            newText = it,
+                            isShiftPressed = isShiftPressedCategory,
+                            isDesktop = !isAndroid()
+                        )
                         categoryDropdownExpanded = true
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                        .onPreviewKeyEvent { event ->
+                            isShiftPressedCategory = event.isShiftPressed
+                            false
+                        },
                     label = {
                         Text(
                             stringResource(Res.string.category_label),

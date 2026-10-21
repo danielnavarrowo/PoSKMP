@@ -59,4 +59,35 @@ class FormatUtilsTest {
         assertEquals("McDonald's", "McDonald's".capitalizeWords())
         assertEquals("Coca ", "coca ".capitalizeWords())
     }
+
+    @Test
+    fun testApplySmartWordCapitalization() {
+        // Starts with uppercase by default when typing without Shift
+        assertEquals("C", applySmartWordCapitalization("", "c", isShiftPressed = false, isDesktop = true))
+        assertEquals("Co", applySmartWordCapitalization("C", "Co", isShiftPressed = false, isDesktop = true))
+        assertEquals("Coc", applySmartWordCapitalization("Co", "Coc", isShiftPressed = false, isDesktop = true))
+        assertEquals("Coca ", applySmartWordCapitalization("Coca", "Coca ", isShiftPressed = false, isDesktop = true))
+        assertEquals("Coca C", applySmartWordCapitalization("Coca ", "Coca c", isShiftPressed = false, isDesktop = true))
+        assertEquals("Coca-C", applySmartWordCapitalization("Coca-", "Coca-c", isShiftPressed = false, isDesktop = true))
+        assertEquals("600m", applySmartWordCapitalization("600", "600m", isShiftPressed = false, isDesktop = true))
+
+        // Typing with Shift keeps word start in lowercase
+        assertEquals("c", applySmartWordCapitalization("", "C", isShiftPressed = true, isDesktop = true))
+        assertEquals("Pan d", applySmartWordCapitalization("Pan ", "Pan D", isShiftPressed = true, isDesktop = true))
+        assertEquals("Pan de", applySmartWordCapitalization("Pan d", "Pan de", isShiftPressed = false, isDesktop = true))
+        assertEquals("iP", applySmartWordCapitalization("i", "iP", isShiftPressed = true, isDesktop = true))
+
+        // Deleting the first letter does NOT automatically capitalize the next letter
+        assertEquals("oca", applySmartWordCapitalization("Coca", "oca", isShiftPressed = false, isDesktop = true))
+        assertEquals("Pan e", applySmartWordCapitalization("Pan De", "Pan e", isShiftPressed = false, isDesktop = true))
+        assertEquals("Coc", applySmartWordCapitalization("Coca", "Coc", isShiftPressed = false, isDesktop = true))
+
+        // Mobile / Android behavior (isDesktop = false) preserves input as-is
+        assertEquals("c", applySmartWordCapitalization("", "c", isShiftPressed = false, isDesktop = false))
+        assertEquals("C", applySmartWordCapitalization("", "C", isShiftPressed = false, isDesktop = false))
+        assertEquals("oca", applySmartWordCapitalization("Coca", "oca", isShiftPressed = false, isDesktop = false))
+
+        // Pasted multi-character text is preserved as-is
+        assertEquals("pan de muerto", applySmartWordCapitalization("", "pan de muerto", isShiftPressed = false, isDesktop = true))
+    }
 }

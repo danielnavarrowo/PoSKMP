@@ -373,6 +373,83 @@ fun disambiguateProductName(
 }
 
 /**
+ * Evaluates whether [index] in [text] is the start of a word.
+ */
+fun isWordStart(text: String, index: Int): Boolean {
+    if (index == 0) return true
+    if (index !in text.indices) return false
+    val prev = text[index - 1]
+    if (prev.isLetterOrDigit()) return false
+    if (prev == '\'' && index > 1 && text[index - 2].isLetter()) return false
+    return true
+}
+
+/**
+ * Applies smart auto-capitalization on typing:
+ * - Starts every word with uppercase by default.
+ * - If typed while pressing Shift (on desktop/physical keyboard), keeps the first letter in lowercase.
+ * - When deleting characters (e.g. deleting the first letter), does NOT automatically capitalize the next letter.
+ * - On non-desktop (Android with soft keyboard), leaves user's typed case as-is because
+ *   the virtual keyboard handles word capitalization via KeyboardCapitalization.Words.
+ */
+fun applySmartWordCapitalization(
+    oldText: String,
+    newText: String,
+    isShiftPressed: Boolean = false,
+    isDesktop: Boolean = true
+): String {
+    if (newText == oldText || newText.isEmpty()) return newText
+
+    // If text length decreased (backspace, delete, cut), never auto-capitalize
+    if (newText.length < oldText.length) {
+        return newText
+    }
+
+    // On Android, soft keyboard handles word capitalization natively via KeyboardOptions
+    if (!isDesktop) {
+        return newText
+    }
+
+    var prefixLen = 0
+    while (prefixLen < oldText.length && prefixLen < newText.length && oldText[prefixLen] == newText[prefixLen]) {
+        prefixLen++
+    }
+
+    var oldSuffixLen = 0
+    var newSuffixLen = 0
+    while (
+        oldSuffixLen < (oldText.length - prefixLen) &&
+        newSuffixLen < (newText.length - prefixLen) &&
+        oldText[oldText.length - 1 - oldSuffixLen] == newText[newText.length - 1 - newSuffixLen]
+    ) {
+        oldSuffixLen++
+        newSuffixLen++
+    }
+
+    val insertedStart = prefixLen
+    val insertedEnd = newText.length - newSuffixLen
+    val insertedCount = insertedEnd - insertedStart
+
+    if (insertedCount == 1) {
+        val char = newText[insertedStart]
+        if (char.isLetter() && isWordStart(newText, insertedStart)) {
+            val formattedChar = if (isShiftPressed) {
+                char.lowercase()
+            } else {
+                char.titlecase()
+            }
+            if (formattedChar != char.toString()) {
+                val sb = StringBuilder(newText)
+                sb.replace(insertedStart, insertedEnd, formattedChar)
+                return sb.toString()
+            }
+        }
+    }
+
+    return newText
+}
+
+/**
  * Capitalizes the first letter of each word in the string, preserving existing formatting,
  * digits, punctuation, and uppercase letters elsewhere in the words.
  */
@@ -382,9 +459,8 @@ fun String.capitalizeWords(): String {
     for (i in indices) {
         val c = this[i]
         if (c.isLetter()) {
-            val prev = if (i > 0) this[i - 1] else null
-            val isWordStart = prev == null || (!prev.isLetterOrDigit() && !(prev == '\'' && i > 1 && this[i - 2].isLetter()))
-            if (isWordStart) {
+            val isStart = isWordStart(this, i)
+            if (isStart) {
                 sb.append(if (c.isLowerCase()) c.titlecase() else c.toString())
             } else {
                 sb.append(c)
