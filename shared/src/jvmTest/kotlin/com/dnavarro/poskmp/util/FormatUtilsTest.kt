@@ -38,4 +38,25 @@ class FormatUtilsTest {
         assertEquals("1,234,567", formatWithThousandsSeparator("1234567"))
         assertEquals("-1,234,567", formatWithThousandsSeparator("-1234567"))
     }
+
+    @Test
+    fun testCapitalizeWords() {
+        assertEquals("", "".capitalizeWords())
+        assertEquals("Coca", "coca".capitalizeWords())
+        assertEquals("Coca Cola", "coca cola".capitalizeWords())
+        assertEquals("Coca Cola Zero", "coca cola zero".capitalizeWords())
+        assertEquals("Coca-Cola", "coca-cola".capitalizeWords())
+        assertEquals("Frutas/Verduras", "frutas/verduras".capitalizeWords())
+        assertEquals("(Lata) Cerveza", "(lata) cerveza".capitalizeWords())
+        assertEquals("600ml", "600ml".capitalizeWords())
+        assertEquals("1.5l", "1.5l".capitalizeWords())
+        assertEquals("Coca Cola 600ml", "coca cola 600ml".capitalizeWords())
+        assertEquals("OXXO", "OXXO".capitalizeWords())
+        assertEquals("Usb-C", "usb-c".capitalizeWords())
+        assertEquals("USB-C", "USB-c".capitalizeWords())
+        assertEquals("Árbol Y Piñata", "árbol y piñata".capitalizeWords())
+        assertEquals("Mcdonald's", "mcdonald's".capitalizeWords())
+        assertEquals("McDonald's", "McDonald's".capitalizeWords())
+        assertEquals("Coca ", "coca ".capitalizeWords())
+    }
 }

@@ -231,10 +231,20 @@ fun ProductosScreen(
     var lastEmittedQuery by remember { mutableStateOf(searchQuery) }
     val isSearchNotEmpty by remember { derivedStateOf { searchQueryState.text.isNotEmpty() } }
 
+    var selectedProductId by remember { mutableStateOf<String?>(null) }
+    var selectedProductIndex by remember { mutableIntStateOf(-1) }
+    var selectionAnchorIndex by remember { mutableIntStateOf(-1) }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
     LaunchedEffect(searchQuery) {
         if (searchQuery != lastEmittedQuery && searchQueryState.text.toString() != searchQuery) {
             lastEmittedQuery = searchQuery
             searchQueryState.setTextAndPlaceCursorAtEnd(searchQuery)
+            selectedProductId = null
+            selectedProductIndex = -1
+            selectionAnchorIndex = -1
+            listState.resetScroll(coroutineScope)
         }
     }
 
@@ -245,7 +255,11 @@ fun ProductosScreen(
                     delay(200.milliseconds)
                 }
                 lastEmittedQuery = query
+                selectedProductId = null
+                selectedProductIndex = -1
+                selectionAnchorIndex = -1
                 viewModel.onSearchQueryChanged(query)
+                listState.resetScroll(coroutineScope)
             }
         }
     }
@@ -258,17 +272,14 @@ fun ProductosScreen(
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     val fabContainerColor = MaterialTheme.colorScheme.tertiary
 
-    var selectedProductIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
-    var selectionAnchorIndex by remember(sortedProducts) { mutableIntStateOf(-1) }
     val searchBarFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
 
     fun clearSearch() {
         lastEmittedQuery = ""
         searchQueryState.clearText()
         viewModel.onSearchQueryChanged("")
+        selectedProductId = null
         selectedProductIndex = -1
         selectionAnchorIndex = -1
         listState.resetScroll(coroutineScope)
@@ -331,24 +342,57 @@ fun ProductosScreen(
         }
     }
 
+    LaunchedEffect(
+        sortField,
+        sortOrder,
+        uiState.selectedCategory,
+        uiState.statusFilter,
+        uiState.favoriteFilter
+    ) {
+        selectedProductId = null
+        selectedProductIndex = -1
+        selectionAnchorIndex = -1
+        listState.resetScroll(coroutineScope)
+    }
+
     LaunchedEffect(selectedProductIndex) {
         if (selectedProductIndex in sortedProducts.indices) {
+            selectedProductId = sortedProducts[selectedProductIndex].id
             try {
                 listState.scrollItemIntoView(selectedProductIndex)
             } catch (_: Exception) {
             }
+        } else if (selectedProductIndex == -1) {
+            selectedProductId = null
         }
     }
 
     LaunchedEffect(sortedProducts) {
-        if (selectedProductIndex <= 0) {
-            listState.resetScroll(coroutineScope)
+        if (selectedProductId != null) {
+            val idx = sortedProducts.indexOfFirst { it.id == selectedProductId }
+            if (idx != -1) {
+                if (selectedProductIndex != idx) {
+                    selectedProductIndex = idx
+                    selectionAnchorIndex = idx
+                }
+            } else {
+                selectedProductId = null
+                if (selectedProductIndex >= sortedProducts.size) {
+                    selectedProductIndex = sortedProducts.lastIndex
+                    selectionAnchorIndex = sortedProducts.lastIndex
+                }
+            }
+        } else if (selectedProductIndex >= sortedProducts.size) {
+            selectedProductIndex = sortedProducts.lastIndex
+            selectionAnchorIndex = sortedProducts.lastIndex
         }
     }
 
     val onConfirmSearchOrBarcode: () -> Boolean = {
         if (selectedProductIndex in sortedProducts.indices) {
-            viewModel.onShowProductDialog(sortedProducts[selectedProductIndex])
+            val product = sortedProducts[selectedProductIndex]
+            selectedProductId = product.id
+            viewModel.onShowProductDialog(product)
             true
         } else {
             val trimmed = searchQueryState.text.toString().trim()
@@ -357,6 +401,7 @@ fun ProductosScreen(
                     val matchingProduct = viewModel.findProductByBarcode(trimmed)
                     if (matchingProduct != null) {
                         clearSearch()
+                        selectedProductId = matchingProduct.id
                         viewModel.onShowProductDialog(matchingProduct)
                     }
                 }
@@ -1065,6 +1110,9 @@ fun ProductosScreen(
                                                         if (selectedProductIds.isNotEmpty()) {
                                                             viewModel.onToggleSelectProduct(product.id)
                                                         } else {
+                                                            selectedProductId = product.id
+                                                            selectedProductIndex = index
+                                                            selectionAnchorIndex = index
                                                             viewModel.onShowProductDialog(product)
                                                         }
                                                     },
@@ -1167,6 +1215,7 @@ fun ProductosScreen(
                                                         showCheckbox = true,
                                                         isChecked = product.id in selectedProductIds,
                                                         onCheckedChange = {
+                                                            selectedProductId = product.id
                                                             selectedProductIndex = index
                                                             selectionAnchorIndex = index
                                                             viewModel.onToggleSelectProduct(product.id)
@@ -1175,6 +1224,7 @@ fun ProductosScreen(
                                                         defaultRetailMargin = uiState.defaultRetailMargin,
                                                         defaultWholesaleMargin = uiState.defaultWholesaleMargin,
                                                         onClick = {
+                                                            selectedProductId = product.id
                                                             selectedProductIndex = index
                                                             selectionAnchorIndex = index
                                                             viewModel.onShowProductDialog(product)

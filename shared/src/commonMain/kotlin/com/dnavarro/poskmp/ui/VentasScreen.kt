@@ -1449,7 +1449,7 @@ private fun SoldProductsNavButton(
                         Icon(
                             painter = painterResource(Res.drawable.products),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1520,7 +1520,7 @@ private fun SalesHistoryNavButton(
                         Icon(
                             painter = painterResource(Res.drawable.print),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(24.dp)
                         )
                     }

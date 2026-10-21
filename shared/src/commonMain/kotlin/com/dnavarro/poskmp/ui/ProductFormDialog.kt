@@ -83,6 +83,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.CategorySuggester
 import com.dnavarro.poskmp.util.PlatformBackHandler
+import com.dnavarro.poskmp.util.capitalizeWords
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.generateUUID
@@ -935,7 +936,7 @@ fun ProductFormDialog(
     fun ProductNameField() {
         OutlinedTextField(
             value = formNombre,
-            onValueChange = { formNombre = it },
+            onValueChange = { formNombre = it.capitalizeWords() },
             modifier = Modifier.fillMaxWidth(),
             label = {
                 Text(
@@ -944,7 +945,7 @@ fun ProductFormDialog(
                 )
             },
             keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
+                capitalization = KeyboardCapitalization.Words,
                 imeAction = ImeAction.Next
             ),
             keyboardActions = KeyboardActions(
@@ -1393,7 +1394,7 @@ fun ProductFormDialog(
                 OutlinedTextField(
                     value = formCategoria,
                     onValueChange = {
-                        formCategoria = it
+                        formCategoria = it.capitalizeWords()
                         categoryDropdownExpanded = true
                     },
                     modifier = Modifier
@@ -1410,7 +1411,7 @@ fun ProductFormDialog(
                     },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
+                        capitalization = KeyboardCapitalization.Words,
                         imeAction = if (isWide) ImeAction.Next else ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(

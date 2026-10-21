@@ -372,3 +372,28 @@ fun disambiguateProductName(
     }
 }
 
+/**
+ * Capitalizes the first letter of each word in the string, preserving existing formatting,
+ * digits, punctuation, and uppercase letters elsewhere in the words.
+ */
+fun String.capitalizeWords(): String {
+    if (isEmpty()) return this
+    val sb = StringBuilder(length)
+    for (i in indices) {
+        val c = this[i]
+        if (c.isLetter()) {
+            val prev = if (i > 0) this[i - 1] else null
+            val isWordStart = prev == null || (!prev.isLetterOrDigit() && !(prev == '\'' && i > 1 && this[i - 2].isLetter()))
+            if (isWordStart) {
+                sb.append(if (c.isLowerCase()) c.titlecase() else c.toString())
+            } else {
+                sb.append(c)
+            }
+        } else {
+            sb.append(c)
+        }
+    }
+    return sb.toString()
+}
+
+
