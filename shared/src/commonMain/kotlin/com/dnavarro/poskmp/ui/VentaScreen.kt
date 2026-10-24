@@ -80,6 +80,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -319,6 +320,13 @@ fun VentaScreen(
     }
     val paneExpansionState = rememberPaneExpansionState()
     var userCatalogWidthDp by remember { mutableStateOf<Dp?>(null) }
+    var isDraggingSplitter by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.ventaSplitRatio) {
+        if (!isDraggingSplitter) {
+            userCatalogWidthDp = null
+        }
+    }
     var isCartItemQuantityFocused by remember { mutableStateOf(false) }
 
     if (cartItems.isEmpty() && isCartItemQuantityFocused) {
@@ -670,7 +678,8 @@ fun VentaScreen(
 
             if (isTwoPaneWide) {
                 val maxCatalogAllowed = totalWidth - minTicketWidth - splitterWidth
-                val defaultCatalogWidth = (totalWidth - splitterWidth) * 0.6f
+                val availableWidth = (totalWidth - splitterWidth).coerceAtLeast(0.dp)
+                val defaultCatalogWidth = availableWidth * uiState.ventaSplitRatio
                 val catalogWidth = (userCatalogWidthDp ?: defaultCatalogWidth).coerceIn(
                     minCatalogWidth,
                     maxCatalogAllowed
@@ -758,20 +767,58 @@ fun VentaScreen(
                     }
                 }
 
+                val currentSwapOrder by rememberUpdatedState(swapOrder)
+                val currentTotalWidth by rememberUpdatedState(totalWidth)
+                val currentSplitRatio by rememberUpdatedState(uiState.ventaSplitRatio)
+
                 val splitterPane: @Composable () -> Unit = {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(splitterWidth)
                             .pointerHoverIcon(PointerIcon.Hand)
-                            .pointerInput(totalWidth, swapOrder) {
-                                detectHorizontalDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    val dragAmountDp = if (swapOrder) -dragAmount.toDp() else dragAmount.toDp()
-                                    val currentW = userCatalogWidthDp ?: defaultCatalogWidth
-                                    val maxAllowed = totalWidth - minTicketWidth - splitterWidth
-                                    userCatalogWidthDp = (currentW + dragAmountDp).coerceIn(minCatalogWidth, maxAllowed)
-                                }
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = { _ ->
+                                        isDraggingSplitter = true
+                                    },
+                                    onDragEnd = {
+                                        isDraggingSplitter = false
+                                        val availableW = currentTotalWidth - splitterWidth
+                                        val currentW = userCatalogWidthDp ?: (availableW * currentSplitRatio)
+                                        if (availableW > 0.dp) {
+                                            val maxAllowed = currentTotalWidth - minTicketWidth - splitterWidth
+                                            val minAllowedRatio = (minCatalogWidth / availableW).coerceIn(0.05f, 0.95f)
+                                            val maxAllowedRatio = (maxAllowed / availableW).coerceIn(0.05f, 0.95f)
+                                            val lowerBound = minOf(minAllowedRatio, maxAllowedRatio)
+                                            val upperBound = maxOf(minAllowedRatio, maxAllowedRatio)
+                                            val newRatio = (currentW / availableW).coerceIn(lowerBound, upperBound)
+                                            viewModel.saveVentaSplitRatio(newRatio)
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        isDraggingSplitter = false
+                                        val availableW = currentTotalWidth - splitterWidth
+                                        val currentW = userCatalogWidthDp ?: (availableW * currentSplitRatio)
+                                        if (availableW > 0.dp) {
+                                            val maxAllowed = currentTotalWidth - minTicketWidth - splitterWidth
+                                            val minAllowedRatio = (minCatalogWidth / availableW).coerceIn(0.05f, 0.95f)
+                                            val maxAllowedRatio = (maxAllowed / availableW).coerceIn(0.05f, 0.95f)
+                                            val lowerBound = minOf(minAllowedRatio, maxAllowedRatio)
+                                            val upperBound = maxOf(minAllowedRatio, maxAllowedRatio)
+                                            val newRatio = (currentW / availableW).coerceIn(lowerBound, upperBound)
+                                            viewModel.saveVentaSplitRatio(newRatio)
+                                        }
+                                    },
+                                    onHorizontalDrag = { change, dragAmount ->
+                                        change.consume()
+                                        val dragAmountDp = if (currentSwapOrder) -dragAmount.toDp() else dragAmount.toDp()
+                                        val availableW = currentTotalWidth - splitterWidth
+                                        val currentW = userCatalogWidthDp ?: (availableW * currentSplitRatio)
+                                        val maxAllowed = currentTotalWidth - minTicketWidth - splitterWidth
+                                        userCatalogWidthDp = (currentW + dragAmountDp).coerceIn(minCatalogWidth, maxAllowed)
+                                    }
+                                )
                             }
                             .background(MaterialTheme.colorScheme.background),
                         contentAlignment = Alignment.Center

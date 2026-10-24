@@ -188,9 +188,10 @@ class VentaViewModel(
                 _canUndo,
                 settingsRepository.defaultRetailMarginFlow,
                 settingsRepository.defaultWholesaleMarginFlow,
-                settingsRepository.defaultDeliveryMarginFlow
-            ) { canUndo, retailMargin, wholesaleMargin, deliveryMargin ->
-                Tuple4(canUndo, retailMargin, wholesaleMargin, deliveryMargin)
+                settingsRepository.defaultDeliveryMarginFlow,
+                settingsRepository.ventaSplitRatioFlow
+            ) { canUndo, retailMargin, wholesaleMargin, deliveryMargin, ventaSplitRatio ->
+                Tuple5(canUndo, retailMargin, wholesaleMargin, deliveryMargin, ventaSplitRatio)
             },
             combine(
                 settingsRepository.useProductTableInCatalogFlow,
@@ -201,7 +202,7 @@ class VentaViewModel(
             ) { useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder, beepOnBarcodeScan ->
                 Tuple5(useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder, beepOnBarcodeScan)
             }
-        ) { (canUndo, retailMargin, wholesaleMargin, deliveryMargin), (useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder, beepOnBarcodeScan) ->
+        ) { (canUndo, retailMargin, wholesaleMargin, deliveryMargin, ventaSplitRatio), (useProductTableInCatalog, customers, selectedCustomer, swapVentaLayoutOrder, beepOnBarcodeScan) ->
             VentaCatalogConfig(
                 canUndo = canUndo,
                 defaultRetailMargin = retailMargin,
@@ -211,7 +212,8 @@ class VentaViewModel(
                 customers = customers,
                 selectedCustomer = selectedCustomer,
                 swapVentaLayoutOrder = swapVentaLayoutOrder,
-                beepOnBarcodeScan = beepOnBarcodeScan
+                beepOnBarcodeScan = beepOnBarcodeScan,
+                ventaSplitRatio = ventaSplitRatio
             )
         },
         combine(
@@ -327,6 +329,7 @@ class VentaViewModel(
             useProductTableInCatalog = catalogConfig.useProductTableInCatalog,
             swapVentaLayoutOrder = catalogConfig.swapVentaLayoutOrder,
             beepOnBarcodeScan = catalogConfig.beepOnBarcodeScan,
+            ventaSplitRatio = catalogConfig.ventaSplitRatio,
             isLoading = false,
             customers = catalogConfig.customers,
             filteredCustomers = filteredCust,
@@ -466,7 +469,8 @@ class VentaViewModel(
         val customers: List<Customer> = emptyList(),
         val selectedCustomer: Customer? = null,
         val swapVentaLayoutOrder: Boolean = false,
-        val beepOnBarcodeScan: Boolean = false
+        val beepOnBarcodeScan: Boolean = false,
+        val ventaSplitRatio: Float = 0.6f
     )
 
     private data class VentaAiAndSearch(
@@ -755,6 +759,12 @@ class VentaViewModel(
     fun refreshSync() {
         viewModelScope.launch(Dispatchers.IO) {
             syncRepository.syncAll(isManual = true)
+        }
+    }
+
+    fun saveVentaSplitRatio(ratio: Float) {
+        viewModelScope.launch {
+            settingsRepository.setVentaSplitRatio(ratio)
         }
     }
 

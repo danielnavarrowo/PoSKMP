@@ -20,6 +20,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.disambiguateProductName
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
+import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.normalizeBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
@@ -84,7 +85,10 @@ class SyncRepositoryImpl(
     private var lastAttemptTimestamp: Long = 0L
 
     companion object {
-        const val MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000L // 5 minutos de intervalo mínimo
+        const val ANDROID_MIN_SYNC_INTERVAL_MS = 20 * 1000L // 20 segundos en Android
+        const val JVM_MIN_SYNC_INTERVAL_MS = 2 * 60 * 1000L // 2 minutos en JVM
+        val MIN_SYNC_INTERVAL_MS: Long
+            get() = if (isAndroid()) ANDROID_MIN_SYNC_INTERVAL_MS else JVM_MIN_SYNC_INTERVAL_MS
     }
 
     private fun schedulePendingSync(delayMs: Long) {
@@ -140,7 +144,7 @@ class SyncRepositoryImpl(
 
         val now = currentTimeMillis()
 
-        // 2. Control de intervalo / cooldown (5 minutos entre sincronizaciones)
+        // 2. Control de intervalo / cooldown (20s en Android, 2m en JVM entre sincronizaciones)
         if (!force && !forceFullSync) {
             val elapsedSinceAttempt = now - lastAttemptTimestamp
             if (lastAttemptTimestamp > 0L && elapsedSinceAttempt in 0..5000L) {

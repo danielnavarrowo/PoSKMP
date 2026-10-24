@@ -52,6 +52,7 @@ data class VentaUiState(
     val useProductTableInCatalog: Boolean = false,
     val swapVentaLayoutOrder: Boolean = false,
     val beepOnBarcodeScan: Boolean = false,
+    val ventaSplitRatio: Float = 0.6f,
     val isLoading: Boolean = false,
     val customers: List<Customer> = emptyList(),
     val filteredCustomers: List<Customer> = emptyList(),
