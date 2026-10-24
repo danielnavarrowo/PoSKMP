@@ -411,7 +411,7 @@ fun applySmartWordCapitalization(
     }
 
     var prefixLen = 0
-    while (prefixLen < oldText.length && prefixLen < newText.length && oldText[prefixLen] == newText[prefixLen]) {
+    while (prefixLen < oldText.length && oldText[prefixLen] == newText[prefixLen]) {
         prefixLen++
     }
 

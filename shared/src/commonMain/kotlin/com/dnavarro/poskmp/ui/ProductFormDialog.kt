@@ -85,7 +85,6 @@ import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.CategorySuggester
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.applySmartWordCapitalization
-import com.dnavarro.poskmp.util.capitalizeWords
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
 import com.dnavarro.poskmp.util.generateUUID

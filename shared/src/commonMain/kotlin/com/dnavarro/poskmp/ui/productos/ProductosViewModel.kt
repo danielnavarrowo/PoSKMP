@@ -21,7 +21,6 @@ import com.dnavarro.poskmp.util.matchesBarcode
 import com.dnavarro.poskmp.util.parseBarcodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
