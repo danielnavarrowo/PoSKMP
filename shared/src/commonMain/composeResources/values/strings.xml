@@ -192,6 +192,22 @@
     <string name="bulk_progress_delete">Eliminando productos: %1$d de %2$d (%3$d%)</string>
     <string name="apply_changes_button">Aplicar cambios</string>
     <string name="apply_changes_button_desktop">Aplicar cambios (Enter)</string>
+    <string name="bulk_preview_button">Vista previa</string>
+    <string name="bulk_preview_button_desktop">Vista previa (Enter)</string>
+    <string name="bulk_preview_back">Atrás</string>
+    <string name="bulk_preview_title">Vista previa de los cambios</string>
+    <string name="bulk_preview_summary">%1$d producto(s) serán modificados</string>
+    <string name="bulk_preview_unchanged">%1$d producto(s) no tendrán cambios</string>
+    <string name="bulk_preview_no_changes">Ningún producto cambiaría con estos valores.</string>
+    <string name="bulk_preview_will_delete">Se eliminará definitivamente</string>
+    <string name="bulk_preview_field_wholesale">Mayoreo</string>
+    <string name="bulk_preview_field_delivery">Domicilio</string>
+    <string name="bulk_preview_field_favorite">Favorito</string>
+    <string name="bulk_preview_field_status">Estado</string>
+    <string name="bulk_preview_value_yes">Sí</string>
+    <string name="bulk_preview_value_no">No</string>
+    <string name="bulk_preview_value_active">Activo</string>
+    <string name="bulk_preview_value_inactive">Inactivo</string>
 
     <!-- TicketSection -->
     <string name="back_to_catalog_desc">Volver al catálogo</string>
@@ -240,7 +256,7 @@
     <string name="category_auto_suggested_hint">Sugerida automáticamente según el nombre</string>
     <string name="suggested_categories_title">Sugerencias de categoría:</string>
     <string name="active_label">Activo</string>
-    <string name="sell_by_weight_label">Venta p/ Peso</string>
+    <string name="sell_by_weight_label">Venta a Granel</string>
     <string name="mark_as_favorite_label">Marcar como Favorito</string>
     <string name="save_changes_button">Guardar Cambios</string>
     <string name="save_changes_button_desktop">Guardar Cambios (Ctrl + Enter)</string>

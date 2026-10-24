@@ -2,6 +2,8 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.material3.LinearWavyProgressIndicator
@@ -22,14 +24,18 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.roundPrice
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -102,6 +108,61 @@ fun applyBulkProductModification(
     BulkProductOperation.DELETE -> null
 }
 
+enum class BulkField { COST, RETAIL, WHOLESALE, DELIVERY, CATEGORY, FAVORITE, STATUS }
+
+/**
+ * A single field difference for a product. For [BulkField.FAVORITE] and [BulkField.STATUS],
+ * [before] and [after] hold `"true"`/`"false"`; for the rest they hold display-ready text.
+ */
+data class BulkFieldChange(val field: BulkField, val before: String, val after: String)
+
+data class BulkProductPreview(
+    val product: Products,
+    val changes: List<BulkFieldChange>,
+    val willBeDeleted: Boolean = false
+)
+
+/**
+ * Computes what [modification] would do to each of [products] without persisting anything.
+ * Products that would not change are omitted from the result.
+ */
+fun buildBulkPreview(
+    products: List<Products>,
+    modification: BulkProductModification,
+    roundProductPrices: Boolean = false
+): List<BulkProductPreview> = products.mapNotNull { product ->
+    val updated = applyBulkProductModification(product, modification, roundProductPrices)
+        ?: return@mapNotNull BulkProductPreview(product, emptyList(), willBeDeleted = true)
+
+    val changes = buildList {
+        fun price(field: BulkField, before: Double, after: Double) {
+            if (abs(after - before) >= 0.005) {
+                add(BulkFieldChange(field, "$${before.formatPrice()}", "$${after.formatPrice()}"))
+            }
+        }
+        price(BulkField.COST, product.costo, updated.costo)
+        price(BulkField.RETAIL, product.precio, updated.precio)
+        price(BulkField.WHOLESALE, product.precio_mayoreo, updated.precio_mayoreo)
+        price(BulkField.DELIVERY, product.precio_delivery, updated.precio_delivery)
+        if (updated.categoria != product.categoria) {
+            add(
+                BulkFieldChange(
+                    BulkField.CATEGORY,
+                    product.categoria?.takeIf { it.isNotBlank() } ?: "—",
+                    updated.categoria?.takeIf { it.isNotBlank() } ?: "—"
+                )
+            )
+        }
+        if (updated.es_favorito != product.es_favorito) {
+            add(BulkFieldChange(BulkField.FAVORITE, (product.es_favorito == 1L).toString(), (updated.es_favorito == 1L).toString()))
+        }
+        if (updated.activo != product.activo) {
+            add(BulkFieldChange(BulkField.STATUS, (product.activo == 1L).toString(), (updated.activo == 1L).toString()))
+        }
+    }
+    if (changes.isEmpty()) null else BulkProductPreview(product, changes)
+}
+
 @Composable
 fun BulkProductModificationDialog(
     selectedCount: Int,
@@ -112,7 +173,9 @@ fun BulkProductModificationDialog(
     defaultRetailMarginPercentage: Double = 0.0,
     defaultWholesaleMarginPercentage: Double = 0.0,
     defaultDeliveryMarginPercentage: Double = 0.0,
-    progress: BulkProgressState? = null
+    progress: BulkProgressState? = null,
+    selectedProducts: List<Products> = emptyList(),
+    roundProductPrices: Boolean = false
 ) {
     val isProcessing = progress != null
     val progressText = if (progress != null) {
@@ -182,6 +245,13 @@ fun BulkProductModificationDialog(
     var categoryText by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // Non-null while the user is reviewing the preview step, before the changes are applied.
+    var previewModification by remember { mutableStateOf<BulkProductModification?>(null) }
+    val previewItems = remember(previewModification, selectedProducts, roundProductPrices) {
+        previewModification?.let { buildBulkPreview(selectedProducts, it, roundProductPrices) }
+    }
+    val isPreviewing = previewItems != null
+
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
     val allCategories = remember(existingCategories) {
@@ -214,11 +284,11 @@ fun BulkProductModificationDialog(
         else -> false
     }
 
-    LaunchedEffect(operation) {
+    LaunchedEffect(operation, isPreviewing) {
         if (!isAndroid()) {
             delay(100.milliseconds)
             try {
-                if (hasTextField) {
+                if (hasTextField && !isPreviewing) {
                     firstFocusRequester.requestFocus()
                 } else {
                     confirmButtonFocusRequester.requestFocus()
@@ -350,6 +420,16 @@ fun BulkProductModificationDialog(
         }
     }
 
+    fun confirm() {
+        val reviewed = previewModification
+        if (reviewed != null) {
+            onApply(reviewed)
+            return
+        }
+        val modification = createModification() ?: return
+        if (selectedProducts.isEmpty()) onApply(modification) else previewModification = modification
+    }
+
     AlertDialog(
         onDismissRequest = {
             if (!isProcessing) {
@@ -367,8 +447,8 @@ fun BulkProductModificationDialog(
                     .onPreviewKeyEvent { keyEvent ->
                         keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
                             Key.Enter, Key.NumPadEnter -> {
-                                if (!isProcessing) {
-                                    createModification()?.let(onApply)
+                                if (!isProcessing && (previewItems == null || previewItems.isNotEmpty())) {
+                                    confirm()
                                 }
                                 true
                             }
@@ -388,7 +468,12 @@ fun BulkProductModificationDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 HorizontalDivider()
-                when (operation) {
+                if (previewItems != null) {
+                    BulkPreviewContent(
+                        items = previewItems,
+                        totalSelected = selectedProducts.size
+                    )
+                } else when (operation) {
                     BulkProductOperation.CHANGE_PRICES -> {
                         PriceOption(
                             label = stringResource(Res.string.cost_price),
@@ -605,21 +690,30 @@ fun BulkProductModificationDialog(
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !isProcessing
-            ) { Text(stringResource(Res.string.cancel)) }
+            Row {
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !isProcessing
+                ) { Text(stringResource(Res.string.cancel)) }
+                if (isPreviewing) {
+                    TextButton(
+                        onClick = { previewModification = null },
+                        enabled = !isProcessing
+                    ) { Text(stringResource(Res.string.bulk_preview_back)) }
+                }
+            }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    createModification()?.let(onApply)
-                },
-                enabled = isPriceModificationValid && !isProcessing,
-                modifier = if (!isAndroid() && !hasTextField) Modifier.focusRequester(confirmButtonFocusRequester) else Modifier
+                onClick = { confirm() },
+                enabled = isPriceModificationValid && !isProcessing && (previewItems == null || previewItems.isNotEmpty()),
+                modifier = if (!isAndroid() && (!hasTextField || isPreviewing)) Modifier.focusRequester(confirmButtonFocusRequester) else Modifier
             ) {
                 Text(
-                    if (isAndroid()) {
+                    if (selectedProducts.isNotEmpty() && !isPreviewing) {
+                        if (isAndroid()) stringResource(Res.string.bulk_preview_button)
+                        else stringResource(Res.string.bulk_preview_button_desktop)
+                    } else if (isAndroid()) {
                         if (operation == BulkProductOperation.DELETE) stringResource(Res.string.delete_button)
                         else stringResource(Res.string.apply_changes_button)
                     } else {
@@ -630,6 +724,112 @@ fun BulkProductModificationDialog(
             }
         }
     )
+}
+
+@Composable
+private fun BulkPreviewContent(
+    items: List<BulkProductPreview>,
+    totalSelected: Int
+) {
+    val unchangedCount = totalSelected - items.size
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(Res.string.bulk_preview_title),
+            fontWeight = FontWeight.SemiBold
+        )
+        if (items.isEmpty()) {
+            Text(
+                text = stringResource(Res.string.bulk_preview_no_changes),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            return@Column
+        }
+        Text(
+            text = stringResource(Res.string.bulk_preview_summary, items.size),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp
+        )
+        if (unchangedCount > 0) {
+            Text(
+                text = stringResource(Res.string.bulk_preview_unchanged, unchangedCount),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp
+            )
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(items, key = { it.product.id }) { item ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = item.product.nombre,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (item.willBeDeleted) {
+                        Text(
+                            text = stringResource(Res.string.bulk_preview_will_delete),
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 13.sp
+                        )
+                    }
+                    item.changes.forEach { change ->
+                        BulkFieldChangeRow(change)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BulkFieldChangeRow(change: BulkFieldChange) {
+    val label = stringResource(
+        when (change.field) {
+            BulkField.COST -> Res.string.cost_price
+            BulkField.RETAIL -> Res.string.retail_price
+            BulkField.WHOLESALE -> Res.string.bulk_preview_field_wholesale
+            BulkField.DELIVERY -> Res.string.bulk_preview_field_delivery
+            BulkField.CATEGORY -> Res.string.category_label
+            BulkField.FAVORITE -> Res.string.bulk_preview_field_favorite
+            BulkField.STATUS -> Res.string.bulk_preview_field_status
+        }
+    )
+    @Composable
+    fun display(value: String): String = when (change.field) {
+        BulkField.FAVORITE -> stringResource(
+            if (value == "true") Res.string.bulk_preview_value_yes else Res.string.bulk_preview_value_no
+        )
+        BulkField.STATUS -> stringResource(
+            if (value == "true") Res.string.bulk_preview_value_active else Res.string.bulk_preview_value_inactive
+        )
+        else -> value
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = "$label:",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = display(change.before),
+            fontSize = 13.sp,
+            textDecoration = TextDecoration.LineThrough,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(text = "→", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = display(change.after),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
 }
 
 @Composable

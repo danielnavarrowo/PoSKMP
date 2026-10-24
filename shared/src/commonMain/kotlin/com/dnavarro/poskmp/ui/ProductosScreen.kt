@@ -1277,6 +1277,14 @@ fun ProductosScreen(
             }
 
             showBulkModificationFor?.let { op ->
+                val bulkSelectedProducts = remember(
+                    selectedProductIds,
+                    uiState.allExistingProducts,
+                    uiState.rawProducts
+                ) {
+                    uiState.allExistingProducts.ifEmpty { uiState.rawProducts }
+                        .filter { it.id in selectedProductIds }
+                }
                 BulkProductModificationDialog(
                     selectedCount = selectedProductIds.size,
                     operation = op,
@@ -1288,7 +1296,9 @@ fun ProductosScreen(
                     defaultRetailMarginPercentage = uiState.defaultRetailMargin,
                     defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
                     defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
-                    progress = uiState.bulkModificationProgress
+                    progress = uiState.bulkModificationProgress,
+                    selectedProducts = bulkSelectedProducts,
+                    roundProductPrices = uiState.roundProductPrices
                 )
             }
 
