@@ -15,7 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,9 +43,9 @@ actual fun AppVerticalScrollbar(
     state: LazyListState,
     modifier: Modifier
 ) {
-    // Usamos derivedStateOf para no leer @FrequentlyChangingValue directamente en composición
+    // Usamos computedStateOf para no leer @FrequentlyChangingValue directamente en composición
     val canScroll by remember(state) {
-        derivedStateOf {
+        computedStateOf {
             val info = state.layoutInfo
             info.totalItemsCount > 0 && info.visibleItemsInfo.size < info.totalItemsCount
         }
@@ -237,7 +237,7 @@ actual fun AppVerticalScrollbar(
     modifier: Modifier
 ) {
     val canScroll by remember(gridState) {
-        derivedStateOf {
+        computedStateOf {
             val info = gridState.layoutInfo
             info.totalItemsCount > 0 && info.visibleItemsInfo.size < info.totalItemsCount
         }

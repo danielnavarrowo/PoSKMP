@@ -64,7 +64,6 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -473,12 +472,8 @@ fun App(
     }
 
     val currentOnDarkThemeChanged by rememberUpdatedState(onDarkThemeChanged)
-    var lastReportedDarkTheme by remember { mutableStateOf<Boolean?>(null) }
-    SideEffect {
-        if (lastReportedDarkTheme != darkTheme) {
-            lastReportedDarkTheme = darkTheme
-            currentOnDarkThemeChanged?.invoke(darkTheme)
-        }
+    LaunchedEffect(darkTheme) {
+        currentOnDarkThemeChanged?.invoke(darkTheme)
     }
 
     val currentDensity = LocalDensity.current

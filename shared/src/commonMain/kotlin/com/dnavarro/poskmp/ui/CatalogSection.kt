@@ -1186,16 +1186,6 @@ private fun ProductContextMenu(
             .widthIn(min = 230.dp)
             .onPreviewKeyEvent(handleKeyEvent)
     ) {
-        LaunchedEffect(Unit) {
-            for (d in listOf(50L, 100L, 150L)) {
-                delay(d.milliseconds)
-                if (isInputFocused) break
-                try {
-                    focusRequester.requestFocus()
-                } catch (_: Exception) {}
-            }
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()

@@ -760,7 +760,11 @@ private fun BulkPreviewContent(
             modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(items, key = { it.product.id }) { item ->
+            items(
+                items = items,
+                key = { it.product.id },
+                contentType = { "bulk_product_preview" }
+            ) { item ->
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = item.product.nombre,

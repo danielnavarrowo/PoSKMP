@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
+import org.jetbrains.skia.Shader
 import org.koin.compose.koinInject
 import java.time.LocalDate
 import kotlin.random.Random
@@ -365,6 +367,14 @@ vec4 main(vec2 fragCoord) {
 }
 """
 
+private val standardRuntimeEffect by lazy {
+    RuntimeEffect.makeForShader(CHECADOR_SKSL_SHADER)
+}
+
+private val lightRuntimeEffect by lazy {
+    RuntimeEffect.makeForShader(CHECADOR_SKSL_LIGHT_SHADER)
+}
+
 @Composable
 actual fun ChecadorAnimatedBackground(
     modifier: Modifier
@@ -392,15 +402,21 @@ actual fun ChecadorAnimatedBackground(
         }
     }
 
-    val selectedShader = if (isLowResource) CHECADOR_SKSL_LIGHT_SHADER else CHECADOR_SKSL_SHADER
-    val effect = remember(isLowResource) {
-        RuntimeEffect.makeForShader(selectedShader)
-    }
+    val effect = if (isLowResource) lightRuntimeEffect else standardRuntimeEffect
     val builder = remember(effect) {
         RuntimeShaderBuilder(effect)
     }
 
     val paint = remember { Paint() }
+    val activeSkiaShader = remember { arrayOfNulls<Shader>(1) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            paint.shader = null
+            activeSkiaShader[0]?.close()
+            activeSkiaShader[0] = null
+        }
+    }
 
     Spacer(
         modifier = modifier
@@ -415,7 +431,11 @@ actual fun ChecadorAnimatedBackground(
                 onDrawBehind {
                     if (size.width > 0f && size.height > 0f) {
                         builder.uniform("uTime", time)
-                        paint.shader = builder.makeShader().asComposeShader()
+                        val newShader = builder.makeShader()
+                        val previousShader = activeSkiaShader[0]
+                        activeSkiaShader[0] = newShader
+                        paint.shader = newShader.asComposeShader()
+                        previousShader?.close()
                         drawContext.canvas.drawRect(0f, 0f, size.width, size.height, paint)
                     }
                 }

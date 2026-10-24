@@ -27,8 +27,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -119,8 +123,10 @@ fun PricingSettingsSection(
     onGoogleSearchApiKeyChange: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val geminiApiKeyState = remember(geminiApiKey) { TextFieldState(geminiApiKey) }
+    val geminiApiKeyState = remember { TextFieldState(geminiApiKey) }
     var isApiKeyVisible by remember { mutableStateOf(false) }
+    val currentGeminiApiKey by rememberUpdatedState(geminiApiKey)
+    val currentOnGeminiApiKeyChange by rememberUpdatedState(onGeminiApiKeyChange)
 
     LaunchedEffect(geminiApiKey) {
         if (geminiApiKeyState.text.toString() != geminiApiKey) {
@@ -128,11 +134,13 @@ fun PricingSettingsSection(
         }
     }
 
+    @OptIn(FlowPreview::class)
     LaunchedEffect(geminiApiKeyState) {
         snapshotFlow { geminiApiKeyState.text.toString() }
+            .debounce(300.milliseconds)
             .collect { newText ->
-                if (newText != geminiApiKey) {
-                    onGeminiApiKeyChange(newText)
+                if (newText != currentGeminiApiKey) {
+                    currentOnGeminiApiKeyChange(newText)
                 }
             }
     }
@@ -142,8 +150,10 @@ fun PricingSettingsSection(
             googleSearchEngineId
         )
     }
-    val googleSearchApiKeyState = remember(googleSearchApiKey) { TextFieldState(googleSearchApiKey) }
+    val googleSearchApiKeyState = remember { TextFieldState(googleSearchApiKey) }
     var isSearchApiKeyVisible by remember { mutableStateOf(false) }
+    val currentGoogleSearchApiKey by rememberUpdatedState(googleSearchApiKey)
+    val currentOnGoogleSearchApiKeyChange by rememberUpdatedState(onGoogleSearchApiKeyChange)
 
     LaunchedEffect(googleSearchApiKey) {
         if (googleSearchApiKeyState.text.toString() != googleSearchApiKey) {
@@ -151,11 +161,13 @@ fun PricingSettingsSection(
         }
     }
 
+    @OptIn(FlowPreview::class)
     LaunchedEffect(googleSearchApiKeyState) {
         snapshotFlow { googleSearchApiKeyState.text.toString() }
+            .debounce(300.milliseconds)
             .collect { newText ->
-                if (newText != googleSearchApiKey) {
-                    onGoogleSearchApiKeyChange(newText)
+                if (newText != currentGoogleSearchApiKey) {
+                    currentOnGoogleSearchApiKeyChange(newText)
                 }
             }
     }

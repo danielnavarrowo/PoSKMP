@@ -13,6 +13,13 @@ compose.resources {
     publicResClass = true
 }
 
+composeCompiler {
+    if (providers.gradleProperty("composeCompilerReports").isPresent) {
+        reportsDestination = layout.buildDirectory.dir("compose_compiler/reports")
+        metricsDestination = layout.buildDirectory.dir("compose_compiler/metrics")
+    }
+}
+
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll(

@@ -660,6 +660,9 @@ fun ProductFormDialog(
     val currentOnValidateBarcodes by rememberUpdatedState(onValidateBarcodes)
 
     LaunchedEffect(formBarcodes, barcodeInput, product?.id) {
+        if (barcodeInput.isNotBlank()) {
+            delay(250.milliseconds)
+        }
         val pendingInputCodes = parseBarcodes(barcodeInput)
         val allCodes = formBarcodes + pendingInputCodes
 
@@ -690,9 +693,6 @@ fun ProductFormDialog(
         val totalCodes = allCodes.distinct()
         val validateFn = currentOnValidateBarcodes
         if (validateFn != null) {
-            if (barcodeInput.isNotBlank()) {
-                delay(200.milliseconds)
-            }
             isValidatingBarcode = true
             val conflict = validateFn(totalCodes)
             isValidatingBarcode = false

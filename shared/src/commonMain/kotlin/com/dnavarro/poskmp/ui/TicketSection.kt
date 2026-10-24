@@ -52,6 +52,7 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -173,8 +174,8 @@ fun TicketSection(
         }
     }
 
-    val focusRequesters = remember { mutableMapOf<Int, FocusRequester>() }
-    var focusedQuantityItemIndex by remember { mutableStateOf<Int?>(null) }
+    val focusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+    var focusedQuantityProductId by remember { mutableStateOf<String?>(null) }
     var previousSize by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
 
@@ -197,6 +198,7 @@ fun TicketSection(
             }
             onSelectedIndexChange(targetIndex)
         } else {
+            focusRequesters.clear()
             onSelectedIndexChange(-1)
         }
         previousSize = cartItems.size
@@ -466,17 +468,15 @@ fun TicketSection(
                         RoundedCornerShape(MaterialTheme.shapes.extraSmall.topStart)
                     }
 
-                    val focusRequester = remember(index) { focusRequesters.getOrPut(index) { FocusRequester() } }
+                    val focusRequester = remember(item.product.id) {
+                        focusRequesters.getOrPut(item.product.id) { FocusRequester() }
+                    }
+                    val previousProductId = cartItems.getOrNull(index - 1)?.product?.id
+                    val nextProductId = cartItems.getOrNull(index + 1)?.product?.id
                     val isRowFocused = selectedIndex == index
 
                     if (isAndroid()) {
-                        val dismissState = rememberSwipeToDismissBoxState()
-
-                        LaunchedEffect(item.product.id) {
-                            if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
-                                dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-                            }
-                        }
+                        val dismissState = key(item.product.id) { rememberSwipeToDismissBoxState() }
 
                         val color by animateColorAsState(
                             when {
@@ -533,7 +533,8 @@ fun TicketSection(
                             TicketItemRow(
                                 item = item,
                                 index = index,
-                                cartItemsSize = cartItems.size,
+                                previousProductId = previousProductId,
+                                nextProductId = nextProductId,
                                 shape = shape,
                                 isRowFocused = isRowFocused,
                                 focusRequester = focusRequester,
@@ -545,10 +546,10 @@ fun TicketSection(
                                 isNarrow = isNarrow,
                                 onQuantityFocusChanged = { focused ->
                                     if (focused) {
-                                        focusedQuantityItemIndex = index
+                                        focusedQuantityProductId = item.product.id
                                         onQuantityFocusChanged(true)
-                                    } else if (focusedQuantityItemIndex == index) {
-                                        focusedQuantityItemIndex = null
+                                    } else if (focusedQuantityProductId == item.product.id) {
+                                        focusedQuantityProductId = null
                                         onQuantityFocusChanged(false)
                                     }
                                 }
@@ -558,7 +559,8 @@ fun TicketSection(
                         TicketItemRow(
                             item = item,
                             index = index,
-                            cartItemsSize = cartItems.size,
+                            previousProductId = previousProductId,
+                            nextProductId = nextProductId,
                             shape = shape,
                             isRowFocused = isRowFocused,
                             focusRequester = focusRequester,
@@ -570,10 +572,10 @@ fun TicketSection(
                             isNarrow = isNarrow,
                             onQuantityFocusChanged = { focused ->
                                 if (focused) {
-                                    focusedQuantityItemIndex = index
+                                    focusedQuantityProductId = item.product.id
                                     onQuantityFocusChanged(true)
-                                } else if (focusedQuantityItemIndex == index) {
-                                    focusedQuantityItemIndex = null
+                                } else if (focusedQuantityProductId == item.product.id) {
+                                    focusedQuantityProductId = null
                                     onQuantityFocusChanged(false)
                                 }
                             },
@@ -786,11 +788,12 @@ fun TicketSection(
 private fun TicketItemRow(
     item: CartItem,
     index: Int,
-    cartItemsSize: Int,
+    previousProductId: String?,
+    nextProductId: String?,
     shape: androidx.compose.ui.graphics.Shape,
     isRowFocused: Boolean,
     focusRequester: FocusRequester,
-    focusRequesters: Map<Int, FocusRequester>,
+    focusRequesters: Map<String, FocusRequester>,
     onSelectedIndexChange: (Int) -> Unit,
     onUpdateQuantity: (CartItem, Double) -> Unit,
     onSetQuantity: (CartItem, Double) -> Unit,
@@ -818,15 +821,15 @@ private fun TicketItemRow(
                         .onKeyEvent { keyEvent ->
                             !isTextFieldFocused && keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
                                 Key.DirectionUp -> {
-                                    if (index > 0) {
-                                        focusRequesters[index - 1]?.requestFocus()
+                                    if (previousProductId != null) {
+                                        focusRequesters[previousProductId]?.requestFocus()
                                     }
                                     true
                                 }
 
                                 Key.DirectionDown -> {
-                                    if (index < cartItemsSize - 1) {
-                                        focusRequesters[index + 1]?.requestFocus()
+                                    if (nextProductId != null) {
+                                        focusRequesters[nextProductId]?.requestFocus()
                                     }
                                     true
                                 }

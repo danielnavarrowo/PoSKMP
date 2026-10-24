@@ -73,7 +73,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -230,7 +230,7 @@ fun ProductosScreen(
 
     val searchQueryState = rememberTextFieldState(searchQuery)
     var lastEmittedQuery by remember { mutableStateOf(searchQuery) }
-    val isSearchNotEmpty by remember { derivedStateOf { searchQueryState.text.isNotEmpty() } }
+    val isSearchNotEmpty by remember { computedStateOf { searchQueryState.text.isNotEmpty() } }
 
     var selectedProductId by remember { mutableStateOf<String?>(null) }
     var selectedProductIndex by remember { mutableIntStateOf(-1) }
