@@ -8,7 +8,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,15 +51,16 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -157,6 +157,7 @@ fun TicketSection(
     onAssignCustomerClick: () -> Unit = {},
     onClearCustomerClick: () -> Unit = {},
     isDeliveryMode: Boolean = false,
+    isNarrow: Boolean = false,
     onApplyItemWholesaleClick: () -> Unit = {},
     onApplyWholesaleClick: () -> Unit = {},
     onQuantityFocusChanged: (Boolean) -> Unit = {}
@@ -177,8 +178,9 @@ fun TicketSection(
     var previousSize by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(selectedIndex, cartItems) {
-        if (selectedIndex in cartItems.indices) {
+    val currentCartItems by rememberUpdatedState(cartItems)
+    LaunchedEffect(selectedIndex, cartItems.size) {
+        if (selectedIndex in currentCartItems.indices) {
             try {
                 listState.scrollToItem(selectedIndex)
             } catch (_: Exception) {}
@@ -200,18 +202,12 @@ fun TicketSection(
         previousSize = cartItems.size
     }
 
-    BoxWithConstraints(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .widthIn(min = 280.dp)
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
     ) {
-        val isNarrow = maxWidth < 380.dp
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
-        ) {
         // Section Header
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -511,7 +507,7 @@ fun TicketSection(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(shape)
-                                        .background(color)
+                                        .drawBehind { drawRect(color) }
                                         .padding(horizontal = 24.dp),
                                     contentAlignment = alignment
                                 ) {
@@ -784,7 +780,6 @@ fun TicketSection(
             }
         }
     }
-    }
 }
 
 @Composable
@@ -1027,15 +1022,15 @@ private fun ItemQuantityControls(
             )
         }
 
-        val quantityState = remember(item.product.id) {
-            TextFieldState(item.quantity.formatQuantity(item.product.por_peso == 1L))
-        }
-
         val formattedQuantity = remember(item.quantity, item.product.por_peso) {
             item.quantity.formatQuantity(item.product.por_peso == 1L)
         }
-        SideEffect {
-            if (quantityState.text.toString() != formattedQuantity) {
+        val quantityState = remember(item.product.id) {
+            TextFieldState(formattedQuantity)
+        }
+
+        LaunchedEffect(formattedQuantity) {
+            if (!isTextFieldFocused && quantityState.text.toString() != formattedQuantity) {
                 quantityState.setTextAndPlaceCursorAtEnd(formattedQuantity)
             }
         }

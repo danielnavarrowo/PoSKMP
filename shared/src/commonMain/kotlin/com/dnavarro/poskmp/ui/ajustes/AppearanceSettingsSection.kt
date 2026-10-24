@@ -44,7 +44,7 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -390,7 +390,7 @@ fun AppearanceSettingsSection(
                         steps = 11,
                         trackRange = 0.75f..1.35f
                     )
-                    SideEffect {
+                    LaunchedEffect(appScale) {
                         if (abs(scaleSliderState.value - appScale) > 0.001f) {
                             scaleSliderState.value = appScale
                         }

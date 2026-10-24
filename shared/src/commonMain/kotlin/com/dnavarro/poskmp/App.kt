@@ -1454,6 +1454,7 @@ fun App(
                                         entry<AppRoute.Productos> {
                                             ProductosScreen(
                                                 viewModel = koinViewModel<ProductosViewModel>(),
+                                                isCompact = isCompact,
                                                 refocusTrigger = productosRefocusTrigger,
                                                 searchFocusTrigger = productosSearchFocusTrigger,
                                                 onSearchFocusHandled = { productosSearchFocusTrigger = 0 }
@@ -1462,6 +1463,7 @@ fun App(
                                         entry<AppRoute.Clientes> {
                                             ClientesScreen(
                                                 viewModel = koinViewModel<ClientesViewModel>(),
+                                                isCompact = isCompact,
                                                 refocusTrigger = clientesRefocusTrigger,
                                                 onNavigateBack = if (isToolbarNavigation) {
                                                     {
@@ -1476,6 +1478,7 @@ fun App(
                                         entry<AppRoute.Ventas> {
                                             VentasScreen(
                                                 viewModel = koinViewModel<VentasViewModel>(),
+                                                isCompact = isCompact,
                                                 scrollToTopTrigger = ventasScrollToTopTrigger,
                                                 onNavigateBack = null
                                             )

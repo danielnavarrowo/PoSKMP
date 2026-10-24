@@ -12,6 +12,7 @@ import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceOrientedMeteringPointFactory
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -227,10 +228,23 @@ fun CameraPreviewScreen(
     var isProcessing by remember { mutableStateOf(false) }
     var isFlashEnabled by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<Camera?>(null) }
+    var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var lastScannedBarcode by remember { mutableStateOf<String?>(null) }
     val settingsRepository = koinInject<SettingsRepository>()
     val settingsPrioritizeDelivery by settingsRepository.prioritizeDeliveryPriceFlow.collectAsStateWithLifecycle(initialValue = false)
     val effectivePrioritizeDelivery = prioritizeDeliveryPrice || settingsPrioritizeDelivery
+
+    LaunchedEffect(cameraProviderFuture) {
+        cameraProviderFuture.addListener(
+            {
+                try {
+                    cameraProvider = cameraProviderFuture.get()
+                } catch (_: Exception) {
+                }
+            },
+            ContextCompat.getMainExecutor(context)
+        )
+    }
 
     LaunchedEffect(lastScannedProduct) {
         if (lastScannedProduct == null && statusMessage == null) {
@@ -241,9 +255,7 @@ fun CameraPreviewScreen(
     DisposableEffect(Unit) {
         onDispose {
             try {
-                if (cameraProviderFuture.isDone) {
-                    cameraProviderFuture.get().unbindAll()
-                }
+                cameraProvider?.unbindAll()
             } catch (_: Exception) {
             }
             barcodeScanner.close()
@@ -255,102 +267,104 @@ fun CameraPreviewScreen(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx)
-                val cameraProvider = cameraProviderFuture.get()
+        val provider = cameraProvider
+        if (provider != null) {
+            AndroidView(
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx)
 
-                val preview = Preview.Builder().build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
-                }
+                    val preview = Preview.Builder().build().also {
+                        it.surfaceProvider = previewView.surfaceProvider
+                    }
 
-                val imageAnalysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also { analysis ->
-                        analysis.setAnalyzer(executor) { imageProxy ->
-                            if (!isProcessing) {
-                                val mediaImage = imageProxy.image
-                                if (mediaImage != null) {
-                                    val image = InputImage.fromMediaImage(
-                                        mediaImage,
-                                        imageProxy.imageInfo.rotationDegrees
-                                    )
+                    val imageAnalysis = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also { analysis ->
+                            analysis.setAnalyzer(executor) { imageProxy ->
+                                if (!isProcessing) {
+                                    val mediaImage = imageProxy.image
+                                    if (mediaImage != null) {
+                                        val image = InputImage.fromMediaImage(
+                                            mediaImage,
+                                            imageProxy.imageInfo.rotationDegrees
+                                        )
 
-                                    isProcessing = true
-                                    barcodeScanner.process(image)
-                                        .addOnSuccessListener { barcodes ->
-                                            for (barcode in barcodes) {
-                                                val rawValue =
-                                                    barcode.rawValue?.trim() ?: ""
-                                                if (rawValue.isNotEmpty()) {
-                                                    val trimmed = rawValue.trim()
-                                                    if (trimmed != lastScannedBarcode) {
-                                                        lastScannedBarcode = trimmed
-                                                        try {
-                                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                                        } catch (_: Exception) {}
-                                                        onScanResult(trimmed)
+                                        isProcessing = true
+                                        barcodeScanner.process(image)
+                                            .addOnSuccessListener { barcodes ->
+                                                for (barcode in barcodes) {
+                                                    val rawValue =
+                                                        barcode.rawValue?.trim() ?: ""
+                                                    if (rawValue.isNotEmpty()) {
+                                                        val trimmed = rawValue.trim()
+                                                        if (trimmed != lastScannedBarcode) {
+                                                            lastScannedBarcode = trimmed
+                                                            try {
+                                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                                            } catch (_: Exception) {}
+                                                            onScanResult(trimmed)
+                                                        }
+                                                        coroutineScope.launch {
+                                                            delay(1200.milliseconds)
+                                                            isProcessing = false
+                                                        }
+                                                        return@addOnSuccessListener
                                                     }
-                                                    coroutineScope.launch {
-                                                        delay(1200.milliseconds)
-                                                        isProcessing = false
-                                                    }
-                                                    return@addOnSuccessListener
                                                 }
+                                                isProcessing = false
                                             }
-                                            isProcessing = false
-                                        }
-                                        .addOnFailureListener {
-                                            isProcessing = false
-                                        }
-                                        .addOnCompleteListener {
-                                            imageProxy.close()
-                                        }
+                                            .addOnFailureListener {
+                                                isProcessing = false
+                                            }
+                                            .addOnCompleteListener {
+                                                imageProxy.close()
+                                            }
+                                    }
+                                } else {
+                                    imageProxy.close()
                                 }
-                            } else {
-                                imageProxy.close()
                             }
                         }
-                    }
 
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                try {
-                    cameraProvider.unbindAll()
-                    camera = cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview,
-                        imageAnalysis
-                    )
+                    try {
+                        provider.unbindAll()
+                        camera = provider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            preview,
+                            imageAnalysis
+                        )
 
-                    previewView.setOnTouchListener { view, event ->
-                        if (event.action == MotionEvent.ACTION_DOWN) {
-                            val factory = SurfaceOrientedMeteringPointFactory(
-                                view.width.toFloat(),
-                                view.height.toFloat()
-                            )
-                            val point = factory.createPoint(event.x, event.y)
-                            val action = FocusMeteringAction.Builder(point)
-                                .setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
-                                .build()
+                        previewView.setOnTouchListener { view, event ->
+                            if (event.action == MotionEvent.ACTION_DOWN) {
+                                val factory = SurfaceOrientedMeteringPointFactory(
+                                    view.width.toFloat(),
+                                    view.height.toFloat()
+                                )
+                                val point = factory.createPoint(event.x, event.y)
+                                val action = FocusMeteringAction.Builder(point)
+                                    .setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
+                                    .build()
 
-                            camera?.cameraControl?.startFocusAndMetering(action)
-                            view.performClick()
-                            true
-                        } else {
-                            false
+                                camera?.cameraControl?.startFocusAndMetering(action)
+                                view.performClick()
+                                true
+                            } else {
+                                false
+                            }
                         }
+                    } catch (_: Exception) {
                     }
-                } catch (_: Exception) {
-                }
 
-                previewView
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+                    previewView
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         LaunchedEffect(isFlashEnabled) {
             camera?.cameraControl?.enableTorch(isFlashEnabled)

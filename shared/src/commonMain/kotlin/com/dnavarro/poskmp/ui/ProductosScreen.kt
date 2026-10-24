@@ -10,7 +10,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -58,6 +57,7 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
@@ -69,7 +69,6 @@ import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -77,10 +76,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -98,7 +99,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -125,7 +126,6 @@ import com.dnavarro.poskmp.ui.productos.StatusFilterOption
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.isAndroid
-import com.dnavarro.poskmp.util.isCompactWidth
 import com.dnavarro.poskmp.util.resetScroll
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
@@ -214,6 +214,7 @@ enum class ProductSortOrder {
 fun ProductosScreen(
     viewModel: ProductosViewModel,
     modifier: Modifier = Modifier,
+    isCompact: Boolean = false,
     refocusTrigger: Int = 0,
     searchFocusTrigger: Int = 0,
     onSearchFocusHandled: () -> Unit = {}
@@ -367,9 +368,10 @@ fun ProductosScreen(
         }
     }
 
-    LaunchedEffect(sortedProducts) {
+    val currentSortedProducts by rememberUpdatedState(sortedProducts)
+    LaunchedEffect(sortedProducts.size, searchQuery, sortField, sortOrder) {
         if (selectedProductId != null) {
-            val idx = sortedProducts.indexOfFirst { it.id == selectedProductId }
+            val idx = currentSortedProducts.indexOfFirst { it.id == selectedProductId }
             if (idx != -1) {
                 if (selectedProductIndex != idx) {
                     selectedProductIndex = idx
@@ -377,14 +379,14 @@ fun ProductosScreen(
                 }
             } else {
                 selectedProductId = null
-                if (selectedProductIndex >= sortedProducts.size) {
-                    selectedProductIndex = sortedProducts.lastIndex
-                    selectionAnchorIndex = sortedProducts.lastIndex
+                if (selectedProductIndex >= currentSortedProducts.size) {
+                    selectedProductIndex = currentSortedProducts.lastIndex
+                    selectionAnchorIndex = currentSortedProducts.lastIndex
                 }
             }
-        } else if (selectedProductIndex >= sortedProducts.size) {
-            selectedProductIndex = sortedProducts.lastIndex
-            selectionAnchorIndex = sortedProducts.lastIndex
+        } else if (selectedProductIndex >= currentSortedProducts.size) {
+            selectedProductIndex = currentSortedProducts.lastIndex
+            selectionAnchorIndex = currentSortedProducts.lastIndex
         }
     }
 
@@ -517,13 +519,10 @@ fun ProductosScreen(
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val screenMaxWidth = maxWidth
-        val isCompact = isCompactWidth(screenMaxWidth)
-        val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+    val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
 
-        Scaffold(
-            topBar = {
+    Scaffold(
+        topBar = {
                 TopAppBar(
                     title = {
                         Text(
@@ -574,7 +573,7 @@ fun ProductosScreen(
                                     onCheckedChange = { isFabMenuExpanded = !isFabMenuExpanded }
                                 ) {
                                     val iconRes =
-                                        if (checkedProgress > 0.5f) Res.drawable.close else Res.drawable.edit
+                                        if (isFabMenuExpanded) Res.drawable.close else Res.drawable.edit
                                     Icon(
                                         painter = painterResource(iconRes),
                                         tint = MaterialTheme.colorScheme.onTertiary,
@@ -822,7 +821,7 @@ fun ProductosScreen(
                 }
             },
             containerColor = MaterialTheme.colorScheme.background,
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
                 .then(
                     if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
@@ -1100,11 +1099,10 @@ fun ProductosScreen(
                                                 } else {
                                                     ShapeDefaults.middleListItemShape
                                                 }
-                                                val isSelected = product.id in selectedProductIds
                                                 ProductSimpleCard(
                                                     product = product,
                                                     shape = shape,
-                                                    isSelected = isSelected,
+                                                    isSelectedProvider = { product.id in selectedProductIds },
                                                     showCheckbox = false,
                                                     onClick = {
                                                         if (selectedProductIds.isNotEmpty()) {
@@ -1133,7 +1131,14 @@ fun ProductosScreen(
                                     }
                                 } else {
                                     // Desktop Table Layout
-                                    Column(modifier = Modifier.fillMaxSize()) {
+                                    var tableWidthPx by remember { mutableFloatStateOf(1f) }
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .onSizeChanged { size ->
+                                                tableWidthPx = size.width.toFloat().coerceAtLeast(1f)
+                                            }
+                                    ) {
                                         val activeColumns = remember(uiState.visibleColumns) {
                                             ProductTableColumn.entries.filter { it in uiState.visibleColumns }
                                         }
@@ -1143,8 +1148,6 @@ fun ProductosScreen(
                                         var columnWeights by remember(activeColumns) {
                                             mutableStateOf(activeColumns.map { (it.defaultWeight / totalDefaultWeight) * 0.95f })
                                         }
-                                        val tableWidthPx =
-                                            with(LocalDensity.current) { screenMaxWidth.toPx() }
                                         val resizeColumn = { index: Int, dragAmount: Float ->
                                             if (index in 0 until activeColumns.lastIndex) {
                                                 val weightDelta = dragAmount / tableWidthPx
@@ -1213,7 +1216,7 @@ fun ProductosScreen(
                                                         shape = shape,
                                                         isHighlighted = isHighlighted,
                                                         showCheckbox = true,
-                                                        isChecked = product.id in selectedProductIds,
+                                                        isCheckedProvider = { product.id in selectedProductIds },
                                                         onCheckedChange = {
                                                             selectedProductId = product.id
                                                             selectedProductIndex = index
@@ -1359,7 +1362,6 @@ fun ProductosScreen(
                 )
             }
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)

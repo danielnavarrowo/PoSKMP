@@ -5,7 +5,10 @@ import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.domain.model.ReceiptDocument
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.ui.CartItem
+import com.dnavarro.poskmp.ui.ProductSortField
+import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.roundPrice
 
@@ -26,6 +29,9 @@ data class HeldTicket(
 data class VentaUiState(
     val searchQuery: String = "",
     val activeProducts: List<Products> = emptyList(),
+    val displayedCatalogProducts: List<Products> = emptyList(),
+    val catalogSortField: ProductSortField = ProductSortField.NOMBRE,
+    val catalogSortOrder: ProductSortOrder = ProductSortOrder.ASC,
     val allActiveProducts: List<Products> = emptyList(),
     val availableCategories: List<String> = emptyList(),
     val selectedCategory: String? = null,
@@ -81,4 +87,47 @@ data class VentaUiState(
 
     val total: Double
         get() = if (roundTicketTotal) roundPrice(rawTotal) else rawTotal
+}
+
+fun computeDisplayedCatalogProducts(
+    productsList: List<Products>,
+    sortField: ProductSortField,
+    sortOrder: ProductSortOrder
+): List<Products> {
+    if (productsList.isEmpty()) return emptyList()
+    val formattedBarcodesById = if (sortField == ProductSortField.CODIGO) {
+        productsList.associate { it.id to it.formatBarcodesForDisplay(emptyFallback = "") }
+    } else {
+        emptyMap()
+    }
+    return productsList.sortedWith { p1, p2 ->
+        val f1 = p1.es_favorito == 1L
+        val f2 = p2.es_favorito == 1L
+        if (f1 != f2) return@sortedWith if (f1) -1 else 1
+
+        val primaryComp = when (sortField) {
+            ProductSortField.NOMBRE -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
+            ProductSortField.CODIGO -> {
+                val c1 = formattedBarcodesById[p1.id] ?: ""
+                val c2 = formattedBarcodesById[p2.id] ?: ""
+                c1.compareTo(c2, ignoreCase = true)
+            }
+            ProductSortField.CATEGORIA -> (p1.categoria ?: "")
+                .compareTo(p2.categoria ?: "", ignoreCase = true)
+            ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
+            ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
+            ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
+            ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
+            ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
+            ProductSortField.FECHA_CREACION -> {
+                val c1 = if (p1.created_at > 0L) p1.created_at else p1.updated_at
+                val c2 = if (p2.created_at > 0L) p2.created_at else p2.updated_at
+                c1.compareTo(c2)
+            }
+            ProductSortField.FECHA_ACTUALIZACION -> p1.updated_at.compareTo(p2.updated_at)
+            else -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
+        }
+
+        if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
+    }.take(50)
 }

@@ -199,6 +199,7 @@ fun ProductTableRow(
     isHighlighted: Boolean = false,
     showCheckbox: Boolean = false,
     isChecked: Boolean = false,
+    isCheckedProvider: () -> Boolean = { isChecked },
     onCheckedChange: ((Boolean) -> Unit)? = null,
     salesStats: Map<String, ProductSalesStats> = emptyMap(),
     defaultRetailMargin: Double = 0.0,
@@ -247,7 +248,7 @@ fun ProductTableRow(
         ) {
             if (showCheckbox) {
                 Checkbox(
-                    checked = isChecked,
+                    checked = isCheckedProvider(),
                     onCheckedChange = onCheckedChange,
                     modifier = Modifier.weight(0.05f)
                 )
@@ -477,8 +478,10 @@ fun ProductSimpleCard(
     modifier: Modifier = Modifier,
     shape: Shape = ShapeDefaults.middleListItemShape,
     isSelected: Boolean = false,
+    isSelectedProvider: () -> Boolean = { isSelected },
     showCheckbox: Boolean = false,
     isChecked: Boolean = false,
+    isCheckedProvider: () -> Boolean = { isChecked },
     onCheckedChange: ((Boolean) -> Unit)? = null,
     prioritizeDeliveryPrice: Boolean = false,
     onClick: () -> Unit,
@@ -486,6 +489,7 @@ fun ProductSimpleCard(
     onSecondaryClick: (() -> Unit)? = null,
     contextMenu: (@Composable () -> Unit)? = null
 ) {
+    val selected = isSelectedProvider()
 
     Box(modifier = modifier) {
         Card(
@@ -512,7 +516,7 @@ fun ProductSimpleCard(
                 ),
             shape = shape,
             colors = CardDefaults.cardColors(
-                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
                 else MaterialTheme.colorScheme.surfaceContainerLow
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -524,7 +528,7 @@ fun ProductSimpleCard(
                 ) {
                     if (showCheckbox) {
                         Checkbox(
-                            checked = isChecked,
+                            checked = isCheckedProvider(),
                             onCheckedChange = onCheckedChange,
                             modifier = Modifier.padding(end = 8.dp)
                         )
@@ -533,7 +537,7 @@ fun ProductSimpleCard(
                         modifier = Modifier.weight(1f),
                         text = product.nombre,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium
@@ -652,7 +656,7 @@ fun ProductSimpleCard(
                             }
                             val highlightedModifier = Modifier
                                 .background(
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                     else MaterialTheme.colorScheme.tertiaryContainer,
                                     shape = androidx.compose.material3.ShapeDefaults.Small
                                 )
@@ -666,7 +670,7 @@ fun ProductSimpleCard(
                                     text = item.label,
                                     style = if (item.isHighlighted) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                                     color = when {
-                                        isSelected -> if (item.isHighlighted) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                        selected -> if (item.isHighlighted) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
                                         item.isHighlighted -> MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
                                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                                     }
@@ -684,7 +688,7 @@ fun ProductSimpleCard(
                                         )
                                     },
                                     color = when {
-                                        isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+                                        selected -> MaterialTheme.colorScheme.onPrimaryContainer
                                         item.isHighlighted -> MaterialTheme.colorScheme.onTertiaryContainer
                                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                                     }

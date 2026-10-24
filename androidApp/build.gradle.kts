@@ -4,6 +4,7 @@ import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.androidApplication)
+    alias(libs.plugins.androidx.baselineprofile)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
@@ -17,6 +18,8 @@ dependencies {
     implementation(projects.shared)
 
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(projects.baselineprofile)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)

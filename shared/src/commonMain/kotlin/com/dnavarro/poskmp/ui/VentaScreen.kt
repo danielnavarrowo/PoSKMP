@@ -72,7 +72,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -328,9 +327,10 @@ fun VentaScreen(
         }
     }
     var isCartItemQuantityFocused by remember { mutableStateOf(false) }
+    val effectiveIsQuantityFocused = isCartItemQuantityFocused && cartItems.isNotEmpty()
 
-    if (cartItems.isEmpty() && isCartItemQuantityFocused) {
-        SideEffect {
+    LaunchedEffect(cartItems.isEmpty()) {
+        if (cartItems.isEmpty()) {
             isCartItemQuantityFocused = false
         }
     }
@@ -639,7 +639,7 @@ fun VentaScreen(
                                             showUnregisteredDialog ||
                                             showProductDialogFor != null ||
                                             uiState.showCustomerDialog
-                                    if (!isAnyDialogOpen && !isCartItemQuantityFocused && keyEvent.type == KeyEventType.KeyDown &&
+                                    if (!isAnyDialogOpen && !effectiveIsQuantityFocused && keyEvent.type == KeyEventType.KeyDown &&
                                         !keyEvent.isCtrlPressed && !keyEvent.isAltPressed && !keyEvent.isMetaPressed
                                     ) {
                                         reclaimSearchBarFocus()
@@ -684,6 +684,8 @@ fun VentaScreen(
                     minCatalogWidth,
                     maxCatalogAllowed
                 )
+                val ticketWidth = (totalWidth - catalogWidth - splitterWidth).coerceAtLeast(minTicketWidth)
+                val isTicketNarrow = ticketWidth < 380.dp
                 val swapOrder = uiState.swapVentaLayoutOrder
 
                 val catalogPane: @Composable () -> Unit = {
@@ -692,6 +694,10 @@ fun VentaScreen(
                             searchQuery = searchQuery,
                             onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
                             productsList = productsList,
+                            preSortedProducts = uiState.displayedCatalogProducts,
+                            sortField = uiState.catalogSortField,
+                            sortOrder = uiState.catalogSortOrder,
+                            onSortChange = { field, order -> viewModel.onCatalogSortChanged(field, order) },
                             onProductClick = { product ->
                                 if (product.por_peso == 1L) {
                                     showWeightDialogForProduct = product
@@ -753,6 +759,7 @@ fun VentaScreen(
                             onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                             onClearCustomerClick = { viewModel.clearSelectedCustomer() },
                             isDeliveryMode = uiState.prioritizeDeliveryPrice,
+                            isNarrow = isTicketNarrow,
                             onApplyItemWholesaleClick = {
                                 if (cartItems.isNotEmpty()) {
                                     val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
@@ -857,6 +864,10 @@ fun VentaScreen(
                                 searchQuery = searchQuery,
                                 onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
                                 productsList = productsList,
+                                preSortedProducts = uiState.displayedCatalogProducts,
+                                sortField = uiState.catalogSortField,
+                                sortOrder = uiState.catalogSortOrder,
+                                onSortChange = { field, order -> viewModel.onCatalogSortChanged(field, order) },
                                 onProductClick = { product ->
                                     if (product.por_peso == 1L) {
                                         showWeightDialogForProduct = product
@@ -942,6 +953,7 @@ fun VentaScreen(
                                 onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                                 onClearCustomerClick = { viewModel.clearSelectedCustomer() },
                                 isDeliveryMode = uiState.prioritizeDeliveryPrice,
+                                isNarrow = totalWidth < 380.dp,
                                 onApplyItemWholesaleClick = {
                                     if (cartItems.isNotEmpty()) {
                                         val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)

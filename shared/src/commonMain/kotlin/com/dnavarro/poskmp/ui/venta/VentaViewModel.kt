@@ -17,6 +17,8 @@ import com.dnavarro.poskmp.domain.usecase.PrintReceiptUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.CartItem
+import com.dnavarro.poskmp.ui.ProductSortField
+import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.matchesSearchQuery
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -59,6 +62,8 @@ class VentaViewModel(
 
     private val _searchQuery = MutableStateFlow("")
     private val _selectedCategory = MutableStateFlow<String?>(null)
+    private val _catalogSortField = MutableStateFlow(ProductSortField.NOMBRE)
+    private val _catalogSortOrder = MutableStateFlow(ProductSortOrder.ASC)
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     private val _heldTickets = MutableStateFlow<List<HeldTicket>>(emptyList())
     private val _cartHistory = mutableListOf<List<CartItem>>()
@@ -173,15 +178,45 @@ class VentaViewModel(
         )
     }
 
+    private var lastCatalogRawProducts: List<Products>? = null
+    private var lastCatalogSortField: ProductSortField? = null
+    private var lastCatalogSortOrder: ProductSortOrder? = null
+    private var cachedDisplayedCatalogProducts: List<Products> = emptyList()
+
+    private fun getOrComputeDisplayedCatalogProducts(
+        products: List<Products>,
+        sortField: ProductSortField,
+        sortOrder: ProductSortOrder
+    ): List<Products> {
+        if (products === lastCatalogRawProducts &&
+            sortField == lastCatalogSortField &&
+            sortOrder == lastCatalogSortOrder
+        ) {
+            return cachedDisplayedCatalogProducts
+        }
+        val computed = computeDisplayedCatalogProducts(products, sortField, sortOrder)
+        lastCatalogRawProducts = products
+        lastCatalogSortField = sortField
+        lastCatalogSortOrder = sortOrder
+        cachedDisplayedCatalogProducts = computed
+        return computed
+    }
+
     val uiState: StateFlow<VentaUiState> = combine(
         combine(
-            _searchQuery,
-            _productsFlow,
-            _selectedCategory,
-            _cartItems,
-            _heldTickets
-        ) { q, products, cat, cart, held ->
-            Tuple5(q, products, cat, cart, held)
+            combine(
+                _searchQuery,
+                _productsFlow,
+                _selectedCategory,
+                _cartItems,
+                _heldTickets
+            ) { q, products, cat, cart, held ->
+                Tuple5(q, products, cat, cart, held)
+            },
+            _catalogSortField,
+            _catalogSortOrder
+        ) { core, sortField, sortOrder ->
+            Triple(core, sortField, sortOrder)
         },
         combine(
             combine(
@@ -283,11 +318,13 @@ class VentaViewModel(
         combine(syncRepository.syncState, _allActiveProductsFlow, _availableCategoriesFlow) { syncState, allActive, categories ->
             Triple(syncState, allActive, categories)
         }
-    ) { (q, products, cat, cart, held),
+    ) { (core, sortField, sortOrder),
         catalogConfig,
         receiptDialogState,
         (pricingSettings, receiptSettings, shiftState),
         (syncState, allActiveProducts, allCats) ->
+        val (q, products, cat, cart, held) = core
+        val displayedCatalog = getOrComputeDisplayedCatalogProducts(products, sortField, sortOrder)
         val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
         val filteredCust = if (cQuery.isBlank()) {
             catalogConfig.customers
@@ -303,6 +340,9 @@ class VentaViewModel(
         VentaUiState(
             searchQuery = q,
             activeProducts = products,
+            displayedCatalogProducts = displayedCatalog,
+            catalogSortField = sortField,
+            catalogSortOrder = sortOrder,
             allActiveProducts = allActiveProducts,
             availableCategories = allCats,
             selectedCategory = cat,
@@ -353,11 +393,16 @@ class VentaViewModel(
             shiftActionSuccess = shiftState.shiftActionSuccess,
             activeShiftMovements = shiftState.activeShiftMovements
         )
-    }.stateIn(
+    }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VentaUiState(isLoading = true)
     )
+
+    fun onCatalogSortChanged(field: ProductSortField, order: ProductSortOrder) {
+        _catalogSortField.value = field
+        _catalogSortOrder.value = order
+    }
 
     init {
         viewModelScope.launch {

@@ -128,7 +128,7 @@ fun ChecadorContent(
     val barcodeState = rememberTextFieldState()
     var searchedProduct by remember { mutableStateOf<Products?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
-    var showCameraScanner by remember { mutableStateOf(false) }
+    var showCameraScanner by remember { mutableStateOf(isCameraScannerAvailable()) }
     var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
     var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
     var checadorQuantity by remember { mutableDoubleStateOf(1.0) }
@@ -168,17 +168,13 @@ fun ChecadorContent(
         }
     }
 
-    // Persistent focus loop: ensure focus is always kept on the barcode input field
-    LaunchedEffect(Unit) {
-        if (isCameraScannerAvailable()) {
-            showCameraScanner = true
-        }
-        while (isActive) {
+    // Request focus when the barcode input field is visible or resets
+    LaunchedEffect(showCameraScanner, searchedProduct != null || hasSearched) {
+        if (!showCameraScanner) {
             try {
                 focusRequester.requestFocus()
             } catch (_: Exception) {
             }
-            delay(900.milliseconds)
         }
     }
 
@@ -674,7 +670,7 @@ fun ChecadorScreen(
     val barcodeState = rememberTextFieldState()
     var searchedProduct by remember { mutableStateOf<Products?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
-    var showCameraScanner by remember { mutableStateOf(false) }
+    var showCameraScanner by remember { mutableStateOf(onOpenScanner == null && isCameraScannerAvailable()) }
     var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
     var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
     var checadorQuantity by remember { mutableDoubleStateOf(1.0) }
@@ -736,17 +732,13 @@ fun ChecadorScreen(
         }
     }
 
-    // Persistent focus loop: ensure focus is always kept on the barcode input field
-    LaunchedEffect(Unit) {
-        if (onOpenScanner == null && isCameraScannerAvailable()) {
-            showCameraScanner = true
-        }
-        while (isActive) {
+    // Request focus when the barcode input field is visible or transitions between idle and result views
+    LaunchedEffect(showCameraScanner, searchedProduct != null || hasSearched) {
+        if (!showCameraScanner) {
             try {
                 focusRequester.requestFocus()
             } catch (_: Exception) {
             }
-            delay(250.milliseconds)
         }
     }
 

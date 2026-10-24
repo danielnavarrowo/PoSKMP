@@ -1,0 +1,16 @@
+# Baseline Profile rules for PoSKMP critical startup & checkout journeys
+HSPLcom/dnavarro/poskmp/MainActivity;->**(**)**
+HSPLcom/dnavarro/poskmp/AppKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/VentaScreenKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/CatalogSectionKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/TicketSectionKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/ProductosScreenKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/VentasScreenKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/ClientesScreenKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/AjustesScreenKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/ChecadorDialogKt;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/venta/VentaViewModel;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/productos/ProductosViewModel;->**(**)**
+HSPLcom/dnavarro/poskmp/ui/ajustes/AjustesViewModel;->**(**)**
+HSPLcom/dnavarro/poskmp/data/ProductRepository;->**(**)**
+HSPLcom/dnavarro/poskmp/data/SettingsRepository;->**(**)**

@@ -20,7 +20,6 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -73,6 +72,7 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -104,9 +104,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -121,7 +122,7 @@ import com.dnavarro.poskmp.ui.components.ProductSimpleCard
 import com.dnavarro.poskmp.ui.components.ProductTableHeaderRow
 import com.dnavarro.poskmp.ui.components.ProductTableRow
 import com.dnavarro.poskmp.ui.productos.ProductTableColumn
-import com.dnavarro.poskmp.util.formatBarcodesForDisplay
+import com.dnavarro.poskmp.ui.venta.computeDisplayedCatalogProducts
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.scrollItemIntoView
@@ -173,6 +174,10 @@ fun CatalogSection(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     productsList: List<Products>,
+    preSortedProducts: List<Products>? = null,
+    sortField: ProductSortField = ProductSortField.NOMBRE,
+    sortOrder: ProductSortOrder = ProductSortOrder.ASC,
+    onSortChange: ((ProductSortField, ProductSortOrder) -> Unit)? = null,
     onProductClick: (Products) -> Unit,
     onToggleFavorite: (Products) -> Unit,
     onModifyProduct: (Products) -> Unit,
@@ -195,8 +200,10 @@ fun CatalogSection(
     val coroutineScope = rememberCoroutineScope()
     val searchQueryState = rememberTextFieldState(searchQuery)
     var lastEmittedQuery by remember { mutableStateOf(searchQuery) }
-    var sortField by remember { mutableStateOf(ProductSortField.NOMBRE) }
-    var sortOrder by remember { mutableStateOf(ProductSortOrder.ASC) }
+    var localSortField by remember { mutableStateOf(ProductSortField.NOMBRE) }
+    var localSortOrder by remember { mutableStateOf(ProductSortOrder.ASC) }
+    val effectiveSortField = if (onSortChange != null) sortField else localSortField
+    val effectiveSortOrder = if (onSortChange != null) sortOrder else localSortOrder
     var selectedCatalogIndex by remember { mutableIntStateOf(-1) }
 
     val compactListState = rememberLazyListState()
@@ -285,42 +292,11 @@ fun CatalogSection(
         }
     }
 
-    val displayedProducts = remember(productsList, sortField, sortOrder) {
-        productsList.sortedWith { p1, p2 ->
-            val f1 = p1.es_favorito == 1L
-            val f2 = p2.es_favorito == 1L
-            if (f1 != f2) return@sortedWith if (f1) -1 else 1
-
-            val primaryComp = when (sortField) {
-                ProductSortField.NOMBRE -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
-                ProductSortField.CODIGO -> {
-                    val c1 = p1.formatBarcodesForDisplay(emptyFallback = "")
-                    val c2 = p2.formatBarcodesForDisplay(emptyFallback = "")
-                    c1.compareTo(c2, ignoreCase = true)
-                }
-
-                ProductSortField.CATEGORIA -> (p1.categoria ?: "")
-                    .compareTo(p2.categoria ?: "", ignoreCase = true)
-
-                ProductSortField.PIEZAS -> p1.piezas.compareTo(p2.piezas)
-                ProductSortField.PRECIO -> p1.precio.compareTo(p2.precio)
-                ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
-                ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
-                ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
-                ProductSortField.FECHA_CREACION -> {
-                    val c1 = if (p1.created_at > 0L) p1.created_at else p1.updated_at
-                    val c2 = if (p2.created_at > 0L) p2.created_at else p2.updated_at
-                    c1.compareTo(c2)
-                }
-                ProductSortField.FECHA_ACTUALIZACION -> p1.updated_at.compareTo(p2.updated_at)
-                else -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
-            }
-
-            if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
-        }.take(50)
+    val displayedProducts = preSortedProducts ?: remember(productsList, effectiveSortField, effectiveSortOrder) {
+        computeDisplayedCatalogProducts(productsList, effectiveSortField, effectiveSortOrder)
     }
 
-    LaunchedEffect(productsList, sortField, sortOrder) {
+    LaunchedEffect(productsList.size, effectiveSortField, effectiveSortOrder) {
         if (selectedCatalogIndex <= 0) {
             resetScrollPosition()
         }
@@ -645,7 +621,7 @@ fun CatalogSection(
                     if (isCompact) {
                         LazyColumn(
                             state = compactListState,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().testTag("catalog_grid"),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             contentPadding = PaddingValues(bottom = 220.dp)
                         ) {
@@ -696,121 +672,126 @@ fun CatalogSection(
                             }
                         }
                     } else {
-                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                            val availableWidth = maxWidth
-                            val activeColumns = remember {
-                                listOf(
-                                    ProductTableColumn.NOMBRE,
-                                    ProductTableColumn.CATEGORIA,
-                                    ProductTableColumn.PIEZAS,
-                                    ProductTableColumn.PRECIO
+                        val activeColumns = remember {
+                            listOf(
+                                ProductTableColumn.NOMBRE,
+                                ProductTableColumn.CATEGORIA,
+                                ProductTableColumn.PIEZAS,
+                                ProductTableColumn.PRECIO
+                            )
+                        }
+                        val totalDefaultWeight = remember(activeColumns) {
+                            activeColumns.sumOf { it.defaultWeight.toDouble() }.toFloat()
+                                .coerceAtLeast(0.01f)
+                        }
+                        var columnWeights by remember(activeColumns) {
+                            mutableStateOf(activeColumns.map { (it.defaultWeight / totalDefaultWeight) * 1.0f })
+                        }
+                        var tableWidthPx by remember { mutableFloatStateOf(1f) }
+                        val resizeColumn = { index: Int, dragAmount: Float ->
+                            if (index in 0 until activeColumns.lastIndex) {
+                                val weightDelta = dragAmount / tableWidthPx
+                                val current = columnWeights[index]
+                                val next = columnWeights[index + 1]
+                                val minimumWeight = 0.05f
+                                val constrainedDelta = weightDelta.coerceIn(
+                                    minimumWeight - current,
+                                    next - minimumWeight
                                 )
-                            }
-                            val totalDefaultWeight = remember(activeColumns) {
-                                activeColumns.sumOf { it.defaultWeight.toDouble() }.toFloat()
-                                    .coerceAtLeast(0.01f)
-                            }
-                            var columnWeights by remember(activeColumns) {
-                                mutableStateOf(activeColumns.map { (it.defaultWeight / totalDefaultWeight) * 1.0f })
-                            }
-                            val tableWidthPx = with(LocalDensity.current) { availableWidth.toPx() }
-                            val resizeColumn = { index: Int, dragAmount: Float ->
-                                if (index in 0 until activeColumns.lastIndex) {
-                                    val weightDelta = dragAmount / tableWidthPx
-                                    val current = columnWeights[index]
-                                    val next = columnWeights[index + 1]
-                                    val minimumWeight = 0.05f
-                                    val constrainedDelta = weightDelta.coerceIn(
-                                        minimumWeight - current,
-                                        next - minimumWeight
-                                    )
-                                    columnWeights = columnWeights.toMutableList().also { weights ->
-                                        weights[index] = current + constrainedDelta
-                                        weights[index + 1] = next - constrainedDelta
-                                    }
+                                columnWeights = columnWeights.toMutableList().also { weights ->
+                                    weights[index] = current + constrainedDelta
+                                    weights[index + 1] = next - constrainedDelta
                                 }
                             }
-                            val onHeaderClick = { field: ProductSortField ->
-                                if (sortField == field) {
-                                    sortOrder =
-                                        if (sortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
-                                } else {
-                                    sortField = field
-                                    sortOrder = ProductSortOrder.ASC
-                                }
+                        }
+                        val onHeaderClick = { field: ProductSortField ->
+                            val newOrder = if (effectiveSortField == field) {
+                                if (effectiveSortOrder == ProductSortOrder.ASC) ProductSortOrder.DESC else ProductSortOrder.ASC
+                            } else {
+                                ProductSortOrder.ASC
                             }
+                            if (onSortChange != null) {
+                                onSortChange(field, newOrder)
+                            } else {
+                                localSortField = field
+                                localSortOrder = newOrder
+                            }
+                        }
 
-                            Card(
-                                modifier = Modifier.fillMaxSize(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                shape = ShapeDefaults.cardShape,
-                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                            ) {
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    ProductTableHeaderRow(
-                                        visibleColumns = activeColumns,
-                                        columnWeights = columnWeights,
-                                        totalDefaultWeight = totalDefaultWeight,
-                                        showSelectAll = false,
-                                        sortField = sortField,
-                                        sortOrder = sortOrder,
-                                        onHeaderClick = onHeaderClick,
-                                        onResizeColumn = resizeColumn
-                                    )
+                        Card(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .onSizeChanged { size ->
+                                    tableWidthPx = size.width.toFloat().coerceAtLeast(1f)
+                                },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = ShapeDefaults.cardShape,
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                ProductTableHeaderRow(
+                                    visibleColumns = activeColumns,
+                                    columnWeights = columnWeights,
+                                    totalDefaultWeight = totalDefaultWeight,
+                                    showSelectAll = false,
+                                    sortField = effectiveSortField,
+                                    sortOrder = effectiveSortOrder,
+                                    onHeaderClick = onHeaderClick,
+                                    onResizeColumn = resizeColumn
+                                )
 
-                                    LazyColumn(
-                                        state = tableListState,
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                                        contentPadding = PaddingValues(bottom = 220.dp)
-                                    ) {
-                                        itemsIndexed(
-                                            displayedProducts,
-                                            key = { _, product -> product.id },
-                                            contentType = { _, _ -> "table_product" }
-                                        ) { index, product ->
-                                            val shape =
-                                                if (displayedProducts.size == 1 || index == displayedProducts.lastIndex) ShapeDefaults.bottomListItemShape
-                                                else ShapeDefaults.middleListItemShape
-                                            var showContextMenu by remember { mutableStateOf(false) }
+                                LazyColumn(
+                                    state = tableListState,
+                                    modifier = Modifier.fillMaxSize().testTag("catalog_grid"),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    contentPadding = PaddingValues(bottom = 220.dp)
+                                ) {
+                                    itemsIndexed(
+                                        displayedProducts,
+                                        key = { _, product -> product.id },
+                                        contentType = { _, _ -> "table_product" }
+                                    ) { index, product ->
+                                        val shape =
+                                            if (displayedProducts.size == 1 || index == displayedProducts.lastIndex) ShapeDefaults.bottomListItemShape
+                                            else ShapeDefaults.middleListItemShape
+                                        var showContextMenu by remember { mutableStateOf(false) }
 
-                                            val displayProduct = if (prioritizeDeliveryPrice && product.precio_delivery > 0.0) {
-                                                product.copy(precio = product.precio_delivery)
-                                            } else {
-                                                product
-                                            }
-
-                                            ProductTableRow(
-                                                product = displayProduct,
-                                                visibleColumns = activeColumns,
-                                                columnWeights = columnWeights,
-                                                totalDefaultWeight = totalDefaultWeight,
-                                                shape = shape,
-                                                isHighlighted = selectedCatalogIndex == index,
-                                                showCheckbox = false,
-                                                onClick = {
-                                                    onProductClick(product)
-                                                    if (searchQueryState.text.isNotEmpty()) {
-                                                        clearSearch()
-                                                    } else {
-                                                        selectedCatalogIndex = -1
-                                                        resetScrollPosition()
-                                                    }
-                                                },
-                                                onLongClick = { showContextMenu = true },
-                                                onSecondaryClick = { showContextMenu = true },
-                                                contextMenu = {
-                                                    ProductContextMenu(
-                                                        expanded = showContextMenu,
-                                                        onDismissRequest = { showContextMenu = false },
-                                                        product = product,
-                                                        onAddQuantity = handleAddQuantity,
-                                                        onToggleFavorite = onToggleFavorite,
-                                                        onModifyProduct = onModifyProduct
-                                                    )
-                                                }
-                                            )
+                                        val displayProduct = if (prioritizeDeliveryPrice && product.precio_delivery > 0.0) {
+                                            product.copy(precio = product.precio_delivery)
+                                        } else {
+                                            product
                                         }
+
+                                        ProductTableRow(
+                                            product = displayProduct,
+                                            visibleColumns = activeColumns,
+                                            columnWeights = columnWeights,
+                                            totalDefaultWeight = totalDefaultWeight,
+                                            shape = shape,
+                                            isHighlighted = selectedCatalogIndex == index,
+                                            showCheckbox = false,
+                                            onClick = {
+                                                onProductClick(product)
+                                                if (searchQueryState.text.isNotEmpty()) {
+                                                    clearSearch()
+                                                } else {
+                                                    selectedCatalogIndex = -1
+                                                    resetScrollPosition()
+                                                }
+                                            },
+                                            onLongClick = { showContextMenu = true },
+                                            onSecondaryClick = { showContextMenu = true },
+                                            contextMenu = {
+                                                ProductContextMenu(
+                                                    expanded = showContextMenu,
+                                                    onDismissRequest = { showContextMenu = false },
+                                                    product = product,
+                                                    onAddQuantity = handleAddQuantity,
+                                                    onToggleFavorite = onToggleFavorite,
+                                                    onModifyProduct = onModifyProduct
+                                                )
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -822,7 +803,7 @@ fun CatalogSection(
                         columns = GridCells.Adaptive(minSize = 192.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().testTag("catalog_grid"),
                         contentPadding = PaddingValues(bottom = 220.dp)
                     ) {
                         itemsIndexed(

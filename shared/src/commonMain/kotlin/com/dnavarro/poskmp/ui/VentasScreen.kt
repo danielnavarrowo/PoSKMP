@@ -11,7 +11,6 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -84,6 +83,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -117,11 +117,9 @@ import com.dnavarro.poskmp.ui.ventas.VentasUiState
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
-import com.dnavarro.poskmp.util.formatWithThousandsSeparator
 import com.dnavarro.poskmp.util.formatShiftInterval
+import com.dnavarro.poskmp.util.formatWithThousandsSeparator
 import com.dnavarro.poskmp.util.isAndroid
-import com.dnavarro.poskmp.util.isCompactWidth
-import com.dnavarro.poskmp.util.isMediumOrExpandedWidth
 import ir.ehsannarmani.compose_charts.ColumnChart
 import ir.ehsannarmani.compose_charts.PieChart
 import ir.ehsannarmani.compose_charts.models.BarProperties
@@ -252,6 +250,7 @@ val ventasNavSavedStateConfig = SavedStateConfiguration {
 fun VentasScreen(
     viewModel: VentasViewModel,
     modifier: Modifier = Modifier,
+    isCompact: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
     scrollToTopTrigger: Int = 0
 ) {
@@ -264,6 +263,7 @@ fun VentasScreen(
 
     VentasScreen(
         state = state,
+        isCompact = isCompact,
         onRefresh = { viewModel.refreshSync() },
         onSelectPeriod = { viewModel.selectPeriod(it) },
         onSetCustomDateRange = { start, end -> viewModel.setCustomDateRange(start, end) },
@@ -291,6 +291,7 @@ fun VentasScreen(
 @Composable
 fun VentasScreen(
     state: VentasUiState,
+    isCompact: Boolean = false,
     onRefresh: () -> Unit = {},
     onSelectPeriod: (SalesPeriodPreset) -> Unit,
     onSetCustomDateRange: (startDateMillis: Long, endDateMillis: Long) -> Unit,
@@ -416,21 +417,19 @@ fun VentasScreen(
                 )
             }
             entry<VentasSubRoute.Main> {
-                BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-                    val isCompact = isCompactWidth(maxWidth)
-                    val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+                val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
 
-                    LaunchedEffect(scrollToTopTrigger) {
-                        if (scrollToTopTrigger > 0 && scrollBehavior != null) {
-                            try {
-                                scrollBehavior.state.heightOffset = 0f
-                                scrollBehavior.state.contentOffset = 0f
-                            } catch (_: Exception) {}
-                        }
+                LaunchedEffect(scrollToTopTrigger) {
+                    if (scrollToTopTrigger > 0 && scrollBehavior != null) {
+                        try {
+                            scrollBehavior.state.heightOffset = 0f
+                            scrollBehavior.state.contentOffset = 0f
+                        } catch (_: Exception) {}
                     }
+                }
 
-                    Scaffold(
-                        topBar = {
+                Scaffold(
+                    topBar = {
                             TopAppBar(
                                 title = {
                                     Text(
@@ -460,7 +459,7 @@ fun VentasScreen(
                             )
                         },
                         containerColor = MaterialTheme.colorScheme.background,
-                        modifier = Modifier
+                        modifier = modifier
                             .fillMaxSize()
                             .then(
                                 if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
@@ -878,6 +877,7 @@ fun VentasScreen(
                 item {
                     DeliveryVsLocalComparisonCard(
                         metric = state.deliveryComparison,
+                        isWide = !isCompact,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -893,7 +893,6 @@ fun VentasScreen(
         }
         }
     }
-}
 }
 )
 
@@ -2078,72 +2077,84 @@ private fun DailySalesCard(
                 val barThickness = 22.dp
                 val barSpacing = 10.dp
                 val scrollState = rememberScrollState()
+                val minWidthForBars = remember(activeMetrics.size) { (activeMetrics.size * 64).dp }
+                val viewportWidthPx = remember { IntArray(1) }
 
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val minWidthForBars = (activeMetrics.size * 64).dp
-                    val chartWidth = if (minWidthForBars > maxWidth) minWidthForBars else maxWidth
-
-                    Box(
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .layout { measurable, constraints ->
+                            viewportWidthPx[0] = constraints.maxWidth
+                            val placeable = measurable.measure(constraints)
+                            layout(placeable.width, placeable.height) {
+                                placeable.placeRelative(0, 0)
+                            }
+                        }
+                        .horizontalScroll(scrollState)
+                ) {
+                    ColumnChart(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(scrollState)
-                    ) {
-                        ColumnChart(
-                            modifier = Modifier
-                                .width(chartWidth)
-                                .height(230.dp)
-                                .padding(top = 8.dp, bottom = 4.dp),
-                            data = barsData,
-                            barProperties = BarProperties(
-                                thickness = barThickness,
-                                spacing = barSpacing,
-                                cornerRadius = Bars.Data.Radius.Rectangle(
-                                    topLeft = 4.dp,
-                                    topRight = 4.dp
+                            .layout { measurable, constraints ->
+                                val widthPx = maxOf(minWidthForBars.roundToPx(), viewportWidthPx[0])
+                                val placeable = measurable.measure(
+                                    constraints.copy(minWidth = widthPx, maxWidth = widthPx)
                                 )
-                            ),
-                            labelProperties = LabelProperties(
-                                enabled = true,
-                                textStyle = TextStyle(
-                                    color = onSurfaceVariantColor,
-                                    fontSize = 11.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                            ),
-                            indicatorProperties = HorizontalIndicatorProperties(
-                                enabled = true,
-                                textStyle = TextStyle(
-                                    color = onSurfaceVariantColor,
-                                    fontSize = 10.sp
-                                ),
-                                contentBuilder = { value ->
-                                    if (value >= 1000) "$${(value / 1000).toString().formatPrice()}k" else "$${value.toInt()}"
+                                layout(placeable.width, placeable.height) {
+                                    placeable.placeRelative(0, 0)
                                 }
+                            }
+                            .height(230.dp)
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        data = barsData,
+                        barProperties = BarProperties(
+                            thickness = barThickness,
+                            spacing = barSpacing,
+                            cornerRadius = Bars.Data.Radius.Rectangle(
+                                topLeft = 4.dp,
+                                topRight = 4.dp
+                            )
+                        ),
+                        labelProperties = LabelProperties(
+                            enabled = true,
+                            textStyle = TextStyle(
+                                color = onSurfaceVariantColor,
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        ),
+                        indicatorProperties = HorizontalIndicatorProperties(
+                            enabled = true,
+                            textStyle = TextStyle(
+                                color = onSurfaceVariantColor,
+                                fontSize = 10.sp
                             ),
-                            gridProperties = GridProperties(
+                            contentBuilder = { value ->
+                                if (value >= 1000) "$${(value / 1000).toString().formatPrice()}k" else "$${value.toInt()}"
+                            }
+                        ),
+                        gridProperties = GridProperties(
+                            enabled = true,
+                            yAxisProperties = GridProperties.AxisProperties(
                                 enabled = true,
-                                yAxisProperties = GridProperties.AxisProperties(
-                                    enabled = true,
-                                    style = StrokeStyle.Dashed(floatArrayOf(10f, 10f)),
-                                    color = SolidColor(outlineVariantColor.copy(alpha = 0.4f))
-                                )
+                                style = StrokeStyle.Dashed(floatArrayOf(10f, 10f)),
+                                color = SolidColor(outlineVariantColor.copy(alpha = 0.4f))
+                            )
+                        ),
+                        popupProperties = PopupProperties(
+                            enabled = true,
+                            containerColor = inverseSurfaceColor,
+                            cornerRadius = 8.dp,
+                            textStyle = TextStyle(
+                                color = inverseOnSurfaceColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
                             ),
-                            popupProperties = PopupProperties(
-                                enabled = true,
-                                containerColor = inverseSurfaceColor,
-                                cornerRadius = 8.dp,
-                                textStyle = TextStyle(
-                                    color = inverseOnSurfaceColor,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                contentBuilder = { popup ->
-                                    "$${popup.value.toString().formatPrice()}"
-                                }
-                            ),
-                            labelHelperProperties = LabelHelperProperties(enabled = false)
-                        )
-                    }
+                            contentBuilder = { popup ->
+                                "$${popup.value.toString().formatPrice()}"
+                            }
+                        ),
+                        labelHelperProperties = LabelHelperProperties(enabled = false)
+                    )
                 }
             }
         }
@@ -2559,6 +2570,7 @@ internal fun getPaymentMethodColor(methodName: String): Color {
 @Composable
 private fun DeliveryVsLocalComparisonCard(
     metric: DeliveryComparisonMetric,
+    isWide: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -2625,14 +2637,12 @@ private fun DeliveryVsLocalComparisonCard(
                     list
                 }
 
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val isWide = isMediumOrExpandedWidth(maxWidth)
-                    if (isWide) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(24.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                if (isWide) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                             // Donut Chart
                             Box(
                                 modifier = Modifier
@@ -2892,7 +2902,6 @@ private fun DeliveryVsLocalComparisonCard(
                             )
                         }
                     }
-                }
             }
         }
     }

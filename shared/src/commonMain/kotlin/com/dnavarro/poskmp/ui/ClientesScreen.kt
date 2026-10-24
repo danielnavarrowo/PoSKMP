@@ -130,6 +130,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun ClientesScreen(
     viewModel: ClientesViewModel,
+    isCompact: Boolean = false,
     refocusTrigger: Int = 0,
     onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -138,6 +139,7 @@ fun ClientesScreen(
 
     ClientesContent(
         state = state,
+        isCompact = isCompact,
         refocusTrigger = refocusTrigger,
         onNavigateBack = onNavigateBack,
         onRefresh = viewModel::refreshSync,
@@ -173,6 +175,7 @@ fun ClientesScreen(
 @Composable
 fun ClientesContent(
     state: ClientesUiState,
+    isCompact: Boolean = false,
     refocusTrigger: Int = 0,
     onNavigateBack: (() -> Unit)? = null,
     onRefresh: () -> Unit = {},
@@ -201,7 +204,7 @@ fun ClientesContent(
     val searchBarFocusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
-    var selectedCustomerIndex by remember(state.filteredClientes) { mutableIntStateOf(-1) }
+    var selectedCustomerIndex by remember(state.filteredClientes.size) { mutableIntStateOf(-1) }
 
     fun reclaimSearchBarFocus() {
         if (!isAndroid()) {
@@ -261,7 +264,7 @@ fun ClientesContent(
         gridState.resetScroll(coroutineScope)
     }
 
-    LaunchedEffect(state.filteredClientes) {
+    LaunchedEffect(state.filteredClientes.size) {
         if (selectedCustomerIndex <= 0) {
             gridState.resetScroll(coroutineScope)
         }
@@ -325,14 +328,12 @@ fun ClientesContent(
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val isCompact = isCompactWidth(maxWidth)
-        val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+    val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
 
-        Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
+    Scaffold(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
                 .then(
                     if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                     else Modifier
@@ -631,7 +632,6 @@ fun ClientesContent(
                 }
             }
         }
-    }
 
     // Dialogs
     if (state.showCustomerForm) {
