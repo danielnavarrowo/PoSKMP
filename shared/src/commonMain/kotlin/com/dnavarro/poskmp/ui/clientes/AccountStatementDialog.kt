@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.clientes
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -92,7 +94,8 @@ fun AccountStatementDialog(
     onRefresh: () -> Unit = {},
     onDismissRequest: () -> Unit,
     onOpenPaymentDialog: () -> Unit,
-    onDeletePayment: (paymentId: String) -> Unit
+    onDeletePayment: (paymentId: String) -> Unit,
+    onOpenSale: (saleId: String) -> Unit = {}
 ) {
     var paymentToDelete by remember { mutableStateOf<AccountStatementItem?>(null) }
 
@@ -262,6 +265,9 @@ fun AccountStatementDialog(
                             ) { item ->
                                 StatementItemRow(
                                     item = item,
+                                    onClick = if (item.tipo == AccountStatementType.CARGO_CREDITO) {
+                                        { onOpenSale(item.id) }
+                                    } else null,
                                     onDeletePayment = { paymentToDelete = item }
                                 )
                             }
@@ -343,6 +349,7 @@ fun AccountStatementDialog(
 @Composable
 private fun StatementItemRow(
     item: AccountStatementItem,
+    onClick: (() -> Unit)? = null,
     onDeletePayment: () -> Unit
 ) {
     val isCharge = item.tipo == AccountStatementType.CARGO_CREDITO
@@ -351,7 +358,9 @@ private fun StatementItemRow(
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clip(MaterialTheme.shapes.medium).clickable(onClick = onClick) else Modifier)
     ) {
         Row(
             modifier = Modifier

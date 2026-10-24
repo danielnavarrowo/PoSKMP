@@ -3,6 +3,11 @@ package com.dnavarro.poskmp.ui.clientes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.Sale
+import com.dnavarro.poskmp.domain.model.SaleItem
+import com.dnavarro.poskmp.data.SaleRepository
+import com.dnavarro.poskmp.domain.usecase.CancelSaleUseCase
+import com.dnavarro.poskmp.domain.usecase.ReprintSaleReceiptUseCase
 import com.dnavarro.poskmp.domain.usecase.GetCustomerAccountStatementUseCase
 import com.dnavarro.poskmp.domain.usecase.GetCustomersUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordCustomerPaymentUseCase
@@ -29,6 +34,9 @@ class ClientesViewModel(
     private val saveCustomerUseCase: SaveCustomerUseCase,
     private val recordCustomerPaymentUseCase: RecordCustomerPaymentUseCase,
     private val getCustomerAccountStatementUseCase: GetCustomerAccountStatementUseCase,
+    private val saleRepository: SaleRepository,
+    private val cancelSaleUseCase: CancelSaleUseCase,
+    private val reprintSaleReceiptUseCase: ReprintSaleReceiptUseCase,
     private val syncRepository: SyncRepository,
     settingsRepository: SettingsRepository
 ) : ViewModel() {
@@ -195,8 +203,59 @@ class ClientesViewModel(
             it.copy(
                 selectedCustomerForStatement = null,
                 statementItems = emptyList(),
-                isLoadingStatement = false
+                isLoadingStatement = false,
+                selectedSaleDetails = null,
+                saleToCancel = null
             )
+        }
+    }
+
+    fun openSaleDetail(saleId: String) {
+        viewModelScope.launch {
+            val sale = saleRepository.getSaleById(saleId) ?: return@launch
+            val items = saleRepository.getItemsBySaleId(saleId)
+            _internalState.update { it.copy(selectedSaleDetails = Pair(sale, items)) }
+        }
+    }
+
+    fun dismissSaleDetail() {
+        _internalState.update { it.copy(selectedSaleDetails = null) }
+    }
+
+    fun openCancelSaleDialog(sale: Sale) {
+        _internalState.update { it.copy(saleToCancel = sale) }
+    }
+
+    fun dismissCancelSaleDialog() {
+        _internalState.update { it.copy(saleToCancel = null) }
+    }
+
+    fun cancelSale(sale: Sale) {
+        viewModelScope.launch {
+            _internalState.update { it.copy(isCancellingSale = true) }
+            val result = cancelSaleUseCase(sale.id)
+            if (result.isSuccess) {
+                _internalState.update {
+                    it.copy(isCancellingSale = false, saleToCancel = null, selectedSaleDetails = null)
+                }
+                _internalState.value.selectedCustomerForStatement?.let { loadAccountStatement(it.id) }
+                launch(Dispatchers.IO) {
+                    syncRepository.syncAll()
+                }
+            } else {
+                _internalState.update {
+                    it.copy(
+                        isCancellingSale = false,
+                        errorMessage = result.exceptionOrNull()?.message ?: "Error al cancelar la venta"
+                    )
+                }
+            }
+        }
+    }
+
+    fun reprintSaleReceipt(sale: Sale, items: List<SaleItem>) {
+        viewModelScope.launch {
+            reprintSaleReceiptUseCase(sale, items)
         }
     }
 

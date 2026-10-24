@@ -1,5 +1,6 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -69,6 +70,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.Sale
+import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.clientes.AccountStatementDialog
 import com.dnavarro.poskmp.ui.clientes.ClientesUiState
@@ -156,6 +159,12 @@ fun ClientesScreen(
         onOpenDeleteConfirm = viewModel::openDeleteConfirm,
         onDismissDeleteConfirm = viewModel::dismissDeleteConfirm,
         onDeleteCustomer = viewModel::deleteCustomer,
+        onOpenSaleDetail = viewModel::openSaleDetail,
+        onDismissSaleDetail = viewModel::dismissSaleDetail,
+        onOpenCancelSaleDialog = viewModel::openCancelSaleDialog,
+        onDismissCancelSaleDialog = viewModel::dismissCancelSaleDialog,
+        onConfirmCancelSale = viewModel::cancelSale,
+        onReprintSaleReceipt = viewModel::reprintSaleReceipt,
         modifier = modifier
     )
 }
@@ -181,6 +190,12 @@ fun ClientesContent(
     onOpenDeleteConfirm: (Customer) -> Unit,
     onDismissDeleteConfirm: () -> Unit,
     onDeleteCustomer: (id: String) -> Unit,
+    onOpenSaleDetail: (saleId: String) -> Unit = {},
+    onDismissSaleDetail: () -> Unit = {},
+    onOpenCancelSaleDialog: (Sale) -> Unit = {},
+    onDismissCancelSaleDialog: () -> Unit = {},
+    onConfirmCancelSale: (Sale) -> Unit = {},
+    onReprintSaleReceipt: (Sale, List<SaleItem>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val searchBarFocusRequester = remember { FocusRequester() }
@@ -585,14 +600,16 @@ fun ClientesContent(
                                     }
                                 }
                             }
+                        } else {
                             itemsIndexed(
                                 state.filteredClientes,
                                 key = { _, customer -> customer.id },
                                 contentType = { _, _ -> "customer_card" }
-                            ) { _, customer ->
+                            ) { index, customer ->
 
                                 CustomerListItem(
                                     customer = customer,
+                                    isSelected = index == selectedCustomerIndex,
                                     onClick = {
                                         onOpenAccountStatement(customer)
                                     },
@@ -634,7 +651,27 @@ fun ClientesContent(
             onRefresh = onRefresh,
             onDismissRequest = onDismissAccountStatement,
             onOpenPaymentDialog = { onOpenRecordPayment(customer) },
-            onDeletePayment = onDeletePayment
+            onDeletePayment = onDeletePayment,
+            onOpenSale = onOpenSaleDetail
+        )
+    }
+
+    state.selectedSaleDetails?.let { (sale, items) ->
+        SaleDetailDialog(
+            sale = sale,
+            items = items,
+            onDismiss = onDismissSaleDetail,
+            onCancelSale = { onOpenCancelSaleDialog(sale) },
+            onReprintReceipt = { onReprintSaleReceipt(sale, items) }
+        )
+    }
+
+    state.saleToCancel?.let { sale ->
+        CancelSaleConfirmationDialog(
+            sale = sale,
+            isCancelling = state.isCancellingSale,
+            onConfirm = { onConfirmCancelSale(sale) },
+            onDismiss = onDismissCancelSaleDialog
         )
     }
 
@@ -775,6 +812,7 @@ private fun CustomerKpiCard(
 @Composable
 private fun CustomerListItem(
     customer: Customer,
+    isSelected: Boolean = false,
     onClick: (() -> Unit)? = null,
     onOpenPayment: () -> Unit,
     onEdit: () -> Unit,
@@ -790,8 +828,9 @@ private fun CustomerListItem(
                 else Modifier
             ),
         colors = CardDefaults.cardColors(
-                MaterialTheme.colorScheme.surfaceContainerLow
+            MaterialTheme.colorScheme.surfaceContainerLow
         ),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         shape = ShapeDefaults.cardShape
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
