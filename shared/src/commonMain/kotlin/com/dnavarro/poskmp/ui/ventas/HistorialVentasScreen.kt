@@ -644,193 +644,188 @@ fun SaleFilterBottomSheet(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Scrollable Content
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Section 1: Tipo de venta
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Tipo de venta",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Tipo de venta",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val typeOptions = listOf(
+                            SaleTypeFilterOption.ALL to "Todos",
+                            SaleTypeFilterOption.LOCAL to "En Tienda",
+                            SaleTypeFilterOption.DELIVERY to "A Domicilio"
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val typeOptions = listOf(
-                                SaleTypeFilterOption.ALL to "Todos",
-                                SaleTypeFilterOption.LOCAL to "En Tienda",
-                                SaleTypeFilterOption.DELIVERY to "A Domicilio"
-                            )
-                            typeOptions.forEachIndexed { index, (option, label) ->
-                                val isSelected = typeFilter == option
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onTypeFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        typeOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        typeOptions.forEachIndexed { index, (option, label) ->
+                            val isSelected = typeFilter == option
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onTypeFilterSelected(option) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    typeOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
                 }
 
                 // Section 4: Estado del Ticket
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Estado del ticket",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Estado del ticket",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val statusOptions = listOf(
+                            SaleStatusFilterOption.ALL to "Todos",
+                            SaleStatusFilterOption.COMPLETED to "Activos",
+                            SaleStatusFilterOption.CANCELLED to "Cancelados"
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val statusOptions = listOf(
-                                SaleStatusFilterOption.ALL to "Todos",
-                                SaleStatusFilterOption.COMPLETED to "Activos",
-                                SaleStatusFilterOption.CANCELLED to "Cancelados"
-                            )
-                            statusOptions.forEachIndexed { index, (option, label) ->
-                                val isSelected = statusFilter == option
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onStatusFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        statusOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        statusOptions.forEachIndexed { index, (option, label) ->
+                            val isSelected = statusFilter == option
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onStatusFilterSelected(option) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    statusOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
                 }
 
                 // Section 5: Método de Pago
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Método de pago",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Método de pago",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val methods = listOf(
+                            null to "Todos",
+                            "EFECTIVO" to "Efectivo",
+                            "TARJETA" to "Tarjeta",
+                            "TRANSFERENCIA" to "Transferencia",
+                            "MIXTO" to "Mixto",
+                            "CREDITO" to "Crédito"
                         )
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            val methods = listOf(
-                                null to "Todos",
-                                "EFECTIVO" to "Efectivo",
-                                "TARJETA" to "Tarjeta",
-                                "TRANSFERENCIA" to "Transferencia",
-                                "MIXTO" to "Mixto",
-                                "CREDITO" to "Crédito"
-                            )
-                            methods.forEach { (method, label) ->
-                                val isSelected = selectedPaymentMethod == method
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { onPaymentMethodSelected(method) },
-                                    label = { Text(label) },
-                                    leadingIcon = if (method != null) {
-                                        {
-                                            Icon(
-                                                painter = painterResource(getPaymentMethodIcon(method)),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    } else null,
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                        methods.forEach { (method, label) ->
+                            val isSelected = selectedPaymentMethod == method
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { onPaymentMethodSelected(method) },
+                                label = { Text(label) },
+                                leadingIcon = if (method != null) {
+                                    {
+                                        Icon(
+                                            painter = painterResource(getPaymentMethodIcon(method)),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
-                            }
+                            )
                         }
                     }
                 }
 
                 // Section 6: Cajero (if available)
                 if (availableCashiers.size > 1) {
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "Cajero",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Cajero",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FilterChip(
+                                selected = selectedCashier == null,
+                                onClick = { onCashierSelected(null) },
+                                label = { Text("Todos") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            availableCashiers.forEach { cashier ->
                                 FilterChip(
-                                    selected = selectedCashier == null,
-                                    onClick = { onCashierSelected(null) },
-                                    label = { Text("Todos") },
+                                    selected = selectedCashier == cashier,
+                                    onClick = { onCashierSelected(cashier) },
+                                    label = { Text(cashier) },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.person),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                         selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 )
-                                availableCashiers.forEach { cashier ->
-                                    FilterChip(
-                                        selected = selectedCashier == cashier,
-                                        onClick = { onCashierSelected(cashier) },
-                                        label = { Text(cashier) },
-                                        leadingIcon = {
-                                            Icon(
-                                                painter = painterResource(Res.drawable.person),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    )
-                                }
                             }
                         }
                     }

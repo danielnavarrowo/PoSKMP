@@ -390,6 +390,31 @@ class AjustesViewModel(
         )
     }
 
+    val appRootState: StateFlow<AppRootState> = combine(
+        _themeFlow,
+        repository.deviceRoleFlow,
+        repository.defaultScreenFlow,
+        repository.isChecadorDialogFlow,
+        repository.showExtraPricesChecadorFlow
+    ) { themeState, deviceRole, defaultScreen, isChecadorDialog, showExtraPricesChecador ->
+        AppRootState(
+            deviceRole = deviceRole,
+            useDynamicColor = themeState.useDynamicColor,
+            seedColor = themeState.seedColor,
+            isAmoled = themeState.isAmoled,
+            darkModeConfig = themeState.darkModeConfig,
+            paletteStyle = themeState.paletteStyle,
+            appScale = themeState.appScale,
+            defaultScreen = defaultScreen,
+            isChecadorDialog = isChecadorDialog,
+            showExtraPricesChecador = showExtraPricesChecador
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = AppRootState()
+    )
+
     val uiState: StateFlow<AjustesUiState> = combine(
         _baseUiState,
         _updateState,

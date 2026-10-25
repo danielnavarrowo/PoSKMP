@@ -86,3 +86,19 @@ data class AjustesUiState(
     val auditLogsError: String? = null,
     val currentDeviceId: String = ""
 )
+
+/**
+ * Lightweight root configuration state for App.kt, isolated from the 68-property AjustesUiState.
+ */
+data class AppRootState(
+    val deviceRole: DeviceRole = DeviceRole.ADMIN,
+    val useDynamicColor: Boolean = isDynamicColorSupported(),
+    val seedColor: Color = DEFAULT_SEED_COLOR,
+    val isAmoled: Boolean = false,
+    val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
+    val paletteStyle: PaletteStyle = PaletteStyle.Fidelity,
+    val appScale: Float = 1.0f,
+    val defaultScreen: Screen = Screen.VENTA,
+    val isChecadorDialog: Boolean = true,
+    val showExtraPricesChecador: Boolean = false
+)

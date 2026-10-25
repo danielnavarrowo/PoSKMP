@@ -689,89 +689,87 @@ fun VentaScreen(
                 val swapOrder = uiState.swapVentaLayoutOrder
 
                 val catalogPane: @Composable () -> Unit = {
-                    Box(modifier = Modifier.width(catalogWidth).fillMaxHeight()) {
-                        CatalogSection(
-                            searchQuery = searchQuery,
-                            onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
-                            productsList = productsList,
-                            preSortedProducts = uiState.displayedCatalogProducts,
-                            sortField = uiState.catalogSortField,
-                            sortOrder = uiState.catalogSortOrder,
-                            onSortChange = { field, order -> viewModel.onCatalogSortChanged(field, order) },
-                            onProductClick = { product ->
-                                if (product.por_peso == 1L) {
-                                    showWeightDialogForProduct = product
-                                } else {
-                                    addProductToCart(product, 1.0)
-                                }
-                            },
-                            onToggleFavorite = { product -> toggleProductFavorite(product) },
-                            onModifyProduct = { product -> showProductDialogFor = product },
-                            onAddProductWithQuantity = { product, qty -> addProductToCart(product, qty) },
-                            isCompact = false,
-                            useProductTable = uiState.useProductTableInCatalog,
-                            prioritizeDeliveryPrice = uiState.prioritizeDeliveryPrice,
-                            onViewCartClick = null,
-                            onOpenScanner = { showCameraScanner = true },
-                            cartCount = cartItems.size,
-                            cartTotal = total,
-                            onSellUnregisteredClick = { openUnregisteredDialog() },
-                            searchFocusRequester = searchBarFocusRequester,
-                            onBarcodeScan = barcodeScanCallback,
-                            onSearchKeyIntercept = handleSearchKeyIntercept,
-                            isLoading = uiState.isLoading
-                        )
-                    }
+                    CatalogSection(
+                        modifier = Modifier.width(catalogWidth).fillMaxHeight(),
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { viewModel.onSearchQueryChanged(it) },
+                        productsList = productsList,
+                        preSortedProducts = uiState.displayedCatalogProducts,
+                        sortField = uiState.catalogSortField,
+                        sortOrder = uiState.catalogSortOrder,
+                        onSortChange = { field, order -> viewModel.onCatalogSortChanged(field, order) },
+                        onProductClick = { product ->
+                            if (product.por_peso == 1L) {
+                                showWeightDialogForProduct = product
+                            } else {
+                                addProductToCart(product, 1.0)
+                            }
+                        },
+                        onToggleFavorite = { product -> toggleProductFavorite(product) },
+                        onModifyProduct = { product -> showProductDialogFor = product },
+                        onAddProductWithQuantity = { product, qty -> addProductToCart(product, qty) },
+                        isCompact = false,
+                        useProductTable = uiState.useProductTableInCatalog,
+                        prioritizeDeliveryPrice = uiState.prioritizeDeliveryPrice,
+                        onViewCartClick = null,
+                        onOpenScanner = { showCameraScanner = true },
+                        cartCount = cartItems.size,
+                        cartTotal = total,
+                        onSellUnregisteredClick = { openUnregisteredDialog() },
+                        searchFocusRequester = searchBarFocusRequester,
+                        onBarcodeScan = barcodeScanCallback,
+                        onSearchKeyIntercept = handleSearchKeyIntercept,
+                        isLoading = uiState.isLoading
+                    )
                 }
 
                 val ticketPane: @Composable RowScope.() -> Unit = {
-                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                        TicketSection(
-                            cartItems = cartItems,
-                            total = total,
-                            onClearCart = { clearCart() },
-                            onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
-                            onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
-                            onRemoveItem = { item -> removeCartItem(item) },
-                            onCheckout = {
-                                paymentAmountInput.clearText()
-                                showCheckoutDialog = true
-                            },
-                            selectedIndex = selectedIndex,
-                            onSelectedIndexChange = { selectedIndex = it },
-                            onBackClick = null,
-                            canUndo = uiState.canUndo,
-                            onUndo = { undoLastCartChange() },
-                            heldTickets = uiState.heldTickets,
-                            onHoldTicket = {
-                                viewModel.putCurrentTicketOnHold()
+                    TicketSection(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        cartItems = cartItems,
+                        total = total,
+                        onClearCart = { clearCart() },
+                        onUpdateQuantity = { item, delta -> addProductToCart(item.product, delta) },
+                        onSetQuantity = { item, qty -> setProductQuantityInCart(item.product, qty) },
+                        onRemoveItem = { item -> removeCartItem(item) },
+                        onCheckout = {
+                            paymentAmountInput.clearText()
+                            showCheckoutDialog = true
+                        },
+                        selectedIndex = selectedIndex,
+                        onSelectedIndexChange = { selectedIndex = it },
+                        onBackClick = null,
+                        canUndo = uiState.canUndo,
+                        onUndo = { undoLastCartChange() },
+                        heldTickets = uiState.heldTickets,
+                        onHoldTicket = {
+                            viewModel.putCurrentTicketOnHold()
+                            reclaimSearchBarFocus()
+                        },
+                        onResumeHeldTicket = { ticket ->
+                            viewModel.resumeHeldTicket(ticket)
+                            reclaimSearchBarFocus()
+                        },
+                        onDiscardHeldTicket = { ticket ->
+                            viewModel.discardHeldTicket(ticket)
+                            reclaimSearchBarFocus()
+                        },
+                        selectedCustomer = uiState.selectedCustomer,
+                        onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
+                        onClearCustomerClick = { viewModel.clearSelectedCustomer() },
+                        isDeliveryMode = uiState.prioritizeDeliveryPrice,
+                        isNarrow = isTicketNarrow,
+                        onApplyItemWholesaleClick = {
+                            if (cartItems.isNotEmpty()) {
+                                val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
+                                val currentItem = cartItems[currentIndex]
+                                viewModel.toggleWholesalePriceForItem(currentItem)
                                 reclaimSearchBarFocus()
-                            },
-                            onResumeHeldTicket = { ticket ->
-                                viewModel.resumeHeldTicket(ticket)
-                                reclaimSearchBarFocus()
-                            },
-                            onDiscardHeldTicket = { ticket ->
-                                viewModel.discardHeldTicket(ticket)
-                                reclaimSearchBarFocus()
-                            },
-                            selectedCustomer = uiState.selectedCustomer,
-                            onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
-                            onClearCustomerClick = { viewModel.clearSelectedCustomer() },
-                            isDeliveryMode = uiState.prioritizeDeliveryPrice,
-                            isNarrow = isTicketNarrow,
-                            onApplyItemWholesaleClick = {
-                                if (cartItems.isNotEmpty()) {
-                                    val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
-                                    val currentItem = cartItems[currentIndex]
-                                    viewModel.toggleWholesalePriceForItem(currentItem)
-                                    reclaimSearchBarFocus()
-                                }
-                            },
-                            onApplyWholesaleClick = { toggleWholesalePrice() },
-                            onQuantityFocusChanged = { isCartItemQuantityFocused = it }
-                        )
-                    }
+                            }
+                        },
+                        onApplyWholesaleClick = { toggleWholesalePrice() },
+                        onQuantityFocusChanged = { isCartItemQuantityFocused = it }
+                    )
                 }
 
                 val currentSwapOrder by rememberUpdatedState(swapOrder)

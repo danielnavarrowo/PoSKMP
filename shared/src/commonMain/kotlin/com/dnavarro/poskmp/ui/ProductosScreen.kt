@@ -27,12 +27,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
@@ -1463,105 +1465,104 @@ fun ProductFilterAndSortBottomSheet(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Scrollable Content
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Section 1: Sorting Field
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.sort_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.sort_section_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val options = listOf(
+                            ProductSortField.CODIGO to stringResource(Res.string.header_codes),
+                            ProductSortField.NOMBRE to stringResource(Res.string.header_product_name),
+                            ProductSortField.CATEGORIA to stringResource(Res.string.header_category),
+                            ProductSortField.PIEZAS to stringResource(Res.string.header_pieces),
+                            ProductSortField.COSTO to stringResource(Res.string.header_cost),
+                            ProductSortField.MAYOREO to stringResource(Res.string.wholesale),
+                            ProductSortField.PRECIO to stringResource(Res.string.header_retail_price),
+                            ProductSortField.DOMICILIO to stringResource(Res.string.header_delivery_price),
+                            ProductSortField.MARGEN_VENTA to stringResource(Res.string.header_retail_margin),
+                            ProductSortField.MARGEN_MAYOREO to stringResource(Res.string.header_wholesale_margin),
+                            ProductSortField.MARGEN_DOMICILIO to stringResource(Res.string.header_delivery_margin),
+                            ProductSortField.VENTAS_TOTALES to stringResource(Res.string.header_total_sales),
+                            ProductSortField.ULTIMA_VENTA to stringResource(Res.string.header_last_sale),
+                            ProductSortField.FECHA_CREACION to stringResource(Res.string.sort_field_created_at),
+                            ProductSortField.FECHA_ACTUALIZACION to stringResource(Res.string.sort_field_updated_at)
                         )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            val options = listOf(
-                                ProductSortField.CODIGO to stringResource(Res.string.header_codes),
-                                ProductSortField.NOMBRE to stringResource(Res.string.header_product_name),
-                                ProductSortField.CATEGORIA to stringResource(Res.string.header_category),
-                                ProductSortField.PIEZAS to stringResource(Res.string.header_pieces),
-                                ProductSortField.COSTO to stringResource(Res.string.header_cost),
-                                ProductSortField.MAYOREO to stringResource(Res.string.wholesale),
-                                ProductSortField.PRECIO to stringResource(Res.string.header_retail_price),
-                                ProductSortField.DOMICILIO to stringResource(Res.string.header_delivery_price),
-                                ProductSortField.MARGEN_VENTA to stringResource(Res.string.header_retail_margin),
-                                ProductSortField.MARGEN_MAYOREO to stringResource(Res.string.header_wholesale_margin),
-                                ProductSortField.MARGEN_DOMICILIO to stringResource(Res.string.header_delivery_margin),
-                                ProductSortField.VENTAS_TOTALES to stringResource(Res.string.header_total_sales),
-                                ProductSortField.ULTIMA_VENTA to stringResource(Res.string.header_last_sale),
-                                ProductSortField.FECHA_CREACION to stringResource(Res.string.sort_field_created_at),
-                                ProductSortField.FECHA_ACTUALIZACION to stringResource(Res.string.sort_field_updated_at)
-                            )
-                            options.forEach { (field, label) ->
-                                FilterChip(
-                                    selected = sortField == field,
-                                    onClick = { onSortFieldSelected(field) },
-                                    label = { Text(label) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                        options.forEach { (field, label) ->
+                            FilterChip(
+                                selected = sortField == field,
+                                onClick = { onSortFieldSelected(field) },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
-                            }
+                            )
                         }
                     }
                 }
 
                 // Section 2: Sort Direction (Connected ToggleButtons)
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.sort_order_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val orderOptions = listOf(
-                                Pair(
-                                    ProductSortOrder.ASC,
-                                    "▲ " + stringResource(Res.string.sort_order_asc)
-                                ),
-                                Pair(
-                                    ProductSortOrder.DESC,
-                                    "▼ " + stringResource(Res.string.sort_order_desc)
-                                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.sort_order_section_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val orderOptions = listOf(
+                            Pair(
+                                ProductSortOrder.ASC,
+                                "▲ " + stringResource(Res.string.sort_order_asc)
+                            ),
+                            Pair(
+                                ProductSortOrder.DESC,
+                                "▼ " + stringResource(Res.string.sort_order_desc)
                             )
-                            orderOptions.forEachIndexed { index, (order, label) ->
-                                val isSelected = sortOrder == order
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onSortOrderSelected(order) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        orderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        )
+                        orderOptions.forEachIndexed { index, (order, label) ->
+                            val isSelected = sortOrder == order
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onSortOrderSelected(order) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    orderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
@@ -1569,39 +1570,9 @@ fun ProductFilterAndSortBottomSheet(
 
                 // Section 3: Visible Columns (Wide View Only)
                 if (!isCompact) {
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = stringResource(Res.string.columns_section_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                ProductTableColumn.entries.forEach { col ->
-                                    val isSelected = visibleColumns.contains(col)
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = { onToggleColumn(col) },
-                                        label = { Text(stringResource(col.titleRes)) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Section 4: Filter by Category
-                item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = stringResource(Res.string.filter_category_title),
+                            text = stringResource(Res.string.columns_section_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
@@ -1609,136 +1580,158 @@ fun ProductFilterAndSortBottomSheet(
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            FilterChip(
-                                selected = selectedCategory == null,
-                                onClick = { onCategorySelected(null) },
-                                label = { Text(stringResource(Res.string.filter_category_all)) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            )
-                            availableCategories.forEach { cat ->
+                            ProductTableColumn.entries.forEach { col ->
+                                val isSelected = visibleColumns.contains(col)
                                 FilterChip(
-                                    selected = selectedCategory == cat,
-                                    onClick = { onCategorySelected(cat) },
-                                    label = { Text(cat) },
+                                    selected = isSelected,
+                                    onClick = { onToggleColumn(col) },
+                                    label = { Text(stringResource(col.titleRes)) },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                         selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 )
                             }
+                        }
+                    }
+                }
+
+                // Section 4: Filter by Category
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.filter_category_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedCategory == null,
+                            onClick = { onCategorySelected(null) },
+                            label = { Text(stringResource(Res.string.filter_category_all)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                        availableCategories.forEach { cat ->
                             FilterChip(
-                                selected = selectedCategory == "NO_CATEGORY",
-                                onClick = { onCategorySelected("NO_CATEGORY") },
-                                label = { Text(stringResource(Res.string.no_category)) },
+                                selected = selectedCategory == cat,
+                                onClick = { onCategorySelected(cat) },
+                                label = { Text(cat) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             )
                         }
+                        FilterChip(
+                            selected = selectedCategory == "NO_CATEGORY",
+                            onClick = { onCategorySelected("NO_CATEGORY") },
+                            label = { Text(stringResource(Res.string.no_category)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
                     }
                 }
 
                 // Section 4: Filter by Favorite (Connected ToggleButtons)
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.filter_favorite_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.filter_favorite_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val favOptions = listOf(
+                            FavoriteFilterOption.ALL to stringResource(Res.string.filter_favorite_all),
+                            FavoriteFilterOption.ONLY_FAVORITES to stringResource(Res.string.filter_favorite_only),
+                            FavoriteFilterOption.ONLY_NON_FAVORITES to stringResource(Res.string.filter_non_favorite_only)
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val favOptions = listOf(
-                                FavoriteFilterOption.ALL to stringResource(Res.string.filter_favorite_all),
-                                FavoriteFilterOption.ONLY_FAVORITES to stringResource(Res.string.filter_favorite_only),
-                                FavoriteFilterOption.ONLY_NON_FAVORITES to stringResource(Res.string.filter_non_favorite_only)
-                            )
-                            favOptions.forEachIndexed { index, (option, label) ->
-                                val isSelected = favoriteFilter == option
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onFavoriteFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        favOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        favOptions.forEachIndexed { index, (option, label) ->
+                            val isSelected = favoriteFilter == option
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onFavoriteFilterSelected(option) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    favOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
                 }
 
                 // Section 5: Filter by Status (Connected ToggleButtons)
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.filter_status_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.filter_status_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val statusOptions = listOf(
+                            StatusFilterOption.ALL to stringResource(Res.string.filter_status_all),
+                            StatusFilterOption.ONLY_ACTIVE to stringResource(Res.string.filter_status_active_only),
+                            StatusFilterOption.ONLY_INACTIVE to stringResource(Res.string.filter_status_inactive_only)
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val statusOptions = listOf(
-                                StatusFilterOption.ALL to stringResource(Res.string.filter_status_all),
-                                StatusFilterOption.ONLY_ACTIVE to stringResource(Res.string.filter_status_active_only),
-                                StatusFilterOption.ONLY_INACTIVE to stringResource(Res.string.filter_status_inactive_only)
-                            )
-                            statusOptions.forEachIndexed { index, (option, label) ->
-                                val isSelected = statusFilter == option
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onStatusFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        statusOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        statusOptions.forEachIndexed { index, (option, label) ->
+                            val isSelected = statusFilter == option
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onStatusFilterSelected(option) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    statusOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }

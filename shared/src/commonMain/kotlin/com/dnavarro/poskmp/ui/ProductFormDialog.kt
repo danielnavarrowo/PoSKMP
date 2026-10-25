@@ -5,7 +5,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -68,7 +67,9 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -1853,132 +1854,134 @@ fun ProductFormDialog(
         }
     }
 
-    BoxWithConstraints {
-        val isWideScreen = maxWidth >= 760.dp
-        val useBottomSheet = isAndroid() && !isWideScreen
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val isWideScreen = remember(windowInfo.containerSize, density) {
+        with(density) { windowInfo.containerSize.width.toDp() >= 760.dp }
+    }
+    val useBottomSheet = isAndroid() && !isWideScreen
 
-        if (useBottomSheet) {
-            val sheetState = rememberBottomSheetState(
-                initialValue = SheetValue.Hidden,
-                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
-            )
-            val coroutineScope = rememberCoroutineScope()
-            var isDismissing by remember { mutableStateOf(false) }
+    if (useBottomSheet) {
+        val sheetState = rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+        )
+        val coroutineScope = rememberCoroutineScope()
+        var isDismissing by remember { mutableStateOf(false) }
 
-            ModalBottomSheet(
-                onDismissRequest = onDismiss,
-                sheetState = sheetState,
-                sheetMaxWidth = 1120.dp,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
-                    isDismissing = true
-                    coroutineScope.launch {
-                        try {
-                            sheetState.hide()
-                        } finally {
-                            if (!sheetState.isVisible) {
-                                onDismiss()
-                            } else {
-                                isDismissing = false
-                            }
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            sheetMaxWidth = 1120.dp,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
+                isDismissing = true
+                coroutineScope.launch {
+                    try {
+                        sheetState.hide()
+                    } finally {
+                        if (!sheetState.isVisible) {
+                            onDismiss()
+                        } else {
+                            isDismissing = false
                         }
-                    }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 16.dp)
-                ) {
-                    Text(
-                        text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
-                            Res.string.modify_product_title
-                        ),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            FormFields(isWide = false)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        dismissButtonContent()
-                        Spacer(modifier = Modifier.width(8.dp))
-                        confirmButtonContent()
                     }
                 }
             }
-        } else {
-            AlertDialog(
-                onDismissRequest = onDismiss,
-                properties = DialogProperties(usePlatformDefaultWidth = false),
+
+            Column(
                 modifier = Modifier
-                    .widthIn(min = 360.dp, max = 1120.dp)
-                    .fillMaxWidth(0.94f)
-                    .then(
-                        Modifier.onPreviewKeyEvent { keyEvent ->
-                            if (keyEvent.type == KeyEventType.KeyDown) {
-                                val isEnter =
-                                    keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
-                                val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                                isEnter && isCtrlOrMeta && if (formNombre.trim()
-                                        .isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode
-                                ) {
-                                    submitForm()
-                                    true
-                                } else false
-                            } else false
-                        }
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 16.dp)
+            ) {
+                Text(
+                    text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
+                        Res.string.modify_product_title
                     ),
-                shape = ShapeDefaults.cardShape,
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                title = {
-                    Text(
-                        text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
-                            Res.string.modify_product_title
-                        ),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            FormFields(isWide = isWideScreen)
-                        }
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FormFields(isWide = false)
                     }
-                },
-                confirmButton = confirmButtonContent,
-                dismissButton = dismissButtonContent
-            )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    dismissButtonContent()
+                    Spacer(modifier = Modifier.width(8.dp))
+                    confirmButtonContent()
+                }
+            }
         }
+    } else {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+            modifier = Modifier
+                .widthIn(min = 360.dp, max = 1120.dp)
+                .fillMaxWidth(0.94f)
+                .then(
+                    Modifier.onPreviewKeyEvent { keyEvent ->
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            val isEnter =
+                                keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
+                            val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                            isEnter && isCtrlOrMeta && if (formNombre.trim()
+                                    .isNotEmpty() && isPriceValid && barcodeValidationError == null && !isValidatingBarcode
+                            ) {
+                                submitForm()
+                                true
+                            } else false
+                        } else false
+                    }
+                ),
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            title = {
+                Text(
+                    text = if (readOnly) "Detalle del Producto" else if (isNew) stringResource(Res.string.register_new_product_title) else stringResource(
+                        Res.string.modify_product_title
+                    ),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        FormFields(isWide = isWideScreen)
+                    }
+                }
+            },
+            confirmButton = confirmButtonContent,
+            dismissButton = dismissButtonContent
+        )
     }
 
     if (showCameraScanner) {

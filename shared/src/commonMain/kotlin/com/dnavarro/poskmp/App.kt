@@ -368,9 +368,9 @@ fun App(
         }
     }
 
-    val ajustesUiState by ajustesViewModel.uiState.collectAsStateWithLifecycle()
-    val isCheckerOnly = ajustesUiState.deviceRole == DeviceRole.CHECKER_ONLY
-    val defaultScreen = if (isCheckerOnly) Screen.CHECADOR else ajustesUiState.defaultScreen
+    val appRootState by ajustesViewModel.appRootState.collectAsStateWithLifecycle()
+    val isCheckerOnly = appRootState.deviceRole == DeviceRole.CHECKER_ONLY
+    val defaultScreen = if (isCheckerOnly) Screen.CHECADOR else appRootState.defaultScreen
     val defaultRoute = remember(defaultScreen) { defaultScreen.toRoute() }
 
     // 2. Navigation State with Navigation 3
@@ -397,16 +397,19 @@ fun App(
     var ventaRefocusTrigger by remember { mutableIntStateOf(0) }
     var productosRefocusTrigger by remember { mutableIntStateOf(0) }
     var clientesRefocusTrigger by remember { mutableIntStateOf(0) }
+    var checadorRefocusTrigger by remember { mutableIntStateOf(0) }
     var productosSearchFocusTrigger by remember { mutableIntStateOf(0) }
     var ventasScrollToTopTrigger by remember { mutableIntStateOf(0) }
     var ajustesScrollToTopTrigger by remember { mutableIntStateOf(0) }
 
     fun reclaimCurrentScreenFocus() {
         if (!isAndroid()) {
-            when (currentScreen) {
+            val activeScreen = ((backStack.lastOrNull() as? AppRoute) ?: defaultRoute).toScreen()
+            when (activeScreen) {
                 Screen.VENTA -> ventaRefocusTrigger++
                 Screen.PRODUCTOS -> productosRefocusTrigger++
                 Screen.CLIENTES -> clientesRefocusTrigger++
+                Screen.CHECADOR -> checadorRefocusTrigger++
                 else -> {
                     coroutineScope.launch {
                         delay(50.milliseconds)
@@ -447,15 +450,15 @@ fun App(
         stringResource(if (isDesktop) Res.string.tab_checador_desktop else Res.string.tab_checador)
     val tabAjustesLabel = stringResource(Res.string.tab_ajustes)
 
-    val isChecadorDialog = !(isCheckerOnly && !isAndroid()) && ajustesUiState.isChecadorDialog
+    val isChecadorDialog = !(isCheckerOnly && !isAndroid()) && appRootState.isChecadorDialog
     val isChecadorFullScreen = currentScreen == Screen.CHECADOR && !isChecadorDialog
-    val useDynamicColor = ajustesUiState.useDynamicColor
-    val seedColor = ajustesUiState.seedColor
-    val isAmoled = ajustesUiState.isAmoled
-    val darkModeConfig = ajustesUiState.darkModeConfig
-    val paletteStyle = ajustesUiState.paletteStyle
+    val useDynamicColor = appRootState.useDynamicColor
+    val seedColor = appRootState.seedColor
+    val isAmoled = appRootState.isAmoled
+    val darkModeConfig = appRootState.darkModeConfig
+    val paletteStyle = appRootState.paletteStyle
 
-    val appScale = ajustesUiState.appScale
+    val appScale = appRootState.appScale
 
     val saleRepository = koinInject<SaleRepository>()
     val cancelSaleUseCase = koinInject<CancelSaleUseCase>()
@@ -827,7 +830,7 @@ fun App(
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                                             ) {
-                                                val lastSyncTimestamp = ajustesUiState.lastSyncTimestamp
+                                                val lastSyncTimestamp by settingsRepository.lastSyncTimestampFlow.collectAsStateWithLifecycle(initialValue = 0L)
                                                 if(isExpanded) {
                                                     val lastSyncFormatted = if (lastSyncTimestamp > 0L) {
                                                         formatEpochMillisToDateTime(lastSyncTimestamp)
@@ -1514,9 +1517,10 @@ fun App(
                                             } else {
                                                 ChecadorScreen(
                                                     repository = repository,
-                                                    showExtraPrices = ajustesUiState.showExtraPricesChecador,
+                                                    showExtraPrices = appRootState.showExtraPricesChecador,
                                                     onNavigateToAjustes = if (isCheckerOnly) { { navigateTo(AppRoute.Ajustes()) } } else null,
-                                                    onOpenScanner = if (isAndroid() && isCameraScannerAvailable()) { { showPriceCheckerDialog = true } } else null
+                                                    onOpenScanner = if (isAndroid() && isCameraScannerAvailable()) { { showPriceCheckerDialog = true } } else null,
+                                                    refocusTrigger = checadorRefocusTrigger
                                                 )
                                             }
                                         }
@@ -1530,7 +1534,7 @@ fun App(
                         showDialog = showPriceCheckerDialog,
                         onDismiss = { showPriceCheckerDialog = false },
                         repository = repository,
-                        showExtraPrices = ajustesUiState.showExtraPricesChecador
+                        showExtraPrices = appRootState.showExtraPricesChecador
                     )
 
                     CalculatorDialog(

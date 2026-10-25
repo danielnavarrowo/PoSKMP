@@ -828,217 +828,210 @@ fun SoldProductFilterAndSortBottomSheet(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Scrollable Content
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Section 1: Sorting Field
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.sort_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            SoldProductSortField.entries.forEach { field ->
-                                FilterChip(
-                                    selected = sortField == field,
-                                    onClick = { onSortFieldSelected(field) },
-                                    label = { Text(field.label) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.sort_section_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        SoldProductSortField.entries.forEach { field ->
+                            FilterChip(
+                                selected = sortField == field,
+                                onClick = { onSortFieldSelected(field) },
+                                label = { Text(field.label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
-                            }
+                            )
                         }
                     }
                 }
 
                 // Section 2: Sort Direction (Connected ToggleButtons)
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.sort_order_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.sort_order_section_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val orderOptions = listOf(
+                            false to "▼ " + stringResource(Res.string.sort_order_desc),
+                            true to "▲ " + stringResource(Res.string.sort_order_asc)
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val orderOptions = listOf(
-                                false to "▼ " + stringResource(Res.string.sort_order_desc),
-                                true to "▲ " + stringResource(Res.string.sort_order_asc)
-                            )
-                            orderOptions.forEachIndexed { index, (order, label) ->
-                                val isSelected = isAscending == order
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onSortOrderSelected(order) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        orderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        orderOptions.forEachIndexed { index, (order, label) ->
+                            val isSelected = isAscending == order
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onSortOrderSelected(order) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    orderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
                 }
 
                 // Section 3: Categoría
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.filter_category_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            FilterChip(
-                                selected = selectedCategory == null,
-                                onClick = { onCategorySelected(null) },
-                                label = { Text(stringResource(Res.string.filter_category_all)) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.filter_category_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedCategory == null,
+                            onClick = { onCategorySelected(null) },
+                            label = { Text(stringResource(Res.string.filter_category_all)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                            availableCategories.forEach { cat ->
-                                FilterChip(
-                                    selected = selectedCategory == cat,
-                                    onClick = { onCategorySelected(cat) },
-                                    label = { Text(cat) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                )
-                            }
+                        )
+                        availableCategories.forEach { cat ->
                             FilterChip(
-                                selected = selectedCategory == "NO_CATEGORY",
-                                onClick = { onCategorySelected("NO_CATEGORY") },
-                                label = { Text(stringResource(Res.string.no_category)) },
+                                selected = selectedCategory == cat,
+                                onClick = { onCategorySelected(cat) },
+                                label = { Text(cat) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             )
                         }
+                        FilterChip(
+                            selected = selectedCategory == "NO_CATEGORY",
+                            onClick = { onCategorySelected("NO_CATEGORY") },
+                            label = { Text(stringResource(Res.string.no_category)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
                     }
                 }
 
                 // Section 4: Tipo de Cobro / Unidad
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Tipo de cobro / Unidad",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SoldProductUnitTypeFilter.entries.forEachIndexed { index, option ->
-                                val isSelected = unitTypeFilter == option
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onUnitTypeFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        SoldProductUnitTypeFilter.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = option.label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Tipo de cobro / Unidad",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        SoldProductUnitTypeFilter.entries.forEachIndexed { index, option ->
+                            val isSelected = unitTypeFilter == option
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onUnitTypeFilterSelected(option) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    SoldProductUnitTypeFilter.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = option.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
                 }
 
                 // Section 5: Tipo de Producto (Catálogo vs Venta rápida)
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Tipo de producto",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SoldProductCatalogFilter.entries.forEachIndexed { index, option ->
-                                val isSelected = catalogFilter == option
-                                ToggleButton(
-                                    checked = isSelected,
-                                    onCheckedChange = { onCatalogFilterSelected(option) },
-                                    colors = ToggleButtonDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                        checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .semantics { role = Role.RadioButton },
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        SoldProductCatalogFilter.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    }
-                                ) {
-                                    Text(
-                                        text = option.label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Tipo de producto",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        SoldProductCatalogFilter.entries.forEachIndexed { index, option ->
+                            val isSelected = catalogFilter == option
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onCatalogFilterSelected(option) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    SoldProductCatalogFilter.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                                 }
+                            ) {
+                                Text(
+                                    text = option.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }

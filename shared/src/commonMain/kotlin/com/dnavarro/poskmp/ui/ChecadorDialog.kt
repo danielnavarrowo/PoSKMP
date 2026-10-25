@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -134,6 +135,7 @@ fun ChecadorContent(
     var checadorQuantity by remember { mutableDoubleStateOf(1.0) }
 
     val focusRequester = remember { FocusRequester() }
+    var isInputFocused by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun performSearch() {
@@ -168,12 +170,15 @@ fun ChecadorContent(
         }
     }
 
-    // Request focus when the barcode input field is visible or resets
-    LaunchedEffect(showCameraScanner, searchedProduct != null || hasSearched) {
-        if (!showCameraScanner) {
-            try {
-                focusRequester.requestFocus()
-            } catch (_: Exception) {
+    // Keep focus on the barcode input field whenever the camera scanner is not active
+    LaunchedEffect(showCameraScanner, isInputFocused, searchedProduct != null || hasSearched) {
+        if (!showCameraScanner && !isInputFocused) {
+            while (isActive && !isInputFocused) {
+                try {
+                    focusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+                delay(100.milliseconds)
             }
         }
     }
@@ -249,7 +254,8 @@ fun ChecadorContent(
                             state = barcodeState,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusRequester(focusRequester),
+                                .focusRequester(focusRequester)
+                                .onFocusChanged { isInputFocused = it.isFocused },
                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Start
@@ -662,6 +668,7 @@ fun ChecadorScreen(
     currentTimeText: String = "",
     onNavigateToAjustes: (() -> Unit)? = null,
     onOpenScanner: (() -> Unit)? = null,
+    refocusTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val settingsRepository = koinInject<SettingsRepository>()
@@ -676,6 +683,10 @@ fun ChecadorScreen(
     var checadorQuantity by remember { mutableDoubleStateOf(1.0) }
 
     val focusRequester = remember { FocusRequester() }
+    var isHiddenInputFocused by remember { mutableStateOf(false) }
+    var isIdleInputFocused by remember { mutableStateOf(false) }
+    val isResultView = searchedProduct != null || hasSearched
+    val isCurrentInputFocused = if (isResultView) isHiddenInputFocused else isIdleInputFocused
     val scope = rememberCoroutineScope()
 
     var displayDateText by remember(currentDateText) { mutableStateOf(currentDateText.ifEmpty { formatCurrentDate() }) }
@@ -732,12 +743,26 @@ fun ChecadorScreen(
         }
     }
 
-    // Request focus when the barcode input field is visible or transitions between idle and result views
-    LaunchedEffect(showCameraScanner, searchedProduct != null || hasSearched) {
+    // Keep focus on the active barcode input field whenever the camera scanner is not active
+    LaunchedEffect(showCameraScanner, isResultView, isCurrentInputFocused, refocusTrigger) {
+        if (isResultView) {
+            isIdleInputFocused = false
+        } else {
+            isHiddenInputFocused = false
+        }
         if (!showCameraScanner) {
-            try {
-                focusRequester.requestFocus()
-            } catch (_: Exception) {
+            if (!isCurrentInputFocused || refocusTrigger > 0) {
+                try {
+                    focusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
+            }
+            while (isActive && !isCurrentInputFocused) {
+                delay(100.milliseconds)
+                try {
+                    focusRequester.requestFocus()
+                } catch (_: Exception) {
+                }
             }
         }
     }
@@ -806,6 +831,7 @@ fun ChecadorScreen(
                         .size(1.dp)
                         .alpha(0.01f)
                         .focusRequester(focusRequester)
+                        .onFocusChanged { isHiddenInputFocused = it.isFocused }
                 )
             }
 
@@ -1036,7 +1062,9 @@ fun ChecadorScreen(
                                                 innerTextField()
                                             }
                                         },
-                                        modifier = Modifier.focusRequester(focusRequester)
+                                        modifier = Modifier
+                                            .focusRequester(focusRequester)
+                                            .onFocusChanged { isIdleInputFocused = it.isFocused }
                                     )
                                 }
                             }
