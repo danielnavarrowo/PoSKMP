@@ -251,6 +251,9 @@ fun VentaScreen(
 
     // Checkout Dialog state
     var showCheckoutDialog by remember { mutableStateOf(false) }
+    // Guards against firing the checkout twice (e.g. F1 and F2 pressed almost simultaneously, or a
+    // double click) before the dialog has had a chance to recompose and disappear.
+    var isCheckoutInFlight by remember { mutableStateOf(false) }
     var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.EFECTIVO) }
     val paymentAmountInput = remember { TextFieldState("") }
     val mixedCashState = remember { TextFieldState("") }
@@ -1439,7 +1442,9 @@ fun VentaScreen(
             PaymentMethod.CREDITO -> selectedCustomer != null
         }
 
-        val performCheckout: (Boolean) -> Unit = { printReceipt ->
+        val performCheckout: (Boolean) -> Unit = performCheckout@{ printReceipt ->
+            if (isCheckoutInFlight) return@performCheckout
+            isCheckoutInFlight = true
             val (finalPayment, finalChange) = when (selectedPaymentMethod) {
                 PaymentMethod.EFECTIVO -> Pair(
                     if (paymentText.isEmpty()) total else paymentAmount,
@@ -1470,33 +1475,37 @@ fun VentaScreen(
             lastSaleChange = finalChange
             showCheckoutDialog = false
             coroutineScope.launch {
-                val folio = viewModel.processCheckout(
-                    pagoCon = finalPayment,
-                    cambio = finalChange,
-                    metodoPago = selectedPaymentMethod.name,
-                    customerId = selectedCustomer?.id,
-                    printReceipt = printReceipt,
-                    montoEfectivo = montoEfectivo,
-                    montoTarjeta = montoTarjeta,
-                    montoTransferencia = montoTransferencia,
-                    montoCredito = montoCredito
-                )
-                lastSaleFolio = folio
-                if (folio > 0L) {
-                    val isShowingOnlyTicketSection = (navigator.scaffoldValue[ThreePaneScaffoldRole.Secondary] == PaneAdaptedValue.Expanded &&
-                        navigator.scaffoldValue[ThreePaneScaffoldRole.Primary] == PaneAdaptedValue.Hidden) || (isCompact && navigator.canNavigateBack())
-                    if (isShowingOnlyTicketSection) {
-                        if (isAndroid()) {
-                            focusManager.clearFocus(force = true)
-                            keyboardController?.hide()
+                try {
+                    val folio = viewModel.processCheckout(
+                        pagoCon = finalPayment,
+                        cambio = finalChange,
+                        metodoPago = selectedPaymentMethod.name,
+                        customerId = selectedCustomer?.id,
+                        printReceipt = printReceipt,
+                        montoEfectivo = montoEfectivo,
+                        montoTarjeta = montoTarjeta,
+                        montoTransferencia = montoTransferencia,
+                        montoCredito = montoCredito
+                    )
+                    lastSaleFolio = folio
+                    if (folio > 0L) {
+                        val isShowingOnlyTicketSection = (navigator.scaffoldValue[ThreePaneScaffoldRole.Secondary] == PaneAdaptedValue.Expanded &&
+                            navigator.scaffoldValue[ThreePaneScaffoldRole.Primary] == PaneAdaptedValue.Hidden) || (isCompact && navigator.canNavigateBack())
+                        if (isShowingOnlyTicketSection) {
+                            if (isAndroid()) {
+                                focusManager.clearFocus(force = true)
+                                keyboardController?.hide()
+                            }
+                            if (navigator.canNavigateBack()) {
+                                navigator.navigateBack()
+                            } else {
+                                navigator.navigateTo(ThreePaneScaffoldRole.Primary)
+                            }
                         }
-                        if (navigator.canNavigateBack()) {
-                            navigator.navigateBack()
-                        } else {
-                            navigator.navigateTo(ThreePaneScaffoldRole.Primary)
-                        }
+                        reclaimSearchBarFocus()
                     }
-                    reclaimSearchBarFocus()
+                } finally {
+                    isCheckoutInFlight = false
                 }
             }
         }

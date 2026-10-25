@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.roundToInt
 
 import com.dnavarro.poskmp.data.sync.SyncRepository
@@ -847,6 +849,13 @@ class VentaViewModel(
         _heldTickets.value = _heldTickets.value.filterNot { it.id == heldTicket.id }
     }
 
+    /**
+     * Serializes checkouts so a duplicated trigger (double key press / click) can never record the
+     * same cart twice nor read the same folio concurrently. The cart is re-read inside the lock:
+     * once the first checkout clears it, any queued duplicate returns 0 without recording a sale.
+     */
+    private val checkoutMutex = Mutex()
+
     suspend fun processCheckout(
         pagoCon: Double,
         cambio: Double,
@@ -857,6 +866,30 @@ class VentaViewModel(
         montoTarjeta: Double = 0.0,
         montoTransferencia: Double = 0.0,
         montoCredito: Double = 0.0
+    ): Long = checkoutMutex.withLock {
+        processCheckoutLocked(
+            pagoCon = pagoCon,
+            cambio = cambio,
+            metodoPago = metodoPago,
+            customerId = customerId,
+            printReceipt = printReceipt,
+            montoEfectivo = montoEfectivo,
+            montoTarjeta = montoTarjeta,
+            montoTransferencia = montoTransferencia,
+            montoCredito = montoCredito
+        )
+    }
+
+    private suspend fun processCheckoutLocked(
+        pagoCon: Double,
+        cambio: Double,
+        metodoPago: String,
+        customerId: String?,
+        printReceipt: Boolean,
+        montoEfectivo: Double,
+        montoTarjeta: Double,
+        montoTransferencia: Double,
+        montoCredito: Double
     ): Long {
         val currentItems = _cartItems.value
         if (currentItems.isEmpty()) return 0L

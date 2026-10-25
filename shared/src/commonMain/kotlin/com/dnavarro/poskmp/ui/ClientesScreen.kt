@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -81,7 +80,6 @@ import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
 import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
-import com.dnavarro.poskmp.util.isCompactWidth
 import com.dnavarro.poskmp.util.resetScroll
 import com.dnavarro.poskmp.util.scrollItemIntoView
 import kotlinx.coroutines.delay
