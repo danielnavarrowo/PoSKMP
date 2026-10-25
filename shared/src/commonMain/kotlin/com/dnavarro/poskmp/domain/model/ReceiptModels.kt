@@ -4,6 +4,11 @@ enum class PrinterType {
     THERMAL_80MM
 }
 
+enum class ReceiptFontFamily {
+    MONOSPACE,
+    MANROPE
+}
+
 const val PRINTER_SYSTEM_DIALOG_ID = "system_dialog"
 const val DEFAULT_PAPER_WIDTH_MM = 80
 const val MIN_PAPER_WIDTH_MM = 55
@@ -24,6 +29,7 @@ data class ReceiptSettings(
     val paperWidthMm: Int = DEFAULT_PAPER_WIDTH_MM,
     val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
+    val fontFamily: ReceiptFontFamily = ReceiptFontFamily.MONOSPACE,
     val fontSize: Int = 12,
     val feedLines: Int = 3,
     val footerMessage: String = "",
@@ -51,7 +57,10 @@ enum class ReceiptAlignment {
 data class ReceiptLine(
     val text: String,
     val alignment: ReceiptAlignment = ReceiptAlignment.LEFT,
-    val emphasized: Boolean = false
+    val emphasized: Boolean = false,
+    val leftText: String? = null,
+    val rightText: String? = null,
+    val isSeparator: Boolean = false
 )
 
 data class ReceiptDocument(
@@ -61,6 +70,7 @@ data class ReceiptDocument(
     val paperWidthMm: Int = DEFAULT_PAPER_WIDTH_MM,
     val printerType: PrinterType = PrinterType.THERMAL_80MM,
     val printerId: String? = null,
+    val fontFamily: ReceiptFontFamily = ReceiptFontFamily.MONOSPACE,
     val fontSize: Int,
     val feedLines: Int,
     val openCashDrawer: Boolean = false

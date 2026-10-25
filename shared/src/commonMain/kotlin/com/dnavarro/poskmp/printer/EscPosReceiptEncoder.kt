@@ -10,6 +10,7 @@ object EscPosReceiptEncoder {
 
     // ESC/POS Command Constants
     private val CMD_INIT = byteArrayOf(0x1B, 0x40) // ESC @
+    private val CMD_CANCEL_CHINESE_MODE = byteArrayOf(0x1C, 0x2E) // FS . (Disable 2-byte GBK Chinese mode)
     private val CMD_CODEPAGE_CP1252 = byteArrayOf(0x1B, 0x74, 0x10) // ESC t 16 (WPC1252 / Latin-1)
     private val CMD_FONT_A = byteArrayOf(0x1B, 0x4D, 0x00) // ESC M 0 (Standard 12x24 font)
     private val CMD_FONT_B = byteArrayOf(0x1B, 0x4D, 0x01) // ESC M 1 (Condensed 9x17 font)
@@ -19,6 +20,7 @@ object EscPosReceiptEncoder {
     private val CMD_EMPHASIS_ON = byteArrayOf(0x1B, 0x45, 0x01) // ESC E 1
     private val CMD_EMPHASIS_OFF = byteArrayOf(0x1B, 0x45, 0x00) // ESC E 0
     private val CMD_RESET_SCALE = byteArrayOf(0x1D, 0x21, 0x00) // GS ! 0 (1x1 normal scale)
+    private val CMD_DEFAULT_LINE_SPACING = byteArrayOf(0x1B, 0x32) // ESC 2 (Default line spacing)
     private val CMD_CUT_PAPER = byteArrayOf(0x1D, 0x56, 0x41, 0x00) // GS V A 0 (Feed and Cut)
     private val CMD_DRAWER_KICK = byteArrayOf(
         0x1B, 0x70, 0x00, 0x19, 0xFA.toByte() // ESC p 0 25 250 (Pin 2 standard drawer kick)
@@ -39,7 +41,7 @@ object EscPosReceiptEncoder {
     fun encode(
         document: ReceiptDocument,
         openDrawer: Boolean = document.openCashDrawer,
-        cutPaper: Boolean = true
+        cutPaper: Boolean = document.printerId?.trim()?.startsWith("bt://", ignoreCase = true) != true
     ): ByteArray {
         val output = mutableListOf<Byte>()
 
@@ -47,27 +49,31 @@ object EscPosReceiptEncoder {
             for (b in bytes) output.add(b)
         }
 
-        // 1. Initialize printer & set code page to CP1252 (Latin-1)
+        // 1. Initialize printer, disable Chinese GBK mode, & set code page
         append(CMD_INIT)
+        append(CMD_CANCEL_CHINESE_MODE)
         append(CMD_CODEPAGE_CP1252)
 
-        // 2. Select Font, Scaling (GS ! n), and Character Spacing (ESC SP n)
+        // 2. Select Font, Scaling (GS ! n), and Line Spacing (ESC 3 n)
         // Font A base: 12x24 dots (48 cols on 80mm)
         // Font B base: 9x17 dots (64 cols on 80mm)
-        // Font B @ 2x2: 18x34 dots (32 cols on 80mm) -> Perfect intermediate step between 1x1 and 2x2!
+        // Font B @ 2x2: 18x34 dots (32 cols on 80mm)
         // Font A @ 2x2: 24x48 dots (24 cols on 80mm)
-        val (fontCmd, scaleByte, charSpacing) = when {
-            document.fontSize <= 9 -> Triple(CMD_FONT_B, 0x00.toByte(), 0.toByte())
-            document.fontSize in 10..13 -> Triple(CMD_FONT_A, 0x00.toByte(), 0.toByte())
-            document.fontSize in 14..18 -> Triple(CMD_FONT_B, 0x11.toByte(), 0.toByte()) // 1.5x intermediate size (32 chars)
-            document.fontSize in 19..24 -> Triple(CMD_FONT_A, 0x11.toByte(), 0.toByte()) // 2x large size (24 chars)
-            document.fontSize in 25..29 -> Triple(CMD_FONT_A, 0x22.toByte(), 0.toByte()) // 3x extra large (16 chars)
-            else -> Triple(CMD_FONT_A, 0x33.toByte(), 0.toByte())
+        // Note: ESC @ sets default line spacing to ~30 dots, which is too tight for 24-dot and 34-dot tall fonts.
+        // We set explicit line spacing (ESC 3 n) with ~40% extra vertical breathing room per line.
+        val (fontCmd, scaleByte, lineSpacingDots) = when {
+            document.fontSize <= 9 -> Triple(CMD_FONT_B, 0x00.toByte(), 28) // 17-dot tall font -> 28-dot line height
+            document.fontSize in 10..13 -> Triple(CMD_FONT_A, 0x00.toByte(), 38) // 24-dot tall font -> 38-dot line height
+            document.fontSize in 14..18 -> Triple(CMD_FONT_B, 0x11.toByte(), 50) // 34-dot tall font -> 50-dot line height
+            document.fontSize in 19..24 -> Triple(CMD_FONT_A, 0x11.toByte(), 66) // 48-dot tall font -> 66-dot line height
+            document.fontSize in 25..29 -> Triple(CMD_FONT_A, 0x22.toByte(), 96) // 72-dot tall font -> 96-dot line height
+            else -> Triple(CMD_FONT_A, 0x33.toByte(), 124)
         }
 
         append(fontCmd)
         append(byteArrayOf(0x1D, 0x21, scaleByte))
-        append(byteArrayOf(0x1B, 0x20, charSpacing))
+        append(byteArrayOf(0x1B, 0x20, 0x00)) // ESC SP 0 (normal character spacing)
+        append(byteArrayOf(0x1B, 0x33, lineSpacingDots.toByte())) // ESC 3 n (line spacing in dots)
 
         // 4. Optional cash drawer kick
         if (openDrawer) {
@@ -101,7 +107,7 @@ object EscPosReceiptEncoder {
 
             // Write line text & newline
             if (text.isNotEmpty()) {
-                append(encodeTextToCp1252(text))
+                append(encodeTextToSafeAscii(text))
             }
             output.add(0x0A.toByte()) // LF
         }
@@ -111,15 +117,16 @@ object EscPosReceiptEncoder {
         append(CMD_EMPHASIS_OFF)
         append(CMD_RESET_SCALE)
         append(CMD_FONT_A)
+        append(CMD_DEFAULT_LINE_SPACING)
         append(byteArrayOf(0x1B, 0x20, 0x00)) // ESC SP 0
 
-        // 6. Feed lines
+        // 6. Feed lines for comfortable tear-off margin
         val feedCount = document.feedLines.coerceIn(0, 15)
         if (feedCount > 0) {
             append(byteArrayOf(0x1B, 0x64, feedCount.toByte())) // ESC d n
         }
 
-        // 7. Cut paper
+        // 7. Cut paper (skipped on portable Bluetooth printers without an auto-cutter blade)
         if (cutPaper) {
             append(CMD_CUT_PAPER)
         }
@@ -128,35 +135,121 @@ object EscPosReceiptEncoder {
     }
 
     /**
-     * Maps characters to CodePage 1252 (Western European Latin-1) for thermal printer compatibility.
+     * Returns the standard 203 DPI (8 dots/mm) printable width in dots (always a multiple of 8)
+     * for a given paper width in millimeters.
+     * - 58mm paper -> 384 dots (48 bytes/row)
+     * - 80mm paper -> 576 dots (72 bytes/row)
      */
-    fun encodeTextToCp1252(text: String): ByteArray {
-        val bytes = ByteArray(text.length)
+    fun printableWidthDots(paperWidthMm: Int): Int {
+        if (paperWidthMm <= 60) return 384
+        val printableMm = (paperWidthMm - 8).coerceIn(48, 72)
+        return printableMm * 8
+    }
+
+    /**
+     * Encodes a rendered 1-bit monochrome bitmap into chunked ESC/POS `GS v 0` raster bit-image bands.
+     * Slicing into 24-dot horizontal bands ensures compatibility with portable Bluetooth and USB printers
+     * that have small internal receive buffers.
+     */
+    fun encodeRasterBitmap(
+        widthDots: Int,
+        heightDots: Int,
+        openDrawer: Boolean,
+        feedLines: Int,
+        cutPaper: Boolean,
+        isPixelBlack: (x: Int, y: Int) -> Boolean
+    ): ByteArray {
+        val bytesPerRow = (widthDots + 7) / 8
+        val bandHeight = 24
+        val output = ArrayList<Byte>(heightDots * bytesPerRow + 128)
+
+        fun append(bytes: ByteArray) {
+            for (b in bytes) output.add(b)
+        }
+
+        // 1. Initialize printer & center alignment
+        append(CMD_INIT)
+        append(CMD_ALIGN_LEFT)
+
+        // 2. Optional cash drawer kick
+        if (openDrawer) {
+            append(CMD_DRAWER_KICK)
+        }
+
+        // 3. Emit horizontal bands using GS v 0 (0x1D 0x76 0x30 0x00 xL xH yL yH d1...dk)
+        var yStart = 0
+        while (yStart < heightDots) {
+            val currentBandHeight = minOf(bandHeight, heightDots - yStart)
+            output.add(0x1D.toByte())
+            output.add(0x76.toByte())
+            output.add(0x30.toByte())
+            output.add(0x00.toByte())
+            output.add((bytesPerRow and 0xFF).toByte())
+            output.add(((bytesPerRow shr 8) and 0xFF).toByte())
+            output.add((currentBandHeight and 0xFF).toByte())
+            output.add(((currentBandHeight shr 8) and 0xFF).toByte())
+
+            for (row in 0 until currentBandHeight) {
+                val y = yStart + row
+                for (byteIndex in 0 until bytesPerRow) {
+                    var slice = 0
+                    val baseX = byteIndex * 8
+                    for (bit in 0..7) {
+                        val x = baseX + bit
+                        if (x < widthDots && isPixelBlack(x, y)) {
+                            slice = slice or (1 shl (7 - bit))
+                        }
+                    }
+                    output.add(slice.toByte())
+                }
+            }
+            yStart += currentBandHeight
+        }
+
+        // 4. Feed lines for comfortable tear-off margin
+        val feedCount = feedLines.coerceIn(0, 15)
+        if (feedCount > 0) {
+            append(byteArrayOf(0x1B, 0x64, feedCount.toByte())) // ESC d n
+        }
+
+        // 5. Cut paper if supported
+        if (cutPaper) {
+            append(CMD_CUT_PAPER)
+        }
+
+        return output.toByteArray()
+    }
+
+    /**
+     * Normalizes Spanish accented characters and symbols into clean 7-bit ASCII (0x20..0x7E)
+     * so Chinese thermal printers with hardware-locked GBK ROMs never interpret high bytes (0x80..0xFF)
+     * as 2-byte Chinese characters or shift column alignment.
+     */
+    fun encodeTextToSafeAscii(text: String): ByteArray {
+        val sb = StringBuilder(text.length)
         for (i in text.indices) {
-            val c = text[i]
-            bytes[i] = when (c) {
-                in '\u0000'..'\u007F' -> c.code.toByte()
-                'á' -> 0xE1.toByte()
-                'é' -> 0xE9.toByte()
-                'í' -> 0xED.toByte()
-                'ó' -> 0xF3.toByte()
-                'ú' -> 0xFA.toByte()
-                'ñ' -> 0xF1.toByte()
-                'Á' -> 0xC1.toByte()
-                'É' -> 0xC9.toByte()
-                'Í' -> 0xCD.toByte()
-                'Ó' -> 0xD3.toByte()
-                'Ú' -> 0xDA.toByte()
-                'Ñ' -> 0xD1.toByte()
-                '¿' -> 0xBF.toByte()
-                '¡' -> 0xA1.toByte()
-                'ü' -> 0xFC.toByte()
-                'Ü' -> 0xDC.toByte()
-                '°' -> 0xB0.toByte()
-                '€' -> 0x80.toByte()
-                else -> if (c.code in 0x80..0xFF) c.code.toByte() else '?'.code.toByte()
+            when (val c = text[i]) {
+                in '\u0020'..'\u007E' -> sb.append(c)
+                'á', 'à', 'ä', 'â', 'ã' -> sb.append('a')
+                'é', 'è', 'ë', 'ê' -> sb.append('e')
+                'í', 'ì', 'ï', 'î' -> sb.append('i')
+                'ó', 'ò', 'ö', 'ô', 'õ' -> sb.append('o')
+                'ú', 'ù', 'ü', 'û' -> sb.append('u')
+                'ñ' -> sb.append('n')
+                'Á', 'À', 'Ä', 'Â', 'Ã' -> sb.append('A')
+                'É', 'È', 'Ë', 'Ê' -> sb.append('E')
+                'Í', 'Ì', 'Ï', 'Î' -> sb.append('I')
+                'Ó', 'Ò', 'Ö', 'Ô', 'Õ' -> sb.append('O')
+                'Ú', 'Ù', 'Ü', 'Û' -> sb.append('U')
+                'Ñ' -> sb.append('N')
+                '¿', '¡' -> {} // Omit inverted punctuation so no stray symbols print
+                '°' -> sb.append('.')
+                '€' -> sb.append("EUR")
+                '\t' -> sb.append(' ')
+                else -> if (c.code < 0x20) sb.append(' ') else sb.append('?')
             }
         }
-        return bytes
+        val ascii = sb.toString()
+        return ByteArray(ascii.length) { idx -> ascii[idx].code.toByte() }
     }
 }

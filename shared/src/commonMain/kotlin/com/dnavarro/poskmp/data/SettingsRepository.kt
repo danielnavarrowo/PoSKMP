@@ -16,6 +16,7 @@ import com.dnavarro.poskmp.domain.model.DEFAULT_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.MAX_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
+import com.dnavarro.poskmp.domain.model.ReceiptFontFamily
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.theme.DEFAULT_SEED_COLOR
 import com.dnavarro.poskmp.theme.DarkModeConfig
@@ -220,6 +221,7 @@ class SettingsRepositoryImpl(
         val PAPER_WIDTH_MM = intPreferencesKey("paper_width_mm")
         val PRINTER_TYPE = stringPreferencesKey("printer_type")
         val PRINTER_ID = stringPreferencesKey("printer_id")
+        val RECEIPT_FONT_FAMILY = stringPreferencesKey("receipt_font_family")
         val RECEIPT_FONT_SIZE = intPreferencesKey("receipt_font_size")
         val RECEIPT_FEED_LINES = intPreferencesKey("receipt_feed_lines")
         val RECEIPT_FOOTER = stringPreferencesKey("receipt_footer")
@@ -501,8 +503,14 @@ class SettingsRepositoryImpl(
             )
         },
         dataStore.data.map { it[PreferenceKeys.PRINTER_ID] },
-        dataStore.data.map { it[PreferenceKeys.TERMINAL_PREFIX] ?: "" }
-    ) { storeInfoList, printerSettings, printerId, terminalPrefix ->
+        dataStore.data.map { it[PreferenceKeys.TERMINAL_PREFIX] ?: "" },
+        dataStore.data.map {
+            val rawFont = it[PreferenceKeys.RECEIPT_FONT_FAMILY]
+            runCatching {
+                if (rawFont != null) ReceiptFontFamily.valueOf(rawFont) else ReceiptFontFamily.MONOSPACE
+            }.getOrDefault(ReceiptFontFamily.MONOSPACE)
+        }
+    ) { storeInfoList, printerSettings, printerId, terminalPrefix, fontFamily ->
         printerSettings.copy(
             storeName = storeInfoList[0],
             storeAddress = storeInfoList[1],
@@ -510,7 +518,8 @@ class SettingsRepositoryImpl(
             transferClabe = storeInfoList[3],
             transferBeneficiary = storeInfoList[4],
             printerId = printerId,
-            terminalPrefix = terminalPrefix
+            terminalPrefix = terminalPrefix,
+            fontFamily = fontFamily
         )
     }
 
@@ -851,6 +860,7 @@ class SettingsRepositoryImpl(
             settings.printerId?.trim()?.takeIf { it.isNotEmpty() }?.let {
                 preferences[PreferenceKeys.PRINTER_ID] = it
             } ?: preferences.remove(PreferenceKeys.PRINTER_ID)
+            preferences[PreferenceKeys.RECEIPT_FONT_FAMILY] = settings.fontFamily.name
             preferences[PreferenceKeys.RECEIPT_FONT_SIZE] = settings.fontSize.coerceIn(8, 32)
             preferences[PreferenceKeys.RECEIPT_FEED_LINES] = settings.feedLines.coerceIn(0, 10)
             preferences[PreferenceKeys.RECEIPT_FOOTER] = settings.footerMessage

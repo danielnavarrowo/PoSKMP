@@ -7,19 +7,28 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,24 +36,40 @@ import androidx.compose.runtime.getValue
 import kotlin.math.abs
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID
+import com.dnavarro.poskmp.domain.model.ReceiptFontFamily
 import com.dnavarro.poskmp.domain.model.ReceiptItem
 import com.dnavarro.poskmp.domain.model.ReceiptPrinterOption
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
 import com.dnavarro.poskmp.domain.receipt.ReceiptFormatter
+import com.dnavarro.poskmp.domain.usecase.PrintReceiptUseCase
 import com.dnavarro.poskmp.printer.getReceiptPrinterOptions
+import com.dnavarro.poskmp.printer.hasBluetoothPrinterPermission
+import com.dnavarro.poskmp.printer.openBluetoothSettings
+import com.dnavarro.poskmp.printer.rememberBluetoothPermissionRequester
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.googleFlexBody
 import com.dnavarro.poskmp.ui.components.SyncedSettingBadge
 import com.dnavarro.poskmp.ui.venta.ReceiptDocumentPreview
+import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.isAndroid
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.open_drawer_on_receipt_subtitle
 import poskmp.shared.generated.resources.open_drawer_on_receipt_title
@@ -322,9 +347,26 @@ fun PrinterSettingsSection(
 
     val systemDialogLabel = stringResource(Res.string.printer_system_dialog)
     var availablePrinters by remember { mutableStateOf<List<ReceiptPrinterOption>>(emptyList()) }
+    var hasBtPermission by remember { mutableStateOf(hasBluetoothPrinterPermission()) }
+    val coroutineScope = rememberCoroutineScope()
+    val printReceiptUseCase = koinInject<PrintReceiptUseCase>()
+    var isPrintingTest by remember { mutableStateOf(false) }
+    var testPrintStatus by remember { mutableStateOf<String?>(null) }
+    var testPrintIsError by remember { mutableStateOf(false) }
+
+    val requestBluetoothPermission = rememberBluetoothPermissionRequester { granted ->
+        hasBtPermission = granted
+        coroutineScope.launch {
+            availablePrinters = getReceiptPrinterOptions()
+        }
+    }
 
     LaunchedEffect(Unit) {
-        availablePrinters = getReceiptPrinterOptions()
+        if (isAndroid() && !hasBtPermission) {
+            requestBluetoothPermission()
+        } else {
+            availablePrinters = getReceiptPrinterOptions()
+        }
     }
 
     val printerOptions = remember(availablePrinters, systemDialogLabel) {
@@ -385,9 +427,9 @@ fun PrinterSettingsSection(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             shape = ShapeDefaults.topListItemShape,
-        ){
-
-            ReceiptDropdown(
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                ReceiptDropdown(
                     label = stringResource(Res.string.printer_selection_label),
                     selectedLabel = selectedPrinterName.ifBlank {
                         stringResource(Res.string.printer_no_printers_available)
@@ -399,6 +441,104 @@ fun PrinterSettingsSection(
                     }
                 )
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isAndroid()) {
+                        TextButton(
+                            onClick = { openBluetoothSettings() }
+                        ) {
+                            Text("Vincular en Bluetooth")
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            if (isAndroid() && !hasBluetoothPrinterPermission()) {
+                                requestBluetoothPermission()
+                            } else {
+                                coroutineScope.launch {
+                                    availablePrinters = getReceiptPrinterOptions()
+                                }
+                            }
+                        }
+                    ) {
+                        Text(if (!isAndroid() || hasBtPermission) "Actualizar lista" else "Permitir Bluetooth")
+                    }
+                }
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            shape = ShapeDefaults.middleListItemShape
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "Fuente del ticket",
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Tipografía utilizada para imprimir los tickets de compra",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val fontOptions = listOf(
+                        Pair(ReceiptFontFamily.MONOSPACE, "Monoespaciada"),
+                        Pair(ReceiptFontFamily.MANROPE, "Manrope")
+                    )
+                    fontOptions.forEachIndexed { index, (fontOption, label) ->
+                        val isSelected = settings.fontFamily == fontOption
+                        ToggleButton(
+                            checked = isSelected,
+                            onCheckedChange = { onSettingsChange(settings.copy(fontFamily = fontOption)) },
+                            colors = ToggleButtonDefaults.colors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                fontOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = when (fontOption) {
+                                        ReceiptFontFamily.MONOSPACE -> FontFamily.Monospace
+                                        ReceiptFontFamily.MANROPE -> googleFlexBody
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -601,12 +741,72 @@ fun PrinterSettingsSection(
             shape = ShapeDefaults.bottomListItemShape
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = stringResource(Res.string.receipt_preview_settings_title),
-                    fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.receipt_preview_settings_title),
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Button(
+                        onClick = {
+                            if (isPrintingTest) return@Button
+                            isPrintingTest = true
+                            testPrintStatus = null
+                            coroutineScope.launch {
+                                val testDoc = ReceiptFormatter.create(
+                                    folio = 1001L,
+                                    createdAt = currentTimeMillis(),
+                                    items = listOf(
+                                        ReceiptItem("Producto de prueba", 2.0, 12.0, 24.0),
+                                        ReceiptItem("Artículo con ñ y acentos", 1.0, 24.0, 24.0)
+                                    ),
+                                    total = 48.0,
+                                    paid = 50.0,
+                                    change = 2.0,
+                                    paymentMethod = "EFECTIVO",
+                                    customerName = null,
+                                    settings = settings
+                                )
+                                val result = printReceiptUseCase(testDoc)
+                                isPrintingTest = false
+                                if (result.isSuccess) {
+                                    testPrintIsError = false
+                                    testPrintStatus = "Ticket de prueba enviado a la impresora."
+                                } else {
+                                    testPrintIsError = true
+                                    testPrintStatus = result.exceptionOrNull()?.message
+                                        ?: "Error al imprimir el ticket de prueba."
+                                }
+                            }
+                        },
+                        enabled = !isPrintingTest
+                    ) {
+                        if (isPrintingTest) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Imprimiendo...")
+                        } else {
+                            Text("Imprimir prueba")
+                        }
+                    }
+                }
+                if (testPrintStatus != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = testPrintStatus ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (testPrintIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 ReceiptDocumentPreview(
                     receipt = previewReceipt

@@ -70,6 +70,7 @@ data class VentaUiState(
     val lastReceipt: ReceiptDocument? = null,
     val isPrintingReceipt: Boolean = false,
     val receiptPrintError: Boolean = false,
+    val receiptPrintErrorMessage: String? = null,
     val receiptPrintSuccessful: Boolean = false,
     val activeShift: com.dnavarro.poskmp.domain.model.CashierShift? = null,
     val cashiers: List<com.dnavarro.poskmp.domain.model.Cashier> = emptyList(),

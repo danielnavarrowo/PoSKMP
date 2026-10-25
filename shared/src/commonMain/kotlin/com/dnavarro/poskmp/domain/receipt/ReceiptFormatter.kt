@@ -92,9 +92,19 @@ object ReceiptFormatter {
         fun twoColumn(left: String, right: String, emphasized: Boolean = false) {
             val space = (width - left.length - right.length).coerceAtLeast(1)
             lines += ReceiptLine(
-                left + " ".repeat(space) + right,
-                ReceiptAlignment.LEFT,
-                emphasized
+                text = left + " ".repeat(space) + right,
+                alignment = ReceiptAlignment.LEFT,
+                emphasized = emphasized,
+                leftText = left,
+                rightText = right
+            )
+        }
+
+        fun separator() {
+            lines += ReceiptLine(
+                text = "-".repeat(width),
+                alignment = ReceiptAlignment.LEFT,
+                isSeparator = true
             )
         }
 
@@ -110,7 +120,7 @@ object ReceiptFormatter {
         keyValue("Folio", folioDisplay, emphasized = true)
         keyValue("Fecha", formatEpochMillisToDateTime(createdAt))
         customerName?.trim()?.takeIf { it.isNotEmpty() }?.let { keyValue("Cliente", it) }
-        lines += ReceiptLine("-".repeat(width))
+        separator()
 
         // 3. Items List
         items.forEach { item ->
@@ -124,12 +134,14 @@ object ReceiptFormatter {
             val space = (width - leftText.length - priceText.length).coerceAtLeast(1)
 
             lines += ReceiptLine(
-                leftText + " ".repeat(space) + priceText,
-                ReceiptAlignment.LEFT
+                text = leftText + " ".repeat(space) + priceText,
+                alignment = ReceiptAlignment.LEFT,
+                leftText = fullLeftText,
+                rightText = priceText
             )
         }
 
-        lines += ReceiptLine("-".repeat(width))
+        separator()
 
         // 4. Products and Pieces count
         val totalProducts = items.size
@@ -147,7 +159,7 @@ object ReceiptFormatter {
                 (totalWithoutDiscount > total + 0.001)
 
         if (hasDiscount) {
-            lines += ReceiptLine("-".repeat(width))
+            separator()
             twoColumn("Total sin desc:", money(totalWithoutDiscount))
             val savings = (totalWithoutDiscount - total).coerceAtLeast(0.0)
             if (savings > 0.001) {
@@ -156,7 +168,7 @@ object ReceiptFormatter {
         }
 
         // 6. Total
-        lines += ReceiptLine("-".repeat(width))
+        separator()
         twoColumn("TOTAL", totalText(total), emphasized = true)
 
         // 7. Payment breakdown
@@ -184,6 +196,7 @@ object ReceiptFormatter {
             paperWidthMm = settings.paperWidthMm.coerceIn(55, 105),
             printerType = settings.printerType,
             printerId = settings.printerId,
+            fontFamily = settings.fontFamily,
             fontSize = settings.fontSize.coerceIn(8, 32),
             feedLines = settings.feedLines.coerceIn(0, 10),
             openCashDrawer = settings.openCashDrawerOnCashSale

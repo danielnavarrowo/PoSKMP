@@ -200,6 +200,7 @@ import poskmp.shared.generated.resources.transfer_info_title
 import poskmp.shared.generated.resources.transfer_no_data_configured
 import poskmp.shared.generated.resources.unit_price_label
 import poskmp.shared.generated.resources.unregistered_name_placeholder
+import poskmp.shared.generated.resources.warning
 import poskmp.shared.generated.resources.weight_kg_label
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -1024,6 +1025,79 @@ fun VentaScreen(
                         }
                         IconButton(
                             onClick = { showBarcodeNotFoundQuery = null },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.close),
+                                contentDescription = stringResource(Res.string.close_button),
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Non-blocking Receipt Print Error Notification with Retry
+            AnimatedVisibility(
+                visible = uiState.receiptPrintError,
+                enter = fadeIn(spring(stiffness = Spring.StiffnessMediumLow)) + slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+                ),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+                    .zIndex(101f)
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    shape = ShapeDefaults.cardShape,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .widthIn(max = 520.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.warning),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Error al imprimir el ticket",
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = uiState.receiptPrintErrorMessage
+                                    ?: "No se pudo conectar con la impresora. Verifica que esté encendida.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
+                            )
+                        }
+                        TextButton(
+                            onClick = { viewModel.retryLastReceiptPrint() },
+                            enabled = !uiState.isPrintingReceipt
+                        ) {
+                            Text(
+                                text = if (uiState.isPrintingReceipt) "Imprimiendo..." else "Reintentar",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        IconButton(
+                            onClick = { viewModel.dismissReceiptPrintError() },
                             modifier = Modifier.size(28.dp)
                         ) {
                             Icon(

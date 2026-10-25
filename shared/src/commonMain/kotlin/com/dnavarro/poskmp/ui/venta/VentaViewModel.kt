@@ -108,6 +108,7 @@ class VentaViewModel(
     private data class ReceiptPrintInternalState(
         val isPrinting: Boolean = false,
         val hasError: Boolean = false,
+        val errorMessage: String? = null,
         val successful: Boolean = false
     )
 
@@ -383,6 +384,7 @@ class VentaViewModel(
             lastReceipt = lastReceipt,
             isPrintingReceipt = printState.isPrinting,
             receiptPrintError = printState.hasError,
+            receiptPrintErrorMessage = printState.errorMessage,
             receiptPrintSuccessful = printState.successful,
             activeShift = shiftState.activeShift,
             cashiers = shiftState.cashiers,
@@ -948,6 +950,7 @@ class VentaViewModel(
                 val result = printReceiptUseCase(receipt)
                 _printState.value = ReceiptPrintInternalState(
                     hasError = result.isFailure,
+                    errorMessage = result.exceptionOrNull()?.message,
                     successful = result.isSuccess
                 )
             }
@@ -961,6 +964,23 @@ class VentaViewModel(
             syncRepository.syncAll()
         }
         return folio
+    }
+
+    fun retryLastReceiptPrint() {
+        val receipt = _lastReceipt.value ?: return
+        viewModelScope.launch {
+            _printState.value = ReceiptPrintInternalState(isPrinting = true)
+            val result = printReceiptUseCase(receipt)
+            _printState.value = ReceiptPrintInternalState(
+                hasError = result.isFailure,
+                errorMessage = result.exceptionOrNull()?.message,
+                successful = result.isSuccess
+            )
+        }
+    }
+
+    fun dismissReceiptPrintError() {
+        _printState.value = ReceiptPrintInternalState()
     }
 
 }
