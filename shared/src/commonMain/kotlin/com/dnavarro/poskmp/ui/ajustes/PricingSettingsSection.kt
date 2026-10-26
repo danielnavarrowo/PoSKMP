@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -61,8 +62,6 @@ import poskmp.shared.generated.resources.enable_barcode_lookup_subtitle
 import poskmp.shared.generated.resources.enable_barcode_lookup_title
 import poskmp.shared.generated.resources.enable_gemini_grounding_subtitle
 import poskmp.shared.generated.resources.enable_gemini_grounding_title
-import poskmp.shared.generated.resources.enable_rounding_subtitle
-import poskmp.shared.generated.resources.enable_rounding_title
 import poskmp.shared.generated.resources.gemini_api_key_helper
 import poskmp.shared.generated.resources.gemini_api_key_label
 import poskmp.shared.generated.resources.gemini_api_key_placeholder
@@ -76,10 +75,14 @@ import poskmp.shared.generated.resources.google_search_engine_id_placeholder
 import poskmp.shared.generated.resources.prioritize_delivery_price_subtitle
 import poskmp.shared.generated.resources.prioritize_delivery_price_title
 import poskmp.shared.generated.resources.retail_margin_label
-import poskmp.shared.generated.resources.round_product_prices_subtitle
-import poskmp.shared.generated.resources.round_product_prices_title
+import poskmp.shared.generated.resources.round_delivery_price_subtitle
+import poskmp.shared.generated.resources.round_delivery_price_title
+import poskmp.shared.generated.resources.round_retail_price_subtitle
+import poskmp.shared.generated.resources.round_retail_price_title
 import poskmp.shared.generated.resources.round_ticket_total_subtitle
 import poskmp.shared.generated.resources.round_ticket_total_title
+import poskmp.shared.generated.resources.round_wholesale_price_subtitle
+import poskmp.shared.generated.resources.round_wholesale_price_title
 import poskmp.shared.generated.resources.rounding_section_title
 import poskmp.shared.generated.resources.supabase_hide_key
 import poskmp.shared.generated.resources.supabase_show_key
@@ -93,10 +96,12 @@ fun PricingSettingsSection(
     onDefaultWholesaleMarginChange: (Double) -> Unit,
     defaultDeliveryMargin: Double = 0.0,
     onDefaultDeliveryMarginChange: (Double) -> Unit = {},
-    isRoundingEnabled: Boolean,
-    onIsRoundingEnabledChange: (Boolean) -> Unit,
-    roundProductPrices: Boolean,
-    onRoundProductPricesChange: (Boolean) -> Unit,
+    roundRetailPrice: Boolean,
+    onRoundRetailPriceChange: (Boolean) -> Unit,
+    roundWholesalePrice: Boolean,
+    onRoundWholesalePriceChange: (Boolean) -> Unit,
+    roundDeliveryPrice: Boolean,
+    onRoundDeliveryPriceChange: (Boolean) -> Unit,
     roundTicketTotal: Boolean,
     onRoundTicketTotalChange: (Boolean) -> Unit,
     disallowCardPaymentOnWholesale: Boolean,
@@ -376,116 +381,37 @@ fun PricingSettingsSection(
             )
             SyncedSettingBadge()
         }
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
-            ),
-            shape = if (isRoundingEnabled) ShapeDefaults.topListItemShape else ShapeDefaults.cardShape,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(
-                        text = stringResource(Res.string.enable_rounding_title),
-                        fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = stringResource(Res.string.enable_rounding_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Switch(
-                    checked = isRoundingEnabled,
-                    onCheckedChange = onIsRoundingEnabledChange
-                )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isRoundingEnabled,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Column {
-                Spacer(modifier = Modifier.height(2.dp))
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    ),
-                    shape = ShapeDefaults.middleListItemShape,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                            Text(
-                                text = stringResource(Res.string.round_product_prices_title),
-                                fontWeight = FontWeight.SemiBold,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = stringResource(Res.string.round_product_prices_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Switch(
-                            checked = roundProductPrices,
-                            onCheckedChange = onRoundProductPricesChange
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(2.dp))
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    ),
-                    shape = ShapeDefaults.bottomListItemShape,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                            Text(
-                                text = stringResource(Res.string.round_ticket_total_title),
-                                fontWeight = FontWeight.SemiBold,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = stringResource(Res.string.round_ticket_total_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = roundTicketTotal,
-                            onCheckedChange = onRoundTicketTotalChange
-                        )
-                    }
-                }
-            }
-        }
+        RoundingSwitchCard(
+            title = stringResource(Res.string.round_retail_price_title),
+            subtitle = stringResource(Res.string.round_retail_price_subtitle),
+            checked = roundRetailPrice,
+            onCheckedChange = onRoundRetailPriceChange,
+            shape = ShapeDefaults.topListItemShape
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        RoundingSwitchCard(
+            title = stringResource(Res.string.round_wholesale_price_title),
+            subtitle = stringResource(Res.string.round_wholesale_price_subtitle),
+            checked = roundWholesalePrice,
+            onCheckedChange = onRoundWholesalePriceChange,
+            shape = ShapeDefaults.middleListItemShape
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        RoundingSwitchCard(
+            title = stringResource(Res.string.round_delivery_price_title),
+            subtitle = stringResource(Res.string.round_delivery_price_subtitle),
+            checked = roundDeliveryPrice,
+            onCheckedChange = onRoundDeliveryPriceChange,
+            shape = ShapeDefaults.middleListItemShape
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        RoundingSwitchCard(
+            title = stringResource(Res.string.round_ticket_total_title),
+            subtitle = stringResource(Res.string.round_ticket_total_subtitle),
+            checked = roundTicketTotal,
+            onCheckedChange = onRoundTicketTotalChange,
+            shape = ShapeDefaults.bottomListItemShape
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
         Row(
@@ -790,6 +716,49 @@ fun PricingSettingsSection(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RoundingSwitchCard(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    shape: Shape,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = shape,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
         }
     }
 }

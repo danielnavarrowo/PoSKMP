@@ -2,6 +2,7 @@ package com.dnavarro.poskmp.domain.usecase
 
 import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.db.Products
+import com.dnavarro.poskmp.domain.model.PriceRoundingConfig
 import com.dnavarro.poskmp.ui.BulkProductModification
 import com.dnavarro.poskmp.ui.applyBulkProductModification
 import com.dnavarro.poskmp.util.currentTimeMillis
@@ -15,7 +16,7 @@ class ApplyBulkModificationUseCase(
     suspend operator fun invoke(
         selectedIds: Set<String>,
         modification: BulkProductModification,
-        roundProductPrices: Boolean = false,
+        rounding: PriceRoundingConfig = PriceRoundingConfig(),
         onProgress: ((current: Int, total: Int) -> Unit)? = null
     ) {
         if (selectedIds.isEmpty()) return
@@ -35,7 +36,7 @@ class ApplyBulkModificationUseCase(
             val updated = applyBulkProductModification(
                 product = product,
                 modification = modification,
-                roundProductPrices = roundProductPrices
+                rounding = rounding
             )
             if (updated == null) {
                 toDeleteIds.add(product.id)

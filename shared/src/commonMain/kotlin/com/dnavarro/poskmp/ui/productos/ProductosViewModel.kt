@@ -8,6 +8,7 @@ import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.DeviceRole
+import com.dnavarro.poskmp.domain.model.PriceRoundingConfig
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.domain.usecase.ApplyBulkModificationUseCase
 import com.dnavarro.poskmp.domain.usecase.GetProductsUseCase
@@ -60,8 +61,9 @@ private data class ProductSettingsConfig(
     val defaultRetailMargin: Double,
     val defaultWholesaleMargin: Double,
     val defaultDeliveryMargin: Double,
-    val isRoundingEnabled: Boolean,
-    val roundProductPrices: Boolean,
+    val roundRetailPrice: Boolean,
+    val roundWholesalePrice: Boolean,
+    val roundDeliveryPrice: Boolean,
     val autoLookupBarcodeProducts: Boolean,
     val geminiGroundingEnabled: Boolean,
     val geminiApiKey: String,
@@ -213,8 +215,11 @@ class ProductosViewModel(
                 settingsRepository.defaultWholesaleMarginFlow,
                 settingsRepository.defaultDeliveryMarginFlow
             ) { retail, wholesale, delivery -> Triple(retail, wholesale, delivery) },
-            settingsRepository.isRoundingEnabledFlow,
-            settingsRepository.roundProductPricesFlow,
+            combine(
+                settingsRepository.roundRetailPriceFlow,
+                settingsRepository.roundWholesalePriceFlow,
+                settingsRepository.roundDeliveryPriceFlow
+            ) { retail, wholesale, delivery -> PriceRoundingConfig(retail, wholesale, delivery) },
             combine(
                 settingsRepository.autoLookupBarcodeProductsFlow,
                 settingsRepository.geminiGroundingEnabledFlow,
@@ -225,13 +230,14 @@ class ProductosViewModel(
                 BarcodeAndAiSettings(autoLookup, geminiEnabled, geminiKey, searchEngineId, searchApiKey)
             },
             settingsRepository.deviceRoleFlow
-        ) { (retail, wholesale, delivery), isRounding, roundPrices, aiSettings, role ->
+        ) { (retail, wholesale, delivery), rounding, aiSettings, role ->
             ProductSettingsConfig(
                 defaultRetailMargin = retail,
                 defaultWholesaleMargin = wholesale,
                 defaultDeliveryMargin = delivery,
-                isRoundingEnabled = isRounding,
-                roundProductPrices = roundPrices,
+                roundRetailPrice = rounding.retail,
+                roundWholesalePrice = rounding.wholesale,
+                roundDeliveryPrice = rounding.delivery,
                 autoLookupBarcodeProducts = aiSettings.autoLookupBarcodeProducts,
                 geminiGroundingEnabled = aiSettings.geminiGroundingEnabled,
                 geminiApiKey = aiSettings.geminiApiKey,
@@ -261,7 +267,9 @@ class ProductosViewModel(
             defaultRetailMargin = settings.defaultRetailMargin,
             defaultWholesaleMargin = settings.defaultWholesaleMargin,
             defaultDeliveryMargin = settings.defaultDeliveryMargin,
-            roundProductPrices = settings.isRoundingEnabled && settings.roundProductPrices,
+            roundRetailPrice = settings.roundRetailPrice,
+            roundWholesalePrice = settings.roundWholesalePrice,
+            roundDeliveryPrice = settings.roundDeliveryPrice,
             autoLookupBarcodeProducts = settings.autoLookupBarcodeProducts,
             geminiGroundingEnabled = settings.geminiGroundingEnabled,
             geminiApiKey = settings.geminiApiKey,
@@ -399,7 +407,11 @@ class ProductosViewModel(
                 applyBulkModificationUseCase(
                     selectedIds = selectedIds,
                     modification = modification,
-                    roundProductPrices = state.roundProductPrices,
+                    rounding = PriceRoundingConfig(
+                        retail = state.roundRetailPrice,
+                        wholesale = state.roundWholesalePrice,
+                        delivery = state.roundDeliveryPrice
+                    ),
                     onProgress = { current, count ->
                         _displayState.update {
                             it.copy(

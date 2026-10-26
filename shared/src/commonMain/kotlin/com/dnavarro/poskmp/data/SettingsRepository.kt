@@ -63,8 +63,6 @@ interface SettingsRepository {
     val defaultRetailMarginFlow: Flow<Double>
     val defaultWholesaleMarginFlow: Flow<Double>
     val defaultDeliveryMarginFlow: Flow<Double>
-    val isRoundingEnabledFlow: Flow<Boolean>
-    val roundProductPricesFlow: Flow<Boolean>
     val roundRetailPriceFlow: Flow<Boolean>
     val roundWholesalePriceFlow: Flow<Boolean>
     val roundDeliveryPriceFlow: Flow<Boolean>
@@ -116,8 +114,6 @@ interface SettingsRepository {
     suspend fun setDefaultRetailMargin(margin: Double)
     suspend fun setDefaultWholesaleMargin(margin: Double)
     suspend fun setDefaultDeliveryMargin(margin: Double)
-    suspend fun setIsRoundingEnabled(enabled: Boolean)
-    suspend fun setRoundProductPrices(enabled: Boolean)
     suspend fun setRoundRetailPrice(enabled: Boolean)
     suspend fun setRoundWholesalePrice(enabled: Boolean)
     suspend fun setRoundDeliveryPrice(enabled: Boolean)
@@ -139,8 +135,9 @@ interface SettingsRepository {
         defaultRetailMargin: Double,
         defaultWholesaleMargin: Double,
         defaultDeliveryMargin: Double = 0.0,
-        isRoundingEnabled: Boolean,
-        roundProductPrices: Boolean,
+        roundRetailPrice: Boolean,
+        roundWholesalePrice: Boolean,
+        roundDeliveryPrice: Boolean,
         roundTicketTotal: Boolean,
         disallowCardPaymentOnWholesale: Boolean = false,
         storeName: String = "",
@@ -257,6 +254,39 @@ class SettingsRepositoryImpl(
             try {
                 getOrCreateDeviceId()
             } catch (_: Exception) {}
+            try {
+                migrateLegacyRoundingSettings()
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * One-time migration: the former "master" rounding switch ([PreferenceKeys.IS_ROUNDING_ENABLED]) and the
+     * shared product-price switch ([PreferenceKeys.ROUND_PRODUCT_PRICES]) were replaced by independent switches
+     * (retail, wholesale, delivery and ticket total). The effective legacy behavior (master AND sub-switch) is
+     * preserved so no user-visible rounding changes after updating.
+     */
+    private suspend fun migrateLegacyRoundingSettings() {
+        dataStore.edit { preferences ->
+            val legacyMaster = preferences[PreferenceKeys.IS_ROUNDING_ENABLED]
+            val legacyProducts = preferences[PreferenceKeys.ROUND_PRODUCT_PRICES]
+            if (legacyMaster == null && legacyProducts == null) return@edit
+
+            val master = legacyMaster ?: false
+            val productsEnabled = legacyProducts
+                ?: preferences[PreferenceKeys.ROUND_RETAIL_PRICE]
+                ?: preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE]
+                ?: preferences[PreferenceKeys.ROUND_DELIVERY_PRICE]
+                ?: false
+            val effectiveProducts = master && productsEnabled
+            val effectiveTicket = master && (preferences[PreferenceKeys.ROUND_TICKET_TOTAL] ?: false)
+
+            preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = effectiveProducts
+            preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = effectiveProducts
+            preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] = effectiveProducts
+            preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = effectiveTicket
+            preferences.remove(PreferenceKeys.IS_ROUNDING_ENABLED)
+            preferences.remove(PreferenceKeys.ROUND_PRODUCT_PRICES)
         }
     }
 
@@ -370,21 +400,17 @@ class SettingsRepositoryImpl(
         preferences[PreferenceKeys.DEFAULT_DELIVERY_MARGIN] ?: 0.0
     }
 
-    override val isRoundingEnabledFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[PreferenceKeys.IS_ROUNDING_ENABLED] ?: false
+    override val roundRetailPriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.ROUND_RETAIL_PRICE] ?: false
     }
 
-    override val roundProductPricesFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[PreferenceKeys.ROUND_PRODUCT_PRICES]
-            ?: preferences[PreferenceKeys.ROUND_RETAIL_PRICE]
-            ?: preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE]
-            ?: preferences[PreferenceKeys.ROUND_DELIVERY_PRICE]
-            ?: false
+    override val roundWholesalePriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] ?: false
     }
 
-    override val roundRetailPriceFlow: Flow<Boolean> get() = roundProductPricesFlow
-    override val roundWholesalePriceFlow: Flow<Boolean> get() = roundProductPricesFlow
-    override val roundDeliveryPriceFlow: Flow<Boolean> get() = roundProductPricesFlow
+    override val roundDeliveryPriceFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] ?: false
+    }
 
     override val roundTicketTotalFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.ROUND_TICKET_TOTAL] ?: false
@@ -650,26 +676,26 @@ class SettingsRepositoryImpl(
         }
     }
 
-    override suspend fun setIsRoundingEnabled(enabled: Boolean) {
+    override suspend fun setRoundRetailPrice(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[PreferenceKeys.IS_ROUNDING_ENABLED] = enabled
+            preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = enabled
             preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
 
-    override suspend fun setRoundProductPrices(enabled: Boolean) {
+    override suspend fun setRoundWholesalePrice(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[PreferenceKeys.ROUND_PRODUCT_PRICES] = enabled
-            preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = enabled
             preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = enabled
+            preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
+        }
+    }
+
+    override suspend fun setRoundDeliveryPrice(enabled: Boolean) {
+        dataStore.edit { preferences ->
             preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] = enabled
             preferences[PreferenceKeys.BUSINESS_SETTINGS_UPDATED_AT] = currentTimeMillis()
         }
     }
-
-    override suspend fun setRoundRetailPrice(enabled: Boolean) = setRoundProductPrices(enabled)
-    override suspend fun setRoundWholesalePrice(enabled: Boolean) = setRoundProductPrices(enabled)
-    override suspend fun setRoundDeliveryPrice(enabled: Boolean) = setRoundProductPrices(enabled)
 
     override suspend fun setRoundTicketTotal(enabled: Boolean) {
         dataStore.edit { preferences ->
@@ -768,8 +794,9 @@ class SettingsRepositoryImpl(
         defaultRetailMargin: Double,
         defaultWholesaleMargin: Double,
         defaultDeliveryMargin: Double,
-        isRoundingEnabled: Boolean,
-        roundProductPrices: Boolean,
+        roundRetailPrice: Boolean,
+        roundWholesalePrice: Boolean,
+        roundDeliveryPrice: Boolean,
         roundTicketTotal: Boolean,
         disallowCardPaymentOnWholesale: Boolean,
         storeName: String,
@@ -784,11 +811,9 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.DEFAULT_RETAIL_MARGIN] = defaultRetailMargin
             preferences[PreferenceKeys.DEFAULT_WHOLESALE_MARGIN] = defaultWholesaleMargin
             preferences[PreferenceKeys.DEFAULT_DELIVERY_MARGIN] = defaultDeliveryMargin
-            preferences[PreferenceKeys.IS_ROUNDING_ENABLED] = isRoundingEnabled
-            preferences[PreferenceKeys.ROUND_PRODUCT_PRICES] = roundProductPrices
-            preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = roundProductPrices
-            preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = roundProductPrices
-            preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] = roundProductPrices
+            preferences[PreferenceKeys.ROUND_RETAIL_PRICE] = roundRetailPrice
+            preferences[PreferenceKeys.ROUND_WHOLESALE_PRICE] = roundWholesalePrice
+            preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] = roundDeliveryPrice
             preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = roundTicketTotal
             preferences[PreferenceKeys.DISALLOW_CARD_PAYMENT_ON_WHOLESALE] = disallowCardPaymentOnWholesale
             preferences[PreferenceKeys.STORE_NAME] = storeName

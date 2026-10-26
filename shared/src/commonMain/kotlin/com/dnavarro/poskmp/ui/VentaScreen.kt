@@ -2257,11 +2257,12 @@ fun VentaScreen(
                     val qtyVal = unregisteredQuantityState.text.toString().toDoubleOrNull()
                     val isQtyValid = qtyVal != null && qtyVal > 0
                     if (isNameValid && isPriceValid && isQtyValid) {
+                        val effectivePrice = if (uiState.roundRetailPrice && saveUnregisteredToDatabase) roundPrice(priceVal) else priceVal
                         val dummyProduct = Products(
                             id = "UNREG-${generateUUID()}",
                             codigos = "[]",
                             nombre = unregisteredNameState.text.toString().trim(),
-                            precio = priceVal,
+                            precio = effectivePrice,
                             costo = 0.0,
                             categoria = notRegisteredCategory,
                             activo = 1L,
@@ -2382,7 +2383,7 @@ fun VentaScreen(
                 Button(
                     onClick = {
                         if (isNameValid && isPriceValid && isQtyValid) {
-                            val effectivePrice = if (uiState.roundProductPrices && saveUnregisteredToDatabase) roundPrice(priceVal) else priceVal
+                            val effectivePrice = if (uiState.roundRetailPrice && saveUnregisteredToDatabase) roundPrice(priceVal) else priceVal
                             val dummyProduct = Products(
                                 id = "UNREG-${generateUUID()}",
                                 codigos = "[]",
@@ -2439,7 +2440,9 @@ fun VentaScreen(
             defaultRetailMarginPercentage = uiState.defaultRetailMargin,
             defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
             defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
-            roundProductPrices = uiState.roundProductPrices,
+            roundRetailPrice = uiState.roundRetailPrice,
+            roundWholesalePrice = uiState.roundWholesalePrice,
+            roundDeliveryPrice = uiState.roundDeliveryPrice,
             autoLookupBarcodeProducts = uiState.autoLookupBarcodeProducts,
             geminiGroundingEnabled = uiState.geminiGroundingEnabled,
             geminiApiKey = uiState.geminiApiKey,

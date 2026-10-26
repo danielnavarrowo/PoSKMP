@@ -265,13 +265,18 @@ class VentaViewModel(
         combine(
             combine(
                 combine(
-                    settingsRepository.isRoundingEnabledFlow,
-                    settingsRepository.roundProductPricesFlow,
-                    settingsRepository.roundTicketTotalFlow,
+                    combine(
+                        settingsRepository.roundRetailPriceFlow,
+                        settingsRepository.roundWholesalePriceFlow,
+                        settingsRepository.roundDeliveryPriceFlow,
+                        settingsRepository.roundTicketTotalFlow
+                    ) { roundRetailPrice, roundWholesalePrice, roundDeliveryPrice, roundTicketTotal ->
+                        VentaRoundingConfig(roundRetailPrice, roundWholesalePrice, roundDeliveryPrice, roundTicketTotal)
+                    },
                     settingsRepository.disallowCardPaymentOnWholesaleFlow,
                     settingsRepository.prioritizeDeliveryPriceFlow
-                ) { isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
-                    Tuple5(isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
+                ) { rounding, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
+                    Triple(rounding, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice)
                 },
                 combine(
                     combine(
@@ -294,12 +299,13 @@ class VentaViewModel(
                 ) { autoWholesale, aiSearch ->
                     Pair(autoWholesale, aiSearch)
                 }
-            ) { (isRoundingEnabled, roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
+            ) { (rounding, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
                 (autoWholesale, aiSearch) ->
                 VentaPricingConfig(
-                    isRoundingEnabled = isRoundingEnabled,
-                    roundProductPrices = roundProductPrices,
-                    roundTicketTotal = roundTicketTotal,
+                    roundRetailPrice = rounding.retail,
+                    roundWholesalePrice = rounding.wholesale,
+                    roundDeliveryPrice = rounding.delivery,
+                    roundTicketTotal = rounding.ticketTotal,
                     disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
                     prioritizeDeliveryPrice = prioritizeDeliveryPrice,
                     autoWholesaleByQuantity = autoWholesale.a,
@@ -355,9 +361,10 @@ class VentaViewModel(
             defaultRetailMargin = catalogConfig.defaultRetailMargin,
             defaultWholesaleMargin = catalogConfig.defaultWholesaleMargin,
             defaultDeliveryMargin = catalogConfig.defaultDeliveryMargin,
-            isRoundingEnabled = pricingSettings.isRoundingEnabled,
-            roundProductPrices = pricingSettings.isRoundingEnabled && pricingSettings.roundProductPrices,
-            roundTicketTotal = pricingSettings.isRoundingEnabled && pricingSettings.roundTicketTotal,
+            roundRetailPrice = pricingSettings.roundRetailPrice,
+            roundWholesalePrice = pricingSettings.roundWholesalePrice,
+            roundDeliveryPrice = pricingSettings.roundDeliveryPrice,
+            roundTicketTotal = pricingSettings.roundTicketTotal,
             disallowCardPaymentOnWholesale = pricingSettings.disallowCardPaymentOnWholesale,
             prioritizeDeliveryPrice = pricingSettings.prioritizeDeliveryPrice,
             autoWholesaleByQuantity = pricingSettings.autoWholesaleByQuantity,
@@ -529,9 +536,17 @@ class VentaViewModel(
         val googleSearchApiKey: String
     )
 
+    private data class VentaRoundingConfig(
+        val retail: Boolean,
+        val wholesale: Boolean,
+        val delivery: Boolean,
+        val ticketTotal: Boolean
+    )
+
     private data class VentaPricingConfig(
-        val isRoundingEnabled: Boolean = false,
-        val roundProductPrices: Boolean = false,
+        val roundRetailPrice: Boolean = false,
+        val roundWholesalePrice: Boolean = false,
+        val roundDeliveryPrice: Boolean = false,
         val roundTicketTotal: Boolean = false,
         val disallowCardPaymentOnWholesale: Boolean = false,
         val prioritizeDeliveryPrice: Boolean = false,

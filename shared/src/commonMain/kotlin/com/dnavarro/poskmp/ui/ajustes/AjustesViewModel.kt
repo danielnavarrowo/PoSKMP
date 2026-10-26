@@ -122,8 +122,9 @@ class AjustesViewModel(
         val defaultRetailMargin: Double = 0.0,
         val defaultWholesaleMargin: Double = 0.0,
         val defaultDeliveryMargin: Double = 0.0,
-        val isRoundingEnabled: Boolean = false,
-        val roundProductPrices: Boolean = false,
+        val roundRetailPrice: Boolean = false,
+        val roundWholesalePrice: Boolean = false,
+        val roundDeliveryPrice: Boolean = false,
         val roundTicketTotal: Boolean = false,
         val disallowCardPaymentOnWholesale: Boolean = false,
         val prioritizeDeliveryPrice: Boolean = false,
@@ -177,23 +178,25 @@ class AjustesViewModel(
                 repository.defaultRetailMarginFlow,
                 repository.defaultWholesaleMarginFlow,
                 repository.defaultDeliveryMarginFlow,
-                repository.isRoundingEnabledFlow
-            ) { defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled ->
+                repository.roundRetailPriceFlow
+            ) { defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, roundRetailPrice ->
                 Tuple4(
                     defaultRetailMargin,
                     defaultWholesaleMargin,
                     defaultDeliveryMargin,
-                    isRoundingEnabled
+                    roundRetailPrice
                 )
             },
             combine(
-                repository.roundProductPricesFlow,
+                repository.roundWholesalePriceFlow,
+                repository.roundDeliveryPriceFlow,
                 repository.roundTicketTotalFlow,
                 repository.disallowCardPaymentOnWholesaleFlow,
                 repository.prioritizeDeliveryPriceFlow
-            ) { roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
-                Tuple4(
-                    roundProductPrices,
+            ) { roundWholesalePrice, roundDeliveryPrice, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice ->
+                Tuple5(
+                    roundWholesalePrice,
+                    roundDeliveryPrice,
                     roundTicketTotal,
                     disallowCardPaymentOnWholesale,
                     prioritizeDeliveryPrice
@@ -231,15 +234,16 @@ class AjustesViewModel(
             ) { autoWholesaleTuple, aiState ->
                 Pair(autoWholesaleTuple, aiState)
             }
-        ) { (defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, isRoundingEnabled),
-            (roundProductPrices, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
+        ) { (defaultRetailMargin, defaultWholesaleMargin, defaultDeliveryMargin, roundRetailPrice),
+            (roundWholesalePrice, roundDeliveryPrice, roundTicketTotal, disallowCardPaymentOnWholesale, prioritizeDeliveryPrice),
             (autoWholesaleTuple, aiState) ->
             BehaviorPricingState(
                 defaultRetailMargin = defaultRetailMargin,
                 defaultWholesaleMargin = defaultWholesaleMargin,
                 defaultDeliveryMargin = defaultDeliveryMargin,
-                isRoundingEnabled = isRoundingEnabled,
-                roundProductPrices = roundProductPrices,
+                roundRetailPrice = roundRetailPrice,
+                roundWholesalePrice = roundWholesalePrice,
+                roundDeliveryPrice = roundDeliveryPrice,
                 roundTicketTotal = roundTicketTotal,
                 disallowCardPaymentOnWholesale = disallowCardPaymentOnWholesale,
                 prioritizeDeliveryPrice = prioritizeDeliveryPrice,
@@ -295,8 +299,9 @@ class AjustesViewModel(
             defaultRetailMargin = pricingState.defaultRetailMargin,
             defaultWholesaleMargin = pricingState.defaultWholesaleMargin,
             defaultDeliveryMargin = pricingState.defaultDeliveryMargin,
-            isRoundingEnabled = pricingState.isRoundingEnabled,
-            roundProductPrices = pricingState.roundProductPrices,
+            roundRetailPrice = pricingState.roundRetailPrice,
+            roundWholesalePrice = pricingState.roundWholesalePrice,
+            roundDeliveryPrice = pricingState.roundDeliveryPrice,
             roundTicketTotal = pricingState.roundTicketTotal,
             disallowCardPaymentOnWholesale = pricingState.disallowCardPaymentOnWholesale,
             prioritizeDeliveryPrice = pricingState.prioritizeDeliveryPrice,
@@ -365,8 +370,9 @@ class AjustesViewModel(
             defaultRetailMargin = behaviorState.defaultRetailMargin,
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
             defaultDeliveryMargin = behaviorState.defaultDeliveryMargin,
-            isRoundingEnabled = behaviorState.isRoundingEnabled,
-            roundProductPrices = behaviorState.roundProductPrices,
+            roundRetailPrice = behaviorState.roundRetailPrice,
+            roundWholesalePrice = behaviorState.roundWholesalePrice,
+            roundDeliveryPrice = behaviorState.roundDeliveryPrice,
             roundTicketTotal = behaviorState.roundTicketTotal,
             disallowCardPaymentOnWholesale = behaviorState.disallowCardPaymentOnWholesale,
             prioritizeDeliveryPrice = behaviorState.prioritizeDeliveryPrice,
@@ -575,18 +581,27 @@ class AjustesViewModel(
         }
     }
 
-    fun setIsRoundingEnabled(enabled: Boolean) {
+    fun setRoundRetailPrice(enabled: Boolean) {
         viewModelScope.launch {
-            repository.setIsRoundingEnabled(enabled)
+            repository.setRoundRetailPrice(enabled)
             launch(Dispatchers.IO) {
                 syncRepository.syncAll()
             }
         }
     }
 
-    fun setRoundProductPrices(enabled: Boolean) {
+    fun setRoundWholesalePrice(enabled: Boolean) {
         viewModelScope.launch {
-            repository.setRoundProductPrices(enabled)
+            repository.setRoundWholesalePrice(enabled)
+            launch(Dispatchers.IO) {
+                syncRepository.syncAll()
+            }
+        }
+    }
+
+    fun setRoundDeliveryPrice(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setRoundDeliveryPrice(enabled)
             launch(Dispatchers.IO) {
                 syncRepository.syncAll()
             }

@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dnavarro.poskmp.domain.model.PriceRoundingConfig
 import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -78,13 +79,13 @@ data class BulkProgressState(
 fun applyBulkProductModification(
     product: Products,
     modification: BulkProductModification,
-    roundProductPrices: Boolean = false
+    rounding: PriceRoundingConfig = PriceRoundingConfig()
 ): Products? = when (modification.operation) {
     BulkProductOperation.CHANGE_PRICES -> product.copy(
         costo = modification.costPrice ?: product.costo,
-        precio = modification.retailPrice?.let { if (roundProductPrices) roundPrice(it) else it } ?: product.precio,
-        precio_mayoreo = modification.wholesalePrice?.let { if (roundProductPrices) roundPrice(it) else it } ?: product.precio_mayoreo,
-        precio_delivery = modification.deliveryPrice?.let { if (roundProductPrices) roundPrice(it) else it } ?: product.precio_delivery
+        precio = modification.retailPrice?.let { if (rounding.retail) roundPrice(it) else it } ?: product.precio,
+        precio_mayoreo = modification.wholesalePrice?.let { if (rounding.wholesale) roundPrice(it) else it } ?: product.precio_mayoreo,
+        precio_delivery = modification.deliveryPrice?.let { if (rounding.delivery) roundPrice(it) else it } ?: product.precio_delivery
     )
 
     BulkProductOperation.SET_PROFIT -> if (product.costo > 0.0) {
@@ -94,9 +95,9 @@ fun applyBulkProductModification(
         }
 
         product.copy(
-            precio = modification.retailProfitPercentage?.let { calcPrice(it, roundProductPrices) } ?: product.precio,
-            precio_mayoreo = modification.wholesaleProfitPercentage?.let { calcPrice(it, roundProductPrices) } ?: product.precio_mayoreo,
-            precio_delivery = modification.deliveryProfitPercentage?.let { calcPrice(it, roundProductPrices) } ?: product.precio_delivery
+            precio = modification.retailProfitPercentage?.let { calcPrice(it, rounding.retail) } ?: product.precio,
+            precio_mayoreo = modification.wholesaleProfitPercentage?.let { calcPrice(it, rounding.wholesale) } ?: product.precio_mayoreo,
+            precio_delivery = modification.deliveryProfitPercentage?.let { calcPrice(it, rounding.delivery) } ?: product.precio_delivery
         )
     } else {
         product
@@ -129,9 +130,9 @@ data class BulkProductPreview(
 fun buildBulkPreview(
     products: List<Products>,
     modification: BulkProductModification,
-    roundProductPrices: Boolean = false
+    rounding: PriceRoundingConfig = PriceRoundingConfig()
 ): List<BulkProductPreview> = products.mapNotNull { product ->
-    val updated = applyBulkProductModification(product, modification, roundProductPrices)
+    val updated = applyBulkProductModification(product, modification, rounding)
         ?: return@mapNotNull BulkProductPreview(product, emptyList(), willBeDeleted = true)
 
     val changes = buildList {
@@ -175,7 +176,7 @@ fun BulkProductModificationDialog(
     defaultDeliveryMarginPercentage: Double = 0.0,
     progress: BulkProgressState? = null,
     selectedProducts: List<Products> = emptyList(),
-    roundProductPrices: Boolean = false
+    rounding: PriceRoundingConfig = PriceRoundingConfig()
 ) {
     val isProcessing = progress != null
     val progressText = if (progress != null) {
@@ -247,8 +248,8 @@ fun BulkProductModificationDialog(
 
     // Non-null while the user is reviewing the preview step, before the changes are applied.
     var previewModification by remember { mutableStateOf<BulkProductModification?>(null) }
-    val previewItems = remember(previewModification, selectedProducts, roundProductPrices) {
-        previewModification?.let { buildBulkPreview(selectedProducts, it, roundProductPrices) }
+    val previewItems = remember(previewModification, selectedProducts, rounding) {
+        previewModification?.let { buildBulkPreview(selectedProducts, it, rounding) }
     }
     val isPreviewing = previewItems != null
 

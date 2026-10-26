@@ -190,10 +190,12 @@ data class StoreSettingsDto(
     val defaultWholesaleMargin: Double = 0.0,
     @SerialName("default_delivery_margin")
     val defaultDeliveryMargin: Double = 0.0,
-    @SerialName("is_rounding_enabled")
-    val isRoundingEnabled: Boolean = false,
-    @SerialName("round_product_prices")
-    val roundProductPrices: Boolean = false,
+    @SerialName("round_retail_price")
+    val roundRetailPrice: Boolean = false,
+    @SerialName("round_wholesale_price")
+    val roundWholesalePrice: Boolean = false,
+    @SerialName("round_delivery_price")
+    val roundDeliveryPrice: Boolean = false,
     @SerialName("round_ticket_total")
     val roundTicketTotal: Boolean = false,
     @SerialName("disallow_card_payment_on_wholesale")

@@ -543,7 +543,14 @@ SELECT
     SUM(si.subtotal) AS total_recaudado,
     SUM(si.ganancia) AS ganancia_generada,
     p.codigos AS codigos,
-    p.categoria AS categoria
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    ) AS categoria
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
@@ -551,7 +558,15 @@ WHERE s.estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 )
-GROUP BY si.product_id, si.product_nombre, p.codigos, p.categoria
+GROUP BY si.product_id, si.product_nombre, p.codigos, 
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    )
 ORDER BY total_unidades DESC
 LIMIT :limit;
 
@@ -563,7 +578,14 @@ SELECT
     SUM(si.subtotal) AS total_recaudado,
     SUM(si.ganancia) AS ganancia_generada,
     p.codigos AS codigos,
-    p.categoria AS categoria
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    ) AS categoria
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
@@ -571,7 +593,15 @@ WHERE s.estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 )
-GROUP BY si.product_id, si.product_nombre, p.codigos, p.categoria
+GROUP BY si.product_id, si.product_nombre, p.codigos, 
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    )
 ORDER BY total_unidades ASC
 LIMIT :limit;
 
@@ -583,7 +613,14 @@ SELECT
     SUM(si.subtotal) AS total_recaudado,
     SUM(si.ganancia) AS ganancia_generada,
     p.codigos AS codigos,
-    p.categoria AS categoria
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    ) AS categoria
 FROM sale_items si
 INNER JOIN sales s ON si.sale_id = s.id
 LEFT JOIN products p ON si.product_id = p.id
@@ -591,7 +628,15 @@ WHERE s.estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 )
-GROUP BY si.product_id, si.product_nombre, p.codigos, p.categoria
+GROUP BY si.product_id, si.product_nombre, p.codigos, 
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    )
 ORDER BY total_unidades DESC;
 
 selectRecentSales:
@@ -637,7 +682,14 @@ WHERE estado != 'CANCELADA' AND (
 
 selectCategorySalesBetween:
 SELECT 
-    COALESCE(p.categoria, 'Sin categoría') AS categoria,
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    ) AS categoria,
     COALESCE(SUM(si.subtotal), 0.0) AS total_recaudado,
     COALESCE(SUM(si.cantidad), 0.0) AS total_unidades
 FROM sale_items si
@@ -647,7 +699,15 @@ WHERE s.estado != 'CANCELADA' AND (
     (:shiftId IS NULL AND s.created_at >= :startTime AND s.created_at <= :endTime)
     OR (:shiftId IS NOT NULL AND s.shift_id = :shiftId)
 )
-GROUP BY COALESCE(p.categoria, 'Sin categoría')
+GROUP BY 
+    COALESCE(
+        CASE 
+            WHEN si.product_id LIKE 'UNREG-%' OR si.product_id IS NULL OR p.id IS NULL OR p.categoria = 'Producto común' THEN 'Producto común'
+            WHEN p.categoria IS NULL OR TRIM(p.categoria) = '' OR TRIM(p.categoria) = 'Sin categoria' THEN 'Sin categoría'
+            ELSE p.categoria 
+        END,
+        'Sin categoría'
+    )
 ORDER BY total_recaudado DESC;
 
 selectDailySalesBetween:

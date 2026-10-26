@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import com.dnavarro.poskmp.domain.model.PriceRoundingConfig
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -1271,7 +1272,9 @@ fun ProductosScreen(
                     defaultRetailMarginPercentage = uiState.defaultRetailMargin,
                     defaultWholesaleMarginPercentage = uiState.defaultWholesaleMargin,
                     defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
-                    roundProductPrices = uiState.roundProductPrices,
+                    roundRetailPrice = uiState.roundRetailPrice,
+                    roundWholesalePrice = uiState.roundWholesalePrice,
+                    roundDeliveryPrice = uiState.roundDeliveryPrice,
                     autoLookupBarcodeProducts = uiState.autoLookupBarcodeProducts,
                     geminiGroundingEnabled = uiState.geminiGroundingEnabled,
                     geminiApiKey = uiState.geminiApiKey,
@@ -1303,7 +1306,11 @@ fun ProductosScreen(
                     defaultDeliveryMarginPercentage = uiState.defaultDeliveryMargin,
                     progress = uiState.bulkModificationProgress,
                     selectedProducts = bulkSelectedProducts,
-                    roundProductPrices = uiState.roundProductPrices
+                    rounding = PriceRoundingConfig(
+                        retail = uiState.roundRetailPrice,
+                        wholesale = uiState.roundWholesalePrice,
+                        delivery = uiState.roundDeliveryPrice
+                    )
                 )
             }
 

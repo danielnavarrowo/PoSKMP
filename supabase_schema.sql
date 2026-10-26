@@ -182,8 +182,9 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     default_retail_margin              NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     default_wholesale_margin           NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
     default_delivery_margin            NUMERIC(10, 4) NOT NULL DEFAULT 0.0,
-    is_rounding_enabled                BOOLEAN NOT NULL DEFAULT false,
-    round_product_prices               BOOLEAN NOT NULL DEFAULT false,
+    round_retail_price                 BOOLEAN NOT NULL DEFAULT false,
+    round_wholesale_price              BOOLEAN NOT NULL DEFAULT false,
+    round_delivery_price               BOOLEAN NOT NULL DEFAULT false,
     round_ticket_total                 BOOLEAN NOT NULL DEFAULT false,
     disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false,
     updated_at                         BIGINT NOT NULL
@@ -619,22 +620,43 @@ ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_address TEXT NO
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_phone TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS receipt_footer TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS default_delivery_margin NUMERIC(10, 4) NOT NULL DEFAULT 0.0;
-ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_product_prices BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_retail_price BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_wholesale_price BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_delivery_price BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_ticket_total BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false;
 
--- Si existían columnas de redondeo previas, migrar valores hacia round_product_prices:
+-- Si existían las columnas antiguas (is_rounding_enabled / round_product_prices), migrar su estado efectivo y eliminarlas:
 DO $$
 BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_schema = 'public' AND table_name = 'store_settings' AND column_name = 'round_retail_price'
+        WHERE table_schema = 'public' AND table_name = 'store_settings' AND column_name = 'round_product_prices'
     ) THEN
-        UPDATE public.store_settings 
-        SET round_product_prices = (
-            COALESCE(round_retail_price, false) OR 
-            COALESCE(round_wholesale_price, false) OR 
-            COALESCE(round_delivery_price, false)
-        );
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = 'store_settings' AND column_name = 'is_rounding_enabled'
+        ) THEN
+            UPDATE public.store_settings 
+            SET round_retail_price    = COALESCE(is_rounding_enabled, false) AND COALESCE(round_product_prices, false),
+                round_wholesale_price = COALESCE(is_rounding_enabled, false) AND COALESCE(round_product_prices, false),
+                round_delivery_price  = COALESCE(is_rounding_enabled, false) AND COALESCE(round_product_prices, false),
+                round_ticket_total    = COALESCE(is_rounding_enabled, false) AND COALESCE(round_ticket_total, false);
+        ELSE
+            UPDATE public.store_settings 
+            SET round_retail_price    = COALESCE(round_product_prices, false),
+                round_wholesale_price = COALESCE(round_product_prices, false),
+                round_delivery_price  = COALESCE(round_product_prices, false);
+        END IF;
+
+        ALTER TABLE public.store_settings DROP COLUMN IF EXISTS round_product_prices;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'store_settings' AND column_name = 'is_rounding_enabled'
+    ) THEN
+        ALTER TABLE public.store_settings DROP COLUMN IF EXISTS is_rounding_enabled;
     END IF;
 END $$;
 
