@@ -1,6 +1,5 @@
 package com.dnavarro.poskmp.data.source.remote
 
-import com.dnavarro.poskmp.util.CategorySuggester
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -80,7 +79,7 @@ class OpenFoodFactsServiceImpl(
 
         return try {
             withTimeoutOrNull(4000.milliseconds) {
-                val url = "$API_BASE_URL/$cleanBarcode.json?fields=product_name,product_name_es,brands,quantity,categories_tags,categories"
+                val url = "$API_BASE_URL/$cleanBarcode.json?fields=product_name,product_name_es,brands,quantity"
                 val response: OpenFoodFactsResponse = httpClient.get(url) {
                     header("User-Agent", USER_AGENT)
                     header("Accept", "application/json")
@@ -99,20 +98,13 @@ class OpenFoodFactsServiceImpl(
                 val quantity = item.quantity?.trim()?.takeIf { it.isNotBlank() }
                 val formattedName = formatDisplayName(rawName, firstBrand, quantity)
 
-                val rawCategory = mapTagsToCategory(item.categoriesTags)
-                val resolvedCategory = if (rawCategory != null) {
-                    CategorySuggester.resolveToExistingCategory(rawCategory, existingCategories)
-                } else {
-                    null
-                }
-
                 OpenFoodFactsProduct(
                     code = cleanBarcode,
                     displayName = formattedName,
                     brand = firstBrand,
                     quantity = quantity,
-                    suggestedCategory = resolvedCategory,
-                    categoriesTags = item.categoriesTags
+                    suggestedCategory = null,
+                    categoriesTags = emptyList()
                 )
             }
         } catch (e: CancellationException) {
@@ -135,23 +127,4 @@ class OpenFoodFactsServiceImpl(
         }.trim()
     }
 
-    internal fun mapTagsToCategory(tags: List<String>): String? {
-        for (tag in tags) {
-            val lower = tag.lowercase()
-            when {
-                lower.contains("beverage") || lower.contains("soda") || lower.contains("drink") || lower.contains("cola") || lower.contains("juice") || lower.contains("water") -> return CategorySuggester.CAT_BEBIDAS
-                lower.contains("snack") || lower.contains("chip") || lower.contains("crisp") || lower.contains("botana") || lower.contains("popcorn") || lower.contains("palomita") -> return CategorySuggester.CAT_BOTANAS
-                lower.contains("dairy") || lower.contains("milk") || lower.contains("cheese") || lower.contains("yogurt") || lower.contains("egg") || lower.contains("leche") || lower.contains("queso") -> return CategorySuggester.CAT_LACTEOS
-                lower.contains("bread") || lower.contains("biscuit") || lower.contains("cake") || lower.contains("cookie") || lower.contains("pastr") || lower.contains("pan") || lower.contains("galleta") -> return CategorySuggester.CAT_PANADERIA
-                lower.contains("candy") || lower.contains("candies") || lower.contains("chocolate") || lower.contains("confection") || lower.contains("sweet") || lower.contains("dulce") || lower.contains("chicle") -> return CategorySuggester.CAT_DULCERIA
-                lower.contains("sauce") || lower.contains("condiment") || lower.contains("canned") || lower.contains("grocery") || lower.contains("pasta") || lower.contains("rice") || lower.contains("oil") || lower.contains("abarrote") -> return CategorySuggester.CAT_ABARROTES
-                lower.contains("clean") || lower.contains("detergent") || lower.contains("soap") || lower.contains("limpieza") -> return CategorySuggester.CAT_ABARROTES
-                lower.contains("meat") || lower.contains("sausage") || lower.contains("ham") || lower.contains("carne") || lower.contains("jamon") || lower.contains("embutido") -> return CategorySuggester.CAT_CARNES
-                lower.contains("beer") || lower.contains("wine") || lower.contains("liquor") || lower.contains("alcohol") || lower.contains("cerveza") -> return CategorySuggester.CAT_CERVEZAS
-                lower.contains("fruit") || lower.contains("vegetable") || lower.contains("fruta") || lower.contains("verdura") -> return CategorySuggester.CAT_FRUTAS_VERDURAS
-                lower.contains("pet") || lower.contains("dog") || lower.contains("cat") || lower.contains("mascota") -> return CategorySuggester.CAT_MASCOTAS
-            }
-        }
-        return null
-    }
 }

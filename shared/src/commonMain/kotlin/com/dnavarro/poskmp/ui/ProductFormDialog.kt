@@ -1,11 +1,11 @@
 package com.dnavarro.poskmp.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -127,7 +127,6 @@ import poskmp.shared.generated.resources.info
 import poskmp.shared.generated.resources.mark_as_favorite_label
 import poskmp.shared.generated.resources.modify_product_title
 import poskmp.shared.generated.resources.new_category
-import poskmp.shared.generated.resources.off_suggestion_badge
 import poskmp.shared.generated.resources.product_name_label
 import poskmp.shared.generated.resources.product_pieces_label
 import poskmp.shared.generated.resources.register_new_product_title
@@ -201,8 +200,7 @@ private fun MarginWarningBadge(warningText: String) {
 
 private data class FormCategorySuggestion(
     val category: String,
-    val isAi: Boolean = false,
-    val isOpenFoodFacts: Boolean = false
+    val isAi: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -362,27 +360,24 @@ fun ProductFormDialog(
     var geminiErrorMessage by remember { mutableStateOf<String?>(null) }
     var geminiIsError by remember { mutableStateOf(false) }
     val geminiCategoryService = remember { GeminiCategoryServiceImpl() }
-    var openFoodFactsCategory by remember { mutableStateOf<String?>(null) }
 
     val categorySuggestions: List<FormCategorySuggestion> = remember(
         formNombre,
         allCategories,
         existingProducts,
         geminiResult,
-        geminiGroundingEnabled,
-        openFoodFactsCategory
+        geminiGroundingEnabled
     ) {
         val resultList = mutableListOf<FormCategorySuggestion>()
         val seenCategories = mutableSetOf<String>()
 
-        fun addSuggestion(cat: String?, isAi: Boolean = false, isOpenFoodFacts: Boolean = false) {
+        fun addSuggestion(cat: String?, isAi: Boolean = false) {
             val trimmed = cat?.trim()
             if (!trimmed.isNullOrBlank() && seenCategories.add(trimmed.lowercase())) {
                 resultList.add(
                     FormCategorySuggestion(
                         trimmed,
-                        isAi = isAi,
-                        isOpenFoodFacts = isOpenFoodFacts
+                        isAi = isAi
                     )
                 )
             }
@@ -405,15 +400,11 @@ fun ProductFormDialog(
             localSuggestions.forEach { local ->
                 addSuggestion(local, isAi = false)
             }
-            // Al final, la categoría de Open Food Facts
-            addSuggestion(openFoodFactsCategory, isOpenFoodFacts = true)
         } else {
             // Cuando la búsqueda web con IA esté desactivada: se prioriza el algoritmo local
             localSuggestions.forEach { local ->
                 addSuggestion(local, isAi = false)
             }
-            // Al final, la categoría sugerida por Open Food Facts
-            addSuggestion(openFoodFactsCategory, isOpenFoodFacts = true)
         }
 
         resultList
@@ -519,11 +510,6 @@ fun ProductFormDialog(
                         if (formNombre.isBlank()) {
                             formNombre = result.displayName
                         }
-                        result.suggestedCategory?.let { offCat ->
-                            if (offCat.isNotBlank()) {
-                                openFoodFactsCategory = offCat
-                            }
-                        }
                     }
                 } finally {
                     isLookingUpBarcode = false
@@ -533,7 +519,7 @@ fun ProductFormDialog(
     }
 
     LaunchedEffect(formBarcodes, autoLookupBarcodeProducts) {
-        if (autoLookupBarcodeProducts && openFoodFactsCategory == null && formBarcodes.isNotEmpty()) {
+        if (autoLookupBarcodeProducts && formNombre.isBlank() && formBarcodes.isNotEmpty()) {
             val code = formBarcodes.firstOrNull { it.isNotBlank() }
             if (code != null) {
                 tryLookupBarcode(code)
@@ -893,9 +879,10 @@ fun ProductFormDialog(
 
             if (formBarcodes.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     formBarcodes.forEach { code ->
                         InputChip(
@@ -1596,12 +1583,10 @@ fun ProductFormDialog(
 
                 if (categorySuggestions.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         categorySuggestions.forEach { item ->
                             val suggestion = item.category
@@ -1633,23 +1618,6 @@ fun ProductFormDialog(
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.padding(
-                                                        horizontal = 4.dp,
-                                                        vertical = 1.dp
-                                                    )
-                                                )
-                                            }
-                                        } else if (item.isOpenFoodFacts) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
-                                                shape = MaterialTheme.shapes.extraSmall
-                                            ) {
-                                                Text(
-                                                    text = "🌐 " + stringResource(Res.string.off_suggestion_badge),
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.secondary,
                                                     modifier = Modifier.padding(
                                                         horizontal = 4.dp,
                                                         vertical = 1.dp
