@@ -82,6 +82,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -233,6 +236,7 @@ enum class ExitProgressStep {
 fun App(
     modifier: Modifier = Modifier,
     isExiting: Boolean = false,
+    isExternalExit: Boolean = false,
     onCancelExit: () -> Unit = {},
     onExitCompleted: () -> Unit = {},
     onMinimize: (() -> Unit)? = null,
@@ -289,10 +293,12 @@ fun App(
         }
     }
 
+    val latestIsExternalExit by rememberUpdatedState(isExternalExit)
+
     LaunchedEffect(isExiting) {
         if (isExiting) {
             if (!autoBackupEnabled || isAndroid()) {
-                if (activeShift == null) {
+                if (activeShift == null || latestIsExternalExit) {
                     onExitCompleted()
                 } else {
                     showExitOpenShiftDialog = true
@@ -300,7 +306,7 @@ fun App(
                 return@LaunchedEffect
             }
 
-            if (activeShift != null) {
+            if (activeShift != null && !latestIsExternalExit) {
                 showExitOpenShiftDialog = true
             }
 
@@ -345,9 +351,9 @@ fun App(
             }
             isBackupSyncDone = true
 
-            // Si NO había turno abierto, mostrar resultado 2 segundos y cerrar
-            if (activeShift == null) {
-                delay(2.seconds)
+            // Si NO había turno abierto (o fue un cierre externo como Alt+F4 / apagado del SO), mostrar resultado y cerrar
+            if (activeShift == null || latestIsExternalExit) {
+                delay(if (latestIsExternalExit) 600.milliseconds else 2.seconds)
                 onExitCompleted()
             }
         } else {
@@ -360,8 +366,12 @@ fun App(
         }
     }
 
-    LaunchedEffect(isWaitingToExitLeavingOpen, isBackupSyncDone) {
-        if (isWaitingToExitLeavingOpen) {
+    LaunchedEffect(isWaitingToExitLeavingOpen, isBackupSyncDone, isExternalExit, isExiting) {
+        if (isExiting && isExternalExit) {
+            showExitOpenShiftDialog = false
+            showExitCloseShiftDialog = false
+        }
+        if (isWaitingToExitLeavingOpen || (isExiting && isExternalExit)) {
             if (!autoBackupEnabled || isAndroid() || isBackupSyncDone) {
                 onExitCompleted()
             }
@@ -529,7 +539,14 @@ fun App(
                                     .focusRequester(focusRequester)
                                     .focusable()
                                     .onPreviewKeyEvent { keyEvent ->
-                                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                        if (keyEvent.type != KeyEventType.KeyDown ||
+                                            keyEvent.isAltPressed ||
+                                            keyEvent.isCtrlPressed ||
+                                            keyEvent.isMetaPressed
+                                        ) {
+                                            return@onPreviewKeyEvent false
+                                        }
+                                        when (keyEvent.key) {
                                             Key.F1 -> {
                                                 if (!isCheckerOnly) {
                                                     navigateTo(AppRoute.Venta)
@@ -1545,7 +1562,7 @@ fun App(
                         }
                     )
 
-                    if (isExiting && autoBackupEnabled && !isAndroid() && activeShift == null && exitStep != ExitProgressStep.IDLE) {
+                    if (isExiting && autoBackupEnabled && !isAndroid() && (activeShift == null || isExternalExit) && exitStep != ExitProgressStep.IDLE) {
                         val titleText = when (exitStep) {
                             ExitProgressStep.BACKING_UP -> stringResource(Res.string.exit_backup_sync_title_backing_up)
                             ExitProgressStep.SYNCING_CLOUD -> stringResource(Res.string.exit_backup_sync_title_syncing)

@@ -131,3 +131,9 @@ fun initKoin() {
         }
     }
 }
+
+fun performEmergencyShutdownBackup(): Result<String?> {
+    val koin = org.koin.core.context.GlobalContext.getOrNull() ?: return Result.success(null)
+    val backupRepository = koin.getOrNull<BackupRepository>() ?: return Result.success(null)
+    return backupRepository.performShutdownBackupIfNeeded()
+}

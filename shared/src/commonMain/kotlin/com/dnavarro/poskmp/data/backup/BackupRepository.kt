@@ -2,11 +2,17 @@ package com.dnavarro.poskmp.data.backup
 
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.util.currentTimeMillis
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 interface BackupRepository {
     val backupDirectoryPathFlow: Flow<String>
@@ -15,6 +21,7 @@ interface BackupRepository {
     suspend fun setBackupDirectoryPath(path: String)
     suspend fun resetBackupDirectoryPathToDefault()
     suspend fun performBackup(): Result<String>
+    fun performShutdownBackupIfNeeded(): Result<String?>
     suspend fun checkAndPerformAutoBackup(): Result<Boolean>
     suspend fun getAvailableBackups(): List<BackupFileInfo>
     suspend fun restoreBackup(filePath: String): Result<Unit>
@@ -25,6 +32,27 @@ class BackupRepositoryImpl(
     private val settingsRepository: SettingsRepository
 ) : BackupRepository {
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
+    private var cachedAutoBackupEnabled: Boolean = true
+
+    @Volatile
+    private var cachedCustomBackupPath: String = ""
+
+    init {
+        scope.launch {
+            settingsRepository.autoBackupEnabledFlow.collect { enabled ->
+                cachedAutoBackupEnabled = enabled
+            }
+        }
+        scope.launch {
+            settingsRepository.backupDirectoryPathFlow.collect { customPath ->
+                cachedCustomBackupPath = customPath
+            }
+        }
+    }
+
     override val backupDirectoryPathFlow: Flow<String> =
         settingsRepository.backupDirectoryPathFlow.map { customPath ->
             driver.getBackupDirectoryPath(customPath)
@@ -32,6 +60,7 @@ class BackupRepositoryImpl(
 
     override suspend fun getBackupDirectoryPath(): String {
         val customPath = settingsRepository.backupDirectoryPathFlow.first()
+        cachedCustomBackupPath = customPath
         return driver.getBackupDirectoryPath(customPath)
     }
 
@@ -40,15 +69,19 @@ class BackupRepositoryImpl(
     }
 
     override suspend fun setBackupDirectoryPath(path: String) {
-        settingsRepository.setBackupDirectoryPath(path.trim())
+        val trimmed = path.trim()
+        cachedCustomBackupPath = trimmed
+        settingsRepository.setBackupDirectoryPath(trimmed)
     }
 
     override suspend fun resetBackupDirectoryPathToDefault() {
+        cachedCustomBackupPath = ""
         settingsRepository.setBackupDirectoryPath("")
     }
 
     override suspend fun performBackup(): Result<String> = withContext(Dispatchers.IO) {
         val customPath = settingsRepository.backupDirectoryPathFlow.first()
+        cachedCustomBackupPath = customPath
         val path = driver.getBackupDirectoryPath(customPath)
         if (path.isEmpty()) {
             return@withContext Result.failure(UnsupportedOperationException("Backups are desktop-only"))
@@ -58,6 +91,29 @@ class BackupRepositoryImpl(
             settingsRepository.setLastBackupTimestamp(currentTimeMillis())
         }
         result
+    }
+
+    override fun performShutdownBackupIfNeeded(): Result<String?> {
+        if (!cachedAutoBackupEnabled) {
+            return Result.success(null)
+        }
+        val customPath = cachedCustomBackupPath
+        val path = driver.getBackupDirectoryPath(customPath)
+        if (path.isEmpty()) {
+            return Result.success(null)
+        }
+        val result = driver.createShutdownBackupIfNeeded(customPath)
+        if (result.isSuccess && result.getOrNull() != null) {
+            try {
+                runBlocking {
+                    withTimeoutOrNull(500.milliseconds) {
+                        settingsRepository.setLastBackupTimestamp(currentTimeMillis())
+                    }
+                }
+            } catch (_: Throwable) {
+            }
+        }
+        return result
     }
 
     override suspend fun checkAndPerformAutoBackup(): Result<Boolean> = withContext(Dispatchers.IO) {

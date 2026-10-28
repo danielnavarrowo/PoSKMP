@@ -14,6 +14,7 @@ object SingleInstanceManager {
     private var lockChannel: FileChannel? = null
     private var fileLock: FileLock? = null
     private var serverSocket: ServerSocket? = null
+    private var currentPortFile: File? = null
 
     @Volatile
     var onBringToFront: (() -> Unit)? = null
@@ -56,14 +57,10 @@ object SingleInstanceManager {
             // Successfully acquired lock
             lockChannel = channel
             fileLock = lock
+            currentPortFile = portFile
 
             // Start localhost IPC server to receive "FOCUS" signals from subsequent launches
             startIpcServer(portFile)
-
-            // Register shutdown hook to clean up resources gracefully
-            Runtime.getRuntime().addShutdownHook(Thread {
-                release(portFile)
-            })
 
             return true
         } catch (e: Exception) {
@@ -119,6 +116,15 @@ object SingleInstanceManager {
             }
         } catch (_: Exception) {
             // Ignore socket errors, primary goal (preventing second instance) is already fulfilled
+        }
+    }
+
+    @Synchronized
+    fun releaseLock() {
+        val portFile = currentPortFile
+        currentPortFile = null
+        if (portFile != null) {
+            release(portFile)
         }
     }
 

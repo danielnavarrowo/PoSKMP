@@ -14,6 +14,10 @@ import kotlinx.coroutines.withContext
 actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriver) {
     private val dbFile = File(System.getProperty("user.home"), ".poskmp/pos_database.db")
     private val defaultBackupDir = File(System.getProperty("user.home"), ".poskmp/backups")
+    private val backupLock = Any()
+
+    @Volatile
+    private var lastBackupCompletedAtMillis: Long = 0L
 
     actual fun getDefaultBackupDirectoryPath(): String = defaultBackupDir.absolutePath
 
@@ -25,6 +29,24 @@ actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriv
     }
 
     actual suspend fun createBackup(customPath: String?): Result<String> = withContext(Dispatchers.IO) {
+        createBackupSync(customPath)
+    }
+
+    /**
+     * Executes a synchronous backup safe to call from a JVM shutdown hook or external close handler.
+     * Acquires [backupLock] so that if an asynchronous backup is already running on [Dispatchers.IO],
+     * the shutdown thread waits for it to finish cleanly before the JVM exits. If a backup already
+     * completed within the last 15 seconds (e.g., during the normal exit flow), it skips creating a duplicate.
+     */
+    actual fun createShutdownBackupIfNeeded(customPath: String?): Result<String?> = synchronized(backupLock) {
+        val elapsed = System.currentTimeMillis() - lastBackupCompletedAtMillis
+        if (lastBackupCompletedAtMillis > 0L && elapsed in 0..15_000L) {
+            return Result.success(null)
+        }
+        createBackupSync(customPath).map { it }
+    }
+
+    private fun createBackupSync(customPath: String?): Result<String> = synchronized(backupLock) {
         try {
             val targetDir = if (!customPath.isNullOrBlank()) File(customPath.trim()) else defaultBackupDir
             if (!targetDir.exists()) {
@@ -37,7 +59,15 @@ actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriv
 
             try {
                 driver.execute(null, "PRAGMA wal_checkpoint(TRUNCATE);", 0)
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                try {
+                    DriverManager.getConnection("jdbc:sqlite:${dbFile.absolutePath}").use { conn ->
+                        conn.createStatement().use { stmt ->
+                            stmt.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
 
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
             val targetFile = File(targetDir, "pos_database_backup_$timestamp.db")
@@ -53,6 +83,7 @@ actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriv
             }
 
             cleanupOldBackups(targetDir, MAX_BACKUPS)
+            lastBackupCompletedAtMillis = System.currentTimeMillis()
 
             Result.success(targetFile.absolutePath)
         } catch (e: Exception) {

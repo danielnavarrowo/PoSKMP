@@ -9,6 +9,9 @@ actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriv
     actual suspend fun createBackup(customPath: String?): Result<String> =
         Result.failure(UnsupportedOperationException("Backups are desktop-only"))
 
+    actual fun createShutdownBackupIfNeeded(customPath: String?): Result<String?> =
+        Result.success(null)
+
     actual suspend fun getAvailableBackups(customPath: String?): List<BackupFileInfo> = emptyList()
 
     actual suspend fun restoreBackup(backupFilePath: String): Result<Unit> =
