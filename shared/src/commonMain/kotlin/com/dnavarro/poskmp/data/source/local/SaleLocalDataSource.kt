@@ -338,6 +338,6 @@ class SqlDelightSaleDataSource(
     }
 
     override fun getLastSale(): Flow<Sales?> {
-        return queries.selectRecentSales(1, 0).asFlow().mapToOneOrNull(Dispatchers.IO)
+        return queries.selectLastActiveSale().asFlow().mapToOneOrNull(Dispatchers.IO)
     }
 }

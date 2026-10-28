@@ -105,7 +105,7 @@ fun DesktopTitleBar(
                 modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 // Última Venta Info
-                lastSale?.let { sale ->
+                lastSale?.takeIf { !it.isCancelled }?.let { sale ->
                     TooltipBox(
                         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
                         tooltip = {

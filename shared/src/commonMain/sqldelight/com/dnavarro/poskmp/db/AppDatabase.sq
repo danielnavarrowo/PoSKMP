@@ -644,6 +644,12 @@ SELECT * FROM sales
 ORDER BY created_at DESC 
 LIMIT :limit OFFSET :offset;
 
+selectLastActiveSale:
+SELECT * FROM sales 
+WHERE estado != 'CANCELADA'
+ORDER BY created_at DESC 
+LIMIT 1;
+
 selectSalesBetween:
 SELECT * FROM sales 
 WHERE (:shiftId IS NULL AND created_at >= :startTime AND created_at <= :endTime)
