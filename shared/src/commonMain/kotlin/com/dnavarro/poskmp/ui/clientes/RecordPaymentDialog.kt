@@ -43,6 +43,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import kotlin.math.roundToLong
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -303,7 +304,7 @@ fun RecordPaymentDialog(
                     isError = hasAttemptedConfirm && !isAmountValid,
                     supportingText = if (hasAttemptedConfirm && !isAmountValid) {
                         { Text(stringResource(Res.string.payment_amount_invalid_error)) }
-                    } else if (amount > customer.saldoDeudor && customer.saldoDeudor > 0.0) {
+                    } else if (((amount * 100.0).roundToLong()) > ((customer.saldoDeudor * 100.0).roundToLong()) && ((customer.saldoDeudor * 100.0).roundToLong()) > 0L) {
                         {
                             Text(
                                 stringResource(

@@ -80,6 +80,7 @@ class SqlDelightSaleDataSource(
                     ganancia = item.ganancia,
                     es_mayoreo = item.es_mayoreo,
                     es_delivery = item.es_delivery,
+                    es_descuento = item.es_descuento,
                     created_at = item.created_at
                 )
             }

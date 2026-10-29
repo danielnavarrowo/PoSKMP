@@ -12,5 +12,6 @@ data class SaleItem(
     val ganancia: Double,
     val esMayoreo: Boolean,
     val esDelivery: Boolean = false,
+    val esDescuento: Boolean = false,
     val createdAt: Long
 )

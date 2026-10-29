@@ -40,7 +40,11 @@ data class CustomerDto(
     @SerialName("created_at")
     val createdAt: Long,
     @SerialName("updated_at")
-    val updatedAt: Long
+    val updatedAt: Long,
+    @SerialName("tipo_descuento")
+    val tipoDescuento: String = "NONE",
+    @SerialName("porcentaje_descuento")
+    val porcentajeDescuento: Double = 0.0
 )
 
 @Serializable
@@ -165,6 +169,8 @@ data class SaleItemDto(
     val esMayoreo: Boolean = false,
     @SerialName("es_delivery")
     val esDelivery: Boolean = false,
+    @SerialName("es_descuento")
+    val esDescuento: Boolean = false,
     @SerialName("created_at")
     val createdAt: Long
 )

@@ -41,6 +41,7 @@ object ReceiptFormatter {
             customerName = customerName,
             settings = settings,
             overrideTotalPieces = sale.totalItems,
+            overrideTotalOriginal = sale.totalOriginal,
             montoEfectivo = sale.montoEfectivo,
             montoTarjeta = sale.montoTarjeta,
             montoTransferencia = sale.montoTransferencia,
@@ -59,6 +60,7 @@ object ReceiptFormatter {
         customerName: String?,
         settings: ReceiptSettings,
         overrideTotalPieces: Double? = null,
+        overrideTotalOriginal: Double? = null,
         montoEfectivo: Double = 0.0,
         montoTarjeta: Double = 0.0,
         montoTransferencia: Double = 0.0,
@@ -139,6 +141,17 @@ object ReceiptFormatter {
                 leftText = fullLeftText,
                 rightText = priceText
             )
+
+            // Show unit price detail when quantity != 1 or weight-based or when discounted
+            if (item.quantity != 1.0 || item.isWeightBased || item.originalUnitPrice > item.unitPrice + 0.001) {
+                val unitPriceFormatted = "$${item.unitPrice.toString().formatPrice()}"
+                val detailText = if (item.originalUnitPrice > item.unitPrice + 0.001) {
+                    "  ($unitPriceFormatted c/u - desc.)"
+                } else {
+                    "  ($unitPriceFormatted c/u)"
+                }
+                lines += ReceiptLine(text = detailText, alignment = ReceiptAlignment.LEFT)
+            }
         }
 
         separator()
@@ -154,7 +167,7 @@ object ReceiptFormatter {
         twoColumn("Artículos: $totalProducts", "Piezas: $formattedPieces")
 
         // 5. Wholesale / Discount Summary (if any)
-        val totalWithoutDiscount = items.sumOf { it.originalUnitPrice * it.quantity }
+        val totalWithoutDiscount = overrideTotalOriginal ?: items.sumOf { it.originalUnitPrice * it.quantity }
         val hasDiscount = items.any { item -> item.isWholesale || item.originalUnitPrice > item.unitPrice + 0.001 } ||
                 (totalWithoutDiscount > total + 0.001)
 

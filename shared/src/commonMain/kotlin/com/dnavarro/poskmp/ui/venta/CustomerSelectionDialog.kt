@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.CustomerDiscountType
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.resetScroll
@@ -60,6 +61,7 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
+import poskmp.shared.generated.resources.badge_customer_always_wholesale
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_button
@@ -427,6 +429,51 @@ fun CustomerSelectionDialog(
                                     }
 
                                     Spacer(modifier = Modifier.width(8.dp))
+
+                                    // Discount Badge
+                                    val discountType = customer.effectiveDiscountType
+                                    val badgeInfo = when (discountType) {
+                                        CustomerDiscountType.WHOLESALE -> Triple(
+                                            stringResource(Res.string.badge_customer_always_wholesale),
+                                            MaterialTheme.colorScheme.tertiaryContainer,
+                                            MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                        CustomerDiscountType.COST_PLUS_PERCENTAGE -> {
+                                            val pct = customer.porcentajeDescuento
+                                            val formattedPct = if (pct % 1.0 == 0.0) pct.toLong().toString() else pct.toString()
+                                            Triple(
+                                                "Costo +$formattedPct%",
+                                                MaterialTheme.colorScheme.secondaryContainer,
+                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                            )
+                                        }
+                                        CustomerDiscountType.RETAIL_MINUS_PERCENTAGE -> {
+                                            val pct = customer.porcentajeDescuento
+                                            val formattedPct = if (pct % 1.0 == 0.0) pct.toLong().toString() else pct.toString()
+                                            Triple(
+                                                "Desc. -$formattedPct%",
+                                                MaterialTheme.colorScheme.secondaryContainer,
+                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                            )
+                                        }
+                                        CustomerDiscountType.NONE -> null
+                                    }
+                                    if (badgeInfo != null) {
+                                        val (badgeText, badgeBg, badgeFg) = badgeInfo
+                                        Surface(
+                                            shape = MaterialTheme.shapes.small,
+                                            color = badgeBg
+                                        ) {
+                                            Text(
+                                                text = badgeText,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = badgeFg,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                    }
 
                                     // Debt Badge
                                     Surface(

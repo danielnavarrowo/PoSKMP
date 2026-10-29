@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.clientes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +64,7 @@ import com.dnavarro.poskmp.domain.model.AccountStatementItem
 import com.dnavarro.poskmp.domain.model.AccountStatementType
 import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.getPaymentMethodIcon
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
@@ -78,8 +82,10 @@ import poskmp.shared.generated.resources.delete
 import poskmp.shared.generated.resources.delete_button
 import poskmp.shared.generated.resources.money
 import poskmp.shared.generated.resources.payments
+import poskmp.shared.generated.resources.shopping_cart
 import poskmp.shared.generated.resources.statement_delete_payment_confirm
 import poskmp.shared.generated.resources.statement_empty
+import poskmp.shared.generated.resources.statement_filter_empty
 import poskmp.shared.generated.resources.statement_running_balance_format
 import poskmp.shared.generated.resources.statement_summary_balance
 import poskmp.shared.generated.resources.statement_title_format
@@ -215,7 +221,92 @@ fun AccountStatementDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Payment Method Filter Chips
+                var selectedPaymentFilter by remember { mutableStateOf<String?>(null) }
+
+                val filterOptions = remember {
+                    listOf(
+                        null to "Todos",
+                        "CREDITO" to "Crédito",
+                        "EFECTIVO" to "Efectivo",
+                        "TARJETA" to "Tarjeta",
+                        "TRANSFERENCIA" to "Transferencia",
+                        "MIXTO" to "Mixto",
+                        "ABONO" to "Abonos"
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    filterOptions.forEach { (method, label) ->
+                        val isSelected = selectedPaymentFilter == method
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                selectedPaymentFilter = if (isSelected && method != null) null else method
+                            },
+                            label = {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            leadingIcon = when (method) {
+                                null -> null
+                                "ABONO" -> {
+                                    {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.money),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    {
+                                        Icon(
+                                            painter = painterResource(getPaymentMethodIcon(method)),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            shape = MaterialTheme.shapes.small,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
+
+                val filteredItems = remember(statementItems, selectedPaymentFilter) {
+                    when (selectedPaymentFilter) {
+                        null -> {
+                            statementItems
+                        }
+                        "ABONO" -> {
+                            statementItems.filter { it.tipo == AccountStatementType.ABONO }
+                        }
+                        else -> {
+                            statementItems.filter {
+                                it.metodoPago.equals(selectedPaymentFilter, ignoreCase = true)
+                            }
+                        }
+                    }
+                }
 
                 // Statement Items List
                 val pullToRefreshState = rememberPullToRefreshState()
@@ -253,19 +344,33 @@ fun AccountStatementDialog(
                                 textAlign = TextAlign.Center
                             )
                         }
+                    } else if (filteredItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.statement_filter_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(
-                                statementItems,
+                                filteredItems,
                                 key = { it.id },
                                 contentType = { "statement_item" }
                             ) { item ->
                                 StatementItemRow(
                                     item = item,
-                                    onClick = if (item.tipo == AccountStatementType.CARGO_CREDITO) {
+                                    onClick = if (item.tipo == AccountStatementType.CARGO_CREDITO || item.tipo == AccountStatementType.VENTA_CONTADO) {
                                         { onOpenSale(item.id) }
                                     } else null,
                                     onDeletePayment = { paymentToDelete = item }
@@ -353,6 +458,7 @@ private fun StatementItemRow(
     onDeletePayment: () -> Unit
 ) {
     val isCharge = item.tipo == AccountStatementType.CARGO_CREDITO
+    val isPayment = item.tipo == AccountStatementType.ABONO
     val formattedDate = formatEpochMillisToDateTime(item.fecha)
 
     Surface(
@@ -373,22 +479,28 @@ private fun StatementItemRow(
                 modifier = Modifier
                     .size(36.dp)
                     .background(
-                        color = if (isCharge) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            MaterialTheme.colorScheme.tertiaryContainer
+                        color = when {
+                            isCharge -> MaterialTheme.colorScheme.errorContainer
+                            isPayment -> MaterialTheme.colorScheme.tertiaryContainer
+                            else -> MaterialTheme.colorScheme.secondaryContainer
                         },
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(if (isCharge) Res.drawable.payments else Res.drawable.money),
+                    painter = painterResource(
+                        when {
+                            isCharge -> Res.drawable.payments
+                            isPayment -> Res.drawable.money
+                            else -> Res.drawable.shopping_cart
+                        }
+                    ),
                     contentDescription = null,
-                    tint = if (isCharge) {
-                        MaterialTheme.colorScheme.onErrorContainer
-                    } else {
-                        MaterialTheme.colorScheme.onTertiaryContainer
+                    tint = when {
+                        isCharge -> MaterialTheme.colorScheme.onErrorContainer
+                        isPayment -> MaterialTheme.colorScheme.onTertiaryContainer
+                        else -> MaterialTheme.colorScheme.onSecondaryContainer
                     },
                     modifier = Modifier.size(18.dp)
                 )
@@ -435,11 +547,21 @@ private fun StatementItemRow(
 
             // Amount and Resulting Balance
             Column(horizontalAlignment = Alignment.End) {
+                val amountText = when {
+                    isCharge -> "+$" + item.monto.toString().formatPrice()
+                    isPayment -> "-$" + item.monto.toString().formatPrice()
+                    else -> "$" + item.monto.toString().formatPrice()
+                }
+                val amountColor = when {
+                    isCharge -> MaterialTheme.colorScheme.error
+                    isPayment -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
                 Text(
-                    text = (if (isCharge) "+$" else "-$") + item.monto.toString().formatPrice(),
+                    text = amountText,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isCharge) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                    color = amountColor
                 )
                 Text(
                     text = stringResource(Res.string.statement_running_balance_format, item.saldoResultante.toString().formatPrice()),
@@ -448,7 +570,7 @@ private fun StatementItemRow(
                 )
             }
 
-            if (!isCharge) {
+            if (isPayment) {
                 Spacer(modifier = Modifier.width(4.dp))
                 IconButton(
                     onClick = onDeletePayment,

@@ -36,7 +36,7 @@ fun ClientesScreenPreview() {
             onOpenCreateCustomer = {},
             onOpenEditCustomer = {},
             onDismissCustomerForm = {},
-            onSaveCustomer = { _, _, _, _, _, _, _ -> },
+            onSaveCustomer = { _, _, _, _, _, _, _, _, _ -> },
             onOpenAccountStatement = {},
             onDismissAccountStatement = {},
             onOpenRecordPayment = {},

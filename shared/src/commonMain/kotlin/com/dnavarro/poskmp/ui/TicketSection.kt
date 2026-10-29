@@ -85,6 +85,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.CustomerDiscountType
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.venta.HeldTicket
 import com.dnavarro.poskmp.util.formatPrice
@@ -133,6 +134,7 @@ import poskmp.shared.generated.resources.wholesale_item_hotkey
 import poskmp.shared.generated.resources.wholesale_ticket
 import poskmp.shared.generated.resources.wholesale_ticket_hotkey
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -161,6 +163,7 @@ fun TicketSection(
     isNarrow: Boolean = false,
     onApplyItemWholesaleClick: () -> Unit = {},
     onApplyWholesaleClick: () -> Unit = {},
+    onCycleItemTier: (CartItem) -> Unit = {},
     onQuantityFocusChanged: (Boolean) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
@@ -233,10 +236,10 @@ fun TicketSection(
                 modifier = Modifier.horizontalScroll(rememberScrollState())
             ) {
 
-                // Mayoreo por item (F11)
+                // Precio / descuento por item (F11)
                 val currentSelectedItem = cartItems.getOrNull(selectedIndex)
-                val isItemWholesale =
-                    currentSelectedItem?.let { it.product.precio == it.product.precio_mayoreo && it.product.precio_mayoreo > 0.0 }
+                val isItemDiscounted =
+                    currentSelectedItem?.let { it.product.precio != it.originalPrice }
                         ?: false
                 TooltipBox(
                     positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
@@ -261,15 +264,13 @@ fun TicketSection(
                         Icon(
                             painter = painterResource(Res.drawable.price),
                             contentDescription = stringResource(if (isAndroid()) Res.string.wholesale_item else Res.string.wholesale_item_hotkey),
-                            tint = if (isItemWholesale) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                            tint = if (isItemDiscounted) MaterialTheme.colorScheme.primary else LocalContentColor.current
                         )
                     }
                 }
 
-                // Mayoreo por ticket (Shift+F11)
-                val eligibleItems = cartItems.filter { it.product.precio_mayoreo > 0.0 }
-                val isTicketWholesale =
-                    eligibleItems.isNotEmpty() && eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
+                // Precio / descuento por ticket (Shift+F11)
+                val isTicketDiscounted = cartItems.any { it.product.precio != it.originalPrice }
                 TooltipBox(
                     positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                         TooltipAnchorPosition.Below,
@@ -293,7 +294,7 @@ fun TicketSection(
                         Icon(
                             painter = painterResource(Res.drawable.wholesale_ticket),
                             contentDescription = stringResource(if (isAndroid()) Res.string.wholesale_ticket else Res.string.wholesale_ticket_hotkey),
-                            tint = if (isTicketWholesale) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                            tint = if (isTicketDiscounted) MaterialTheme.colorScheme.primary else LocalContentColor.current
                         )
                     }
                 }
@@ -543,6 +544,7 @@ fun TicketSection(
                                 onUpdateQuantity = onUpdateQuantity,
                                 onSetQuantity = onSetQuantity,
                                 onRemoveItem = onRemoveItem,
+                                onCycleItemTier = onCycleItemTier,
                                 isNarrow = isNarrow,
                                 onQuantityFocusChanged = { focused ->
                                     if (focused) {
@@ -569,6 +571,7 @@ fun TicketSection(
                             onUpdateQuantity = onUpdateQuantity,
                             onSetQuantity = onSetQuantity,
                             onRemoveItem = onRemoveItem,
+                            onCycleItemTier = onCycleItemTier,
                             isNarrow = isNarrow,
                             onQuantityFocusChanged = { focused ->
                                 if (focused) {
@@ -620,8 +623,8 @@ fun TicketSection(
                 )
             }
 
-            val totalWithoutDiscount = cartItems.sumOf { it.originalPrice * it.quantity }
-            val hasDiscount = cartItems.any { it.product.precio < it.originalPrice }
+            val totalWithoutDiscount = (cartItems.sumOf { it.originalPrice * it.quantity } * 100.0).roundToLong() / 100.0
+            val hasDiscount = cartItems.any { ((it.originalPrice * 100.0).roundToLong() - (it.product.precio * 100.0).roundToLong()) > 0L }
 
             if (hasDiscount) {
                 Row(
@@ -693,19 +696,51 @@ fun TicketSection(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
-                            if (selectedCustomer?.siempreMayoreo == true) {
+                            val discountType = selectedCustomer?.effectiveDiscountType ?: CustomerDiscountType.NONE
+                            val badgeInfo = when (discountType) {
+                                CustomerDiscountType.WHOLESALE -> Triple(
+                                    stringResource(Res.string.badge_customer_always_wholesale),
+                                    MaterialTheme.colorScheme.tertiaryContainer,
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                CustomerDiscountType.COST_PLUS_PERCENTAGE -> {
+                                    val pct = selectedCustomer?.porcentajeDescuento ?: 0.0
+                                    val formattedPct = if (pct % 1.0 == 0.0) pct.toLong().toString() else pct.toString()
+                                    Triple(
+                                        "Costo +$formattedPct%",
+                                        MaterialTheme.colorScheme.secondaryContainer,
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                                CustomerDiscountType.RETAIL_MINUS_PERCENTAGE -> {
+                                    val pct = selectedCustomer?.porcentajeDescuento ?: 0.0
+                                    val formattedPct = if (pct % 1.0 == 0.0) pct.toLong().toString() else pct.toString()
+                                    Triple(
+                                        "Desc. -$formattedPct%",
+                                        MaterialTheme.colorScheme.secondaryContainer,
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                                CustomerDiscountType.NONE -> null
+                            }
+                            if (badgeInfo != null) {
+                                val (badgeText, badgeBg, badgeFg) = badgeInfo
                                 Surface(
                                     shape = MaterialTheme.shapes.extraSmall,
-                                    color = MaterialTheme.colorScheme.tertiaryContainer
+                                    color = badgeBg
                                 ) {
                                     Text(
-                                        text = stringResource(Res.string.badge_customer_always_wholesale),
+                                        text = badgeText,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        lineHeight = 12.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        color = badgeFg,
                                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                     )
                                 }
@@ -798,6 +833,7 @@ private fun TicketItemRow(
     onUpdateQuantity: (CartItem, Double) -> Unit,
     onSetQuantity: (CartItem, Double) -> Unit,
     onRemoveItem: (CartItem) -> Unit,
+    onCycleItemTier: (CartItem) -> Unit = {},
     isNarrow: Boolean = false,
     onQuantityFocusChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
@@ -881,27 +917,43 @@ private fun TicketItemRow(
                     )
                 } else Modifier
             )
-            .padding(12.dp)
+            .padding(horizontal = 12.dp, vertical = if (isNarrow) 8.dp else 10.dp)
     ) {
         if (isNarrow) {
-            // NARROW VIEW (< 380dp): 2-Row Layout
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                // TOP ROW: Product Name & Wholesale Badge (Left) | Total Price (Right)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // COMPACT / NARROW VIEW: Single-Row with 2-Line Left Info Column
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    ProductTitleAndBadge(item = item, modifier = Modifier.weight(1f))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    ItemTotalPriceText(item = item)
+                    Text(
+                        text = item.product.nombre,
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        ItemPriceTierBadge(
+                            item = item,
+                            onCycleTier = { onCycleItemTier(item) }
+                        )
+                        ItemUnitPriceCalcText(item = item)
+                    }
                 }
-
-                // BOTTOM ROW: Quantity Controls (Left) | Unit Price calculation (Right)
+                Spacer(modifier = Modifier.width(8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     ItemQuantityControls(
                         item = item,
@@ -915,20 +967,24 @@ private fun TicketItemRow(
                         onSetQuantity = onSetQuantity,
                         onRemoveItem = onRemoveItem,
                         focusRequester = focusRequester,
-                        onSelectedIndexChange = onSelectedIndexChange
+                        onSelectedIndexChange = onSelectedIndexChange,
+                        isCompact = true
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    ItemUnitPriceCalcText(item = item)
+                    ItemTotalPriceText(item = item)
                 }
             }
         } else {
-            // WIDE VIEW (>= 380dp): Single-Row Layout
+            // WIDE VIEW: Single-Row Layout
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                ProductTitleAndBadge(item = item, modifier = Modifier.weight(1f))
+                ProductTitleAndBadge(
+                    item = item,
+                    onCycleTier = { onCycleItemTier(item) },
+                    modifier = Modifier.weight(1f)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -957,35 +1013,73 @@ private fun TicketItemRow(
 }
 
 @Composable
-private fun ProductTitleAndBadge(item: CartItem, modifier: Modifier = Modifier) {
+private fun ProductTitleAndBadge(
+    item: CartItem,
+    onCycleTier: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
             text = item.product.nombre,
             fontSize = 13.sp,
+            lineHeight = 16.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
         )
 
-        val isApplied = item.product.precio == item.product.precio_mayoreo
-        if (isApplied) {
-            Spacer(modifier = Modifier.width(6.dp))
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = MaterialTheme.shapes.extraSmall
-            ) {
-                Text(
-                    text = stringResource(Res.string.wholesale_badge),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                )
-            }
+        ItemPriceTierBadge(
+            item = item,
+            onCycleTier = onCycleTier
+        )
+    }
+}
+
+@Composable
+private fun ItemPriceTierBadge(
+    item: CartItem,
+    onCycleTier: () -> Unit
+) {
+    val hasPriceDiff = item.product.precio != item.originalPrice
+    val isWholesale = item.appliedTier == PriceTier.WHOLESALE || (item.product.precio == item.product.precio_mayoreo && item.product.precio_mayoreo > 0.0)
+
+    if (hasPriceDiff) {
+        val (badgeText, badgeBg, badgeFg) = if (isWholesale) {
+            Triple(
+                stringResource(Res.string.wholesale_badge),
+                MaterialTheme.colorScheme.primaryContainer,
+                MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        } else {
+            Triple(
+                "DESC.",
+                MaterialTheme.colorScheme.secondaryContainer,
+                MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+        Surface(
+            color = badgeBg,
+            contentColor = badgeFg,
+            shape = MaterialTheme.shapes.extraSmall,
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.extraSmall)
+                .clickable(onClick = onCycleTier)
+        ) {
+            Text(
+                text = badgeText,
+                fontSize = 9.sp,
+                lineHeight = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+            )
         }
     }
 }
@@ -1000,7 +1094,8 @@ private fun ItemQuantityControls(
     onSetQuantity: (CartItem, Double) -> Unit,
     onRemoveItem: (CartItem) -> Unit,
     focusRequester: FocusRequester,
-    onSelectedIndexChange: (Int) -> Unit
+    onSelectedIndexChange: (Int) -> Unit,
+    isCompact: Boolean = false
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1076,7 +1171,7 @@ private fun ItemQuantityControls(
                 }
             },
             modifier = Modifier
-                .width(44.dp)
+                .width(if (isCompact) 36.dp else 44.dp)
                 .background(
                     if (isTextFieldFocused) MaterialTheme.colorScheme.surface
                     else Color.Transparent,
@@ -1155,6 +1250,7 @@ private fun ItemUnitPriceCalcText(item: CartItem) {
     Text(
         text = "$${item.product.precio.toString().formatPrice()} x ${item.quantity.formatQuantity(item.product.por_peso == 1L)}",
         fontSize = 11.sp,
+        lineHeight = 13.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
         softWrap = false
@@ -1163,13 +1259,29 @@ private fun ItemUnitPriceCalcText(item: CartItem) {
 
 @Composable
 private fun ItemTotalPriceText(item: CartItem) {
-    Text(
-        text = "$${(item.product.precio * item.quantity).toString().formatPrice()}",
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface,
-        maxLines = 1,
-        softWrap = false,
-        textAlign = TextAlign.End
-    )
+    val hasDiscount = ((item.originalPrice * 100.0).roundToLong() - (item.product.precio * 100.0).roundToLong()) > 0L
+    Column(horizontalAlignment = Alignment.End) {
+        if (hasDiscount) {
+            Text(
+                text = "$${(item.originalPrice * item.quantity).toString().formatPrice()}",
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = TextStyle(textDecoration = TextDecoration.LineThrough),
+                maxLines = 1,
+                softWrap = false,
+                textAlign = TextAlign.End
+            )
+        }
+        Text(
+            text = "$${(item.product.precio * item.quantity).toString().formatPrice()}",
+            fontSize = 14.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (hasDiscount) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            softWrap = false,
+            textAlign = TextAlign.End
+        )
+    }
 }

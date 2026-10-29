@@ -5,9 +5,11 @@ import com.dnavarro.poskmp.data.ShiftRepository
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.ui.CartItem
+import com.dnavarro.poskmp.ui.PriceTier
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.roundPrice
+import kotlin.math.roundToLong
 
 class RecordSaleUseCase(
     private val saleRepository: SaleRepository,
@@ -59,8 +61,9 @@ class RecordSaleUseCase(
             val itemOrigSubtotal = origUnitPrice * qty
             val itemCost = unitCost * qty
             val itemProfit = itemSubtotal - itemCost
-            val isWholesale = unitPrice == cartItem.product.precio_mayoreo && cartItem.product.precio_mayoreo > 0.0
+            val isWholesale = cartItem.appliedTier == PriceTier.WHOLESALE || (unitPrice == cartItem.product.precio_mayoreo && cartItem.product.precio_mayoreo > 0.0)
             val isDelivery = !isWholesale && unitPrice == cartItem.product.precio_delivery && cartItem.product.precio_delivery > 0.0
+            val isDiscount = cartItem.appliedTier == PriceTier.CUSTOMER_DISCOUNT || (!isWholesale && !isDelivery && (unitPrice < origUnitPrice - 0.001 || cartItem.manualTier == PriceTier.CUSTOMER_DISCOUNT))
 
             total += itemSubtotal
             totalOriginal += itemOrigSubtotal
@@ -79,11 +82,13 @@ class RecordSaleUseCase(
                 ganancia = itemProfit,
                 esMayoreo = isWholesale,
                 esDelivery = isDelivery,
+                esDescuento = isDiscount,
                 createdAt = now
             )
         }
 
-        val finalTotal = if (roundTicketTotal) roundPrice(total) else total
+        val roundedRawTotal = (total * 100.0).roundToLong() / 100.0
+        val finalTotal = if (roundTicketTotal) roundPrice(total) else roundedRawTotal
 
         val (finalCash, finalCard, finalTransfer, finalCredit) = when (metodoPago) {
             "EFECTIVO" -> listOf(finalTotal, 0.0, 0.0, 0.0)
@@ -109,14 +114,16 @@ class RecordSaleUseCase(
             throw IllegalArgumentException("Las ventas mixtas con saldo a crédito requieren un cliente registrado.")
         }
 
-        val netProfit = finalTotal - totalCosto
+        val finalTotalOriginal = (totalOriginal * 100.0).roundToLong() / 100.0
+        val finalTotalCosto = (totalCosto * 100.0).roundToLong() / 100.0
+        val netProfit = ((finalTotal - finalTotalCosto) * 100.0).roundToLong() / 100.0
 
         val sale = Sale(
             id = saleId,
             folio = nextFolio,
             total = finalTotal,
-            totalOriginal = totalOriginal,
-            totalCosto = totalCosto,
+            totalOriginal = finalTotalOriginal,
+            totalCosto = finalTotalCosto,
             ganancia = netProfit,
             pagoCon = pagoCon,
             cambio = cambio,

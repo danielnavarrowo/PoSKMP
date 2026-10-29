@@ -6,6 +6,7 @@ import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.Sales
 import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.domain.model.CustomerDebtSummary
+import com.dnavarro.poskmp.domain.model.CustomerDiscountType
 import com.dnavarro.poskmp.domain.model.CustomerPayment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -27,6 +28,7 @@ interface CustomerLocalDataSource {
     suspend fun deleteCustomerPayment(paymentId: String)
     suspend fun getCustomerDebtSummary(): CustomerDebtSummary
     suspend fun getCreditSalesByCustomerId(customerId: String): List<Sales>
+    suspend fun getSalesByCustomerId(customerId: String): List<Sales>
 }
 
 class SqlDelightCustomerDataSource(
@@ -53,7 +55,9 @@ class SqlDelightCustomerDataSource(
                         totalCompras = row.total_compras,
                         createdAt = row.created_at,
                         updatedAt = row.updated_at,
-                        syncState = row.sync_state
+                        syncState = row.sync_state,
+                        tipoDescuento = CustomerDiscountType.fromString(row.tipo_descuento),
+                        porcentajeDescuento = row.porcentaje_descuento
                     )
                 }
             }
@@ -78,7 +82,9 @@ class SqlDelightCustomerDataSource(
                         totalCompras = row.total_compras,
                         createdAt = row.created_at,
                         updatedAt = row.updated_at,
-                        syncState = row.sync_state
+                        syncState = row.sync_state,
+                        tipoDescuento = CustomerDiscountType.fromString(row.tipo_descuento),
+                        porcentajeDescuento = row.porcentaje_descuento
                     )
                 }
             }
@@ -99,7 +105,9 @@ class SqlDelightCustomerDataSource(
                 totalCompras = row.total_compras,
                 createdAt = row.created_at,
                 updatedAt = row.updated_at,
-                syncState = row.sync_state
+                syncState = row.sync_state,
+                tipoDescuento = CustomerDiscountType.fromString(row.tipo_descuento),
+                porcentajeDescuento = row.porcentaje_descuento
             )
         }
     }
@@ -120,7 +128,9 @@ class SqlDelightCustomerDataSource(
                 totalCompras = row.total_compras,
                 createdAt = row.created_at,
                 updatedAt = row.updated_at,
-                syncState = row.sync_state
+                syncState = row.sync_state,
+                tipoDescuento = CustomerDiscountType.fromString(row.tipo_descuento),
+                porcentajeDescuento = row.porcentaje_descuento
             )
         }
     }
@@ -134,11 +144,13 @@ class SqlDelightCustomerDataSource(
                 direccion = customer.direccion,
                 notas = customer.notas,
                 limite_credito = customer.limiteCredito,
-                siempre_mayoreo = if (customer.siempreMayoreo) 1L else 0L,
+                siempre_mayoreo = if (customer.effectiveDiscountType == CustomerDiscountType.WHOLESALE) 1L else 0L,
                 activo = if (customer.activo) 1L else 0L,
                 created_at = customer.createdAt,
                 updated_at = customer.updatedAt,
-                sync_state = customer.syncState
+                sync_state = customer.syncState,
+                tipo_descuento = customer.effectiveDiscountType.name,
+                porcentaje_descuento = customer.porcentajeDescuento
             )
         }
     }
@@ -151,9 +163,11 @@ class SqlDelightCustomerDataSource(
                 direccion = customer.direccion,
                 notas = customer.notas,
                 limite_credito = customer.limiteCredito,
-                siempre_mayoreo = if (customer.siempreMayoreo) 1L else 0L,
+                siempre_mayoreo = if (customer.effectiveDiscountType == CustomerDiscountType.WHOLESALE) 1L else 0L,
                 updated_at = customer.updatedAt,
                 sync_state = customer.syncState,
+                tipo_descuento = customer.effectiveDiscountType.name,
+                porcentaje_descuento = customer.porcentajeDescuento,
                 id = customer.id
             )
         }
@@ -239,5 +253,9 @@ class SqlDelightCustomerDataSource(
 
     override suspend fun getCreditSalesByCustomerId(customerId: String): List<Sales> = withContext(Dispatchers.IO) {
         queries.selectCreditSalesByCustomerId(customerId).executeAsList()
+    }
+
+    override suspend fun getSalesByCustomerId(customerId: String): List<Sales> = withContext(Dispatchers.IO) {
+        queries.selectSalesByCustomerId(customerId).executeAsList()
     }
 }

@@ -58,8 +58,10 @@ CREATE TABLE IF NOT EXISTS public.customers (
     limite_credito  NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     siempre_mayoreo BOOLEAN NOT NULL DEFAULT false,
     activo          BOOLEAN NOT NULL DEFAULT true,
-    created_at      BIGINT NOT NULL,
-    updated_at      BIGINT NOT NULL
+    created_at           BIGINT NOT NULL,
+    updated_at           BIGINT NOT NULL,
+    tipo_descuento       TEXT NOT NULL DEFAULT 'NONE',
+    porcentaje_descuento NUMERIC(10, 2) NOT NULL DEFAULT 0.00
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_updated_at ON public.customers(updated_at);
@@ -165,6 +167,7 @@ CREATE TABLE IF NOT EXISTS public.sale_items (
     ganancia        NUMERIC(12, 2) NOT NULL,
     es_mayoreo      BOOLEAN NOT NULL DEFAULT false,
     es_delivery     BOOLEAN NOT NULL DEFAULT false,
+    es_descuento    BOOLEAN NOT NULL DEFAULT false,
     created_at      BIGINT NOT NULL
 );
 
@@ -611,9 +614,27 @@ SET
 WHERE monto_efectivo = 0.00 AND monto_tarjeta = 0.00 AND monto_transferencia = 0.00 AND monto_credito = 0.00 AND total > 0.00;
 
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS siempre_mayoreo BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS tipo_descuento TEXT NOT NULL DEFAULT 'NONE';
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS porcentaje_descuento NUMERIC(10, 2) NOT NULL DEFAULT 0.00;
+
+UPDATE public.customers
+SET tipo_descuento = 'WHOLESALE'
+WHERE siempre_mayoreo = true AND (tipo_descuento IS NULL OR tipo_descuento = 'NONE');
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'check_customer_tipo_descuento'
+    ) THEN
+        ALTER TABLE public.customers
+        ADD CONSTRAINT check_customer_tipo_descuento
+        CHECK (tipo_descuento IN ('NONE', 'WHOLESALE', 'COST_PLUS_PERCENTAGE', 'RETAIL_MINUS_PERCENTAGE'));
+    END IF;
+END $$;
 
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS precio_delivery NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
 ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS es_delivery BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS es_descuento BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_address TEXT NOT NULL DEFAULT '';

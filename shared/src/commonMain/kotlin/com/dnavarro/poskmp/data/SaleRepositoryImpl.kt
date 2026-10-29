@@ -56,6 +56,7 @@ class SaleRepositoryImpl(
                 ganancia = item.ganancia,
                 es_mayoreo = if (item.esMayoreo) 1L else 0L,
                 es_delivery = if (item.esDelivery) 1L else 0L,
+                es_descuento = if (item.esDescuento) 1L else 0L,
                 created_at = item.createdAt
             )
         }
@@ -224,6 +225,7 @@ class SaleRepositoryImpl(
                 ganancia = row.ganancia,
                 esMayoreo = row.es_mayoreo == 1L,
                 esDelivery = row.es_delivery == 1L,
+                esDescuento = row.es_descuento == 1L,
                 createdAt = row.created_at
             )
         }

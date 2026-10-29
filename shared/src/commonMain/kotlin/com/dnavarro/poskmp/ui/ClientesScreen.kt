@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.CustomerDiscountType
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -181,7 +182,7 @@ fun ClientesContent(
     onOpenCreateCustomer: () -> Unit,
     onOpenEditCustomer: (Customer) -> Unit,
     onDismissCustomerForm: () -> Unit,
-    onSaveCustomer: (id: String?, nombre: String, telefono: String, direccion: String, notas: String, limiteCredito: Double, siempreMayoreo: Boolean) -> Unit,
+    onSaveCustomer: (id: String?, nombre: String, telefono: String, direccion: String, notas: String, limiteCredito: Double, siempreMayoreo: Boolean, tipoDescuento: CustomerDiscountType, porcentajeDescuento: Double) -> Unit,
     onOpenAccountStatement: (Customer) -> Unit,
     onDismissAccountStatement: () -> Unit,
     onOpenRecordPayment: (Customer) -> Unit,
@@ -891,16 +892,46 @@ private fun CustomerListItem(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (customer.siempreMayoreo) {
+                        val discountType = customer.effectiveDiscountType
+                        val badgeInfo = when (discountType) {
+                            CustomerDiscountType.WHOLESALE -> Triple(
+                                stringResource(Res.string.badge_customer_always_wholesale),
+                                MaterialTheme.colorScheme.tertiaryContainer,
+                                MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            CustomerDiscountType.COST_PLUS_PERCENTAGE -> {
+                                val pct = customer.porcentajeDescuento
+                                val formattedPct = if (pct % 1.0 == 0.0) pct.toLong().toString() else pct.toString()
+                                Triple(
+                                    "Costo +$formattedPct%",
+                                    MaterialTheme.colorScheme.secondaryContainer,
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            CustomerDiscountType.RETAIL_MINUS_PERCENTAGE -> {
+                                val pct = customer.porcentajeDescuento
+                                val formattedPct = if (pct % 1.0 == 0.0) pct.toLong().toString() else pct.toString()
+                                Triple(
+                                    "Desc. -$formattedPct%",
+                                    MaterialTheme.colorScheme.secondaryContainer,
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            CustomerDiscountType.NONE -> null
+                        }
+                        if (badgeInfo != null) {
+                            val (badgeText, badgeBg, badgeFg) = badgeInfo
                             Surface(
                                 shape = MaterialTheme.shapes.extraSmall,
-                                color = MaterialTheme.colorScheme.tertiaryContainer
+                                color = badgeBg
                             ) {
                                 Text(
-                                    text = stringResource(Res.string.badge_customer_always_wholesale),
+                                    text = badgeText,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    color = badgeFg,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                                 )
                             }

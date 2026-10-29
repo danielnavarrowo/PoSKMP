@@ -7,6 +7,7 @@ import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.domain.model.CustomerDebtSummary
 import com.dnavarro.poskmp.domain.model.CustomerPayment
 import com.dnavarro.poskmp.util.currentTimeMillis
+import com.dnavarro.poskmp.util.formatPrice
 import kotlinx.coroutines.flow.Flow
 
 class CustomerRepositoryImpl(
@@ -54,33 +55,62 @@ class CustomerRepositoryImpl(
         localDataSource.getCustomerDebtSummary()
 
     override suspend fun getCustomerAccountStatement(customerId: String): List<AccountStatementItem> {
-        val creditSales = localDataSource.getCreditSalesByCustomerId(customerId)
+        val sales = localDataSource.getSalesByCustomerId(customerId)
         val payments = localDataSource.getPaymentsByCustomerId(customerId)
 
         val movements = mutableListOf<AccountStatementItem>()
 
-        creditSales.forEach { sale ->
+        sales.forEach { sale ->
             val isMixto = sale.metodo_pago == "MIXTO"
-            val cargoMonto = if (isMixto) {
+            val isCredito = sale.metodo_pago == "CREDITO"
+            val creditAmount = if (isMixto) {
                 if (sale.monto_credito > 0.0) sale.monto_credito else (sale.total - sale.pago_con).coerceAtLeast(0.0)
-            } else sale.total
-            val descripcion = if (isMixto) {
-                "Ticket #${sale.folio} (Pago Mixto - Resto a Crédito)"
+            } else if (isCredito) {
+                sale.total
             } else {
-                "Ticket #${sale.folio} (Compra a Crédito)"
+                0.0
             }
-            movements.add(
-                AccountStatementItem(
-                    id = sale.id,
-                    fecha = sale.created_at,
-                    tipo = AccountStatementType.CARGO_CREDITO,
-                    folio = sale.folio,
-                    monto = cargoMonto,
-                    metodoPago = sale.metodo_pago,
-                    descripcion = descripcion,
-                    notas = if (isMixto) "Total: $${sale.total} • Pagado: $${sale.pago_con}" else ""
+
+            if (creditAmount > 0.0) {
+                val descripcion = if (isMixto) {
+                    "Ticket #${sale.folio} (Pago Mixto - Resto a Crédito)"
+                } else {
+                    "Ticket #${sale.folio} (Compra a Crédito)"
+                }
+                movements.add(
+                    AccountStatementItem(
+                        id = sale.id,
+                        fecha = sale.created_at,
+                        tipo = AccountStatementType.CARGO_CREDITO,
+                        folio = sale.folio,
+                        monto = creditAmount,
+                        metodoPago = sale.metodo_pago,
+                        descripcion = descripcion,
+                        notas = if (isMixto) "Total: $${sale.total.toString().formatPrice()} • Pagado: $${(sale.total - creditAmount).toString().formatPrice()}" else ""
+                    )
                 )
-            )
+            } else {
+                val paymentLabel = when (sale.metodo_pago.uppercase()) {
+                    "EFECTIVO" -> "Efectivo"
+                    "TARJETA" -> "Tarjeta"
+                    "TRANSFERENCIA" -> "Transferencia"
+                    "MIXTO" -> "Mixto"
+                    else -> sale.metodo_pago
+                }
+                val descripcion = "Ticket #${sale.folio} (Venta al Contado - $paymentLabel)"
+                movements.add(
+                    AccountStatementItem(
+                        id = sale.id,
+                        fecha = sale.created_at,
+                        tipo = AccountStatementType.VENTA_CONTADO,
+                        folio = sale.folio,
+                        monto = sale.total,
+                        metodoPago = sale.metodo_pago,
+                        descripcion = descripcion,
+                        notas = ""
+                    )
+                )
+            }
         }
 
         payments.forEach { payment ->
@@ -105,6 +135,7 @@ class CustomerRepositoryImpl(
             when (item.tipo) {
                 AccountStatementType.CARGO_CREDITO -> runningBalance += item.monto
                 AccountStatementType.ABONO -> runningBalance -= item.monto
+                AccountStatementType.VENTA_CONTADO -> { /* Contado sales do not change debt running balance */ }
             }
             item.copy(saldoResultante = runningBalance)
         }

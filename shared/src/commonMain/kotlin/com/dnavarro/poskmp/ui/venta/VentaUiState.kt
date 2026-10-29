@@ -11,6 +11,7 @@ import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatBarcodesForDisplay
 import com.dnavarro.poskmp.util.generateUUID
 import com.dnavarro.poskmp.util.roundPrice
+import kotlin.math.roundToLong
 
 data class HeldTicket(
     val id: String = generateUUID(),
@@ -18,7 +19,7 @@ data class HeldTicket(
     val timestamp: Long = currentTimeMillis()
 ) {
     val total: Double
-        get() = items.sumOf { it.product.precio * it.quantity }
+        get() = (items.sumOf { it.product.precio * it.quantity } * 100.0).roundToLong() / 100.0
     val totalItemsCount: Double
         get() = items.sumOf { if (it.product.por_peso == 1L) 1.0 else it.quantity }
 }
@@ -85,7 +86,7 @@ data class VentaUiState(
     val activeShiftMovements: List<com.dnavarro.poskmp.domain.model.CashMovement> = emptyList()
 ) {
     val rawTotal: Double
-        get() = cartItems.sumOf { it.product.precio * it.quantity }
+        get() = (cartItems.sumOf { it.product.precio * it.quantity } * 100.0).roundToLong() / 100.0
 
     val total: Double
         get() = if (roundTicketTotal) roundPrice(rawTotal) else rawTotal

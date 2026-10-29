@@ -36,7 +36,9 @@ object DatabaseMigrator {
                 activo          INTEGER NOT NULL DEFAULT 1,
                 created_at      INTEGER NOT NULL DEFAULT 0,
                 updated_at      INTEGER NOT NULL DEFAULT 0,
-                sync_state      TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+                sync_state      TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+                tipo_descuento  TEXT    NOT NULL DEFAULT 'NONE',
+                porcentaje_descuento REAL NOT NULL DEFAULT 0.0
             );
             """.trimIndent(),
             """
@@ -91,6 +93,7 @@ object DatabaseMigrator {
                 ganancia        REAL    NOT NULL,
                 es_mayoreo      INTEGER NOT NULL DEFAULT 0,
                 es_delivery     INTEGER NOT NULL DEFAULT 0,
+                es_descuento    INTEGER NOT NULL DEFAULT 0,
                 created_at      INTEGER NOT NULL,
                 FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
             );
@@ -184,6 +187,12 @@ object DatabaseMigrator {
         ensureColumnExists(driver, "customers", "created_at", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "customers", "updated_at", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "customers", "sync_state", "TEXT NOT NULL DEFAULT 'PENDING_INSERT'")
+        ensureColumnExists(driver, "customers", "tipo_descuento", "TEXT NOT NULL DEFAULT 'NONE'")
+        ensureColumnExists(driver, "customers", "porcentaje_descuento", "REAL NOT NULL DEFAULT 0.0")
+
+        try {
+            driver.execute(null, "UPDATE customers SET tipo_descuento = 'WHOLESALE' WHERE siempre_mayoreo = 1 AND (tipo_descuento IS NULL OR tipo_descuento = 'NONE');", 0)
+        } catch (_: Exception) {}
 
         // Migrate sales columns
         ensureColumnExists(driver, "sales", "shift_id", "TEXT DEFAULT NULL")
@@ -220,6 +229,7 @@ object DatabaseMigrator {
 
         // Migrate sale_items columns
         ensureColumnExists(driver, "sale_items", "es_delivery", "INTEGER NOT NULL DEFAULT 0")
+        ensureColumnExists(driver, "sale_items", "es_descuento", "INTEGER NOT NULL DEFAULT 0")
 
         // Migrate cashiers columns
         ensureColumnExists(driver, "cashiers", "device_id", "TEXT DEFAULT NULL")

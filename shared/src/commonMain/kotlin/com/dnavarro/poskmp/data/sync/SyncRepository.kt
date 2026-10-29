@@ -292,6 +292,7 @@ class SyncRepositoryImpl(
                 val unsyncedCustomers = queries.selectUnsyncedCustomers().executeAsList()
                 if (unsyncedCustomers.isNotEmpty()) {
                     val customerDtos = unsyncedCustomers.map { c ->
+                        val isWholesale = c.tipo_descuento == "WHOLESALE" || (c.siempre_mayoreo == 1L && c.tipo_descuento == "NONE")
                         CustomerDto(
                             id = c.id,
                             nombre = c.nombre,
@@ -299,10 +300,12 @@ class SyncRepositoryImpl(
                             direccion = c.direccion,
                             notas = c.notas,
                             limiteCredito = c.limite_credito,
-                            siempreMayoreo = c.siempre_mayoreo == 1L,
+                            siempreMayoreo = isWholesale,
                             activo = c.activo == 1L,
                             createdAt = c.created_at,
-                            updatedAt = c.updated_at
+                            updatedAt = c.updated_at,
+                            tipoDescuento = if (isWholesale && c.tipo_descuento == "NONE") "WHOLESALE" else c.tipo_descuento,
+                            porcentajeDescuento = c.porcentaje_descuento
                         )
                     }
                     val pushResult = remoteDataSource.pushCustomers(url, key, customerDtos)
@@ -482,6 +485,7 @@ class SyncRepositoryImpl(
                             ganancia = item.ganancia,
                             esMayoreo = item.es_mayoreo == 1L,
                             esDelivery = item.es_delivery == 1L,
+                            esDescuento = item.es_descuento == 1L,
                             createdAt = item.created_at
                         )
                     }
@@ -581,9 +585,14 @@ class SyncRepositoryImpl(
             }
             val remoteCustomers = pulledCustomersResult.getOrDefault(emptyList())
             queries.transaction {
-                for ((id, nombre, telefono, direccion, notas, limiteCredito, siempreMayoreo, activo, createdAt, updatedAt) in remoteCustomers) {
+                for ((id, nombre, telefono, direccion, notas, limiteCredito, siempreMayoreo, activo, createdAt, updatedAt, tipoDescuento, porcentajeDescuento) in remoteCustomers) {
                     val local = queries.selectCustomerById(id).executeAsOneOrNull()
                     if (local == null || updatedAt >= local.updated_at) {
+                        val effectiveType = when {
+                            tipoDescuento != "NONE" -> tipoDescuento
+                            siempreMayoreo -> "WHOLESALE"
+                            else -> "NONE"
+                        }
                         queries.upsertSyncedCustomer(
                             id = id,
                             nombre = nombre,
@@ -591,10 +600,12 @@ class SyncRepositoryImpl(
                             direccion = direccion,
                             notas = notas,
                             limite_credito = limiteCredito,
-                            siempre_mayoreo = if (siempreMayoreo) 1L else 0L,
+                            siempre_mayoreo = if (effectiveType == "WHOLESALE") 1L else 0L,
                             activo = if (activo) 1L else 0L,
                             created_at = createdAt,
-                            updated_at = updatedAt
+                            updated_at = updatedAt,
+                            tipo_descuento = effectiveType,
+                            porcentaje_descuento = porcentajeDescuento
                         )
                     }
                 }
@@ -773,7 +784,7 @@ class SyncRepositoryImpl(
             if (remoteItems.isNotEmpty()) {
                 val existingSaleIds = queries.selectAllSaleIds().executeAsList().toHashSet()
                 queries.transaction {
-                    for ((id, saleId, productId, productNombre, cantidad, precioUnitario, costoUnitario, subtotal, ganancia, esMayoreo, esDelivery, createdAt) in remoteItems) {
+                    for ((id, saleId, productId, productNombre, cantidad, precioUnitario, costoUnitario, subtotal, ganancia, esMayoreo, esDelivery, esDescuento, createdAt) in remoteItems) {
                         if (existingSaleIds.contains(saleId)) {
                             queries.upsertSyncedSaleItem(
                                 id = id,
@@ -787,6 +798,7 @@ class SyncRepositoryImpl(
                                 ganancia = ganancia,
                                 es_mayoreo = if (esMayoreo) 1L else 0L,
                                 es_delivery = if (esDelivery) 1L else 0L,
+                                es_descuento = if (esDescuento) 1L else 0L,
                                 created_at = createdAt
                             )
                         }

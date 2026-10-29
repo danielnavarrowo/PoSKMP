@@ -2,6 +2,7 @@ package com.dnavarro.poskmp.domain.usecase
 
 import com.dnavarro.poskmp.data.CustomerRepository
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.CustomerDiscountType
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.generateUUID
 
@@ -16,7 +17,9 @@ class SaveCustomerUseCase(
         notas: String = "",
         limiteCredito: Double = 0.0,
         siempreMayoreo: Boolean = false,
-        activo: Boolean = true
+        activo: Boolean = true,
+        tipoDescuento: CustomerDiscountType = if (siempreMayoreo) CustomerDiscountType.WHOLESALE else CustomerDiscountType.NONE,
+        porcentajeDescuento: Double = 0.0
     ): Result<Customer> {
         val trimmedNombre = nombre.trim()
         if (trimmedNombre.isEmpty()) {
@@ -29,6 +32,12 @@ class SaveCustomerUseCase(
 
         val existing = if (!isNew) customerRepository.getCustomerById(customerId) else null
 
+        val resolvedType = when {
+            tipoDescuento != CustomerDiscountType.NONE -> tipoDescuento
+            siempreMayoreo -> CustomerDiscountType.WHOLESALE
+            else -> CustomerDiscountType.NONE
+        }
+
         val customer = Customer(
             id = customerId,
             nombre = trimmedNombre,
@@ -36,13 +45,17 @@ class SaveCustomerUseCase(
             direccion = direccion.trim(),
             notas = notas.trim(),
             limiteCredito = limiteCredito.coerceAtLeast(0.0),
-            siempreMayoreo = siempreMayoreo,
+            siempreMayoreo = resolvedType == CustomerDiscountType.WHOLESALE,
             activo = activo,
             saldoDeudor = existing?.saldoDeudor ?: 0.0,
             totalCompras = existing?.totalCompras ?: 0L,
             createdAt = existing?.createdAt ?: now,
             updatedAt = now,
-            syncState = if (isNew) "PENDING_INSERT" else "PENDING_UPDATE"
+            syncState = if (isNew) "PENDING_INSERT" else "PENDING_UPDATE",
+            tipoDescuento = resolvedType,
+            porcentajeDescuento = if (resolvedType == CustomerDiscountType.COST_PLUS_PERCENTAGE || resolvedType == CustomerDiscountType.RETAIL_MINUS_PERCENTAGE) {
+                porcentajeDescuento.coerceAtLeast(0.0)
+            } else 0.0
         )
 
         customerRepository.saveCustomer(customer)

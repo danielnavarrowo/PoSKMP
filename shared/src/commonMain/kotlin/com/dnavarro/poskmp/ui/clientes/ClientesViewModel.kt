@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.clientes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.CustomerDiscountType
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.data.SaleRepository
@@ -148,7 +149,9 @@ class ClientesViewModel(
         direccion: String,
         notas: String,
         limiteCredito: Double,
-        siempreMayoreo: Boolean = false
+        siempreMayoreo: Boolean = false,
+        tipoDescuento: CustomerDiscountType = if (siempreMayoreo) CustomerDiscountType.WHOLESALE else CustomerDiscountType.NONE,
+        porcentajeDescuento: Double = 0.0
     ) {
         viewModelScope.launch {
             val result = saveCustomerUseCase(
@@ -158,7 +161,9 @@ class ClientesViewModel(
                 direccion = direccion,
                 notas = notas,
                 limiteCredito = limiteCredito,
-                siempreMayoreo = siempreMayoreo
+                siempreMayoreo = siempreMayoreo,
+                tipoDescuento = tipoDescuento,
+                porcentajeDescuento = porcentajeDescuento
             )
             result.onSuccess {
                 dismissCustomerFormDialog()

@@ -13,5 +13,20 @@ data class Customer(
     val totalCompras: Long = 0L,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
-    val syncState: String = "PENDING_INSERT"
-)
+    val syncState: String = "PENDING_INSERT",
+    val tipoDescuento: CustomerDiscountType = if (siempreMayoreo) CustomerDiscountType.WHOLESALE else CustomerDiscountType.NONE,
+    val porcentajeDescuento: Double = 0.0
+) {
+    val discountType: CustomerDiscountType get() = tipoDescuento
+    val discountPercentage: Double get() = porcentajeDescuento
+
+    val effectiveDiscountType: CustomerDiscountType
+        get() = when {
+            tipoDescuento != CustomerDiscountType.NONE -> tipoDescuento
+            siempreMayoreo -> CustomerDiscountType.WHOLESALE
+            else -> CustomerDiscountType.NONE
+        }
+
+    val hasSpecialPricing: Boolean
+        get() = effectiveDiscountType != CustomerDiscountType.NONE
+}

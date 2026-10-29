@@ -203,13 +203,22 @@ import poskmp.shared.generated.resources.unregistered_name_placeholder
 import poskmp.shared.generated.resources.warning
 import poskmp.shared.generated.resources.weight_kg_label
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.time.Duration.Companion.milliseconds
+
+enum class PriceTier {
+    RETAIL,
+    WHOLESALE,
+    CUSTOMER_DISCOUNT
+}
 
 data class CartItem(
     val product: Products,
     val quantity: Double,
     val originalPrice: Double = product.precio,
-    val isManualWholesale: Boolean? = null
+    val isManualWholesale: Boolean? = null,
+    val appliedTier: PriceTier = PriceTier.RETAIL,
+    val manualTier: PriceTier? = null
 )
 
 @Suppress("UnusedMaterial3ScaffoldPaddingParameter")
@@ -433,11 +442,6 @@ fun VentaScreen(
         reclaimSearchBarFocus()
     }
 
-    fun toggleWholesalePrice() {
-        viewModel.toggleWholesalePrice()
-        reclaimSearchBarFocus()
-    }
-
     fun removeCartItem(item: CartItem) {
         viewModel.removeCartItem(item)
         reclaimSearchBarFocus()
@@ -616,14 +620,14 @@ fun VentaScreen(
                                 }
 
                                 Key.F11 -> {
-                                    if (keyEvent.isCtrlPressed) {
-                                        viewModel.toggleWholesalePrice()
+                                    if (keyEvent.isCtrlPressed || keyEvent.isShiftPressed) {
+                                        viewModel.cycleTicketPriceTier()
                                         true
                                     } else {
                                         if (cartItems.isNotEmpty()) {
                                             val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
                                             val currentItem = cartItems[currentIndex]
-                                            viewModel.toggleWholesalePriceForItem(currentItem)
+                                            viewModel.cyclePriceTierForItem(currentItem)
                                             true
                                         } else false
                                     }
@@ -689,7 +693,7 @@ fun VentaScreen(
                     maxCatalogAllowed
                 )
                 val ticketWidth = (totalWidth - catalogWidth - splitterWidth).coerceAtLeast(minTicketWidth)
-                val isTicketNarrow = ticketWidth < 380.dp
+                val isTicketNarrow = ticketWidth < 430.dp
                 val swapOrder = uiState.swapVentaLayoutOrder
 
                 val catalogPane: @Composable () -> Unit = {
@@ -767,11 +771,12 @@ fun VentaScreen(
                             if (cartItems.isNotEmpty()) {
                                 val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
                                 val currentItem = cartItems[currentIndex]
-                                viewModel.toggleWholesalePriceForItem(currentItem)
+                                viewModel.cyclePriceTierForItem(currentItem)
                                 reclaimSearchBarFocus()
                             }
                         },
-                        onApplyWholesaleClick = { toggleWholesalePrice() },
+                        onApplyWholesaleClick = { viewModel.cycleTicketPriceTier() },
+                        onCycleItemTier = { item -> viewModel.cyclePriceTierForItem(item) },
                         onQuantityFocusChanged = { isCartItemQuantityFocused = it }
                     )
                 }
@@ -955,16 +960,17 @@ fun VentaScreen(
                                 onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                                 onClearCustomerClick = { viewModel.clearSelectedCustomer() },
                                 isDeliveryMode = uiState.prioritizeDeliveryPrice,
-                                isNarrow = totalWidth < 380.dp,
+                                isNarrow = isCompact || totalWidth < 450.dp,
                                 onApplyItemWholesaleClick = {
                                     if (cartItems.isNotEmpty()) {
                                         val currentIndex = selectedIndex.coerceIn(0, cartItems.lastIndex)
                                         val currentItem = cartItems[currentIndex]
-                                        viewModel.toggleWholesalePriceForItem(currentItem)
+                                        viewModel.cyclePriceTierForItem(currentItem)
                                         reclaimSearchBarFocus()
                                     }
                                 },
-                                onApplyWholesaleClick = { toggleWholesalePrice() },
+                                onApplyWholesaleClick = { viewModel.cycleTicketPriceTier() },
+                                onCycleItemTier = { item -> viewModel.cyclePriceTierForItem(item) },
                                 onQuantityFocusChanged = { isCartItemQuantityFocused = it }
                             )
                         }
@@ -1474,8 +1480,10 @@ fun VentaScreen(
 
     // Checkout Dialog
     if (showCheckoutDialog) {
+        val totalCents = (total * 100.0).roundToLong()
+
         LaunchedEffect(Unit) {
-            val formattedTotal = if (total % 1.0 == 0.0) total.toInt().toString() else ((total * 100.0).roundToInt() / 100.0).toString()
+            val formattedTotal = if (totalCents % 100L == 0L) (totalCents / 100L).toString() else (totalCents / 100.0).toString()
             paymentAmountInput.edit {
                 replace(0, length, formattedTotal)
                 selection = TextRange(0, formattedTotal.length)
@@ -1490,7 +1498,9 @@ fun VentaScreen(
 
         val paymentText = paymentAmountInput.text.toString()
         val paymentAmount = paymentText.toDoubleOrNull() ?: 0.0
-        val change = if (paymentAmount >= total) paymentAmount - total else 0.0
+        val paymentCents = (paymentAmount * 100.0).roundToLong()
+        val changeCents = (paymentCents - totalCents).coerceAtLeast(0L)
+        val change = changeCents / 100.0
         val selectedCustomer = uiState.selectedCustomer
 
         val mCash = mixedCashState.text.toString().toDoubleOrNull() ?: 0.0
@@ -1498,21 +1508,28 @@ fun VentaScreen(
         val mTransfer = mixedTransferState.text.toString().toDoubleOrNull() ?: 0.0
         val mCredit = mixedCreditState.text.toString().toDoubleOrNull() ?: 0.0
 
-        val totalReceivedMixto = mCash + mCard + mTransfer + mCredit
-        val nonCashImmediate = mCard + mTransfer
-        val remainingNeededForCash = (total - nonCashImmediate - mCredit).coerceAtLeast(0.0)
-        val cambioMixto = if (mCash > remainingNeededForCash && totalReceivedMixto >= total) {
-            mCash - remainingNeededForCash
-        } else 0.0
+        val mCashCents = (mCash * 100.0).roundToLong()
+        val mCardCents = (mCard * 100.0).roundToLong()
+        val mTransferCents = (mTransfer * 100.0).roundToLong()
+        val mCreditCents = (mCredit * 100.0).roundToLong()
+
+        val totalReceivedMixtoCents = mCashCents + mCardCents + mTransferCents + mCreditCents
+        val totalReceivedMixto = totalReceivedMixtoCents / 100.0
+        val nonCashImmediateCents = mCardCents + mTransferCents
+        val remainingNeededForCashCents = (totalCents - nonCashImmediateCents - mCreditCents).coerceAtLeast(0L)
+        val cambioMixtoCents = if (mCashCents > remainingNeededForCashCents && totalReceivedMixtoCents >= totalCents) {
+            mCashCents - remainingNeededForCashCents
+        } else 0L
+        val cambioMixto = cambioMixtoCents / 100.0
 
         val hasWholesaleProducts = cartItems.any { it.product.precio == it.product.precio_mayoreo && it.product.precio_mayoreo > 0.0 }
         val isCardBlockedByWholesale = uiState.disallowCardPaymentOnWholesale && hasWholesaleProducts
 
         val isCheckoutValid = when (selectedPaymentMethod) {
-            PaymentMethod.EFECTIVO -> paymentAmount >= total || paymentText.isEmpty()
+            PaymentMethod.EFECTIVO -> paymentCents >= totalCents || paymentText.isEmpty()
             PaymentMethod.TARJETA -> !isCardBlockedByWholesale
             PaymentMethod.TRANSFERENCIA -> true
-            PaymentMethod.MIXTO -> totalReceivedMixto >= total && (mCredit == 0.0 || selectedCustomer != null) && (!isCardBlockedByWholesale || mCard == 0.0)
+            PaymentMethod.MIXTO -> totalReceivedMixtoCents >= totalCents && (mCreditCents == 0L || selectedCustomer != null) && (!isCardBlockedByWholesale || mCardCents == 0L)
             PaymentMethod.CREDITO -> selectedCustomer != null
         }
 
@@ -1521,12 +1538,12 @@ fun VentaScreen(
             isCheckoutInFlight = true
             val (finalPayment, finalChange) = when (selectedPaymentMethod) {
                 PaymentMethod.EFECTIVO -> Pair(
-                    if (paymentText.isEmpty()) total else paymentAmount,
+                    if (paymentText.isEmpty()) total else (paymentCents / 100.0),
                     if (paymentText.isEmpty()) 0.0 else change
                 )
                 PaymentMethod.TARJETA, PaymentMethod.TRANSFERENCIA -> Pair(total, 0.0)
                 PaymentMethod.MIXTO -> Pair(
-                    mCash + mCard + mTransfer,
+                    (mCashCents + mCardCents + mTransferCents) / 100.0,
                     cambioMixto
                 )
                 PaymentMethod.CREDITO -> Pair(0.0, 0.0)
@@ -1538,10 +1555,10 @@ fun VentaScreen(
                 PaymentMethod.TRANSFERENCIA -> listOf(0.0, 0.0, total, 0.0)
                 PaymentMethod.CREDITO -> listOf(0.0, 0.0, 0.0, total)
                 PaymentMethod.MIXTO -> listOf(
-                    (mCash - cambioMixto).coerceAtLeast(0.0),
-                    mCard,
-                    mTransfer,
-                    mCredit
+                    ((mCashCents - cambioMixtoCents).coerceAtLeast(0L)) / 100.0,
+                    mCardCents / 100.0,
+                    mTransferCents / 100.0,
+                    mCreditCents / 100.0
                 )
             }
 
@@ -1755,8 +1772,8 @@ fun VentaScreen(
                         }
                     }
 
-                    val totalWithoutDiscount = cartItems.sumOf { it.originalPrice * it.quantity }
-                    val hasDiscount = cartItems.any { it.product.precio < it.originalPrice }
+                    val totalWithoutDiscount = (cartItems.sumOf { it.originalPrice * it.quantity } * 100.0).roundToLong() / 100.0
+                    val hasDiscount = cartItems.any { ((it.originalPrice * 100.0).roundToLong() - (it.product.precio * 100.0).roundToLong()) > 0L }
 
                     Column(
                         modifier = Modifier.fillMaxWidth()
@@ -1833,14 +1850,16 @@ fun VentaScreen(
                                 )
                             )
 
-                            if (paymentText.isNotEmpty() && paymentAmount < total) {
+                            val missingCents = totalCents - paymentCents
+                            if (paymentText.isNotEmpty() && missingCents > 0L) {
+                                val missingAmount = missingCents / 100.0
                                 Text(
-                                    stringResource(Res.string.insufficient_amount_error, (total - paymentAmount).toString().formatPrice()),
+                                    stringResource(Res.string.insufficient_amount_error, missingAmount.toString().formatPrice()),
                                     color = MaterialTheme.colorScheme.error,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
-                            } else if (paymentAmount >= total) {
+                            } else if (paymentCents >= totalCents) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1908,8 +1927,9 @@ fun VentaScreen(
                                     )
                                 }
 
-                                val missingToCover = (total - totalReceivedMixto).coerceAtLeast(0.0)
-                                if (missingToCover > 0.0) {
+                                val missingToCoverCents = (totalCents - totalReceivedMixtoCents).coerceAtLeast(0L)
+                                if (missingToCoverCents > 0L) {
+                                    val missingToCover = missingToCoverCents / 100.0
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1928,7 +1948,7 @@ fun VentaScreen(
                                             color = MaterialTheme.colorScheme.error
                                         )
                                     }
-                                } else if (cambioMixto > 0.0) {
+                                } else if (cambioMixtoCents > 0L) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1949,7 +1969,7 @@ fun VentaScreen(
                                     }
                                 }
 
-                                if (mCredit > 0.0) {
+                                if (mCreditCents > 0L) {
                                     if (selectedCustomer == null) {
                                         Surface(
                                             color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
@@ -1976,11 +1996,12 @@ fun VentaScreen(
                                             }
                                         }
                                     } else {
-                                        val limit = selectedCustomer.limiteCredito
-                                        val exceeds = limit > 0.0 && (selectedCustomer.saldoDeudor + mCredit) > limit
+                                        val limitCents = (selectedCustomer.limiteCredito * 100.0).roundToLong()
+                                        val totalDebtWithCreditCents = ((selectedCustomer.saldoDeudor * 100.0).roundToLong()) + mCreditCents
+                                        val exceeds = limitCents in 1..<totalDebtWithCreditCents
                                         if (exceeds) {
                                             Text(
-                                                text = stringResource(Res.string.credit_limit_exceeded_warning, limit.toString().formatPrice()),
+                                                text = stringResource(Res.string.credit_limit_exceeded_warning, selectedCustomer.limiteCredito.toString().formatPrice()),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.error,
                                                 fontWeight = FontWeight.Bold,
@@ -2036,7 +2057,9 @@ fun VentaScreen(
                                 }
                             } else {
                                 val limit = selectedCustomer.limiteCredito
-                                val exceeds = limit > 0.0 && (selectedCustomer.saldoDeudor + total) > limit
+                                val limitCents = (limit * 100.0).roundToLong()
+                                val totalDebtWithCreditCents = ((selectedCustomer.saldoDeudor * 100.0).roundToLong()) + totalCents
+                                val exceeds = limitCents in 1..<totalDebtWithCreditCents
                                 Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                                     Text(
                                         text = stringResource(Res.string.credit_charge_summary, total.toString().formatPrice()),

@@ -167,9 +167,11 @@ CREATE TABLE customers (
     limite_credito  REAL    NOT NULL DEFAULT 0.0,
     siempre_mayoreo INTEGER NOT NULL DEFAULT 0,
     activo          INTEGER NOT NULL DEFAULT 1,
-    created_at      INTEGER NOT NULL,
-    updated_at      INTEGER NOT NULL,
-    sync_state      TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL,
+    sync_state           TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    tipo_descuento       TEXT    NOT NULL DEFAULT 'NONE',
+    porcentaje_descuento REAL    NOT NULL DEFAULT 0.0
 );
 
 CREATE INDEX idx_customers_nombre ON customers(nombre);
@@ -256,12 +258,12 @@ ORDER BY c.nombre ASC;
 
 insertCustomer:
 INSERT INTO customers (
-    id, nombre, telefono, direccion, notas, limite_credito, siempre_mayoreo, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    id, nombre, telefono, direccion, notas, limite_credito, siempre_mayoreo, activo, created_at, updated_at, sync_state, tipo_descuento, porcentaje_descuento
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateCustomer:
 UPDATE customers
-SET nombre = ?, telefono = ?, direccion = ?, notas = ?, limite_credito = ?, siempre_mayoreo = ?, updated_at = ?, sync_state = ?
+SET nombre = ?, telefono = ?, direccion = ?, notas = ?, limite_credito = ?, siempre_mayoreo = ?, updated_at = ?, sync_state = ?, tipo_descuento = ?, porcentaje_descuento = ?
 WHERE id = ?;
 
 setCustomerActiveStatus:
@@ -280,8 +282,8 @@ UPDATE customers SET sync_state = ? WHERE id = ?;
 
 upsertSyncedCustomer:
 INSERT INTO customers (
-    id, nombre, telefono, direccion, notas, limite_credito, siempre_mayoreo, activo, created_at, updated_at, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED')
+    id, nombre, telefono, direccion, notas, limite_credito, siempre_mayoreo, activo, created_at, updated_at, sync_state, tipo_descuento, porcentaje_descuento
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?)
 ON CONFLICT(id) DO UPDATE SET
     nombre = excluded.nombre,
     telefono = excluded.telefono,
@@ -292,7 +294,9 @@ ON CONFLICT(id) DO UPDATE SET
     activo = excluded.activo,
     created_at = excluded.created_at,
     updated_at = excluded.updated_at,
-    sync_state = 'SYNCED';
+    sync_state = 'SYNCED',
+    tipo_descuento = excluded.tipo_descuento,
+    porcentaje_descuento = excluded.porcentaje_descuento;
 
 -- Customer Payments Queries
 
@@ -401,6 +405,7 @@ CREATE TABLE sale_items (
     ganancia        REAL    NOT NULL,
     es_mayoreo      INTEGER NOT NULL DEFAULT 0,
     es_delivery     INTEGER NOT NULL DEFAULT 0,
+    es_descuento    INTEGER NOT NULL DEFAULT 0,
     created_at      INTEGER NOT NULL,
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
 );
@@ -462,7 +467,7 @@ WHERE id = ?;
 
 selectSalesByCustomerId:
 SELECT * FROM sales
-WHERE customer_id = ?
+WHERE customer_id = ? AND estado != 'CANCELADA'
 ORDER BY created_at DESC;
 
 selectCreditSalesByCustomerId:
@@ -473,14 +478,14 @@ ORDER BY created_at DESC;
 insertSaleItem:
 INSERT INTO sale_items (
     id, sale_id, product_id, product_nombre, cantidad,
-    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, es_delivery, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, es_delivery, es_descuento, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 upsertSyncedSaleItem:
 INSERT INTO sale_items (
     id, sale_id, product_id, product_nombre, cantidad,
-    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, es_delivery, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    precio_unitario, costo_unitario, subtotal, ganancia, es_mayoreo, es_delivery, es_descuento, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
     sale_id = excluded.sale_id,
     product_id = excluded.product_id,
@@ -492,6 +497,7 @@ ON CONFLICT(id) DO UPDATE SET
     ganancia = excluded.ganancia,
     es_mayoreo = excluded.es_mayoreo,
     es_delivery = excluded.es_delivery,
+    es_descuento = excluded.es_descuento,
     created_at = excluded.created_at;
 
 getNextFolio:

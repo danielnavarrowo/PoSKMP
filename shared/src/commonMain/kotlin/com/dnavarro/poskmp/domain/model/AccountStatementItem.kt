@@ -2,7 +2,8 @@ package com.dnavarro.poskmp.domain.model
 
 enum class AccountStatementType {
     CARGO_CREDITO,
-    ABONO
+    ABONO,
+    VENTA_CONTADO
 }
 
 data class AccountStatementItem(

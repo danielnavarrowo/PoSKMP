@@ -1810,16 +1810,32 @@ internal fun SaleDetailDialog(
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 14.sp,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
                                     )
+                                    val isDiscounted = item.esDescuento || (!item.esMayoreo && !item.esDelivery && sale.totalOriginal > sale.total + 0.001)
                                     if (item.esMayoreo) {
                                         Surface(
-                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                            color = MaterialTheme.colorScheme.primaryContainer,
                                             shape = RoundedCornerShape(4.dp)
                                         ) {
                                             Text(
                                                 text = "Mayoreo",
                                                 style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    } else if (isDiscounted) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "Descuento",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                             )
@@ -1832,6 +1848,7 @@ internal fun SaleDetailDialog(
                                             Text(
                                                 text = stringResource(Res.string.delivery_mode_active_badge),
                                                 style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onTertiaryContainer,
                                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                             )

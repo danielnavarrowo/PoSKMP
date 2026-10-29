@@ -6,6 +6,8 @@ import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.Customer
+import com.dnavarro.poskmp.domain.model.CustomerDiscountType
+import com.dnavarro.poskmp.domain.model.CustomerPriceCalculator
 import com.dnavarro.poskmp.domain.model.ReceiptDocument
 import com.dnavarro.poskmp.domain.model.ReceiptItem
 import com.dnavarro.poskmp.domain.receipt.ReceiptFormatter
@@ -17,6 +19,7 @@ import com.dnavarro.poskmp.domain.usecase.PrintReceiptUseCase
 import com.dnavarro.poskmp.domain.usecase.RecordSaleUseCase
 import com.dnavarro.poskmp.domain.usecase.SaveProductUseCase
 import com.dnavarro.poskmp.ui.CartItem
+import com.dnavarro.poskmp.ui.PriceTier
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.util.currentTimeMillis
@@ -431,7 +434,7 @@ class VentaViewModel(
                 Tuple4(byQty, qtyThreshold, byTotal, totalThreshold)
             }.collect { (byQty, qtyThreshold, byTotal, totalThreshold) ->
                 if (_cartItems.value.isNotEmpty()) {
-                    val updated = applyAutoWholesale(
+                    val updated = applyPricingRules(
                         items = _cartItems.value,
                         autoWholesaleByQty = byQty,
                         quantityThreshold = qtyThreshold,
@@ -590,11 +593,13 @@ class VentaViewModel(
         _selectedCustomer.value = customer
         _showCustomerDialog.value = false
 
-        if (customer?.siempreMayoreo != previousCustomer?.siempreMayoreo) {
-            val updated = applyAutoWholesale(
-                items = _cartItems.value,
-                isWholesaleCustomer = customer?.siempreMayoreo == true
-            )
+        val customerChanged = customer?.id != previousCustomer?.id ||
+                customer?.effectiveDiscountType != previousCustomer?.effectiveDiscountType ||
+                customer?.porcentajeDescuento != previousCustomer?.porcentajeDescuento
+
+        if (customerChanged) {
+            val resetList = _cartItems.value.map { it.copy(manualTier = null) }
+            val updated = applyPricingRules(resetList, customer = customer)
             if (updated != _cartItems.value) {
                 pushCartHistory()
                 _cartItems.value = updated
@@ -605,11 +610,11 @@ class VentaViewModel(
     fun clearSelectedCustomer() {
         val previousCustomer = _selectedCustomer.value
         _selectedCustomer.value = null
-        if (previousCustomer?.siempreMayoreo == true) {
-            val updated = applyAutoWholesale(
-                items = _cartItems.value,
-                isWholesaleCustomer = false
-            )
+        if (previousCustomer != null && previousCustomer.effectiveDiscountType != CustomerDiscountType.NONE) {
+            val resetList = _cartItems.value.map {
+                if (it.manualTier == PriceTier.CUSTOMER_DISCOUNT) it.copy(manualTier = null) else it
+            }
+            val updated = applyPricingRules(resetList, customer = null)
             if (updated != _cartItems.value) {
                 pushCartHistory()
                 _cartItems.value = updated
@@ -617,13 +622,13 @@ class VentaViewModel(
         }
     }
 
-    private fun applyAutoWholesale(
+    private fun applyPricingRules(
         items: List<CartItem>,
         autoWholesaleByQty: Boolean = uiState.value.autoWholesaleByQuantity,
         quantityThreshold: Int = uiState.value.autoWholesaleQuantityThreshold,
         autoWholesaleByTotal: Boolean = uiState.value.autoWholesaleByTicketTotal,
         totalThreshold: Double = uiState.value.autoWholesaleTicketTotalThreshold,
-        isWholesaleCustomer: Boolean = _selectedCustomer.value?.siempreMayoreo == true
+        customer: Customer? = _selectedCustomer.value
     ): List<CartItem> {
         if (items.isEmpty()) return items
 
@@ -632,23 +637,68 @@ class VentaViewModel(
             unitBasePrice * it.quantity
         }
         val qualifiesByTicketTotal = autoWholesaleByTotal && totalThreshold > 0.0 && baseTicketTotal >= totalThreshold
+        val effectiveCustomerType = customer?.effectiveDiscountType ?: CustomerDiscountType.NONE
+        val isCustomerCustomDiscount = effectiveCustomerType == CustomerDiscountType.COST_PLUS_PERCENTAGE ||
+                effectiveCustomerType == CustomerDiscountType.RETAIL_MINUS_PERCENTAGE
+        val isCustomerWholesale = effectiveCustomerType == CustomerDiscountType.WHOLESALE
 
         return items.map { item ->
-            if (item.product.precio_mayoreo > 0.0) {
+            val targetTier: PriceTier
+            val targetPrice: Double
+
+            if (item.manualTier != null) {
+                targetTier = item.manualTier
+                targetPrice = when (targetTier) {
+                    PriceTier.CUSTOMER_DISCOUNT -> {
+                        if (isCustomerCustomDiscount) {
+                            CustomerPriceCalculator.calculateEffectivePrice(
+                                customer = customer,
+                                retailPrice = item.originalPrice,
+                                costPrice = item.product.costo,
+                                wholesalePrice = item.product.precio_mayoreo
+                            )
+                        } else item.originalPrice
+                    }
+                    PriceTier.WHOLESALE -> {
+                        if (item.product.precio_mayoreo > 0.0) item.product.precio_mayoreo else item.originalPrice
+                    }
+                    PriceTier.RETAIL -> item.originalPrice
+                }
+            } else {
                 val qualifiesByQuantity = autoWholesaleByQty && quantityThreshold > 0 && item.quantity >= quantityThreshold
-                val shouldBeWholesale = isWholesaleCustomer || qualifiesByTicketTotal || qualifiesByQuantity
+                val shouldAutoWholesale = qualifiesByTicketTotal || qualifiesByQuantity
 
-                val targetPrice = when {
-                    shouldBeWholesale -> item.product.precio_mayoreo
-                    item.isManualWholesale == true -> item.product.precio_mayoreo
-                    else -> item.originalPrice
+                when {
+                    isCustomerCustomDiscount -> {
+                        targetTier = PriceTier.CUSTOMER_DISCOUNT
+                        targetPrice = CustomerPriceCalculator.calculateEffectivePrice(
+                            customer = customer,
+                            retailPrice = item.originalPrice,
+                            costPrice = item.product.costo,
+                            wholesalePrice = item.product.precio_mayoreo
+                        )
+                    }
+                    isCustomerWholesale && item.product.precio_mayoreo > 0.0 -> {
+                        targetTier = PriceTier.WHOLESALE
+                        targetPrice = item.product.precio_mayoreo
+                    }
+                    shouldAutoWholesale && item.product.precio_mayoreo > 0.0 -> {
+                        targetTier = PriceTier.WHOLESALE
+                        targetPrice = item.product.precio_mayoreo
+                    }
+                    else -> {
+                        targetTier = PriceTier.RETAIL
+                        targetPrice = item.originalPrice
+                    }
                 }
+            }
 
-                if (item.product.precio != targetPrice) {
-                    item.copy(product = item.product.copy(precio = targetPrice))
-                } else {
-                    item
-                }
+            if (item.product.precio != targetPrice || item.appliedTier != targetTier) {
+                item.copy(
+                    product = item.product.copy(precio = targetPrice),
+                    appliedTier = targetTier,
+                    isManualWholesale = if (targetTier == PriceTier.WHOLESALE) true else if (targetTier == PriceTier.RETAIL && item.manualTier == PriceTier.RETAIL) false else null
+                )
             } else {
                 item
             }
@@ -679,7 +729,8 @@ class VentaViewModel(
             } else {
                 currentList[existingIndex] = currentItem.copy(
                     quantity = roundedQty,
-                    isManualWholesale = null
+                    isManualWholesale = null,
+                    manualTier = null
                 )
             }
         } else if (quantity > 0.0) {
@@ -696,11 +747,13 @@ class VentaViewModel(
                     product = product.copy(precio = basePrice),
                     quantity = roundedQty,
                     originalPrice = basePrice,
-                    isManualWholesale = null
+                    isManualWholesale = null,
+                    appliedTier = PriceTier.RETAIL,
+                    manualTier = null
                 )
             )
         }
-        _cartItems.value = applyAutoWholesale(currentList)
+        _cartItems.value = applyPricingRules(currentList)
     }
 
     fun setProductQuantityInCart(product: Products, qty: Double) {
@@ -715,7 +768,8 @@ class VentaViewModel(
             } else {
                 currentList[existingIndex] = currentList[existingIndex].copy(
                     quantity = roundedQty,
-                    isManualWholesale = null
+                    isManualWholesale = null,
+                    manualTier = null
                 )
             }
         } else if (roundedQty > 0.0) {
@@ -731,17 +785,19 @@ class VentaViewModel(
                     product = product.copy(precio = basePrice),
                     quantity = roundedQty,
                     originalPrice = basePrice,
-                    isManualWholesale = null
+                    isManualWholesale = null,
+                    appliedTier = PriceTier.RETAIL,
+                    manualTier = null
                 )
             )
         }
-        _cartItems.value = applyAutoWholesale(currentList)
+        _cartItems.value = applyPricingRules(currentList)
     }
 
     fun removeCartItem(item: CartItem) {
         pushCartHistory()
         val remaining = _cartItems.value.filterNot { it.product.id == item.product.id }
-        _cartItems.value = applyAutoWholesale(remaining)
+        _cartItems.value = applyPricingRules(remaining)
     }
 
     fun clearCart() {
@@ -752,46 +808,131 @@ class VentaViewModel(
         }
     }
 
-    fun toggleWholesalePrice() {
+    fun cycleTicketPriceTier() {
         val currentList = _cartItems.value
-        val eligibleItems = currentList.filter { it.product.precio_mayoreo > 0.0 }
-        if (eligibleItems.isEmpty()) return
+        if (currentList.isEmpty()) return
+
+        val customer = _selectedCustomer.value
+        val effectiveCustomerType = customer?.effectiveDiscountType ?: CustomerDiscountType.NONE
+        val hasCustomDiscount = effectiveCustomerType == CustomerDiscountType.COST_PLUS_PERCENTAGE ||
+                effectiveCustomerType == CustomerDiscountType.RETAIL_MINUS_PERCENTAGE
 
         pushCartHistory()
-        val allWholesale = eligibleItems.all { it.product.precio == it.product.precio_mayoreo }
-        val newWholesaleState = !allWholesale
-        _cartItems.value = currentList.map { item ->
-            if (item.product.precio_mayoreo > 0.0) {
-                val targetPrice = if (newWholesaleState) item.product.precio_mayoreo else item.originalPrice
+        if (hasCustomDiscount) {
+            val allCustom = currentList.all { it.appliedTier == PriceTier.CUSTOMER_DISCOUNT }
+            val anyHasWholesale = currentList.any { it.product.precio_mayoreo > 0.0 }
+            val inWholesaleTier = anyHasWholesale && currentList.all {
+                if (it.product.precio_mayoreo > 0.0) it.appliedTier == PriceTier.WHOLESALE else it.appliedTier == PriceTier.RETAIL
+            }
+            val allRetail = currentList.all { it.appliedTier == PriceTier.RETAIL }
+
+            val nextTier = when {
+                allCustom -> if (anyHasWholesale) PriceTier.WHOLESALE else PriceTier.RETAIL
+                inWholesaleTier -> PriceTier.RETAIL
+                allRetail -> PriceTier.CUSTOMER_DISCOUNT
+                else -> PriceTier.CUSTOMER_DISCOUNT
+            }
+
+            _cartItems.value = currentList.map { item ->
+                val targetTier = when (nextTier) {
+                    PriceTier.WHOLESALE -> if (item.product.precio_mayoreo > 0.0) PriceTier.WHOLESALE else PriceTier.RETAIL
+                    else -> nextTier
+                }
+                val targetPrice = when (targetTier) {
+                    PriceTier.CUSTOMER_DISCOUNT -> CustomerPriceCalculator.calculateEffectivePrice(
+                        customer = customer,
+                        retailPrice = item.originalPrice,
+                        costPrice = item.product.costo,
+                        wholesalePrice = item.product.precio_mayoreo
+                    )
+                    PriceTier.WHOLESALE -> item.product.precio_mayoreo
+                    PriceTier.RETAIL -> item.originalPrice
+                }
                 item.copy(
                     product = item.product.copy(precio = targetPrice),
-                    isManualWholesale = newWholesaleState
+                    appliedTier = targetTier,
+                    manualTier = targetTier,
+                    isManualWholesale = (targetTier == PriceTier.WHOLESALE)
                 )
-            } else {
-                item
+            }
+        } else {
+            val eligibleItems = currentList.filter { it.product.precio_mayoreo > 0.0 }
+            if (eligibleItems.isEmpty()) return
+
+            val allWholesale = eligibleItems.all { it.appliedTier == PriceTier.WHOLESALE || it.product.precio == it.product.precio_mayoreo }
+            val newWholesaleState = !allWholesale
+
+            _cartItems.value = currentList.map { item ->
+                if (item.product.precio_mayoreo > 0.0) {
+                    val targetTier = if (newWholesaleState) PriceTier.WHOLESALE else PriceTier.RETAIL
+                    val targetPrice = if (newWholesaleState) item.product.precio_mayoreo else item.originalPrice
+                    item.copy(
+                        product = item.product.copy(precio = targetPrice),
+                        appliedTier = targetTier,
+                        manualTier = targetTier,
+                        isManualWholesale = newWholesaleState
+                    )
+                } else {
+                    item
+                }
             }
         }
     }
 
-    fun toggleWholesalePriceForItem(item: CartItem) {
-        if (item.product.precio_mayoreo <= 0.0) return
+    fun cyclePriceTierForItem(item: CartItem) {
         val currentList = _cartItems.value
         val index = currentList.indexOfFirst { it.product.id == item.product.id }
         if (index < 0) return
 
-        pushCartHistory()
         val targetItem = currentList[index]
-        val isCurrentlyWholesale = targetItem.product.precio == targetItem.product.precio_mayoreo
-        val newWholesaleState = !isCurrentlyWholesale
-        val targetPrice = if (newWholesaleState) targetItem.product.precio_mayoreo else targetItem.originalPrice
+        val customer = _selectedCustomer.value
+        val effectiveCustomerType = customer?.effectiveDiscountType ?: CustomerDiscountType.NONE
+        val hasCustomDiscount = effectiveCustomerType == CustomerDiscountType.COST_PLUS_PERCENTAGE ||
+                effectiveCustomerType == CustomerDiscountType.RETAIL_MINUS_PERCENTAGE
+        val hasWholesalePrice = targetItem.product.precio_mayoreo > 0.0
 
-        val updatedProduct = targetItem.product.copy(precio = targetPrice)
-        val updatedList = currentList.toMutableList()
-        updatedList[index] = targetItem.copy(
-            product = updatedProduct,
-            isManualWholesale = newWholesaleState
+        val nextTier: PriceTier = if (hasCustomDiscount) {
+            when (targetItem.appliedTier) {
+                PriceTier.CUSTOMER_DISCOUNT -> if (hasWholesalePrice) PriceTier.WHOLESALE else PriceTier.RETAIL
+                PriceTier.WHOLESALE -> PriceTier.RETAIL
+                PriceTier.RETAIL -> PriceTier.CUSTOMER_DISCOUNT
+            }
+        } else {
+            if (!hasWholesalePrice) return
+            when (targetItem.appliedTier) {
+                PriceTier.WHOLESALE -> PriceTier.RETAIL
+                else -> PriceTier.WHOLESALE
+            }
+        }
+
+        val targetPrice = when (nextTier) {
+            PriceTier.CUSTOMER_DISCOUNT -> CustomerPriceCalculator.calculateEffectivePrice(
+                customer = customer,
+                retailPrice = targetItem.originalPrice,
+                costPrice = targetItem.product.costo,
+                wholesalePrice = targetItem.product.precio_mayoreo
+            )
+            PriceTier.WHOLESALE -> targetItem.product.precio_mayoreo
+            PriceTier.RETAIL -> targetItem.originalPrice
+        }
+
+        pushCartHistory()
+        val updated = currentList.toMutableList()
+        updated[index] = targetItem.copy(
+            product = targetItem.product.copy(precio = targetPrice),
+            appliedTier = nextTier,
+            manualTier = nextTier,
+            isManualWholesale = (nextTier == PriceTier.WHOLESALE)
         )
-        _cartItems.value = updatedList
+        _cartItems.value = updated
+    }
+
+    fun toggleWholesalePrice() {
+        cycleTicketPriceTier()
+    }
+
+    fun toggleWholesalePriceForItem(item: CartItem) {
+        cyclePriceTierForItem(item)
     }
 
     fun toggleProductFavorite(product: Products) {
@@ -934,7 +1075,7 @@ class VentaViewModel(
                 folio = folio,
                 createdAt = currentTimeMillis(),
                 items = currentItems.map { item ->
-                    val isWholesale = item.product.precio == item.product.precio_mayoreo && item.product.precio_mayoreo > 0.0
+                    val isWholesale = item.appliedTier == PriceTier.WHOLESALE || (item.product.precio == item.product.precio_mayoreo && item.product.precio_mayoreo > 0.0)
                     val isDelivery = !isWholesale && item.product.precio == item.product.precio_delivery && item.product.precio_delivery > 0.0
                     ReceiptItem(
                         name = item.product.nombre,
@@ -948,12 +1089,14 @@ class VentaViewModel(
                     )
                 },
                 total = currentItems.sumOf { it.product.precio * it.quantity }
-                    .let { if (uiState.value.roundTicketTotal) com.dnavarro.poskmp.util.roundPrice(it) else it },
+                    .let { if (uiState.value.roundTicketTotal) com.dnavarro.poskmp.util.roundPrice(it) else kotlin.math.round(it * 100.0) / 100.0 },
                 paid = pagoCon,
                 change = cambio,
                 paymentMethod = metodoPago,
                 customerName = _selectedCustomer.value?.nombre,
                 settings = receiptSettings.copy(openCashDrawerOnCashSale = shouldOpenDrawer),
+                overrideTotalPieces = currentItems.sumOf { if (it.product.por_peso == 1L) 1.0 else it.quantity },
+                overrideTotalOriginal = kotlin.math.round(currentItems.sumOf { it.originalPrice * it.quantity } * 100.0) / 100.0,
                 montoEfectivo = montoEfectivo,
                 montoTarjeta = montoTarjeta,
                 montoTransferencia = montoTransferencia,
