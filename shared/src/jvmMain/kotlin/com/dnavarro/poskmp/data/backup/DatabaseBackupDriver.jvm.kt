@@ -82,7 +82,7 @@ actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriv
                 shmFile.copyTo(File(targetDir, "pos_database_backup_$timestamp.db-shm"), overwrite = true)
             }
 
-            cleanupOldBackups(targetDir, MAX_BACKUPS)
+            cleanupOldBackups(targetDir)
             lastBackupCompletedAtMillis = System.currentTimeMillis()
 
             Result.success(targetFile.absolutePath)
@@ -253,14 +253,14 @@ actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriv
         return columns
     }
 
-    private fun cleanupOldBackups(backupDir: File, maxKeep: Int) {
+    private fun cleanupOldBackups(backupDir: File) {
         try {
             val dbFiles = backupDir.listFiles { file ->
                 file.isFile && file.name.startsWith("pos_database_backup_") && file.name.endsWith(".db")
             }?.sortedByDescending { it.name } ?: return
 
-            if (dbFiles.size > maxKeep) {
-                val filesToDelete = dbFiles.drop(maxKeep)
+            if (dbFiles.size > MAX_BACKUPS) {
+                val filesToDelete = dbFiles.drop(MAX_BACKUPS)
                 for (oldDb in filesToDelete) {
                     oldDb.delete()
                     val baseName = oldDb.name

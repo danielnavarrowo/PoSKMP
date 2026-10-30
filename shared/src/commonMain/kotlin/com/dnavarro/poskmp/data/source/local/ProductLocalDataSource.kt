@@ -167,7 +167,7 @@ class SqlDelightProductDataSource(
     override suspend fun insertProducts(products: List<Products>) {
         withContext(Dispatchers.IO) {
             queries.transaction {
-                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery, created_at, updated_at, sync_state) in products) {
+                for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, esFavorito, piezas, precioDelivery, createdAt, updatedAt, syncState) in products) {
                     queries.insertProduct(
                         id = id,
                         codigos = codigos,
@@ -176,14 +176,14 @@ class SqlDelightProductDataSource(
                         costo = costo,
                         categoria = categoria,
                         activo = activo,
-                        por_peso = por_peso,
-                        precio_mayoreo = precio_mayoreo,
-                        es_favorito = es_favorito,
+                        por_peso = porPeso,
+                        precio_mayoreo = precioMayoreo,
+                        es_favorito = esFavorito,
                         piezas = piezas,
-                        precio_delivery = precio_delivery,
-                        created_at = created_at,
-                        updated_at = updated_at,
-                        sync_state = sync_state
+                        precio_delivery = precioDelivery,
+                        created_at = createdAt,
+                        updated_at = updatedAt,
+                        sync_state = syncState
                     )
                     syncBarcodesForProduct(id, codigos)
                 }
@@ -219,7 +219,7 @@ class SqlDelightProductDataSource(
     override suspend fun updateProducts(products: List<Products>) {
         withContext(Dispatchers.IO) {
             queries.transaction {
-                for ((id, codigos, nombre, precio, costo, categoria, activo, por_peso, precio_mayoreo, es_favorito, piezas, precio_delivery, created_at, updated_at, sync_state) in products) {
+                for ((id, codigos, nombre, precio, costo, categoria, activo, porPeso, precioMayoreo, esFavorito, piezas, precioDelivery, createdAt, updatedAt, syncState) in products) {
                     queries.updateProduct(
                         id = id,
                         codigos = codigos,
@@ -228,14 +228,14 @@ class SqlDelightProductDataSource(
                         costo = costo,
                         categoria = categoria,
                         activo = activo,
-                        por_peso = por_peso,
-                        precio_mayoreo = precio_mayoreo,
-                        es_favorito = es_favorito,
+                        por_peso = porPeso,
+                        precio_mayoreo = precioMayoreo,
+                        es_favorito = esFavorito,
                         piezas = piezas,
-                        precio_delivery = precio_delivery,
-                        created_at = created_at,
-                        updated_at = updated_at,
-                        sync_state = sync_state
+                        precio_delivery = precioDelivery,
+                        created_at = createdAt,
+                        updated_at = updatedAt,
+                        sync_state = syncState
                     )
                     syncBarcodesForProduct(id, codigos)
                 }

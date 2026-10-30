@@ -20,6 +20,7 @@
 
 
 # Ktor loads this JSON serialization provider through META-INF/services.
+#noinspection ShrinkerUnresolvedReference
 -keep class io.ktor.serialization.kotlinx.json.KotlinxSerializationJsonExtensionProvider { *; }
 
 # Skiko & JetBrains

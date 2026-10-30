@@ -3,7 +3,10 @@ package com.dnavarro.poskmp.data.backup
 import app.cash.sqldelight.db.SqlDriver
 
 actual class DatabaseBackupDriver actual constructor(private val driver: SqlDriver) {
+    @Suppress("SameReturnValue")
     actual fun getDefaultBackupDirectoryPath(): String = ""
+
+    @Suppress("SameReturnValue")
     actual fun getBackupDirectoryPath(customPath: String?): String = ""
 
     actual suspend fun createBackup(customPath: String?): Result<String> =

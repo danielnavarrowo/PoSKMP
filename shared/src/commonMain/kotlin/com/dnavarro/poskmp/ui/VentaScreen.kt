@@ -765,7 +765,6 @@ fun VentaScreen(
                         selectedCustomer = uiState.selectedCustomer,
                         onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                         onClearCustomerClick = { viewModel.clearSelectedCustomer() },
-                        isDeliveryMode = uiState.prioritizeDeliveryPrice,
                         isNarrow = isTicketNarrow,
                         onApplyItemWholesaleClick = {
                             if (cartItems.isNotEmpty()) {
@@ -959,7 +958,6 @@ fun VentaScreen(
                                 selectedCustomer = uiState.selectedCustomer,
                                 onAssignCustomerClick = { viewModel.setShowCustomerDialog(true) },
                                 onClearCustomerClick = { viewModel.clearSelectedCustomer() },
-                                isDeliveryMode = uiState.prioritizeDeliveryPrice,
                                 isNarrow = isCompact || totalWidth < 450.dp,
                                 onApplyItemWholesaleClick = {
                                     if (cartItems.isNotEmpty()) {
@@ -1885,26 +1883,22 @@ fun VentaScreen(
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.money,
                                     label = stringResource(Res.string.checkout_field_efectivo),
-                                    state = mixedCashState,
-                                    placeholder = "0.00"
+                                    state = mixedCashState
                                 )
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.card,
                                     label = stringResource(Res.string.checkout_field_tarjeta),
-                                    state = mixedCardState,
-                                    placeholder = "0.00"
+                                    state = mixedCardState
                                 )
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.money_transfer,
                                     label = stringResource(Res.string.checkout_field_transferencia),
-                                    state = mixedTransferState,
-                                    placeholder = "0.00"
+                                    state = mixedTransferState
                                 )
                                 MixedPaymentRow(
                                     iconRes = Res.drawable.person,
                                     label = stringResource(Res.string.checkout_field_credito),
-                                    state = mixedCreditState,
-                                    placeholder = "0.00"
+                                    state = mixedCreditState
                                 )
 
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -2510,8 +2504,7 @@ fun VentaScreen(
 private fun MixedPaymentRow(
     iconRes: DrawableResource,
     label: String,
-    state: TextFieldState,
-    placeholder: String = "0.00"
+    state: TextFieldState
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -2547,7 +2540,7 @@ private fun MixedPaymentRow(
             },
             placeholder = {
                 Text(
-                    text = placeholder,
+                    text = "0.00",
                     textAlign = TextAlign.End,
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)

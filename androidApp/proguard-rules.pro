@@ -9,9 +9,11 @@
 -dontwarn com.google.protobuf.**
 
 # Ktor loads this JSON serialization provider through META-INF/services.
+#noinspection ShrinkerUnresolvedReference
 -keep class io.ktor.serialization.kotlinx.json.KotlinxSerializationJsonExtensionProvider { *; }
 
 # ML Kit & Firebase ComponentDiscovery (instantiated reflectively via Class.getDeclaredConstructor())
+#noinspection ShrinkerUnresolvedReference
 -keep class * implements com.google.firebase.components.ComponentRegistrar {
     <init>();
     *;

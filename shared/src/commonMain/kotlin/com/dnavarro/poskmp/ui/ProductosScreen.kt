@@ -951,7 +951,7 @@ fun ProductosScreen(
                                                 imeAction = ImeAction.Search
                                             ),
                                             onKeyboardAction = {
-                                                onConfirmSearchOrBarcode()
+                                                val _ = onConfirmSearchOrBarcode()
                                             },
                                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                                 color = MaterialTheme.colorScheme.onSurface,

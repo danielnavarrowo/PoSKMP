@@ -8,6 +8,7 @@ actual fun getRenderApiInfo(): RenderApiInfo = RenderApiInfo(
     isAvailable = false
 )
 
+@Suppress("EmptyMethod")
 actual fun setSavedRenderApi(api: String) {
     // No-op on Android
 }

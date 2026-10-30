@@ -159,7 +159,6 @@ fun TicketSection(
     selectedCustomer: Customer? = null,
     onAssignCustomerClick: () -> Unit = {},
     onClearCustomerClick: () -> Unit = {},
-    isDeliveryMode: Boolean = false,
     isNarrow: Boolean = false,
     onApplyItemWholesaleClick: () -> Unit = {},
     onApplyWholesaleClick: () -> Unit = {},

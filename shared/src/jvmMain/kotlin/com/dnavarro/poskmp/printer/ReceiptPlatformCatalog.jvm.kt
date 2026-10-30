@@ -8,8 +8,10 @@ import java.awt.print.PrinterJob
 import java.io.File
 import javax.print.DocFlavor
 
+@Suppress("SameReturnValue")
 actual fun hasBluetoothPrinterPermission(): Boolean = true
 
+@Suppress("EmptyMethod")
 actual fun openBluetoothSettings() {}
 
 @Composable

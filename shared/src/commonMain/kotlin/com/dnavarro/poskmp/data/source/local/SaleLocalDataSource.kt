@@ -133,17 +133,17 @@ class SqlDelightSaleDataSource(
         var deliveryTickets = 0L
         var deliveryPromedio = 0.0
 
-        for ((es_foranea, total_ventas, total_ganancia, total_tickets, promedio_ticket) in rows) {
-            if (es_foranea == 1L) {
-                deliveryVentas = total_ventas
-                deliveryGanancia = total_ganancia
-                deliveryTickets = total_tickets
-                deliveryPromedio = promedio_ticket
+        for ((esForanea, totalVentas, totalGanancia, totalTickets, promedioTicket) in rows) {
+            if (esForanea == 1L) {
+                deliveryVentas = totalVentas
+                deliveryGanancia = totalGanancia
+                deliveryTickets = totalTickets
+                deliveryPromedio = promedioTicket
             } else {
-                localVentas = total_ventas
-                localGanancia = total_ganancia
-                localTickets = total_tickets
-                localPromedio = promedio_ticket
+                localVentas = totalVentas
+                localGanancia = totalGanancia
+                localTickets = totalTickets
+                localPromedio = promedioTicket
             }
         }
 
@@ -159,6 +159,7 @@ class SqlDelightSaleDataSource(
         )
     }
 
+    @Suppress("USELESS_ELVIS")
     override suspend fun getSoldProductsBetween(
         startTime: Long,
         endTime: Long,
@@ -181,6 +182,7 @@ class SqlDelightSaleDataSource(
         }
     }
 
+    @Suppress("USELESS_ELVIS")
     override suspend fun getTopSellingProductsBetween(
         startTime: Long,
         endTime: Long,
@@ -205,6 +207,7 @@ class SqlDelightSaleDataSource(
         }
     }
 
+    @Suppress("USELESS_ELVIS")
     override suspend fun getLeastSellingProductsBetween(
         startTime: Long,
         endTime: Long,

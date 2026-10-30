@@ -117,6 +117,7 @@ actual object PlatformUpdater {
         }
     }
 
+    @Suppress("SetWorldReadable")
     actual suspend fun downloadAndInstall(
         asset: ReleaseAsset,
         onProgress: (progress: Float, downloadedBytes: Long, totalBytes: Long) -> Unit

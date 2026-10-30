@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 rootProject.name = "PoSKMP"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 

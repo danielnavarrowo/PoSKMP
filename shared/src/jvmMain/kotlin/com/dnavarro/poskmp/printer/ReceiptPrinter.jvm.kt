@@ -46,8 +46,9 @@ private class JvmReceiptPrinter : ReceiptPrinter {
                 ?: JvmReceiptPrinter::class.java.getResourceAsStream("/$MANROPE_RESOURCE_PATH")
             stream?.use { input ->
                 Font.createFont(Font.TRUETYPE_FONT, input).also { font ->
-                    runCatching {
+                    try {
                         GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(font)
+                    } catch (_: Exception) {
                     }
                 }
             }
@@ -231,7 +232,10 @@ private class JvmReceiptPrinter : ReceiptPrinter {
                         printAwtGraphics(document, isSystemDialog)
 
                         if (document.openCashDrawer && !isSystemDialog && target.isNotBlank()) {
-                            runCatching { sendDrawerKickToPrintService(target) }
+                            try {
+                                sendDrawerKickToPrintService(target)
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                 }

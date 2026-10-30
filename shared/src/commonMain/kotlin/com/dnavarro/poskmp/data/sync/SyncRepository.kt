@@ -95,7 +95,7 @@ class SyncRepositoryImpl(
         if (pendingDebouncedSyncJob?.isActive == true) return
         pendingDebouncedSyncJob = syncScope.launch {
             delay(maxOf(1000L, delayMs + 500L).milliseconds)
-            syncAll(forceFullSync = false, isManual = false, force = false)
+            syncAll()
         }
     }
 
@@ -543,8 +543,8 @@ class SyncRepositoryImpl(
                 val pendingDeletes = queries.selectDeletedSyncRecords().executeAsList()
                 if (pendingDeletes.isNotEmpty()) {
                     val deleteDtos = pendingDeletes.map { DeletedRecordDto(it.id, it.entity_type, it.deleted_at) }
-                    for ((id, entity_type) in pendingDeletes) {
-                        when (entity_type) {
+                    for ((id, entityType) in pendingDeletes) {
+                        when (entityType) {
                             "PRODUCT" -> remoteDataSource.deleteRemoteProduct(url, key, id)
                             "CUSTOMER" -> remoteDataSource.deleteRemoteCustomer(url, key, id)
                             "PAYMENT" -> remoteDataSource.deleteRemoteCustomerPayment(url, key, id)

@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 
 import com.dnavarro.poskmp.db.Products
 
+@Suppress("EmptyMethod")
 @Composable
 actual fun PlatformBarcodeScanner(
     onScanResult: (String) -> Unit,

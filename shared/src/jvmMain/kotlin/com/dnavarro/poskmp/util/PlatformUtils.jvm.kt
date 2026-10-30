@@ -56,11 +56,13 @@ actual fun isAndroid(): Boolean = false
 @Suppress("SameReturnValue")
 actual fun isDynamicColorSupported(): Boolean = false
 
+@Suppress("EmptyMethod")
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
     // No-op on Desktop JVM
 }
 
+@Suppress("EmptyMethod")
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 actual fun <T> AdaptiveScaffoldPredictiveBackHandler(
