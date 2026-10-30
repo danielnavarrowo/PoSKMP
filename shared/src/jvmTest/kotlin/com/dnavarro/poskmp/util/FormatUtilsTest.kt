@@ -1,7 +1,10 @@
 package com.dnavarro.poskmp.util
 
+import com.dnavarro.poskmp.db.Products
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class FormatUtilsTest {
 
@@ -89,5 +92,45 @@ class FormatUtilsTest {
 
         // Pasted multi-character text is preserved as-is
         assertEquals("pan de muerto", applySmartWordCapitalization("", "pan de muerto", isShiftPressed = false, isDesktop = true))
+    }
+
+    @Test
+    fun testMatchesSearchExcludesCategoryByDefault() {
+        val product = Products(
+            id = "prod-1",
+            codigos = "[\"750100012345\"]",
+            nombre = "Sabritas Sal 45g",
+            precio = 18.0,
+            costo = 12.0,
+            categoria = "Botanas y Frituras",
+            activo = 1L,
+            por_peso = 0L,
+            precio_mayoreo = 16.0,
+            es_favorito = 0L,
+            piezas = 100.0,
+            precio_delivery = 20.0,
+            created_at = 1000L,
+            updated_at = 1000L,
+            sync_state = "SYNCED"
+        )
+
+        // Matches by name
+        assertTrue(product.matchesSearch("Sabritas"))
+        assertTrue(product.matchesSearch("sal"))
+        assertTrue(product.matchesSearch("sabritas sal"))
+
+        // Matches by barcode
+        assertTrue(product.matchesSearch("750100012345"))
+
+        // Matches by ID
+        assertTrue(product.matchesSearch("prod-1"))
+
+        // Does NOT match by category by default
+        assertFalse(product.matchesSearch("Botanas"))
+        assertFalse(product.matchesSearch("Frituras"))
+        assertFalse(product.matchesSearch("botana"))
+
+        // Matches by category only when explicitly enabled
+        assertTrue(product.matchesSearch("Botanas", includeCategory = true))
     }
 }

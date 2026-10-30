@@ -322,16 +322,21 @@ fun String?.matchesSearchQuery(query: String): Boolean {
 }
 
 /**
- * Evaluates whether a product matches a search query across its name, category, barcodes, and ID.
+ * Evaluates whether a product matches a search query across its name, barcodes, and ID.
  * Fully case-insensitive (including Spanish ñ/Ñ) and accent-tolerant.
+ * By default, [includeCategory] is false so search does not match the product's category.
  */
-fun com.dnavarro.poskmp.db.Products.matchesSearch(query: String, normalizedBarcode: String = ""): Boolean {
+fun com.dnavarro.poskmp.db.Products.matchesSearch(
+    query: String,
+    normalizedBarcode: String = "",
+    includeCategory: Boolean = false
+): Boolean {
     val trimmed = query.trim()
     if (trimmed.isEmpty()) return true
 
     // 1. Direct match on full query
     if (this.nombre.matchesSearchQuery(trimmed)) return true
-    if (!this.categoria.isNullOrBlank() && this.categoria.matchesSearchQuery(trimmed)) return true
+    if (includeCategory && !this.categoria.isNullOrBlank() && this.categoria.matchesSearchQuery(trimmed)) return true
     if (this.codigos.contains(trimmed, ignoreCase = true)) return true
     if (normalizedBarcode.isNotEmpty() && this.codigos.contains(normalizedBarcode, ignoreCase = true)) return true
     if (this.parseBarcodes().matchesBarcode(trimmed)) return true
@@ -342,7 +347,7 @@ fun com.dnavarro.poskmp.db.Products.matchesSearch(query: String, normalizedBarco
     if (tokens.size > 1) {
         val matchesAllTokens = tokens.all { token ->
             this.nombre.matchesSearchQuery(token) ||
-            (!this.categoria.isNullOrBlank() && this.categoria.matchesSearchQuery(token)) ||
+            (includeCategory && !this.categoria.isNullOrBlank() && this.categoria.matchesSearchQuery(token)) ||
             this.codigos.contains(token, ignoreCase = true) ||
             this.parseBarcodes().matchesBarcode(token)
         }

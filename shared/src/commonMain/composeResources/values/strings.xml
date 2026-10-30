@@ -223,7 +223,7 @@
     <string name="checkout_button">Cobrar</string>
 
     <!-- CatalogSection -->
-    <string name="search_placeholder">Buscar por nombre o categoría...</string>
+    <string name="search_placeholder">Buscar por nombre o código...</string>
     <string name="search_desc">Buscar</string>
     <string name="empty_icon_desc">Vacío</string>
     <string name="no_products_found">No se encontraron productos.</string>

@@ -148,11 +148,11 @@ ON CONFLICT(id) DO UPDATE SET
 
 searchProducts:
 SELECT * FROM products 
-WHERE (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%' OR categoria LIKE '%' || :query || '%');
+WHERE (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%');
 
 searchActiveProducts:
 SELECT * FROM products 
-WHERE activo = 1 AND (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%' OR categoria LIKE '%' || :query || '%');
+WHERE activo = 1 AND (nombre LIKE '%' || :query || '%' OR codigos LIKE '%' || :query || '%' OR codigos LIKE '%' || :normalizedQuery || '%');
 
 -- ============================================
 -- CUSTOMERS TABLES & QUERIES
