@@ -249,6 +249,7 @@
     <string name="product_name_label">Nombre del Producto*</string>
     <string name="barcodes_label">Códigos de barras</string>
     <string name="barcodes_placeholder">e.g. 75010001, 75010002</string>
+    <string name="registered_barcodes_count">Códigos registrados (%1$d)</string>
     <string name="retail_price_required_label">Venta*</string>
     <string name="cost_label">Costo</string>
     <string name="wholesale">Mayoreo</string>

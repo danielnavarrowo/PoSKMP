@@ -1,5 +1,11 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +60,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -120,6 +128,7 @@ import poskmp.shared.generated.resources.error_delivery_less_than_cost
 import poskmp.shared.generated.resources.error_retail_less_than_cost
 import poskmp.shared.generated.resources.error_retail_less_than_wholesale
 import poskmp.shared.generated.resources.error_wholesale_less_than_cost
+import poskmp.shared.generated.resources.expand_more
 import poskmp.shared.generated.resources.gemini_lookup_action
 import poskmp.shared.generated.resources.gemini_lookup_in_progress
 import poskmp.shared.generated.resources.gemini_suggestion_badge
@@ -129,6 +138,7 @@ import poskmp.shared.generated.resources.modify_product_title
 import poskmp.shared.generated.resources.new_category
 import poskmp.shared.generated.resources.product_name_label
 import poskmp.shared.generated.resources.product_pieces_label
+import poskmp.shared.generated.resources.registered_barcodes_count
 import poskmp.shared.generated.resources.register_new_product_title
 import poskmp.shared.generated.resources.retail_margin_label
 import poskmp.shared.generated.resources.retail_price_required_label
@@ -233,6 +243,7 @@ fun ProductFormDialog(
     var formBarcodes by remember(product) {
         mutableStateOf(product?.parseBarcodes() ?: emptyList())
     }
+    var isBarcodesExpanded by remember(product?.id) { mutableStateOf(false) }
     var barcodeInput by remember { mutableStateOf("") }
     var formCosto by remember(product) {
         val cost = product?.costo
@@ -636,6 +647,7 @@ fun ProductFormDialog(
             }
             formBarcodes = updated
             barcodeInput = ""
+            isBarcodesExpanded = true
             if (firstAdded != null) {
                 tryLookupBarcode(firstAdded)
             }
@@ -953,48 +965,114 @@ fun ProductFormDialog(
             }
 
             if (formBarcodes.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    formBarcodes.forEach { code ->
-                        InputChip(
-                            selected = false,
-                            onClick = { },
-                            modifier = Modifier.focusProperties { canFocus = false },
-                            label = {
-                                Text(
-                                    text = code,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            },
-                            trailingIcon = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.close),
-                                    contentDescription = stringResource(Res.string.close_button),
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .focusProperties { canFocus = false }
-                                        .clickable { removeBarcode(code) }
-                                )
-                            },
-                            shape = MaterialTheme.shapes.small,
-                            colors = InputChipDefaults.inputChipColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
-                                    alpha = 0.6f
-                                ),
-                                labelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                            border = InputChipDefaults.inputChipBorder(
-                                enabled = true,
+                @Composable
+                fun BarcodeChips(topPadding: Boolean) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (topPadding) Modifier.padding(top = 6.dp) else Modifier),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        formBarcodes.forEach { code ->
+                            InputChip(
                                 selected = false,
-                                borderColor = MaterialTheme.colorScheme.outlineVariant
+                                onClick = { },
+                                modifier = Modifier.focusProperties { canFocus = false },
+                                label = {
+                                    Text(
+                                        text = code,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.close),
+                                        contentDescription = stringResource(Res.string.close_button),
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .focusProperties { canFocus = false }
+                                            .clickable { removeBarcode(code) }
+                                    )
+                                },
+                                shape = MaterialTheme.shapes.small,
+                                colors = InputChipDefaults.inputChipColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(
+                                        alpha = 0.6f
+                                    ),
+                                    labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                ),
+                                border = InputChipDefaults.inputChipBorder(
+                                    enabled = true,
+                                    selected = false,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant
+                                )
                             )
-                        )
+                        }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                if (formBarcodes.size > 2) {
+                    val chevronRotation by animateFloatAsState(
+                        targetValue = if (isBarcodesExpanded) 180f else 0f
+                    )
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable { isBarcodesExpanded = !isBarcodesExpanded }
+                            .focusProperties { canFocus = false }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.barcode_scanner),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = stringResource(Res.string.registered_barcodes_count, formBarcodes.size),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Icon(
+                                painter = painterResource(Res.drawable.expand_more),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .rotate(chevronRotation),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isBarcodesExpanded,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        BarcodeChips(topPadding = true)
+                    }
+                } else {
+                    BarcodeChips(topPadding = false)
                 }
             }
         }
@@ -2112,6 +2190,7 @@ fun ProductFormDialog(
                 if (code.isNotEmpty()) {
                     if (!formBarcodes.contains(code)) {
                         formBarcodes = formBarcodes + code
+                        isBarcodesExpanded = true
                         tryLookupBarcode(code)
                     }
                 }

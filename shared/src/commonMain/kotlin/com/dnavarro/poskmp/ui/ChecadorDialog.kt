@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,7 +58,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -129,6 +128,7 @@ fun ChecadorContent(
     val barcodeState = rememberTextFieldState()
     var searchedProduct by remember { mutableStateOf<Products?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
+    var scanCount by remember { mutableIntStateOf(0) }
     var showCameraScanner by remember { mutableStateOf(isCameraScannerAvailable()) }
     var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
     var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
@@ -141,11 +141,13 @@ fun ChecadorContent(
     fun performSearch() {
         val code = barcodeState.text.toString().trim()
         if (code.isEmpty()) return
+        barcodeState.clearText()
 
         scope.launch {
             val result = repository.findProductByBarcode(code)
             searchedProduct = result
             hasSearched = true
+            scanCount++
             lastScannedProduct = result
             checadorQuantity = 1.0
             cameraScannerFeedback = if (result == null) "Producto no encontrado: $code" else null
@@ -154,14 +156,11 @@ fun ChecadorContent(
             } else if (beepOnBarcodeScan) {
                 SoundManager.playBeepSound()
             }
-            barcodeState.edit {
-                selection = TextRange(0, length)
-            }
         }
     }
 
     // 10-second auto-reset timer back to initial state after scanning a product or error
-    LaunchedEffect(searchedProduct, hasSearched) {
+    LaunchedEffect(searchedProduct, hasSearched, scanCount) {
         if (hasSearched || searchedProduct != null) {
             delay(10.seconds)
             searchedProduct = null
@@ -585,10 +584,11 @@ fun ChecadorContent(
                         }
                         searchedProduct = product
                         hasSearched = true
+                        scanCount++
                         lastScannedProduct = product
                         checadorQuantity = 1.0
                         cameraScannerFeedback = null
-                        barcodeState.setTextAndPlaceCursorAtEnd(code)
+                        barcodeState.clearText()
                     } else {
                         lastScannedProduct = null
                         cameraScannerFeedback = "Producto no encontrado: $code"
@@ -677,6 +677,7 @@ fun ChecadorScreen(
     val barcodeState = rememberTextFieldState()
     var searchedProduct by remember { mutableStateOf<Products?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
+    var scanCount by remember { mutableIntStateOf(0) }
     var showCameraScanner by remember { mutableStateOf(onOpenScanner == null && isCameraScannerAvailable()) }
     var lastScannedProduct by remember { mutableStateOf<Products?>(null) }
     var cameraScannerFeedback by remember { mutableStateOf<String?>(null) }
@@ -713,11 +714,13 @@ fun ChecadorScreen(
     fun performSearch() {
         val code = barcodeState.text.toString().trim()
         if (code.isEmpty()) return
+        barcodeState.clearText()
 
         scope.launch {
             val result = repository.findProductByBarcode(code)
             searchedProduct = result
             hasSearched = true
+            scanCount++
             lastScannedProduct = result
             checadorQuantity = 1.0
             cameraScannerFeedback = if (result == null) "Producto no encontrado: $code" else null
@@ -726,15 +729,12 @@ fun ChecadorScreen(
             } else if (beepOnBarcodeScan) {
                 SoundManager.playBeepSound()
             }
-            barcodeState.edit {
-                replace(0, length, code)
-                selection = TextRange(0, code.length)
-            }
+            barcodeState.clearText()
         }
     }
 
     // 10-second auto-reset timer back to initial state after scanning a product or error
-    LaunchedEffect(searchedProduct, hasSearched) {
+    LaunchedEffect(searchedProduct, hasSearched, scanCount) {
         if (hasSearched || searchedProduct != null) {
             delay(10.seconds)
             searchedProduct = null
@@ -779,10 +779,11 @@ fun ChecadorScreen(
                         }
                         searchedProduct = product
                         hasSearched = true
+                        scanCount++
                         lastScannedProduct = product
                         checadorQuantity = 1.0
                         cameraScannerFeedback = null
-                        barcodeState.setTextAndPlaceCursorAtEnd(code)
+                        barcodeState.clearText()
                     } else {
                         lastScannedProduct = null
                         cameraScannerFeedback = "Producto no encontrado: $code"

@@ -132,5 +132,5 @@ fun computeDisplayedCatalogProducts(
         }
 
         if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
-    }.take(50)
+    }.take(100)
 }
