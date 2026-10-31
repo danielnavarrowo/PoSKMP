@@ -1263,6 +1263,9 @@ fun ProductosScreen(
                     onDismiss = { viewModel.onDismissProductDialog() },
                     onSave = { updatedProduct ->
                         viewModel.saveProduct(updatedProduct)
+                        if (lastScannedProduct?.id == updatedProduct.id) {
+                            lastScannedProduct = updatedProduct
+                        }
                     },
                     onValidateBarcodes = { codes ->
                         viewModel.validateBarcodes(codes, showProductDialogFor.id.ifEmpty { null })
@@ -1314,7 +1317,7 @@ fun ProductosScreen(
                 )
             }
 
-            if (showCameraScanner) {
+            if (showCameraScanner && showProductDialogFor == null) {
                 PlatformBarcodeScanner(
                     onScanResult = { scannedCode ->
                         val code = scannedCode.trim()
@@ -1346,7 +1349,11 @@ fun ProductosScreen(
                         val minQty = if (lastScannedProduct?.por_peso == 1L) 0.1 else 1.0
                         scannerQuantity = (scannerQuantity + delta).coerceAtLeast(minQty)
                     },
-                    isChecadorMode = true
+                    isChecadorMode = true,
+                    onEditProduct = { product ->
+                        selectedProductId = product.id
+                        viewModel.onShowProductDialog(product)
+                    }
                 )
             }
 

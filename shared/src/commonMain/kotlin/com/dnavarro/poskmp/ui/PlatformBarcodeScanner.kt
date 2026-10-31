@@ -15,7 +15,8 @@ expect fun PlatformBarcodeScanner(
     onUndo: (() -> Unit)? = null,
     onQuantityChange: ((Double) -> Unit)? = null,
     isChecadorMode: Boolean = false,
-    prioritizeDeliveryPrice: Boolean = false
+    prioritizeDeliveryPrice: Boolean = false,
+    onEditProduct: ((Products) -> Unit)? = null
 )
 
 expect fun isCameraScannerAvailable(): Boolean

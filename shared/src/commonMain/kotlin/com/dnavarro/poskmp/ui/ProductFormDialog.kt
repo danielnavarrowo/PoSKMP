@@ -54,8 +54,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -699,13 +699,79 @@ fun ProductFormDialog(
         }
     }
 
-    val firstNameFocusRequester = remember { FocusRequester() }
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val isWideScreen = remember(windowInfo.containerSize, density) {
+        with(density) { windowInfo.containerSize.width.toDp() >= 760.dp }
+    }
+    val useBottomSheet = isAndroid() && !isWideScreen
+
+    val barcodeFocusRequester = remember { FocusRequester() }
+    val nameFocusRequester = remember { FocusRequester() }
+    val categoryFocusRequester = remember { FocusRequester() }
+    val costFocusRequester = remember { FocusRequester() }
+    val piecesFocusRequester = remember { FocusRequester() }
+    val retailPriceFocusRequester = remember { FocusRequester() }
+    val retailMarginFocusRequester = remember { FocusRequester() }
+    val wholesalePriceFocusRequester = remember { FocusRequester() }
+    val wholesaleMarginFocusRequester = remember { FocusRequester() }
+    val deliveryPriceFocusRequester = remember { FocusRequester() }
+    val deliveryMarginFocusRequester = remember { FocusRequester() }
+
+    val orderedFieldFocusRequesters = remember(isWideScreen) {
+        if (isWideScreen) {
+            listOf(
+                barcodeFocusRequester,
+                nameFocusRequester,
+                categoryFocusRequester,
+                costFocusRequester,
+                piecesFocusRequester,
+                retailPriceFocusRequester,
+                retailMarginFocusRequester,
+                wholesalePriceFocusRequester,
+                wholesaleMarginFocusRequester,
+                deliveryPriceFocusRequester,
+                deliveryMarginFocusRequester
+            )
+        } else {
+            listOf(
+                barcodeFocusRequester,
+                nameFocusRequester,
+                costFocusRequester,
+                piecesFocusRequester,
+                retailPriceFocusRequester,
+                retailMarginFocusRequester,
+                wholesalePriceFocusRequester,
+                wholesaleMarginFocusRequester,
+                deliveryPriceFocusRequester,
+                deliveryMarginFocusRequester,
+                categoryFocusRequester
+            )
+        }
+    }
+
+    var focusedFieldRequester by remember { mutableStateOf<FocusRequester?>(null) }
+
+    fun moveFocusToAdjacentField(delta: Int) {
+        if (orderedFieldFocusRequesters.isEmpty()) return
+        val currentIdx = focusedFieldRequester?.let { orderedFieldFocusRequesters.indexOf(it) } ?: -1
+        val nextIdx = if (currentIdx == -1) {
+            if (delta >= 0) 0 else orderedFieldFocusRequesters.lastIndex
+        } else {
+            (currentIdx + delta).mod(orderedFieldFocusRequesters.size)
+        }
+        categoryDropdownExpanded = false
+        try {
+            orderedFieldFocusRequesters[nextIdx].requestFocus()
+        } catch (_: Exception) {
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
             delay(100.milliseconds)
             try {
-                firstNameFocusRequester.requestFocus()
+                barcodeFocusRequester.requestFocus()
             } catch (_: Exception) {
             }
         }
@@ -761,6 +827,7 @@ fun ProductFormDialog(
         if (!readOnly) {
             Button(
                 onClick = { submitForm() },
+                modifier = Modifier.focusProperties { canFocus = false },
                 enabled = isNameValid && isPriceValid && barcodeValidationError == null && !isValidatingBarcode,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = MaterialTheme.shapes.small
@@ -779,7 +846,10 @@ fun ProductFormDialog(
     }
 
     val dismissButtonContent: @Composable () -> Unit = {
-        TextButton(onClick = onDismiss) {
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.focusProperties { canFocus = false }
+        ) {
             Text(
                 if (readOnly) "Cerrar" else stringResource(Res.string.cancel),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -794,11 +864,10 @@ fun ProductFormDialog(
                 value = barcodeInput,
                 onValueChange = { barcodeInput = it },
                 modifier = Modifier
-                    .fillMaxWidth().then(
-                        if (!isAndroid()) {
-                            Modifier.focusRequester(firstNameFocusRequester)
-                        } else Modifier
-                    ).onPreviewKeyEvent { keyEvent ->
+                    .fillMaxWidth()
+                    .focusRequester(barcodeFocusRequester)
+                    .onFocusChanged { if (it.isFocused) focusedFieldRequester = barcodeFocusRequester }
+                    .onPreviewKeyEvent { keyEvent ->
                         keyEvent.type == KeyEventType.KeyDown &&
                                 (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter) && if (barcodeInput.trim()
                                 .isNotEmpty()
@@ -820,7 +889,10 @@ fun ProductFormDialog(
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
                         if (barcodeInput.trim().isNotEmpty()) {
-                            IconButton(onClick = { addBarcodeFromInput() }) {
+                            IconButton(
+                                onClick = { addBarcodeFromInput() },
+                                modifier = Modifier.focusProperties { canFocus = false }
+                            ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.add),
                                     contentDescription = stringResource(Res.string.add_button),
@@ -829,7 +901,10 @@ fun ProductFormDialog(
                             }
                         }
                         if (isAndroid()) {
-                            IconButton(onClick = { showCameraScanner = true }) {
+                            IconButton(
+                                onClick = { showCameraScanner = true },
+                                modifier = Modifier.focusProperties { canFocus = false }
+                            ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.barcode_scanner),
                                     contentDescription = null
@@ -844,7 +919,7 @@ fun ProductFormDialog(
                         if (barcodeInput.trim().isNotEmpty()) {
                             addBarcodeFromInput()
                         }
-                        focusManager.moveFocus(FocusDirection.Next)
+                        moveFocusToAdjacentField(1)
                     }
                 ),
                 singleLine = true
@@ -888,6 +963,7 @@ fun ProductFormDialog(
                         InputChip(
                             selected = false,
                             onClick = { },
+                            modifier = Modifier.focusProperties { canFocus = false },
                             label = {
                                 Text(
                                     text = code,
@@ -901,6 +977,7 @@ fun ProductFormDialog(
                                     contentDescription = stringResource(Res.string.close_button),
                                     modifier = Modifier
                                         .size(16.dp)
+                                        .focusProperties { canFocus = false }
                                         .clickable { removeBarcode(code) }
                                 )
                             },
@@ -939,6 +1016,8 @@ fun ProductFormDialog(
             },
             modifier = Modifier
                 .fillMaxWidth()
+                .focusRequester(nameFocusRequester)
+                .onFocusChanged { if (it.isFocused) focusedFieldRequester = nameFocusRequester }
                 .onPreviewKeyEvent { event ->
                     isShiftPressedName = event.isShiftPressed
                     false
@@ -955,7 +1034,7 @@ fun ProductFormDialog(
             ),
             keyboardActions = KeyboardActions(
                 onNext = {
-                    focusManager.moveFocus(FocusDirection.Next)
+                    moveFocusToAdjacentField(1)
                 }
             ),
             isError = nameValidationError != null,
@@ -1021,7 +1100,10 @@ fun ProductFormDialog(
                         }
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(costFocusRequester)
+                    .onFocusChanged { if (it.isFocused) focusedFieldRequester = costFocusRequester },
                 prefix = { Text("$", fontWeight = FontWeight.Bold) },
                 label = {
                     Text(
@@ -1033,7 +1115,7 @@ fun ProductFormDialog(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                keyboardActions = KeyboardActions(onNext = { moveFocusToAdjacentField(1) }),
                 singleLine = true
             )
             OutlinedTextField(
@@ -1043,7 +1125,10 @@ fun ProductFormDialog(
                         formPiezas = input
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(piecesFocusRequester)
+                    .onFocusChanged { if (it.isFocused) focusedFieldRequester = piecesFocusRequester },
                 label = {
                     Text(
                         stringResource(Res.string.product_pieces_label),
@@ -1054,7 +1139,7 @@ fun ProductFormDialog(
                     keyboardType = KeyboardType.Decimal,
                     imeAction = ImeAction.Next
                 ),
-                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                keyboardActions = KeyboardActions(onNext = { moveFocusToAdjacentField(1) }),
                 singleLine = true
             )
         }
@@ -1081,7 +1166,10 @@ fun ProductFormDialog(
                             }
                         }
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(retailPriceFocusRequester)
+                        .onFocusChanged { if (it.isFocused) focusedFieldRequester = retailPriceFocusRequester },
                     prefix = { Text("$", fontWeight = FontWeight.Bold) },
                     label = {
                         Text(
@@ -1094,7 +1182,7 @@ fun ProductFormDialog(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Next
                     ),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                    keyboardActions = KeyboardActions(onNext = { moveFocusToAdjacentField(1) }),
                     singleLine = true
                 )
                 OutlinedTextField(
@@ -1114,8 +1202,11 @@ fun ProductFormDialog(
                     },
                     modifier = Modifier
                         .weight(1f)
+                        .focusRequester(retailMarginFocusRequester)
                         .onFocusChanged { focusState ->
-                            if (!focusState.isFocused && roundRetailPrice) {
+                            if (focusState.isFocused) {
+                                focusedFieldRequester = retailMarginFocusRequester
+                            } else if (roundRetailPrice) {
                                 val cost = formCosto.toDoubleOrNull()
                                 val price = formPrecio.toDoubleOrNull()
                                 if (cost != null && cost > 0 && price != null && price > 0) {
@@ -1145,7 +1236,7 @@ fun ProductFormDialog(
                                 formMargenVenta = formatMargin(realMargin)
                             }
                         }
-                        focusManager.moveFocus(FocusDirection.Next)
+                        moveFocusToAdjacentField(1)
                     }),
                     singleLine = true
                 )
@@ -1186,7 +1277,10 @@ fun ProductFormDialog(
                             }
                         }
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(wholesalePriceFocusRequester)
+                        .onFocusChanged { if (it.isFocused) focusedFieldRequester = wholesalePriceFocusRequester },
                     prefix = { Text("$", fontWeight = FontWeight.Bold) },
                     label = {
                         Text(
@@ -1199,7 +1293,7 @@ fun ProductFormDialog(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Next
                     ),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                    keyboardActions = KeyboardActions(onNext = { moveFocusToAdjacentField(1) }),
                     singleLine = true
                 )
                 OutlinedTextField(
@@ -1219,8 +1313,11 @@ fun ProductFormDialog(
                     },
                     modifier = Modifier
                         .weight(1f)
+                        .focusRequester(wholesaleMarginFocusRequester)
                         .onFocusChanged { focusState ->
-                            if (!focusState.isFocused && roundWholesalePrice) {
+                            if (focusState.isFocused) {
+                                focusedFieldRequester = wholesaleMarginFocusRequester
+                            } else if (roundWholesalePrice) {
                                 val cost = formCosto.toDoubleOrNull()
                                 val wholesale = formPrecioMayoreo.toDoubleOrNull()
                                 if (cost != null && cost > 0 && wholesale != null && wholesale > 0) {
@@ -1250,7 +1347,7 @@ fun ProductFormDialog(
                                 formMargenMayoreo = formatMargin(realMargin)
                             }
                         }
-                        focusManager.moveFocus(FocusDirection.Next)
+                        moveFocusToAdjacentField(1)
                     }),
                     singleLine = true
                 )
@@ -1291,7 +1388,10 @@ fun ProductFormDialog(
                             }
                         }
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(deliveryPriceFocusRequester)
+                        .onFocusChanged { if (it.isFocused) focusedFieldRequester = deliveryPriceFocusRequester },
                     prefix = { Text("$", fontWeight = FontWeight.Bold) },
                     label = {
                         Text(
@@ -1304,7 +1404,7 @@ fun ProductFormDialog(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Next
                     ),
-                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Next) }),
+                    keyboardActions = KeyboardActions(onNext = { moveFocusToAdjacentField(1) }),
                     singleLine = true
                 )
                 OutlinedTextField(
@@ -1324,8 +1424,11 @@ fun ProductFormDialog(
                     },
                     modifier = Modifier
                         .weight(1f)
+                        .focusRequester(deliveryMarginFocusRequester)
                         .onFocusChanged { focusState ->
-                            if (!focusState.isFocused && roundDeliveryPrice) {
+                            if (focusState.isFocused) {
+                                focusedFieldRequester = deliveryMarginFocusRequester
+                            } else if (roundDeliveryPrice) {
                                 val cost = formCosto.toDoubleOrNull()
                                 val delivery = formPrecioDelivery.toDoubleOrNull()
                                 if (cost != null && cost > 0 && delivery != null && delivery > 0) {
@@ -1356,7 +1459,7 @@ fun ProductFormDialog(
                                     formMargenDelivery = formatMargin(realMargin)
                                 }
                             }
-                            focusManager.moveFocus(FocusDirection.Next)
+                            moveFocusToAdjacentField(1)
                         },
                         onDone = {
                             if (roundDeliveryPrice) {
@@ -1411,6 +1514,8 @@ fun ProductFormDialog(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .focusRequester(categoryFocusRequester)
+                        .onFocusChanged { if (it.isFocused) focusedFieldRequester = categoryFocusRequester }
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                         .onPreviewKeyEvent { event ->
                             isShiftPressedCategory = event.isShiftPressed
@@ -1433,7 +1538,7 @@ fun ProductFormDialog(
                     keyboardActions = KeyboardActions(
                         onNext = {
                             categoryDropdownExpanded = false
-                            focusManager.moveFocus(FocusDirection.Next)
+                            moveFocusToAdjacentField(1)
                         },
                         onDone = {
                             categoryDropdownExpanded = false
@@ -1524,6 +1629,7 @@ fun ProductFormDialog(
                     if (geminiGroundingEnabled && geminiApiKey.isNotBlank() && formNombre.trim().length >= 2 && !isLookingUpGemini) {
                         TextButton(
                             onClick = { lookupGeminiCategory(formNombre.trim()) },
+                            modifier = Modifier.focusProperties { canFocus = false },
                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                         ) {
                             Text(
@@ -1600,6 +1706,7 @@ fun ProductFormDialog(
                                         suggestion
                                     }
                                 },
+                                modifier = Modifier.focusProperties { canFocus = false },
                                 label = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
@@ -1661,9 +1768,15 @@ fun ProductFormDialog(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { formActivo = !formActivo }
+                        modifier = Modifier
+                            .focusProperties { canFocus = false }
+                            .clickable { formActivo = !formActivo }
                     ) {
-                        Checkbox(checked = formActivo, onCheckedChange = { formActivo = it })
+                        Checkbox(
+                            checked = formActivo,
+                            onCheckedChange = { formActivo = it },
+                            modifier = Modifier.focusProperties { canFocus = false }
+                        )
                         Text(
                             stringResource(Res.string.active_label),
                             style = MaterialTheme.typography.labelLarge
@@ -1671,9 +1784,15 @@ fun ProductFormDialog(
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { formPorPeso = !formPorPeso }
+                        modifier = Modifier
+                            .focusProperties { canFocus = false }
+                            .clickable { formPorPeso = !formPorPeso }
                     ) {
-                        Checkbox(checked = formPorPeso, onCheckedChange = { formPorPeso = it })
+                        Checkbox(
+                            checked = formPorPeso,
+                            onCheckedChange = { formPorPeso = it },
+                            modifier = Modifier.focusProperties { canFocus = false }
+                        )
                         Text(
                             stringResource(Res.string.sell_by_weight_label),
                             style = MaterialTheme.typography.labelLarge
@@ -1681,9 +1800,15 @@ fun ProductFormDialog(
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { formEsFavorito = !formEsFavorito }
+                        modifier = Modifier
+                            .focusProperties { canFocus = false }
+                            .clickable { formEsFavorito = !formEsFavorito }
                     ) {
-                        Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
+                        Checkbox(
+                            checked = formEsFavorito,
+                            onCheckedChange = { formEsFavorito = it },
+                            modifier = Modifier.focusProperties { canFocus = false }
+                        )
                         Text(
                             stringResource(Res.string.mark_as_favorite_label),
                             style = MaterialTheme.typography.labelLarge
@@ -1698,9 +1823,16 @@ fun ProductFormDialog(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f).clickable { formActivo = !formActivo }
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusProperties { canFocus = false }
+                            .clickable { formActivo = !formActivo }
                     ) {
-                        Checkbox(checked = formActivo, onCheckedChange = { formActivo = it })
+                        Checkbox(
+                            checked = formActivo,
+                            onCheckedChange = { formActivo = it },
+                            modifier = Modifier.focusProperties { canFocus = false }
+                        )
                         Text(
                             stringResource(Res.string.active_label),
                             style = MaterialTheme.typography.labelLarge
@@ -1708,9 +1840,16 @@ fun ProductFormDialog(
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f).clickable { formPorPeso = !formPorPeso }
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusProperties { canFocus = false }
+                            .clickable { formPorPeso = !formPorPeso }
                     ) {
-                        Checkbox(checked = formPorPeso, onCheckedChange = { formPorPeso = it })
+                        Checkbox(
+                            checked = formPorPeso,
+                            onCheckedChange = { formPorPeso = it },
+                            modifier = Modifier.focusProperties { canFocus = false }
+                        )
                         Text(
                             stringResource(Res.string.sell_by_weight_label),
                             style = MaterialTheme.typography.labelLarge
@@ -1719,10 +1858,17 @@ fun ProductFormDialog(
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable { formEsFavorito = !formEsFavorito },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusProperties { canFocus = false }
+                        .clickable { formEsFavorito = !formEsFavorito },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(checked = formEsFavorito, onCheckedChange = { formEsFavorito = it })
+                    Checkbox(
+                        checked = formEsFavorito,
+                        onCheckedChange = { formEsFavorito = it },
+                        modifier = Modifier.focusProperties { canFocus = false }
+                    )
                     Text(
                         stringResource(Res.string.mark_as_favorite_label),
                         style = MaterialTheme.typography.labelLarge
@@ -1824,13 +1970,6 @@ fun ProductFormDialog(
         }
     }
 
-    val windowInfo = LocalWindowInfo.current
-    val density = LocalDensity.current
-    val isWideScreen = remember(windowInfo.containerSize, density) {
-        with(density) { windowInfo.containerSize.width.toDp() >= 760.dp }
-    }
-    val useBottomSheet = isAndroid() && !isWideScreen
-
     if (useBottomSheet) {
         val sheetState = rememberBottomSheetState(
             initialValue = SheetValue.Hidden,
@@ -1844,7 +1983,14 @@ fun ProductFormDialog(
             sheetState = sheetState,
             sheetMaxWidth = 1120.dp,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.Tab) {
+                        moveFocusToAdjacentField(if (keyEvent.isShiftPressed) -1 else 1)
+                        true
+                    } else false
+                }
         ) {
             PlatformBackHandler(enabled = sheetState.isVisible && !isDismissing) {
                 isDismissing = true
@@ -1915,6 +2061,10 @@ fun ProductFormDialog(
                 .then(
                     Modifier.onPreviewKeyEvent { keyEvent ->
                         if (keyEvent.type == KeyEventType.KeyDown) {
+                            if (keyEvent.key == Key.Tab) {
+                                moveFocusToAdjacentField(if (keyEvent.isShiftPressed) -1 else 1)
+                                return@onPreviewKeyEvent true
+                            }
                             val isEnter =
                                 keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter
                             val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed

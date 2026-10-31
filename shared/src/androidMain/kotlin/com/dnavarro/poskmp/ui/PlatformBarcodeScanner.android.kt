@@ -118,6 +118,8 @@ import poskmp.shared.generated.resources.cost_label
 import poskmp.shared.generated.resources.decrease_desc
 import poskmp.shared.generated.resources.delete
 import poskmp.shared.generated.resources.delete_button
+import poskmp.shared.generated.resources.edit
+import poskmp.shared.generated.resources.edit_desc
 import poskmp.shared.generated.resources.flash_off
 import poskmp.shared.generated.resources.flash_on
 import poskmp.shared.generated.resources.grant_permission_button
@@ -149,7 +151,8 @@ actual fun PlatformBarcodeScanner(
     onUndo: (() -> Unit)?,
     onQuantityChange: ((Double) -> Unit)?,
     isChecadorMode: Boolean,
-    prioritizeDeliveryPrice: Boolean
+    prioritizeDeliveryPrice: Boolean,
+    onEditProduct: ((Products) -> Unit)?
 ) {
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
@@ -175,7 +178,8 @@ actual fun PlatformBarcodeScanner(
                     onUndo = onUndo,
                     onQuantityChange = onQuantityChange,
                     isChecadorMode = isChecadorMode,
-                    prioritizeDeliveryPrice = prioritizeDeliveryPrice
+                    prioritizeDeliveryPrice = prioritizeDeliveryPrice,
+                    onEditProduct = onEditProduct
                 )
             } else {
                 PermissionRationaleScreen(
@@ -200,7 +204,8 @@ fun CameraPreviewScreen(
     onUndo: (() -> Unit)? = null,
     onQuantityChange: ((Double) -> Unit)? = null,
     isChecadorMode: Boolean = false,
-    prioritizeDeliveryPrice: Boolean = false
+    prioritizeDeliveryPrice: Boolean = false,
+    onEditProduct: ((Products) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
@@ -430,13 +435,12 @@ fun CameraPreviewScreen(
                             modifier = Modifier.padding(if (isChecadorMode) 16.dp else 24.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (onUndo != null) {
+                            if (onUndo != null) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         verticalAlignment = Alignment.CenterVertically
@@ -481,8 +485,6 @@ fun CameraPreviewScreen(
                                             fontSize = 12.sp
                                         )
                                     }
-                                } else {
-                                    Spacer(modifier = Modifier.width(1.dp))
                                 }
                             }
 
@@ -508,7 +510,24 @@ fun CameraPreviewScreen(
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
-                                if (!isChecadorMode) {
+                                if (onEditProduct != null) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    FilledTonalIconButton(
+                                        onClick = { onEditProduct(lastScannedProduct) },
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        ),
+                                        shapes = IconButtonDefaults.shapes(),
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.edit),
+                                            contentDescription = stringResource(Res.string.edit_desc),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                } else if (!isChecadorMode) {
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
