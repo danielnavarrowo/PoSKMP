@@ -238,8 +238,15 @@ fun ProductosScreen(
     var selectedProductId by remember { mutableStateOf<String?>(null) }
     var selectedProductIndex by remember { mutableIntStateOf(-1) }
     var selectionAnchorIndex by remember { mutableIntStateOf(-1) }
+    var shiftBaseSelectedIds by remember { mutableStateOf<Set<String>?>(null) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(selectedProductIds) {
+        if (selectedProductIds.isEmpty()) {
+            shiftBaseSelectedIds = null
+        }
+    }
 
     LaunchedEffect(searchQuery) {
         if (searchQuery != lastEmittedQuery && searchQueryState.text.toString() != searchQuery) {
@@ -248,6 +255,7 @@ fun ProductosScreen(
             selectedProductId = null
             selectedProductIndex = -1
             selectionAnchorIndex = -1
+            shiftBaseSelectedIds = null
             listState.resetScroll(coroutineScope)
         }
     }
@@ -262,6 +270,7 @@ fun ProductosScreen(
                 selectedProductId = null
                 selectedProductIndex = -1
                 selectionAnchorIndex = -1
+                shiftBaseSelectedIds = null
                 viewModel.onSearchQueryChanged(query)
                 listState.resetScroll(coroutineScope)
             }
@@ -286,6 +295,7 @@ fun ProductosScreen(
         selectedProductId = null
         selectedProductIndex = -1
         selectionAnchorIndex = -1
+        shiftBaseSelectedIds = null
         listState.resetScroll(coroutineScope)
     }
 
@@ -356,6 +366,7 @@ fun ProductosScreen(
         selectedProductId = null
         selectedProductIndex = -1
         selectionAnchorIndex = -1
+        shiftBaseSelectedIds = null
         listState.resetScroll(coroutineScope)
     }
 
@@ -379,17 +390,20 @@ fun ProductosScreen(
                 if (selectedProductIndex != idx) {
                     selectedProductIndex = idx
                     selectionAnchorIndex = idx
+                    shiftBaseSelectedIds = null
                 }
             } else {
                 selectedProductId = null
                 if (selectedProductIndex >= currentSortedProducts.size) {
                     selectedProductIndex = currentSortedProducts.lastIndex
                     selectionAnchorIndex = currentSortedProducts.lastIndex
+                    shiftBaseSelectedIds = null
                 }
             }
         } else if (selectedProductIndex >= currentSortedProducts.size) {
             selectedProductIndex = currentSortedProducts.lastIndex
             selectionAnchorIndex = currentSortedProducts.lastIndex
+            shiftBaseSelectedIds = null
         }
     }
 
@@ -424,6 +438,7 @@ fun ProductosScreen(
                 } else if (selectedProductIndex != -1) {
                     selectedProductIndex = -1
                     selectionAnchorIndex = -1
+                    shiftBaseSelectedIds = null
                     listState.resetScroll(coroutineScope)
                     true
                 } else false
@@ -471,12 +486,16 @@ fun ProductosScreen(
                         if (selectionAnchorIndex == -1) {
                             selectionAnchorIndex = if (prevIndex in sortedProducts.indices) prevIndex else 0
                         }
+                        val baseIds = shiftBaseSelectedIds ?: selectedProductIds.also {
+                            shiftBaseSelectedIds = it
+                        }
                         val start = minOf(selectionAnchorIndex, selectedProductIndex)
                         val end = maxOf(selectionAnchorIndex, selectedProductIndex)
                         val rangeIds = sortedProducts.subList(start, end + 1).map { it.id }.toSet()
-                        viewModel.onSetSelectedProductIds(rangeIds)
+                        viewModel.onSetSelectedProductIds(baseIds + rangeIds)
                     } else {
                         selectionAnchorIndex = selectedProductIndex
+                        shiftBaseSelectedIds = null
                     }
                     true
                 } else false
@@ -494,12 +513,16 @@ fun ProductosScreen(
                         if (selectionAnchorIndex == -1) {
                             selectionAnchorIndex = if (prevIndex in sortedProducts.indices) prevIndex else 0
                         }
+                        val baseIds = shiftBaseSelectedIds ?: selectedProductIds.also {
+                            shiftBaseSelectedIds = it
+                        }
                         val start = minOf(selectionAnchorIndex, selectedProductIndex)
                         val end = maxOf(selectionAnchorIndex, selectedProductIndex)
                         val rangeIds = sortedProducts.subList(start, end + 1).map { it.id }.toSet()
-                        viewModel.onSetSelectedProductIds(rangeIds)
+                        viewModel.onSetSelectedProductIds(baseIds + rangeIds)
                     } else {
                         selectionAnchorIndex = selectedProductIndex
+                        shiftBaseSelectedIds = null
                     }
                     true
                 } else false
@@ -510,6 +533,7 @@ fun ProductosScreen(
                     val product = sortedProducts[selectedProductIndex]
                     viewModel.onToggleSelectProduct(product.id)
                     selectionAnchorIndex = selectedProductIndex
+                    shiftBaseSelectedIds = null
                     true
                 } else false
             }
@@ -891,6 +915,7 @@ fun ProductosScreen(
                                     TriStateCheckbox(
                                         state = selectAllState,
                                         onClick = {
+                                            shiftBaseSelectedIds = null
                                             viewModel.onSelectAllProducts(sortedProducts.map { it.id })
                                         }
                                     )
@@ -1110,15 +1135,18 @@ fun ProductosScreen(
                                                     onClick = {
                                                         if (selectedProductIds.isNotEmpty()) {
                                                             viewModel.onToggleSelectProduct(product.id)
+                                                            shiftBaseSelectedIds = null
                                                         } else {
                                                             selectedProductId = product.id
                                                             selectedProductIndex = index
                                                             selectionAnchorIndex = index
+                                                            shiftBaseSelectedIds = null
                                                             viewModel.onShowProductDialog(product)
                                                         }
                                                     },
                                                     onLongClick = {
                                                         viewModel.onToggleSelectProduct(product.id)
+                                                        shiftBaseSelectedIds = null
                                                     }
                                                 )
                                             }
@@ -1186,6 +1214,7 @@ fun ProductosScreen(
                                             showSelectAll = true,
                                             selectAllState = selectAllState,
                                             onSelectAllClick = {
+                                                shiftBaseSelectedIds = null
                                                 viewModel.onSelectAllProducts(sortedProducts.map { it.id })
                                             },
                                             sortField = sortField,
@@ -1224,6 +1253,7 @@ fun ProductosScreen(
                                                             selectedProductId = product.id
                                                             selectedProductIndex = index
                                                             selectionAnchorIndex = index
+                                                            shiftBaseSelectedIds = null
                                                             viewModel.onToggleSelectProduct(product.id)
                                                         },
                                                         salesStats = uiState.salesStats,
@@ -1233,6 +1263,7 @@ fun ProductosScreen(
                                                             selectedProductId = product.id
                                                             selectedProductIndex = index
                                                             selectionAnchorIndex = index
+                                                            shiftBaseSelectedIds = null
                                                             viewModel.onShowProductDialog(product)
                                                         }
                                                     )

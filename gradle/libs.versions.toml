@@ -1,8 +1,8 @@
 [versions]
 #noinspection UnusedVersionCatalogEntry
-app-version = "1.2.2"
+app-version = "1.2.3"
 #noinspection UnusedVersionCatalogEntry
-app-versionCode = "32"
+app-versionCode = "33"
 agp = "9.5.0"
 android-compileSdk = "37"
 android-compileSdkMinor = "2"
