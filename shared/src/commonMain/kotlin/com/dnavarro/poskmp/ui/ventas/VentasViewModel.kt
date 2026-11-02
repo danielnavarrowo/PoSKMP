@@ -37,7 +37,7 @@ import com.dnavarro.poskmp.data.sync.SyncRepository
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 
 enum class SalesPeriodPreset {
-    HOY, AYER, ESTA_SEMANA, ESTE_MES, RANGO
+    HOY, AYER, ULTIMOS_7_DIAS, ULTIMAS_4_SEMANAS, RANGO
 }
 
 data class VentasUiState(
@@ -442,15 +442,13 @@ class VentasViewModel(
                 val endOfYesterday = yesterday.atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
                 Pair(startOfYesterday, endOfYesterday)
             }
-            SalesPeriodPreset.ESTA_SEMANA -> {
-                val startOfWeek = today.with(java.time.DayOfWeek.MONDAY).atStartOfDay(zoneId).toInstant().toEpochMilli()
-                val endOfWeek = today.with(java.time.DayOfWeek.SUNDAY).atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
-                Pair(startOfWeek, maxOf(nowMillis, endOfWeek))
+            SalesPeriodPreset.ULTIMOS_7_DIAS -> {
+                val startOf7Days = today.minusDays(6).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                Pair(startOf7Days, maxOf(nowMillis, endOfToday))
             }
-            SalesPeriodPreset.ESTE_MES -> {
-                val startOfMonth = today.withDayOfMonth(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
-                val endOfMonth = today.withDayOfMonth(today.lengthOfMonth()).atTime(23, 59, 59, 999_000_000).atZone(zoneId).toInstant().toEpochMilli()
-                Pair(startOfMonth, maxOf(nowMillis, endOfMonth))
+            SalesPeriodPreset.ULTIMAS_4_SEMANAS -> {
+                val startOf4Weeks = today.minusDays(27).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                Pair(startOf4Weeks, maxOf(nowMillis, endOfToday))
             }
             SalesPeriodPreset.RANGO -> {
                 val start = _uiState.value.customStartDate ?: startOfToday

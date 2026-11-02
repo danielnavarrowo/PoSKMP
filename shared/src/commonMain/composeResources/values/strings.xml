@@ -438,6 +438,8 @@
     <string name="ventas_title">Ventas y Reportes</string>
     <string name="period_today">Hoy</string>
     <string name="period_yesterday">Ayer</string>
+    <string name="period_last_7_days">Últimos 7 Días</string>
+    <string name="period_last_4_weeks">Últimas 4 Semanas</string>
     <string name="period_this_week">Esta Semana</string>
     <string name="period_this_month">Este Mes</string>
     <string name="period_range">Rango</string>

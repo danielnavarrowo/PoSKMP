@@ -84,6 +84,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -109,6 +110,7 @@ import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.ui.components.AppHorizontalScrollbar
 import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.ui.ventas.HistorialVentasScreen
 import com.dnavarro.poskmp.ui.ventas.ProductosVendidosScreen
@@ -126,6 +128,7 @@ import ir.ehsannarmani.compose_charts.models.BarProperties
 import ir.ehsannarmani.compose_charts.models.Bars
 import ir.ehsannarmani.compose_charts.models.GridProperties
 import ir.ehsannarmani.compose_charts.models.HorizontalIndicatorProperties
+import ir.ehsannarmani.compose_charts.models.IndicatorCount
 import ir.ehsannarmani.compose_charts.models.LabelHelperProperties
 import ir.ehsannarmani.compose_charts.models.LabelProperties
 import ir.ehsannarmani.compose_charts.models.Pie
@@ -133,6 +136,11 @@ import ir.ehsannarmani.compose_charts.models.PopupProperties
 import ir.ehsannarmani.compose_charts.models.StrokeStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
+import kotlin.math.roundToLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -199,8 +207,8 @@ import poskmp.shared.generated.resources.payment_method_tarjeta
 import poskmp.shared.generated.resources.payment_method_transferencia
 import poskmp.shared.generated.resources.payments
 import poskmp.shared.generated.resources.period_range
-import poskmp.shared.generated.resources.period_this_month
-import poskmp.shared.generated.resources.period_this_week
+import poskmp.shared.generated.resources.period_last_4_weeks
+import poskmp.shared.generated.resources.period_last_7_days
 import poskmp.shared.generated.resources.period_today
 import poskmp.shared.generated.resources.period_yesterday
 import poskmp.shared.generated.resources.person
@@ -1363,8 +1371,8 @@ private fun SalesPeriodPresetButtons(
                     text = when (preset) {
                         SalesPeriodPreset.HOY -> stringResource(Res.string.period_today)
                         SalesPeriodPreset.AYER -> stringResource(Res.string.period_yesterday)
-                        SalesPeriodPreset.ESTA_SEMANA -> stringResource(Res.string.period_this_week)
-                        SalesPeriodPreset.ESTE_MES -> stringResource(Res.string.period_this_month)
+                        SalesPeriodPreset.ULTIMOS_7_DIAS -> stringResource(Res.string.period_last_7_days)
+                        SalesPeriodPreset.ULTIMAS_4_SEMANAS -> stringResource(Res.string.period_last_4_weeks)
                         SalesPeriodPreset.RANGO -> stringResource(Res.string.period_range)
                     },
                     fontSize = 12.sp,
@@ -2022,6 +2030,20 @@ private fun getChartSliceColor(index: Int): Color {
     return chartSliceColors[index % chartSliceColors.size]
 }
 
+private fun calculateNiceChartStep(maxVal: Double): Double {
+    if (maxVal <= 0.0) return 1000.0
+    val roughStep = maxVal / 5.0
+    val magnitude = 10.0.pow(floor(log10(roughStep)))
+    val normalized = roughStep / magnitude
+    val multiplier = when {
+        normalized <= 1.2 -> 1.0
+        normalized <= 2.5 -> 2.0
+        normalized <= 7.0 -> 5.0
+        else -> 10.0
+    }
+    return maxOf(multiplier * magnitude, 1.0)
+}
+
 @Composable
 private fun DailySalesCard(
     metrics: List<DailySalesMetric>,
@@ -2070,7 +2092,19 @@ private fun DailySalesCard(
                 val inverseSurfaceColor = MaterialTheme.colorScheme.inverseSurface
                 val inverseOnSurfaceColor = MaterialTheme.colorScheme.inverseOnSurface
 
-                val barsData = remember(activeMetrics, primaryColor) {
+                val barThickness = 38.dp
+                val barProperties = remember(barThickness) {
+                    BarProperties(
+                        thickness = barThickness,
+                        spacing = 0.dp,
+                        cornerRadius = Bars.Data.Radius.Rectangle(
+                            topLeft = 6.dp,
+                            topRight = 6.dp
+                        )
+                    )
+                }
+
+                val barsData = remember(activeMetrics, primaryColor, barProperties) {
                     activeMetrics.map { item ->
                         Bars(
                             label = item.diaLabel,
@@ -2079,29 +2113,37 @@ private fun DailySalesCard(
                                     label = item.diaLabel,
                                     value = item.totalVentas,
                                     color = SolidColor(primaryColor),
-                                    properties = BarProperties(
-                                        cornerRadius = Bars.Data.Radius.Rectangle(
-                                            topLeft = 4.dp,
-                                            topRight = 4.dp
-                                        )
-                                    )
+                                    properties = barProperties
                                 )
                             )
                         )
                     }
                 }
 
-                val barThickness = 22.dp
-                val barSpacing = 10.dp
+                val rawMax = remember(activeMetrics) {
+                    activeMetrics.maxOfOrNull { it.totalVentas } ?: 0.0
+                }
+                val niceStep = remember(rawMax) {
+                    calculateNiceChartStep(rawMax)
+                }
+                val chartMaxValue = remember(rawMax, niceStep) {
+                    if (rawMax <= 0.0) 1000.0 else ceil(rawMax / niceStep) * niceStep
+                }
+
                 val scrollState = rememberScrollState()
-                val minWidthForBars = remember(activeMetrics.size) { (activeMetrics.size * 64).dp }
-                val viewportWidthPx = remember { IntArray(1) }
+                val viewportWidthPx = remember { mutableIntStateOf(0) }
+
+                LaunchedEffect(activeMetrics, scrollState.maxValue) {
+                    if (scrollState.maxValue > 0) {
+                        scrollState.scrollTo(scrollState.maxValue)
+                    }
+                }
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .layout { measurable, constraints ->
-                            viewportWidthPx[0] = constraints.maxWidth
+                            viewportWidthPx.intValue = constraints.maxWidth
                             val placeable = measurable.measure(constraints)
                             layout(placeable.width, placeable.height) {
                                 placeable.placeRelative(0, 0)
@@ -2109,10 +2151,27 @@ private fun DailySalesCard(
                         }
                         .horizontalScroll(scrollState)
                 ) {
+                    val density = LocalDensity.current
+                    val chartWidthDp = remember(activeMetrics.size, viewportWidthPx.intValue, barThickness) {
+                        val availableWidthDp = with(density) { viewportWidthPx.intValue.toDp() }
+                        val indicatorSpace = 56.dp
+                        val count = maxOf(activeMetrics.size, 1)
+                        val availableForBars = (availableWidthDp - indicatorSpace).coerceAtLeast(0.dp)
+                        val naturalGap = if (count > 1) {
+                            (availableForBars - (barThickness * count)) / (count - 1)
+                        } else {
+                            16.dp
+                        }
+                        val effectiveGap = naturalGap.coerceIn(16.dp, 24.dp)
+                        val step = barThickness + effectiveGap
+                        val barsAreaWidth = if (count > 1) (step * (count - 1)) + barThickness else barThickness
+                        barsAreaWidth + indicatorSpace
+                    }
+
                     ColumnChart(
                         modifier = Modifier
                             .layout { measurable, constraints ->
-                                val widthPx = maxOf(minWidthForBars.roundToPx(), viewportWidthPx[0])
+                                val widthPx = with(density) { chartWidthDp.roundToPx() }
                                 val placeable = measurable.measure(
                                     constraints.copy(minWidth = widthPx, maxWidth = widthPx)
                                 )
@@ -2123,14 +2182,8 @@ private fun DailySalesCard(
                             .height(230.dp)
                             .padding(top = 8.dp, bottom = 4.dp),
                         data = barsData,
-                        barProperties = BarProperties(
-                            thickness = barThickness,
-                            spacing = barSpacing,
-                            cornerRadius = Bars.Data.Radius.Rectangle(
-                                topLeft = 4.dp,
-                                topRight = 4.dp
-                            )
-                        ),
+                        maxValue = chartMaxValue,
+                        barProperties = barProperties,
                         labelProperties = LabelProperties(
                             enabled = true,
                             textStyle = TextStyle(
@@ -2141,12 +2194,22 @@ private fun DailySalesCard(
                         ),
                         indicatorProperties = HorizontalIndicatorProperties(
                             enabled = true,
+                            count = IndicatorCount.StepBased(stepBy = niceStep),
                             textStyle = TextStyle(
                                 color = onSurfaceVariantColor,
                                 fontSize = 10.sp
                             ),
                             contentBuilder = { value ->
-                                if (value >= 1000) "$${(value / 1000).toString().formatPrice()}k" else "$${value.toInt()}"
+                                val v = value.roundToLong()
+                                when {
+                                    v == 0L -> "$0"
+                                    v >= 1_000_000L && v % 1_000_000L == 0L -> "$${v / 1_000_000L}M"
+                                    v >= 1_000_000L -> "$${(value / 1_000_000.0).toString().formatPrice()}M"
+                                    v >= 1_000L && v % 1_000L == 0L -> "$${v / 1_000L}k"
+                                    v >= 1_000L && v % 100L == 0L -> "$${(v / 1000.0)}k"
+                                    v >= 1_000L -> "$${(value / 1000.0).toString().formatPrice()}k"
+                                    else -> "$$v"
+                                }
                             }
                         ),
                         gridProperties = GridProperties(
@@ -2171,6 +2234,16 @@ private fun DailySalesCard(
                             }
                         ),
                         labelHelperProperties = LabelHelperProperties(enabled = false)
+                    )
+                }
+
+                if (scrollState.maxValue > 0) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    AppHorizontalScrollbar(
+                        state = scrollState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp)
                     )
                 }
             }
