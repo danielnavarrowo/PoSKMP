@@ -145,7 +145,8 @@ class ShiftRepositoryImpl(
                 difference = null,
                 notes = null,
                 is_closed = 0L,
-                sync_state = "PENDING_INSERT"
+                sync_state = "PENDING_INSERT",
+                updated_at = now
             )
             localDataSource.insertShift(newShift)
             settingsRepository.setLocalActiveShiftId(newShift.id)

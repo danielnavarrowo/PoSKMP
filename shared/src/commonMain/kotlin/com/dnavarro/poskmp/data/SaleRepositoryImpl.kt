@@ -41,7 +41,8 @@ class SaleRepositoryImpl(
             monto_efectivo = sale.montoEfectivo,
             monto_tarjeta = sale.montoTarjeta,
             monto_transferencia = sale.montoTransferencia,
-            monto_credito = sale.montoCredito
+            monto_credito = sale.montoCredito,
+            updated_at = if (sale.updatedAt > 0L) sale.updatedAt else sale.createdAt
         )
         val dbItems = items.map { item ->
             Sale_items(
@@ -122,7 +123,8 @@ class SaleRepositoryImpl(
                 montoEfectivo = row.monto_efectivo,
                 montoTarjeta = row.monto_tarjeta,
                 montoTransferencia = row.monto_transferencia,
-                montoCredito = row.monto_credito
+                montoCredito = row.monto_credito,
+                updatedAt = row.updated_at
             )
         }
     }
@@ -157,7 +159,8 @@ class SaleRepositoryImpl(
                 montoEfectivo = row.monto_efectivo,
                 montoTarjeta = row.monto_tarjeta,
                 montoTransferencia = row.monto_transferencia,
-                montoCredito = row.monto_credito
+                montoCredito = row.monto_credito,
+                updatedAt = row.updated_at
             )
         }
     }
@@ -207,7 +210,8 @@ class SaleRepositoryImpl(
             montoEfectivo = row.monto_efectivo,
             montoTarjeta = row.monto_tarjeta,
             montoTransferencia = row.monto_transferencia,
-            montoCredito = row.monto_credito
+            montoCredito = row.monto_credito,
+            updatedAt = row.updated_at
         )
     }
 
@@ -260,7 +264,8 @@ class SaleRepositoryImpl(
                     montoEfectivo = it.monto_efectivo,
                     montoTarjeta = it.monto_tarjeta,
                     montoTransferencia = it.monto_transferencia,
-                    montoCredito = it.monto_credito
+                    montoCredito = it.monto_credito,
+                    updatedAt = it.updated_at
                 )
             }
         }

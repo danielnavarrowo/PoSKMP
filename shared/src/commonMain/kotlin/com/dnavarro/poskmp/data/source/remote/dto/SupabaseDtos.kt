@@ -21,6 +21,8 @@ data class ProductDto(
     @SerialName("es_favorito")
     val esFavorito: Boolean = false,
     val piezas: Double = 1.0,
+    @SerialName("created_at")
+    val createdAt: Long = 0L,
     @SerialName("updated_at")
     val updatedAt: Long
 )
@@ -95,6 +97,8 @@ data class SaleDto(
     val customerId: String? = null,
     @SerialName("created_at")
     val createdAt: Long,
+    @SerialName("cashier_id")
+    val cashierId: String? = null,
     @SerialName("cashier_name")
     val cashierName: String? = null,
     val estado: String = "COMPLETADA",
@@ -109,7 +113,9 @@ data class SaleDto(
     @SerialName("monto_transferencia")
     val montoTransferencia: Double = 0.0,
     @SerialName("monto_credito")
-    val montoCredito: Double = 0.0
+    val montoCredito: Double = 0.0,
+    @SerialName("updated_at")
+    val updatedAt: Long = 0L
 )
 
 @Serializable
@@ -132,7 +138,9 @@ data class ShiftDto(
     val difference: Double? = null,
     val notes: String? = null,
     @SerialName("is_closed")
-    val isClosed: Boolean = false
+    val isClosed: Boolean = false,
+    @SerialName("updated_at")
+    val updatedAt: Long = 0L
 )
 
 @Serializable
@@ -206,6 +214,16 @@ data class StoreSettingsDto(
     val roundTicketTotal: Boolean = false,
     @SerialName("disallow_card_payment_on_wholesale")
     val disallowCardPaymentOnWholesale: Boolean = false,
+    @SerialName("prioritize_delivery_price")
+    val prioritizeDeliveryPrice: Boolean = false,
+    @SerialName("auto_wholesale_by_quantity")
+    val autoWholesaleByQuantity: Boolean = false,
+    @SerialName("auto_wholesale_quantity_threshold")
+    val autoWholesaleQuantityThreshold: Int = 3,
+    @SerialName("auto_wholesale_by_ticket_total")
+    val autoWholesaleByTicketTotal: Boolean = false,
+    @SerialName("auto_wholesale_ticket_total_threshold")
+    val autoWholesaleTicketTotalThreshold: Double = 500.0,
     @SerialName("updated_at")
     val updatedAt: Long
 )

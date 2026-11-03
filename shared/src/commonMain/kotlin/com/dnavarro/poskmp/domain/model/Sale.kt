@@ -22,7 +22,8 @@ data class Sale(
     val montoEfectivo: Double = 0.0,
     val montoTarjeta: Double = 0.0,
     val montoTransferencia: Double = 0.0,
-    val montoCredito: Double = 0.0
+    val montoCredito: Double = 0.0,
+    val updatedAt: Long = createdAt
 ) {
     val isCancelled: Boolean get() = estado == "CANCELADA"
 }

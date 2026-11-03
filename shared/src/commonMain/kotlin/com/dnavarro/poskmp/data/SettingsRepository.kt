@@ -140,6 +140,11 @@ interface SettingsRepository {
         roundDeliveryPrice: Boolean,
         roundTicketTotal: Boolean,
         disallowCardPaymentOnWholesale: Boolean = false,
+        prioritizeDeliveryPrice: Boolean = false,
+        autoWholesaleByQuantity: Boolean = false,
+        autoWholesaleQuantityThreshold: Int = 3,
+        autoWholesaleByTicketTotal: Boolean = false,
+        autoWholesaleTicketTotalThreshold: Double = 500.0,
         storeName: String = "",
         storeAddress: String = "",
         storePhone: String = "",
@@ -799,6 +804,11 @@ class SettingsRepositoryImpl(
         roundDeliveryPrice: Boolean,
         roundTicketTotal: Boolean,
         disallowCardPaymentOnWholesale: Boolean,
+        prioritizeDeliveryPrice: Boolean,
+        autoWholesaleByQuantity: Boolean,
+        autoWholesaleQuantityThreshold: Int,
+        autoWholesaleByTicketTotal: Boolean,
+        autoWholesaleTicketTotalThreshold: Double,
         storeName: String,
         storeAddress: String,
         storePhone: String,
@@ -816,6 +826,11 @@ class SettingsRepositoryImpl(
             preferences[PreferenceKeys.ROUND_DELIVERY_PRICE] = roundDeliveryPrice
             preferences[PreferenceKeys.ROUND_TICKET_TOTAL] = roundTicketTotal
             preferences[PreferenceKeys.DISALLOW_CARD_PAYMENT_ON_WHOLESALE] = disallowCardPaymentOnWholesale
+            preferences[PreferenceKeys.PRIORITIZE_DELIVERY_PRICE] = prioritizeDeliveryPrice
+            preferences[PreferenceKeys.AUTO_WHOLESALE_BY_QUANTITY] = autoWholesaleByQuantity
+            preferences[PreferenceKeys.AUTO_WHOLESALE_QUANTITY_THRESHOLD] = autoWholesaleQuantityThreshold
+            preferences[PreferenceKeys.AUTO_WHOLESALE_BY_TICKET_TOTAL] = autoWholesaleByTicketTotal
+            preferences[PreferenceKeys.AUTO_WHOLESALE_TICKET_TOTAL_THRESHOLD] = autoWholesaleTicketTotalThreshold
             preferences[PreferenceKeys.STORE_NAME] = storeName
             preferences[PreferenceKeys.STORE_ADDRESS] = storeAddress
             preferences[PreferenceKeys.STORE_PHONE] = storePhone

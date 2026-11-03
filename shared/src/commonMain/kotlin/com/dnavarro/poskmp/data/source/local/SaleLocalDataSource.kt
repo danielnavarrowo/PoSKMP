@@ -11,6 +11,7 @@ import com.dnavarro.poskmp.domain.model.DeliveryComparisonMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.ProductSalesMetric
 import com.dnavarro.poskmp.domain.model.SalesSummary
+import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -42,6 +43,7 @@ class SqlDelightSaleDataSource(
 
     override suspend fun recordSale(sale: Sales, items: List<Sale_items>): Long = withContext(Dispatchers.IO) {
         database.transactionWithResult {
+            val effectiveUpdatedAt = if (sale.updated_at > 0L) sale.updated_at else sale.created_at
             queries.insertSale(
                 id = sale.id,
                 folio = sale.folio,
@@ -64,7 +66,8 @@ class SqlDelightSaleDataSource(
                 monto_efectivo = sale.monto_efectivo,
                 monto_tarjeta = sale.monto_tarjeta,
                 monto_transferencia = sale.monto_transferencia,
-                monto_credito = sale.monto_credito
+                monto_credito = sale.monto_credito,
+                updated_at = effectiveUpdatedAt
             )
 
             items.forEach { item ->
@@ -337,7 +340,8 @@ class SqlDelightSaleDataSource(
 
     override suspend fun cancelSale(saleId: String) {
         withContext(Dispatchers.IO) {
-            queries.cancelSale(saleId)
+            val now = currentTimeMillis()
+            queries.cancelSale(updated_at = now, id = saleId)
         }
     }
 

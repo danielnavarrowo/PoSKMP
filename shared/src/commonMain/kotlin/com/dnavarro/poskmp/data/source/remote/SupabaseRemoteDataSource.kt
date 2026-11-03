@@ -107,10 +107,10 @@ class SupabaseRemoteDataSourceImpl(
                 throw Exception("Error HTTP ${response.status.value} al descargar $table: ${response.status.description}")
             }
             val page: List<T> = response.body()
-            allResults.addAll(page)
-            if (page.size < pageSize) {
+            if (page.isEmpty()) {
                 break
             }
+            allResults.addAll(page)
             offset += page.size
         }
         return allResults
@@ -318,9 +318,9 @@ class SupabaseRemoteDataSourceImpl(
         try {
             val cleanUrl = normalizeUrl(url)
             val query = if (sinceTimestamp > 0) {
-                "or=(is_closed.eq.false,end_time.gt.$sinceTimestamp,start_time.gt.$sinceTimestamp)&order=start_time.asc"
+                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
             } else {
-                "order=start_time.asc"
+                "order=updated_at.asc"
             }
             val list: List<ShiftDto> = fetchAllPaged(cleanUrl, key, "shifts", query)
             Result.success(list)
@@ -386,9 +386,9 @@ class SupabaseRemoteDataSourceImpl(
         try {
             val cleanUrl = normalizeUrl(url)
             val query = if (sinceTimestamp > 0) {
-                "or=(created_at.gt.$sinceTimestamp,estado.eq.CANCELADA)&order=created_at.asc"
+                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
             } else {
-                "order=created_at.asc"
+                "order=updated_at.asc"
             }
             val list: List<SaleDto> = fetchAllPaged(cleanUrl, key, "sales", query)
             Result.success(list)

@@ -13,13 +13,14 @@ object DatabaseMigrator {
                 nombre         TEXT    NOT NULL COLLATE NOCASE,
                 precio         REAL    NOT NULL DEFAULT 0,
                 costo          REAL    NOT NULL DEFAULT 0,
-                categoria      TEXT    DEFAULT 'Sin categoria',
+                categoria      TEXT    DEFAULT 'Sin categoría',
                 activo         INTEGER NOT NULL DEFAULT 1,
                 por_peso       INTEGER NOT NULL DEFAULT 0,
                 precio_mayoreo REAL    NOT NULL DEFAULT 0,
                 es_favorito    INTEGER NOT NULL DEFAULT 0,
                 piezas         REAL    NOT NULL DEFAULT 1.0,
                 precio_delivery REAL   NOT NULL DEFAULT 0,
+                created_at     INTEGER NOT NULL DEFAULT 0,
                 updated_at     INTEGER NOT NULL DEFAULT 0,
                 sync_state     TEXT    NOT NULL DEFAULT 'PENDING_INSERT'
             );
@@ -77,6 +78,7 @@ object DatabaseMigrator {
                 monto_tarjeta  REAL    NOT NULL DEFAULT 0.0,
                 monto_transferencia REAL NOT NULL DEFAULT 0.0,
                 monto_credito  REAL    NOT NULL DEFAULT 0.0,
+                updated_at     INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
             );
             """.trimIndent(),
@@ -131,6 +133,7 @@ object DatabaseMigrator {
                 notes                TEXT    DEFAULT NULL,
                 is_closed            INTEGER NOT NULL DEFAULT 0,
                 sync_state           TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+                updated_at           INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (cashier_id) REFERENCES cashiers(id) ON DELETE RESTRICT
             );
             """.trimIndent(),
@@ -168,7 +171,7 @@ object DatabaseMigrator {
         ensureColumnExists(driver, "products", "precio_delivery", "REAL NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "es_favorito", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "por_peso", "INTEGER NOT NULL DEFAULT 0")
-        ensureColumnExists(driver, "products", "categoria", "TEXT DEFAULT 'Sin categoria'")
+        ensureColumnExists(driver, "products", "categoria", "TEXT DEFAULT 'Sin categoría'")
         ensureColumnExists(driver, "products", "created_at", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "updated_at", "INTEGER NOT NULL DEFAULT 0")
         ensureColumnExists(driver, "products", "sync_state", "TEXT NOT NULL DEFAULT 'SYNCED'")
@@ -206,6 +209,11 @@ object DatabaseMigrator {
         ensureColumnExists(driver, "sales", "monto_tarjeta", "REAL NOT NULL DEFAULT 0.0")
         ensureColumnExists(driver, "sales", "monto_transferencia", "REAL NOT NULL DEFAULT 0.0")
         ensureColumnExists(driver, "sales", "monto_credito", "REAL NOT NULL DEFAULT 0.0")
+        ensureColumnExists(driver, "sales", "updated_at", "INTEGER NOT NULL DEFAULT 0")
+
+        try {
+            driver.execute(null, "UPDATE sales SET updated_at = created_at WHERE updated_at = 0;", 0)
+        } catch (_: Exception) {}
 
         try {
             driver.execute(null, """
@@ -233,6 +241,13 @@ object DatabaseMigrator {
 
         // Migrate cashiers columns
         ensureColumnExists(driver, "cashiers", "device_id", "TEXT DEFAULT NULL")
+
+        // Migrate shifts columns
+        ensureColumnExists(driver, "shifts", "updated_at", "INTEGER NOT NULL DEFAULT 0")
+
+        try {
+            driver.execute(null, "UPDATE shifts SET updated_at = COALESCE(end_time, start_time) WHERE updated_at = 0;", 0)
+        } catch (_: Exception) {}
 
         // Deduplicate duplicate names or non-empty barcodes if any before creating unique indexes
         try {
@@ -269,6 +284,8 @@ object DatabaseMigrator {
             "CREATE INDEX IF NOT EXISTS idx_customer_payments_customer_id ON customer_payments(customer_id)",
             "CREATE INDEX IF NOT EXISTS idx_customer_payments_created_at ON customer_payments(created_at)",
             "CREATE INDEX IF NOT EXISTS idx_sales_created_at ON sales(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_sales_updated_at ON sales(updated_at)",
+            "CREATE INDEX IF NOT EXISTS idx_sales_cashier_id ON sales(cashier_id)",
             "CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id)",
             "CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON sales(shift_id)",
             "CREATE INDEX IF NOT EXISTS idx_sales_estado ON sales(estado)",
@@ -279,6 +296,7 @@ object DatabaseMigrator {
             "CREATE INDEX IF NOT EXISTS idx_cashiers_activo ON cashiers(activo)",
             "CREATE INDEX IF NOT EXISTS idx_shifts_is_closed ON shifts(is_closed)",
             "CREATE INDEX IF NOT EXISTS idx_shifts_start_time ON shifts(start_time)",
+            "CREATE INDEX IF NOT EXISTS idx_shifts_updated_at ON shifts(updated_at)",
             "CREATE INDEX IF NOT EXISTS idx_cash_movements_shift_id ON cash_movements(shift_id)",
             "CREATE INDEX IF NOT EXISTS idx_product_barcodes_product_id ON product_barcodes(product_id)"
         )

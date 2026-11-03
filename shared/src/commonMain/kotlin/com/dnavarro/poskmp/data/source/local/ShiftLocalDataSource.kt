@@ -10,6 +10,7 @@ import com.dnavarro.poskmp.db.Sales
 import com.dnavarro.poskmp.db.SelectCancelledSalesSummaryByShift
 import com.dnavarro.poskmp.db.SelectSalesSummaryByShift
 import com.dnavarro.poskmp.db.Shifts
+import com.dnavarro.poskmp.util.currentTimeMillis
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -82,6 +83,7 @@ class SqlDelightShiftDataSource(
     }
 
     override suspend fun insertShift(shift: Shifts): Unit = withContext(Dispatchers.IO) {
+        val effectiveUpdatedAt = if (shift.updated_at > 0L) shift.updated_at else (shift.end_time ?: shift.start_time)
         queries.insertShift(
             id = shift.id,
             cashier_id = shift.cashier_id,
@@ -94,7 +96,8 @@ class SqlDelightShiftDataSource(
             difference = shift.difference,
             notes = shift.notes,
             is_closed = shift.is_closed,
-            sync_state = shift.sync_state
+            sync_state = shift.sync_state,
+            updated_at = effectiveUpdatedAt
         )
     }
 
@@ -106,12 +109,14 @@ class SqlDelightShiftDataSource(
         difference: Double,
         notes: String?
     ): Unit = withContext(Dispatchers.IO) {
+        val now = currentTimeMillis()
         queries.closeShift(
             end_time = endTime,
             final_cash_expected = expectedCash,
             final_cash_counted = countedCash,
             difference = difference,
             notes = notes,
+            updated_at = now,
             id = id
         )
     }

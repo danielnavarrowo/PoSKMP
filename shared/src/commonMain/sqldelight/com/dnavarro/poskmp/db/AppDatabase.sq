@@ -5,7 +5,7 @@ CREATE TABLE products (
     nombre         TEXT    NOT NULL COLLATE NOCASE,
     precio         REAL    NOT NULL DEFAULT 0,
     costo          REAL    NOT NULL DEFAULT 0,
-    categoria      TEXT    DEFAULT 'Sin categoria',
+    categoria      TEXT    DEFAULT 'Sin categoría',
     activo         INTEGER NOT NULL DEFAULT 1, -- 0 = false, 1 = true
     por_peso       INTEGER NOT NULL DEFAULT 0, -- 0 = false, 1 = true
     precio_mayoreo REAL    NOT NULL DEFAULT 0,
@@ -384,12 +384,15 @@ CREATE TABLE sales (
     monto_tarjeta  REAL    NOT NULL DEFAULT 0,
     monto_transferencia REAL NOT NULL DEFAULT 0,
     monto_credito  REAL    NOT NULL DEFAULT 0,
+    updated_at     INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_sales_created_at ON sales(created_at);
+CREATE INDEX idx_sales_updated_at ON sales(updated_at);
 CREATE INDEX idx_sales_customer_id ON sales(customer_id);
 CREATE INDEX idx_sales_shift_id ON sales(shift_id);
+CREATE INDEX idx_sales_cashier_id ON sales(cashier_id);
 CREATE INDEX idx_sales_estado ON sales(estado);
 CREATE INDEX idx_sales_es_foranea ON sales(es_foranea);
 
@@ -421,8 +424,8 @@ INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
     shift_id, cashier_id, cashier_name, estado, es_foranea,
-    monto_efectivo, monto_tarjeta, monto_transferencia, monto_credito
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    monto_efectivo, monto_tarjeta, monto_transferencia, monto_credito, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectUnsyncedSales:
 SELECT * FROM sales WHERE sync_state != 'SYNCED';
@@ -430,13 +433,39 @@ SELECT * FROM sales WHERE sync_state != 'SYNCED';
 updateSaleSyncState:
 UPDATE sales SET sync_state = ? WHERE id = ?;
 
+updateSale:
+UPDATE sales
+SET folio = :folio,
+    total = :total,
+    total_original = :total_original,
+    total_costo = :total_costo,
+    ganancia = :ganancia,
+    pago_con = :pago_con,
+    cambio = :cambio,
+    metodo_pago = :metodo_pago,
+    total_items = :total_items,
+    customer_id = :customer_id,
+    created_at = :created_at,
+    sync_state = :sync_state,
+    shift_id = :shift_id,
+    cashier_id = :cashier_id,
+    cashier_name = :cashier_name,
+    estado = :estado,
+    es_foranea = :es_foranea,
+    monto_efectivo = :monto_efectivo,
+    monto_tarjeta = :monto_tarjeta,
+    monto_transferencia = :monto_transferencia,
+    monto_credito = :monto_credito,
+    updated_at = :updated_at
+WHERE id = :id;
+
 upsertSyncedSale:
 INSERT INTO sales (
     id, folio, total, total_original, total_costo, ganancia,
     pago_con, cambio, metodo_pago, total_items, customer_id, created_at, sync_state,
     shift_id, cashier_id, cashier_name, estado, es_foranea,
-    monto_efectivo, monto_tarjeta, monto_transferencia, monto_credito
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    monto_efectivo, monto_tarjeta, monto_transferencia, monto_credito, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
     folio = excluded.folio,
     total = excluded.total,
@@ -458,12 +487,13 @@ ON CONFLICT(id) DO UPDATE SET
     monto_efectivo = excluded.monto_efectivo,
     monto_tarjeta = excluded.monto_tarjeta,
     monto_transferencia = excluded.monto_transferencia,
-    monto_credito = excluded.monto_credito;
+    monto_credito = excluded.monto_credito,
+    updated_at = excluded.updated_at;
 
 cancelSale:
 UPDATE sales
-SET estado = 'CANCELADA', sync_state = 'PENDING_UPDATE'
-WHERE id = ?;
+SET estado = 'CANCELADA', sync_state = 'PENDING_UPDATE', updated_at = :updated_at
+WHERE id = :id;
 
 selectSalesByCustomerId:
 SELECT * FROM sales
@@ -817,11 +847,13 @@ CREATE TABLE shifts (
     notes                TEXT    DEFAULT NULL,
     is_closed            INTEGER NOT NULL DEFAULT 0,
     sync_state           TEXT    NOT NULL DEFAULT 'PENDING_INSERT',
+    updated_at           INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (cashier_id) REFERENCES cashiers(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_shifts_is_closed ON shifts(is_closed);
 CREATE INDEX idx_shifts_start_time ON shifts(start_time);
+CREATE INDEX idx_shifts_updated_at ON shifts(updated_at);
 
 CREATE TABLE cash_movements (
     id          TEXT    PRIMARY KEY NOT NULL,
@@ -929,12 +961,12 @@ ORDER BY start_time DESC;
 insertShift:
 INSERT INTO shifts (
     id, cashier_id, cashier_name, start_time, end_time,
-    initial_cash, final_cash_expected, final_cash_counted, difference, notes, is_closed, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    initial_cash, final_cash_expected, final_cash_counted, difference, notes, is_closed, sync_state, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 closeShift:
 UPDATE shifts
-SET end_time = ?, final_cash_expected = ?, final_cash_counted = ?, difference = ?, notes = ?, is_closed = 1, sync_state = 'PENDING_UPDATE'
+SET end_time = ?, final_cash_expected = ?, final_cash_counted = ?, difference = ?, notes = ?, is_closed = 1, sync_state = 'PENDING_UPDATE', updated_at = ?
 WHERE id = ?;
 
 selectOpenShiftByCashierId:
@@ -949,8 +981,8 @@ UPDATE shifts SET sync_state = ? WHERE id = ?;
 upsertSyncedShift:
 INSERT INTO shifts (
     id, cashier_id, cashier_name, start_time, end_time,
-    initial_cash, final_cash_expected, final_cash_counted, difference, notes, is_closed, sync_state
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED')
+    initial_cash, final_cash_expected, final_cash_counted, difference, notes, is_closed, sync_state, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYNCED', ?)
 ON CONFLICT(id) DO UPDATE SET
     cashier_id = excluded.cashier_id,
     cashier_name = excluded.cashier_name,
@@ -962,7 +994,8 @@ ON CONFLICT(id) DO UPDATE SET
     difference = excluded.difference,
     notes = excluded.notes,
     is_closed = excluded.is_closed,
-    sync_state = 'SYNCED';
+    sync_state = 'SYNCED',
+    updated_at = excluded.updated_at;
 
 deleteAllShifts:
 DELETE FROM shifts;

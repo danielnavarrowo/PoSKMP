@@ -50,17 +50,12 @@ import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.ui.PriceTier
 import com.dnavarro.poskmp.ui.Screen
 import com.materialkolor.PaletteStyle
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -69,7 +64,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class VentaPricingReactivityAndReceiptTest {
 
     // ==========================================
@@ -297,6 +291,11 @@ class VentaPricingReactivityAndReceiptTest {
             roundDeliveryPrice: Boolean,
             roundTicketTotal: Boolean,
             disallowCardPaymentOnWholesale: Boolean,
+            prioritizeDeliveryPrice: Boolean,
+            autoWholesaleByQuantity: Boolean,
+            autoWholesaleQuantityThreshold: Int,
+            autoWholesaleByTicketTotal: Boolean,
+            autoWholesaleTicketTotalThreshold: Double,
             storeName: String,
             storeAddress: String,
             storePhone: String,

@@ -141,17 +141,6 @@ object ReceiptFormatter {
                 leftText = fullLeftText,
                 rightText = priceText
             )
-
-//            // Show unit price detail when quantity != 1 or weight-based or when discounted
-//            if (item.quantity != 1.0 || item.isWeightBased || item.originalUnitPrice > item.unitPrice + 0.001) {
-//                val unitPriceFormatted = "$${item.unitPrice.toString().formatPrice()}"
-//                val detailText = if (item.originalUnitPrice > item.unitPrice + 0.001) {
-//                    "  ($unitPriceFormatted c/u - desc.)"
-//                } else {
-//                    "  ($unitPriceFormatted c/u)"
-//                }
-//                lines += ReceiptLine(text = detailText, alignment = ReceiptAlignment.LEFT)
-//            }
         }
 
         separator()

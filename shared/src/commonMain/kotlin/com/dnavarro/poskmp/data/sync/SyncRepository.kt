@@ -184,22 +184,25 @@ class SyncRepositoryImpl(
             pendingDebouncedSyncJob?.cancel()
             pendingDebouncedSyncJob = null
 
+            val syncStartTime = currentTimeMillis()
+
             _syncState.value = SyncStateEnum.SYNCING
             _lastError.value = null
-            lastAttemptTimestamp = currentTimeMillis()
+            lastAttemptTimestamp = syncStartTime
 
             try {
-            val queries = database.appDatabaseQueries
-            var totalPushed = 0
-            var totalPulled = 0
+                val queries = database.appDatabaseQueries
+                var totalPushed = 0
+                var totalPulled = 0
+                var earliestDeferredTimestamp: Long? = null
 
-            val deviceRole = settingsRepository.deviceRoleFlow.first()
-            val canPushCatalogAndSettings = deviceRole == DeviceRole.ADMIN
-            val canPushSalesAndPayments = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
-            val canPushCashiers = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
+                val deviceRole = settingsRepository.deviceRoleFlow.first()
+                val canPushCatalogAndSettings = deviceRole == DeviceRole.ADMIN
+                val canPushSalesAndPayments = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
+                val canPushCashiers = deviceRole == DeviceRole.ADMIN || deviceRole == DeviceRole.POS_CLIENT
 
-            val lastSync = if (forceFullSync) 0L else settingsRepository.lastSyncTimestampFlow.first()
-            var productsAlreadyPulled = false
+                val lastSync = if (forceFullSync) 0L else settingsRepository.lastSyncTimestampFlow.first()
+                var productsAlreadyPulled = false
 
             // ----------------------------------------------------
             // 1. FASE PUSH (Subir datos locales pendientes)
@@ -233,6 +236,7 @@ class SyncRepositoryImpl(
                             precioDelivery = p.precio_delivery,
                             esFavorito = p.es_favorito == 1L,
                             piezas = p.piezas,
+                            createdAt = p.created_at,
                             updatedAt = p.updated_at
                         )
                     }
@@ -268,6 +272,7 @@ class SyncRepositoryImpl(
                                         precioDelivery = p.precio_delivery,
                                         esFavorito = p.es_favorito == 1L,
                                         piezas = p.piezas,
+                                        createdAt = p.created_at,
                                         updatedAt = p.updated_at
                                     )
                                 }
@@ -392,7 +397,8 @@ class SyncRepositoryImpl(
                             finalCashCounted = sh.final_cash_counted,
                             difference = sh.difference,
                             notes = sh.notes,
-                            isClosed = sh.is_closed == 1L
+                            isClosed = sh.is_closed == 1L,
+                            updatedAt = sh.updated_at
                         )
                     }
                     val pushShiftResult = remoteDataSource.pushShifts(url, key, shiftDtos)
@@ -452,6 +458,7 @@ class SyncRepositoryImpl(
                             totalItems = s.total_items,
                             customerId = s.customer_id,
                             createdAt = s.created_at,
+                            cashierId = s.cashier_id,
                             cashierName = s.cashier_name,
                             estado = s.estado,
                             esForanea = s.es_foranea == 1L,
@@ -459,7 +466,8 @@ class SyncRepositoryImpl(
                             montoEfectivo = s.monto_efectivo,
                             montoTarjeta = s.monto_tarjeta,
                             montoTransferencia = s.monto_transferencia,
-                            montoCredito = s.monto_credito
+                            montoCredito = s.monto_credito,
+                            updatedAt = s.updated_at
                         )
                     }
                     val pushSaleResult = remoteDataSource.pushSales(url, key, saleDtos)
@@ -476,7 +484,7 @@ class SyncRepositoryImpl(
                         SaleItemDto(
                             id = item.id,
                             saleId = item.sale_id,
-                            productId = item.product_id,
+                            productId = if (item.product_id?.startsWith("UNREG-") == true) null else item.product_id,
                             productNombre = item.product_nombre,
                             cantidad = item.cantidad,
                             precioUnitario = item.precio_unitario,
@@ -528,6 +536,11 @@ class SyncRepositoryImpl(
                         roundDeliveryPrice = settingsRepository.roundDeliveryPriceFlow.first(),
                         roundTicketTotal = settingsRepository.roundTicketTotalFlow.first(),
                         disallowCardPaymentOnWholesale = settingsRepository.disallowCardPaymentOnWholesaleFlow.first(),
+                        prioritizeDeliveryPrice = settingsRepository.prioritizeDeliveryPriceFlow.first(),
+                        autoWholesaleByQuantity = settingsRepository.autoWholesaleByQuantityFlow.first(),
+                        autoWholesaleQuantityThreshold = settingsRepository.autoWholesaleQuantityThresholdFlow.first(),
+                        autoWholesaleByTicketTotal = settingsRepository.autoWholesaleByTicketTotalFlow.first(),
+                        autoWholesaleTicketTotalThreshold = settingsRepository.autoWholesaleTicketTotalThresholdFlow.first(),
                         updatedAt = if (localSettingsUpdatedAt > 0L) localSettingsUpdatedAt else currentTimeMillis()
                     )
                     val pushSettingsResult = remoteDataSource.pushStoreSettings(url, key, storeSettingsDto)
@@ -564,21 +577,11 @@ class SyncRepositoryImpl(
             }
 
             // ----------------------------------------------------
-            // 2. FASE PULL (Descargar novedades remotas)
+            // 2. FASE PULL (Descargar novedades remotas en orden topológico)
+            // Customers -> Cashiers -> Products & Barcodes -> Shifts -> Cash Movements -> Sales -> Sale Items -> Customer Payments -> Deleted Records -> Store Settings
             // ----------------------------------------------------
 
-            // A) Productos Remotos
-            if (!productsAlreadyPulled) {
-                val pulledProductsResult = remoteDataSource.pullProducts(url, key, lastSync)
-                if (pulledProductsResult.isFailure) {
-                    throw pulledProductsResult.exceptionOrNull() ?: Exception("Error al descargar productos")
-                }
-                val remoteProducts = pulledProductsResult.getOrDefault(emptyList())
-                syncRemoteProducts(queries, remoteProducts)
-                totalPulled += remoteProducts.size
-            }
-
-            // B) Clientes Remotos
+            // 1) Clientes Remotos (Customers)
             val pulledCustomersResult = remoteDataSource.pullCustomers(url, key, lastSync)
             if (pulledCustomersResult.isFailure) {
                 throw pulledCustomersResult.exceptionOrNull() ?: Exception("Error al descargar clientes")
@@ -612,32 +615,7 @@ class SyncRepositoryImpl(
             }
             totalPulled += remoteCustomers.size
 
-            // C) Abonos Remotos
-            val pulledPaymentsResult = remoteDataSource.pullCustomerPayments(url, key, lastSync)
-            if (pulledPaymentsResult.isFailure) {
-                throw pulledPaymentsResult.exceptionOrNull() ?: Exception("Error al descargar abonos")
-            }
-            val remotePayments = pulledPaymentsResult.getOrDefault(emptyList())
-            if (remotePayments.isNotEmpty()) {
-                val existingCustomerIds = queries.selectAllCustomerIds().executeAsList().toHashSet()
-                queries.transaction {
-                    for ((id, customerId, monto, metodoPago, notas, createdAt) in remotePayments) {
-                        if (existingCustomerIds.contains(customerId)) {
-                            queries.upsertSyncedCustomerPayment(
-                                id = id,
-                                customer_id = customerId,
-                                monto = monto,
-                                metodo_pago = metodoPago,
-                                notas = notas,
-                                created_at = createdAt
-                            )
-                        }
-                    }
-                }
-            }
-            totalPulled += remotePayments.size
-
-            // D) Cajeros Remotos
+            // 2) Cajeros Remotos (Cashiers)
             val pulledCashiersResult = remoteDataSource.pullCashiers(url, key, lastSync)
             if (pulledCashiersResult.isFailure) {
                 throw pulledCashiersResult.exceptionOrNull() ?: Exception("Error al descargar cajeros")
@@ -661,7 +639,18 @@ class SyncRepositoryImpl(
             }
             totalPulled += remoteCashiers.size
 
-            // E1) Turnos de Caja Remotos
+            // 3) Productos Remotos (Products & Barcodes)
+            if (!productsAlreadyPulled) {
+                val pulledProductsResult = remoteDataSource.pullProducts(url, key, lastSync)
+                if (pulledProductsResult.isFailure) {
+                    throw pulledProductsResult.exceptionOrNull() ?: Exception("Error al descargar productos")
+                }
+                val remoteProducts = pulledProductsResult.getOrDefault(emptyList())
+                syncRemoteProducts(queries, remoteProducts)
+                totalPulled += remoteProducts.size
+            }
+
+            // 4) Turnos de Caja Remotos (Shifts)
             val pulledShiftsResult = remoteDataSource.pullShifts(url, key, lastSync)
             if (pulledShiftsResult.isFailure) {
                 throw pulledShiftsResult.exceptionOrNull() ?: Exception("Error al descargar turnos de caja")
@@ -670,8 +659,29 @@ class SyncRepositoryImpl(
             if (remoteShifts.isNotEmpty()) {
                 val existingCashierIds = queries.selectAllCashierIds().executeAsList().toHashSet()
                 queries.transaction {
-                    for ((id, cashierId, cashierName, startTime, endTime, initialCash, finalCashExpected, finalCashCounted, difference, notes, isClosed) in remoteShifts) {
-                        if (existingCashierIds.contains(cashierId)) {
+                    for ((id, cashierId, cashierName, startTime, endTime, initialCash, finalCashExpected, finalCashCounted, difference, notes, isClosed, updatedAt) in remoteShifts) {
+                        val remoteUpdatedAt = if (updatedAt > 0L) updatedAt else (endTime
+                            ?: startTime)
+                        if (!existingCashierIds.contains(cashierId)) {
+                            println("WARN: Deferring shift id=$id due to missing cashier_id=$cashierId")
+                            earliestDeferredTimestamp = minOf(earliestDeferredTimestamp ?: Long.MAX_VALUE, remoteUpdatedAt)
+                            continue
+                        }
+                        val local = queries.selectShiftById(id).executeAsOneOrNull()
+                        val shouldUpsert = if (local == null) {
+                            true
+                        } else {
+                            val isLocalClosed = local.is_closed == 1L || local.sync_state == "PENDING_UPDATE"
+                            val isRemoteUnclosed = !isClosed
+                            if (isLocalClosed && isRemoteUnclosed) {
+                                remoteUpdatedAt > local.updated_at
+                            } else if (local.sync_state != "SYNCED") {
+                                remoteUpdatedAt > local.updated_at
+                            } else {
+                                forceFullSync || remoteUpdatedAt >= local.updated_at
+                            }
+                        }
+                        if (shouldUpsert) {
                             queries.upsertSyncedShift(
                                 id = id,
                                 cashier_id = cashierId,
@@ -683,7 +693,8 @@ class SyncRepositoryImpl(
                                 final_cash_counted = finalCashCounted,
                                 difference = difference,
                                 notes = notes,
-                                is_closed = if (isClosed) 1L else 0L
+                                is_closed = if (isClosed) 1L else 0L,
+                                updated_at = remoteUpdatedAt
                             )
                         }
                     }
@@ -691,7 +702,7 @@ class SyncRepositoryImpl(
             }
             totalPulled += remoteShifts.size
 
-            // E2) Movimientos de Caja Remotos
+            // 5) Movimientos de Caja Remotos (Cash Movements)
             val pulledMovementsResult = remoteDataSource.pullCashMovements(url, key, lastSync)
             if (pulledMovementsResult.isFailure) {
                 throw pulledMovementsResult.exceptionOrNull() ?: Exception("Error al descargar movimientos de caja")
@@ -712,13 +723,16 @@ class SyncRepositoryImpl(
                                 motivo = motivo,
                                 created_at = createdAt
                             )
+                        } else {
+                            println("WARN: Deferring cash_movement id=$id due to missing shift_id=$shiftId or cashier_id=$cashierId")
+                            earliestDeferredTimestamp = minOf(earliestDeferredTimestamp ?: Long.MAX_VALUE, createdAt)
                         }
                     }
                 }
             }
             totalPulled += remoteMovements.size
 
-            // E3) Ventas y Partidas Remotas
+            // 6) Ventas Remotas (Sales)
             val pulledSalesResult = remoteDataSource.pullSales(url, key, lastSync)
             if (pulledSalesResult.isFailure) {
                 throw pulledSalesResult.exceptionOrNull() ?: Exception("Error al descargar ventas")
@@ -729,9 +743,16 @@ class SyncRepositoryImpl(
                 val existingCustomerIds = queries.selectAllCustomerIds().executeAsList().toHashSet()
                 val existingShiftIds = queries.selectAllShiftIds().executeAsList().toHashSet()
                 queries.transaction {
-                    for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierName, estado, esForanea, shiftId, montoEfectivo, montoTarjeta, montoTransferencia, montoCredito) in remoteSales) {
+                    for ((id, folio, total, totalOriginal, totalCosto, ganancia, pagoCon, cambio, metodoPago, totalItems, customerId, createdAt, cashierId, cashierName, estado, esForanea, shiftId, montoEfectivo, montoTarjeta, montoTransferencia, montoCredito, updatedAt) in remoteSales) {
                         val localSale = queries.selectSaleById(id).executeAsOneOrNull()
-                        if (forceFullSync || localSale == null || localSale.estado != estado) {
+                        val remoteUpdatedAt = if (updatedAt > 0L) updatedAt else createdAt
+                        val shouldUpsert = localSale == null || if (localSale.sync_state == "PENDING_UPDATE" || localSale.sync_state == "PENDING_INSERT") {
+                            !(localSale.estado == "CANCELADA" && estado != "CANCELADA") && remoteUpdatedAt > localSale.updated_at
+                        } else {
+                            forceFullSync || remoteUpdatedAt >= localSale.updated_at || localSale.estado != estado
+                        }
+
+                        if (shouldUpsert) {
                             val validCustomerId = if (customerId != null && existingCustomerIds.contains(
                                     customerId
                                 )) {
@@ -760,14 +781,15 @@ class SyncRepositoryImpl(
                                 customer_id = validCustomerId,
                                 created_at = createdAt,
                                 shift_id = validShiftId,
-                                cashier_id = localSale?.cashier_id,
+                                cashier_id = cashierId ?: localSale?.cashier_id,
                                 cashier_name = cashierName,
                                 estado = estado,
                                 es_foranea = if (esForanea) 1L else 0L,
                                 monto_efectivo = montoEfectivo,
                                 monto_tarjeta = montoTarjeta,
                                 monto_transferencia = montoTransferencia,
-                                monto_credito = montoCredito
+                                monto_credito = montoCredito,
+                                updated_at = remoteUpdatedAt
                             )
                             salesPulledCount++
                         }
@@ -776,6 +798,7 @@ class SyncRepositoryImpl(
             }
             totalPulled += salesPulledCount
 
+            // 7) Partidas de Venta Remotas (Sale Items)
             val pulledItemsResult = remoteDataSource.pullSaleItems(url, key, lastSync)
             if (pulledItemsResult.isFailure) {
                 throw pulledItemsResult.exceptionOrNull() ?: Exception("Error al descargar partidas de venta")
@@ -801,67 +824,115 @@ class SyncRepositoryImpl(
                                 es_descuento = if (esDescuento) 1L else 0L,
                                 created_at = createdAt
                             )
+                        } else {
+                            println("WARN: Deferring sale_item id=$id due to missing parent sale_id=$saleId")
+                            earliestDeferredTimestamp = minOf(earliestDeferredTimestamp ?: Long.MAX_VALUE, createdAt)
                         }
                     }
                 }
             }
+            totalPulled += remoteItems.size
 
-            // F) Ajustes de Negocio Remotos
-            val pulledSettingsResult = remoteDataSource.pullStoreSettings(url, key)
-            if (pulledSettingsResult.isSuccess) {
-                val remoteSettings = pulledSettingsResult.getOrNull()
-                if (remoteSettings != null) {
-                    val localSettingsUpdatedAt = settingsRepository.businessSettingsUpdatedAtFlow.first()
-                    if (remoteSettings.updatedAt > localSettingsUpdatedAt) {
-                        settingsRepository.setBusinessSettings(
-                            defaultRetailMargin = remoteSettings.defaultRetailMargin,
-                            defaultWholesaleMargin = remoteSettings.defaultWholesaleMargin,
-                            defaultDeliveryMargin = remoteSettings.defaultDeliveryMargin,
-                            roundRetailPrice = remoteSettings.roundRetailPrice,
-                            roundWholesalePrice = remoteSettings.roundWholesalePrice,
-                            roundDeliveryPrice = remoteSettings.roundDeliveryPrice,
-                            roundTicketTotal = remoteSettings.roundTicketTotal,
-                            disallowCardPaymentOnWholesale = remoteSettings.disallowCardPaymentOnWholesale,
-                            storeName = remoteSettings.storeName,
-                            storeAddress = remoteSettings.storeAddress,
-                            storePhone = remoteSettings.storePhone,
-                            transferClabe = remoteSettings.transferClabe,
-                            transferBeneficiary = remoteSettings.transferBeneficiary,
-                            receiptFooter = remoteSettings.receiptFooter,
-                            updatedAt = remoteSettings.updatedAt
-                        )
-                        totalPulled++
+            // 8) Abonos Remotos (Customer Payments)
+            val pulledPaymentsResult = remoteDataSource.pullCustomerPayments(url, key, lastSync)
+            if (pulledPaymentsResult.isFailure) {
+                throw pulledPaymentsResult.exceptionOrNull() ?: Exception("Error al descargar abonos")
+            }
+            val remotePayments = pulledPaymentsResult.getOrDefault(emptyList())
+            if (remotePayments.isNotEmpty()) {
+                val existingCustomerIds = queries.selectAllCustomerIds().executeAsList().toHashSet()
+                queries.transaction {
+                    for ((id, customerId, monto, metodoPago, notas, createdAt) in remotePayments) {
+                        if (existingCustomerIds.contains(customerId)) {
+                            queries.upsertSyncedCustomerPayment(
+                                id = id,
+                                customer_id = customerId,
+                                monto = monto,
+                                metodo_pago = metodoPago,
+                                notas = notas,
+                                created_at = createdAt
+                            )
+                        } else {
+                            println("WARN: Deferring customer_payment id=$id due to missing customer_id=$customerId")
+                            earliestDeferredTimestamp = minOf(earliestDeferredTimestamp ?: Long.MAX_VALUE, createdAt)
+                        }
                     }
                 }
             }
+            totalPulled += remotePayments.size
 
-            // G) Eliminaciones Remotas (Tombstones)
+            // 9) Eliminaciones Remotas (Tombstones)
             val pulledDeletesResult = remoteDataSource.pullDeletedRecords(url, key, lastSync)
-            if (pulledDeletesResult.isSuccess) {
-                val remoteDeletes = pulledDeletesResult.getOrDefault(emptyList())
-                if (remoteDeletes.isNotEmpty()) {
-                    queries.transaction {
-                        for ((id, entityType) in remoteDeletes) {
-                            when (entityType) {
-                                "PRODUCT" -> {
-                                    try {
-                                        queries.deleteBarcodesByProductId(id)
-                                    } catch (_: Exception) {}
-                                    queries.deleteProductHard(id)
-                                }
-                                "CUSTOMER" -> queries.deleteCustomerHard(id)
-                                "PAYMENT" -> queries.deleteCustomerPayment(id)
+            if (pulledDeletesResult.isFailure) {
+                throw pulledDeletesResult.exceptionOrNull() ?: Exception("Error al descargar eliminaciones remotas")
+            }
+            val remoteDeletes = pulledDeletesResult.getOrDefault(emptyList())
+            if (remoteDeletes.isNotEmpty()) {
+                queries.transaction {
+                    for ((id, entityType) in remoteDeletes) {
+                        when (entityType) {
+                            "PRODUCT" -> {
+                                try {
+                                    queries.deleteBarcodesByProductId(id)
+                                } catch (_: Exception) {}
+                                queries.deleteProductHard(id)
+                            }
+                            "CUSTOMER" -> queries.deleteCustomerHard(id)
+                            "PAYMENT" -> queries.deleteCustomerPayment(id)
+                            "CASHIER" -> {
+                                queries.deactivateCashier(updated_at = currentTimeMillis(), id = id)
+                                queries.updateCashierSyncState(sync_state = "SYNCED", id = id)
                             }
                         }
                     }
-                    totalPulled += remoteDeletes.size
+                }
+                totalPulled += remoteDeletes.size
+            }
+
+            // 10) Ajustes de Negocio Remotos (Store Settings)
+            val pulledSettingsResult = remoteDataSource.pullStoreSettings(url, key)
+            if (pulledSettingsResult.isFailure) {
+                throw pulledSettingsResult.exceptionOrNull() ?: Exception("Error al descargar ajustes de negocio")
+            }
+            val remoteSettings = pulledSettingsResult.getOrNull()
+            if (remoteSettings != null) {
+                val localSettingsUpdatedAt = settingsRepository.businessSettingsUpdatedAtFlow.first()
+                if (remoteSettings.updatedAt > localSettingsUpdatedAt) {
+                    settingsRepository.setBusinessSettings(
+                        defaultRetailMargin = remoteSettings.defaultRetailMargin,
+                        defaultWholesaleMargin = remoteSettings.defaultWholesaleMargin,
+                        defaultDeliveryMargin = remoteSettings.defaultDeliveryMargin,
+                        roundRetailPrice = remoteSettings.roundRetailPrice,
+                        roundWholesalePrice = remoteSettings.roundWholesalePrice,
+                        roundDeliveryPrice = remoteSettings.roundDeliveryPrice,
+                        roundTicketTotal = remoteSettings.roundTicketTotal,
+                        disallowCardPaymentOnWholesale = remoteSettings.disallowCardPaymentOnWholesale,
+                        prioritizeDeliveryPrice = remoteSettings.prioritizeDeliveryPrice,
+                        autoWholesaleByQuantity = remoteSettings.autoWholesaleByQuantity,
+                        autoWholesaleQuantityThreshold = remoteSettings.autoWholesaleQuantityThreshold,
+                        autoWholesaleByTicketTotal = remoteSettings.autoWholesaleByTicketTotal,
+                        autoWholesaleTicketTotalThreshold = remoteSettings.autoWholesaleTicketTotalThreshold,
+                        storeName = remoteSettings.storeName,
+                        storeAddress = remoteSettings.storeAddress,
+                        storePhone = remoteSettings.storePhone,
+                        transferClabe = remoteSettings.transferClabe,
+                        transferBeneficiary = remoteSettings.transferBeneficiary,
+                        receiptFooter = remoteSettings.receiptFooter,
+                        updatedAt = remoteSettings.updatedAt
+                    )
+                    totalPulled++
                 }
             }
 
-            // Guardar marca de tiempo de sincronización exitosa
-            val currentSettingsUpdated = settingsRepository.businessSettingsUpdatedAtFlow.first()
-            val now = maxOf(currentTimeMillis(), currentSettingsUpdated)
-            settingsRepository.setLastSyncTimestamp(now)
+            // Watermark progression:
+            // Advance watermark to syncStartTime (captured before network calls)
+            // but do not advance past any deferred record's timestamp.
+            val targetWatermark = if (earliestDeferredTimestamp != null) {
+                minOf(syncStartTime, earliestDeferredTimestamp - 1L).coerceAtLeast(lastSync)
+            } else {
+                syncStartTime
+            }
+            settingsRepository.setLastSyncTimestamp(targetWatermark)
 
             _syncState.value = SyncStateEnum.SUCCESS
             val report = SyncReport(
@@ -1056,11 +1127,18 @@ class SyncRepositoryImpl(
 
         queries.transaction {
             for (remote in remoteProducts) {
+                val local = catalog.productsById[remote.id]
+                if (local != null && local.sync_state != "SYNCED") {
+                    // Catalog Pre-pull Protection:
+                    // If a local product exists with sync_state != "SYNCED" (PENDING_INSERT or PENDING_UPDATE),
+                    // do NOT overwrite it with remote data. Preserve local unpushed catalog changes so they can be pushed.
+                    continue
+                }
+
                 resolveLocalProductConflicts(queries, remote, catalog, remoteProductNames)
 
-                val local = catalog.productsById[remote.id]
                 if ((local == null) || (remote.updatedAt >= local.updated_at)) {
-                    val effectiveCreatedAt = local?.created_at?.takeIf { it > 0L } ?: remote.updatedAt
+                    val effectiveCreatedAt = local?.created_at?.takeIf { it > 0L } ?: (if (remote.createdAt > 0L) remote.createdAt else remote.updatedAt)
                     queries.upsertSyncedProduct(
                         id = remote.id,
                         codigos = remote.codigos,

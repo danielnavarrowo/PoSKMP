@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     es_favorito    BOOLEAN NOT NULL DEFAULT false,
     piezas         NUMERIC(10, 3) NOT NULL DEFAULT 1.000,
     updated_at     BIGINT NOT NULL,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    created_at     BIGINT NOT NULL DEFAULT (extract(epoch from now()) * 1000)::bigint,
     CONSTRAINT uq_products_nombre UNIQUE (nombre)
 );
 
@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS public.customers (
     created_at           BIGINT NOT NULL,
     updated_at           BIGINT NOT NULL,
     tipo_descuento       TEXT NOT NULL DEFAULT 'NONE',
-    porcentaje_descuento NUMERIC(10, 2) NOT NULL DEFAULT 0.00
+    porcentaje_descuento NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    CONSTRAINT check_customer_tipo_descuento CHECK (tipo_descuento IN ('NONE', 'WHOLESALE', 'COST_PLUS_PERCENTAGE', 'RETAIL_MINUS_PERCENTAGE'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_updated_at ON public.customers(updated_at);
@@ -104,11 +105,13 @@ CREATE TABLE IF NOT EXISTS public.shifts (
     final_cash_counted  NUMERIC(12, 2),
     difference          NUMERIC(12, 2),
     notes               TEXT,
-    is_closed           BOOLEAN NOT NULL DEFAULT false
+    is_closed           BOOLEAN NOT NULL DEFAULT false,
+    updated_at          BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_shifts_is_closed ON public.shifts(is_closed);
 CREATE INDEX IF NOT EXISTS idx_shifts_start_time ON public.shifts(start_time);
+CREATE INDEX IF NOT EXISTS idx_shifts_updated_at ON public.shifts(updated_at);
 
 -- 6. TABLA: cash_movements (Entradas y Salidas de Efectivo de Caja)
 CREATE TABLE IF NOT EXISTS public.cash_movements (
@@ -145,10 +148,13 @@ CREATE TABLE IF NOT EXISTS public.sales (
     monto_efectivo NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     monto_tarjeta  NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     monto_transferencia NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    monto_credito  NUMERIC(12, 2) NOT NULL DEFAULT 0.00
+    monto_credito  NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+    updated_at     BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_sales_created_at ON public.sales(created_at);
+CREATE INDEX IF NOT EXISTS idx_sales_updated_at ON public.sales(updated_at);
+CREATE INDEX IF NOT EXISTS idx_sales_cashier_id ON public.sales(cashier_id);
 CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON public.sales(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON public.sales(shift_id);
 CREATE INDEX IF NOT EXISTS idx_sales_estado ON public.sales(estado);
@@ -158,7 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_sales_es_foranea ON public.sales(es_foranea);
 CREATE TABLE IF NOT EXISTS public.sale_items (
     id              TEXT PRIMARY KEY,
     sale_id         TEXT NOT NULL REFERENCES public.sales(id) ON DELETE CASCADE,
-    product_id      TEXT REFERENCES public.products(id) ON DELETE SET NULL,
+    product_id      TEXT, -- Sin FK rígida para admitir artículos libres / no registrados ("UNREG-...")
     product_nombre  TEXT NOT NULL,
     cantidad        NUMERIC(10, 3) NOT NULL,
     precio_unitario NUMERIC(12, 2) NOT NULL,
@@ -190,6 +196,11 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
     round_delivery_price               BOOLEAN NOT NULL DEFAULT false,
     round_ticket_total                 BOOLEAN NOT NULL DEFAULT false,
     disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false,
+    prioritize_delivery_price          BOOLEAN NOT NULL DEFAULT false,
+    auto_wholesale_by_quantity         BOOLEAN NOT NULL DEFAULT false,
+    auto_wholesale_quantity_threshold  INTEGER NOT NULL DEFAULT 3,
+    auto_wholesale_by_ticket_total     BOOLEAN NOT NULL DEFAULT false,
+    auto_wholesale_ticket_total_threshold NUMERIC(12, 2) NOT NULL DEFAULT 500.00,
     updated_at                         BIGINT NOT NULL
 );
 
@@ -349,6 +360,16 @@ FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
 DROP TRIGGER IF EXISTS trg_prevent_stale_store_settings ON public.store_settings;
 CREATE TRIGGER trg_prevent_stale_store_settings
 BEFORE UPDATE ON public.store_settings
+FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_sales ON public.sales;
+CREATE TRIGGER trg_prevent_stale_sales
+BEFORE UPDATE ON public.sales
+FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_shifts ON public.shifts;
+CREATE TRIGGER trg_prevent_stale_shifts
+BEFORE UPDATE ON public.shifts
 FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
 
 -- =========================================================================
@@ -592,9 +613,21 @@ ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_efectivo NUMERIC(12, 2) 
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_tarjeta NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_transferencia NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS monto_credito NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS updated_at BIGINT;
+UPDATE public.sales SET updated_at = created_at WHERE updated_at IS NULL OR updated_at = 0;
+ALTER TABLE public.sales ALTER COLUMN updated_at SET DEFAULT 0;
+ALTER TABLE public.sales ALTER COLUMN updated_at SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON public.sales(shift_id);
+CREATE INDEX IF NOT EXISTS idx_sales_cashier_id ON public.sales(cashier_id);
 CREATE INDEX IF NOT EXISTS idx_sales_estado ON public.sales(estado);
 CREATE INDEX IF NOT EXISTS idx_sales_es_foranea ON public.sales(es_foranea);
+CREATE INDEX IF NOT EXISTS idx_sales_updated_at ON public.sales(updated_at);
+
+ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS updated_at BIGINT;
+UPDATE public.shifts SET updated_at = COALESCE(end_time, start_time) WHERE updated_at IS NULL OR updated_at = 0;
+ALTER TABLE public.shifts ALTER COLUMN updated_at SET DEFAULT 0;
+ALTER TABLE public.shifts ALTER COLUMN updated_at SET NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_shifts_updated_at ON public.shifts(updated_at);
 
 -- Migración segura para rellenar montos en ventas existentes (backfill)
 UPDATE public.sales
@@ -632,9 +665,28 @@ BEGIN
     END IF;
 END $$;
 
+-- Convert products.created_at from legacy TIMESTAMPTZ to BIGINT milliseconds:
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'products' 
+          AND column_name = 'created_at' AND data_type = 'timestamp with time zone'
+    ) THEN
+        ALTER TABLE public.products 
+        ALTER COLUMN created_at DROP DEFAULT;
+        ALTER TABLE public.products 
+        ALTER COLUMN created_at TYPE BIGINT 
+        USING COALESCE((extract(epoch from created_at) * 1000)::bigint, updated_at, 0);
+        ALTER TABLE public.products 
+        ALTER COLUMN created_at SET DEFAULT (extract(epoch from now()) * 1000)::bigint;
+    END IF;
+END $$;
+
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS precio_delivery NUMERIC(12, 2) NOT NULL DEFAULT 0.00;
 ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS es_delivery BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.sale_items ADD COLUMN IF NOT EXISTS es_descuento BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.sale_items DROP CONSTRAINT IF EXISTS sale_items_product_id_fkey;
 
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS store_address TEXT NOT NULL DEFAULT '';
@@ -646,6 +698,11 @@ ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_wholesale_price
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_delivery_price BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS round_ticket_total BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS disallow_card_payment_on_wholesale BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS prioritize_delivery_price BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS auto_wholesale_by_quantity BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS auto_wholesale_quantity_threshold INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS auto_wholesale_by_ticket_total BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS auto_wholesale_ticket_total_threshold NUMERIC(12, 2) NOT NULL DEFAULT 500.00;
 
 -- Si existían las columnas antiguas (is_rounding_enabled / round_product_prices), migrar su estado efectivo y eliminarlas:
 DO $$
@@ -802,6 +859,12 @@ CREATE TRIGGER trg_prevent_stale_cashiers BEFORE UPDATE ON public.cashiers FOR E
 
 DROP TRIGGER IF EXISTS trg_prevent_stale_store_settings ON public.store_settings;
 CREATE TRIGGER trg_prevent_stale_store_settings BEFORE UPDATE ON public.store_settings FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_sales ON public.sales;
+CREATE TRIGGER trg_prevent_stale_sales BEFORE UPDATE ON public.sales FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
+
+DROP TRIGGER IF EXISTS trg_prevent_stale_shifts ON public.shifts;
+CREATE TRIGGER trg_prevent_stale_shifts BEFORE UPDATE ON public.shifts FOR EACH ROW EXECUTE FUNCTION public.prevent_stale_data_overwrite();
 
 -- Integridad de nombres y códigos de barras (índices y prevención de duplicados):
 DROP INDEX IF EXISTS public.idx_products_codigos;
