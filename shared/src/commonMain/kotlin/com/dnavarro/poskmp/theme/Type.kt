@@ -6,22 +6,22 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import org.jetbrains.compose.resources.Font
-import poskmp.shared.generated.resources.Manrope
+import poskmp.shared.generated.resources.Pliant
 import poskmp.shared.generated.resources.Res
 
 val TYPOGRAPHY = Typography()
 
 @Composable
 private fun createGoogleFlexFontFamily(): FontFamily = FontFamily(
-    Font(Res.font.Manrope, weight = FontWeight.W100, variationSettings = FontVariation.Settings(FontVariation.weight(100))),
-    Font(Res.font.Manrope, weight = FontWeight.W300, variationSettings = FontVariation.Settings(FontVariation.weight(300))),
-    Font(Res.font.Manrope, weight = FontWeight.W400, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-    Font(Res.font.Manrope, weight = FontWeight.W200, variationSettings = FontVariation.Settings(FontVariation.weight(200))),
-    Font(Res.font.Manrope, weight = FontWeight.W500, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-    Font(Res.font.Manrope, weight = FontWeight.W600, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-    Font(Res.font.Manrope, weight = FontWeight.W700, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
-    Font(Res.font.Manrope, weight = FontWeight.W800, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
-    Font(Res.font.Manrope, weight = FontWeight.W900, variationSettings = FontVariation.Settings(FontVariation.weight(900))),
+    Font(Res.font.Pliant, weight = FontWeight.W100, variationSettings = FontVariation.Settings(FontVariation.weight(100))),
+    Font(Res.font.Pliant, weight = FontWeight.W300, variationSettings = FontVariation.Settings(FontVariation.weight(300))),
+    Font(Res.font.Pliant, weight = FontWeight.W400, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(Res.font.Pliant, weight = FontWeight.W200, variationSettings = FontVariation.Settings(FontVariation.weight(200))),
+    Font(Res.font.Pliant, weight = FontWeight.W500, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(Res.font.Pliant, weight = FontWeight.W600, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(Res.font.Pliant, weight = FontWeight.W700, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+    Font(Res.font.Pliant, weight = FontWeight.W800, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
+    Font(Res.font.Pliant, weight = FontWeight.W900, variationSettings = FontVariation.Settings(FontVariation.weight(900))),
 )
 
 val googleFlexDisplay: FontFamily

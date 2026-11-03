@@ -36,41 +36,41 @@ import kotlin.time.Duration.Companion.milliseconds
 actual fun createReceiptPrinter(): ReceiptPrinter = AndroidReceiptPrinter()
 
 private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-private const val MANROPE_ASSET_PATH = "composeResources/poskmp.shared.generated.resources/font/Manrope.ttf"
+private const val PLIANT_ASSET_PATH = "composeResources/poskmp.shared.generated.resources/font/Pliant.ttf"
 
 private class AndroidReceiptPrinter : ReceiptPrinter {
     @Volatile
-    private var cachedManropeRegular: Typeface? = null
+    private var cachedPliantRegular: Typeface? = null
 
     @Volatile
-    private var cachedManropeBold: Typeface? = null
+    private var cachedPliantBold: Typeface? = null
 
     private fun resolveTypeface(context: Context, fontFamily: ReceiptFontFamily, emphasized: Boolean): Typeface {
         if (fontFamily == ReceiptFontFamily.MONOSPACE) {
             return Typeface.create(Typeface.MONOSPACE, if (emphasized) Typeface.BOLD else Typeface.NORMAL)
         }
         if (emphasized) {
-            cachedManropeBold?.let { return it }
+            cachedPliantBold?.let { return it }
         } else {
-            cachedManropeRegular?.let { return it }
+            cachedPliantRegular?.let { return it }
         }
 
         val loaded = runCatching {
-            Typeface.Builder(context.assets, MANROPE_ASSET_PATH)
+            Typeface.Builder(context.assets, PLIANT_ASSET_PATH)
                 .setFontVariationSettings(if (emphasized) "'wght' 700" else "'wght' 500")
                 .build()
         }.getOrNull() ?: Typeface.create(Typeface.SANS_SERIF, if (emphasized) Typeface.BOLD else Typeface.NORMAL)
 
         if (emphasized) {
-            cachedManropeBold = loaded
+            cachedPliantBold = loaded
         } else {
-            cachedManropeRegular = loaded
+            cachedPliantRegular = loaded
         }
         return loaded
     }
 
     private fun encodeThermalPayload(document: ReceiptDocument, cutPaper: Boolean): ByteArray {
-        if (document.fontFamily == ReceiptFontFamily.MANROPE) {
+        if (document.fontFamily == ReceiptFontFamily.PLIANT) {
             val context = DatabaseDriverFactory.appContext
             if (context != null) {
                 return renderReceiptToEscPosRaster(context, document, cutPaper)
@@ -420,7 +420,7 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
                     val lineHeight = document.fontSize * 1.4f
 
                     document.lines.forEach { line ->
-                        if (line.isSeparator && document.fontFamily == ReceiptFontFamily.MANROPE) {
+                        if (line.isSeparator && document.fontFamily == ReceiptFontFamily.PLIANT) {
                             val sepY = y - (document.fontSize * 0.35f)
                             canvas.drawLine(left, sepY, right, sepY, separatorPaint)
                             y += lineHeight

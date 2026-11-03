@@ -6,7 +6,7 @@ enum class PrinterType {
 
 enum class ReceiptFontFamily {
     MONOSPACE,
-    MANROPE
+    PLIANT
 }
 
 const val PRINTER_SYSTEM_DIALOG_ID = "system_dialog"

@@ -37,7 +37,7 @@ fun ReceiptDocumentPreview(
     val paperWidth = (receipt.paperWidthMm * 5.2).dp
     val resolvedFontFamily = when (receipt.fontFamily) {
         ReceiptFontFamily.MONOSPACE -> FontFamily.Monospace
-        ReceiptFontFamily.MANROPE -> googleFlexBody
+        ReceiptFontFamily.PLIANT -> googleFlexBody
     }
     val lineHeightSp = (receipt.fontSize * 1.35f).sp
 
@@ -54,7 +54,7 @@ fun ReceiptDocumentPreview(
             receipt.lines.forEach { line ->
                 val weight = if (line.emphasized) FontWeight.Bold else FontWeight.Normal
 
-                if (line.isSeparator && receipt.fontFamily == ReceiptFontFamily.MANROPE) {
+                if (line.isSeparator && receipt.fontFamily == ReceiptFontFamily.PLIANT) {
                     Canvas(
                         modifier = Modifier
                             .fillMaxWidth()

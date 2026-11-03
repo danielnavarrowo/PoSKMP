@@ -538,7 +538,9 @@ class SettingsRepositoryImpl(
         dataStore.data.map {
             val rawFont = it[PreferenceKeys.RECEIPT_FONT_FAMILY]
             runCatching {
-                if (rawFont != null) ReceiptFontFamily.valueOf(rawFont) else ReceiptFontFamily.MONOSPACE
+                if (rawFont != null) {
+                    if (rawFont == "MANROPE") ReceiptFontFamily.PLIANT else ReceiptFontFamily.valueOf(rawFont)
+                } else ReceiptFontFamily.MONOSPACE
             }.getOrDefault(ReceiptFontFamily.MONOSPACE)
         }
     ) { storeInfoList, printerSettings, printerId, terminalPrefix, fontFamily ->

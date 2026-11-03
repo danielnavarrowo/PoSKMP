@@ -31,19 +31,19 @@ import kotlin.math.ceil
 
 actual fun createReceiptPrinter(): ReceiptPrinter = JvmReceiptPrinter()
 
-private const val MANROPE_RESOURCE_PATH = "composeResources/poskmp.shared.generated.resources/font/Manrope.ttf"
+private const val PLIANT_RESOURCE_PATH = "composeResources/poskmp.shared.generated.resources/font/Pliant.ttf"
 
 private class JvmReceiptPrinter : ReceiptPrinter {
 
     @Volatile
-    private var cachedManropeBase: Font? = null
+    private var cachedPliantBase: Font? = null
 
-    private fun getManropeBaseFont(): Font? {
-        cachedManropeBase?.let { return it }
+    private fun getPliantBaseFont(): Font? {
+        cachedPliantBase?.let { return it }
         val loaded = runCatching {
-            val stream = Thread.currentThread().contextClassLoader?.getResourceAsStream(MANROPE_RESOURCE_PATH)
-                ?: JvmReceiptPrinter::class.java.classLoader?.getResourceAsStream(MANROPE_RESOURCE_PATH)
-                ?: JvmReceiptPrinter::class.java.getResourceAsStream("/$MANROPE_RESOURCE_PATH")
+            val stream = Thread.currentThread().contextClassLoader?.getResourceAsStream(PLIANT_RESOURCE_PATH)
+                ?: JvmReceiptPrinter::class.java.classLoader?.getResourceAsStream(PLIANT_RESOURCE_PATH)
+                ?: JvmReceiptPrinter::class.java.getResourceAsStream("/$PLIANT_RESOURCE_PATH")
             stream?.use { input ->
                 Font.createFont(Font.TRUETYPE_FONT, input).also { font ->
                     try {
@@ -54,7 +54,7 @@ private class JvmReceiptPrinter : ReceiptPrinter {
             }
         }.getOrNull()
         if (loaded != null) {
-            cachedManropeBase = loaded
+            cachedPliantBase = loaded
         }
         return loaded
     }
@@ -69,7 +69,7 @@ private class JvmReceiptPrinter : ReceiptPrinter {
             return Font(Font.MONOSPACED, style, sizePt.toInt().coerceAtLeast(6)).deriveFont(sizePt)
         }
 
-        val base = getManropeBaseFont()
+        val base = getPliantBaseFont()
         if (base != null) {
             val attrs = mapOf(
                 TextAttribute.SIZE to sizePt,
@@ -83,7 +83,7 @@ private class JvmReceiptPrinter : ReceiptPrinter {
     }
 
     private fun encodeThermalPayload(document: ReceiptDocument, cutPaper: Boolean): ByteArray {
-        return if (document.fontFamily == ReceiptFontFamily.MANROPE) {
+        return if (document.fontFamily == ReceiptFontFamily.PLIANT) {
             renderReceiptToEscPosRaster(document, cutPaper)
         } else {
             EscPosReceiptEncoder.encode(document, cutPaper = cutPaper)
@@ -444,7 +444,7 @@ private class JvmReceiptPrinter : ReceiptPrinter {
             )
 
             for ((text, alignment, emphasized, leftCol, rightCol, isSeparator) in document.lines) {
-                if (isSeparator && document.fontFamily == ReceiptFontFamily.MANROPE) {
+                if (isSeparator && document.fontFamily == ReceiptFontFamily.PLIANT) {
                     val oldStroke = g2d.stroke
                     g2d.stroke = dashedStroke
                     val sepY = currentTop + separatorHeight / 2f
