@@ -21,7 +21,7 @@ materialKolor = "5.0.1"
 sqldelight = "2.4.1"
 datastore = "1.3.0"
 accompanistPermissions = "0.37.3"
-cameraCore = "1.7.0-rc01"
+cameraCore = "1.7.0-rc02"
 playServicesMlkitBarcodeScanning = "18.3.1"
 koin = "4.2.2"
 ktor = "3.6.1"
@@ -31,7 +31,7 @@ sqliteAndroid = "3.45.0"
 baselineprofile = "1.5.0"
 profileinstaller = "1.4.1"
 androidx-test-ext-junit = "1.3.0"
-uiautomator = "2.4.0"
+uiautomator = "2.4.1"
 
 [libraries]
 compose-charts = { module = "io.github.ehsannarmani:compose-charts", version.ref = "composeCharts" }

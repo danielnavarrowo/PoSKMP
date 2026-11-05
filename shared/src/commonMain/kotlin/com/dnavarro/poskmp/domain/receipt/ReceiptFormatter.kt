@@ -211,9 +211,13 @@ object ReceiptFormatter {
 
     private fun formatQuantity(quantity: Double, isWeightBased: Boolean): String {
         return if (isWeightBased) {
-            val text = quantity.toString()
-            val decimals = text.substringAfter('.', "").padEnd(3, '0').take(3)
-            "${text.substringBefore('.')}.${decimals} kg"
+            val isNegative = quantity < 0.0
+            val absVal = kotlin.math.abs(quantity)
+            val totalMillis = kotlin.math.round(absVal * 1000.0).toLong()
+            val intPart = totalMillis / 1000L
+            val decPart = totalMillis % 1000L
+            val sign = if (isNegative && totalMillis > 0L) "-" else ""
+            "$sign$intPart.${decPart.toString().padStart(3, '0')} kg"
         } else {
             if (quantity % 1.0 == 0.0) quantity.toInt().toString() else quantity.toString()
         }

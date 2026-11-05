@@ -1136,9 +1136,14 @@ fun VentaScreen(
         var isWeightFocused by remember(product.id) { mutableStateOf(false) }
         var isPriceFocused by remember(product.id) { mutableStateOf(false) }
 
+        var lastInputByPrice by remember(product.id) { mutableStateOf(false) }
+        var enteredPriceAmount by remember(product.id) { mutableStateOf<Double?>(null) }
+
         LaunchedEffect(weightState) {
             snapshotFlow { weightState.text.toString() }.collect { text ->
                 if (isWeightFocused) {
+                    lastInputByPrice = false
+                    enteredPriceAmount = null
                     val weight = text.toDoubleOrNull()
                     if (weight != null && weight >= 0.0) {
                         val calcPrice = weight * product.precio
@@ -1160,6 +1165,8 @@ fun VentaScreen(
                 if (isPriceFocused) {
                     val price = text.toDoubleOrNull()
                     if (price != null && price >= 0.0) {
+                        lastInputByPrice = true
+                        enteredPriceAmount = price
                         val calcWeight = price / product.precio
                         val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt().toString()
                         else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
@@ -1168,6 +1175,8 @@ fun VentaScreen(
                             selection = TextRange(weightStr.length, weightStr.length)
                         }
                     } else if (text.isEmpty()) {
+                        lastInputByPrice = false
+                        enteredPriceAmount = null
                         weightState.clearText()
                     }
                 }
@@ -1182,6 +1191,8 @@ fun VentaScreen(
         }
 
         fun handleWeightChange(newWeight: String) {
+            lastInputByPrice = false
+            enteredPriceAmount = null
             weightState.edit {
                 replace(0, length, newWeight)
                 selection = TextRange(newWeight.length, newWeight.length)
@@ -1207,6 +1218,8 @@ fun VentaScreen(
             }
             val price = cash.toDoubleOrNull()
             if (price != null && price >= 0.0) {
+                lastInputByPrice = true
+                enteredPriceAmount = price
                 val calcWeight = price / product.precio
                 val weightStr = if (calcWeight % 1.0 == 0.0) calcWeight.toInt().toString()
                 else ((calcWeight * 1000.0).roundToInt() / 1000.0).toString()
@@ -1215,10 +1228,22 @@ fun VentaScreen(
                     selection = TextRange(weightStr.length, weightStr.length)
                 }
             } else if (cash.isEmpty()) {
+                lastInputByPrice = false
+                enteredPriceAmount = null
                 weightState.clearText()
             }
         }
 
+        fun confirmAddProduct() {
+            val weightFromState = weightState.text.toString().toDoubleOrNull() ?: 1.0
+            val effectiveQuantity = if (lastInputByPrice && enteredPriceAmount != null && enteredPriceAmount!! > 0.0 && product.precio > 0.0) {
+                enteredPriceAmount!! / product.precio
+            } else {
+                weightFromState
+            }
+            addProductToCart(product, effectiveQuantity)
+            showWeightDialogForProduct = null
+        }
 
         AlertDialog(
             onDismissRequest = { showWeightDialogForProduct = null },
@@ -1229,9 +1254,7 @@ fun VentaScreen(
                     if (keyEvent.type == KeyEventType.KeyDown && 
                         (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
                     ) {
-                        val weight = weightState.text.toString().toDoubleOrNull() ?: 1.0
-                        addProductToCart(product, weight)
-                        showWeightDialogForProduct = null
+                        confirmAddProduct()
                         true
                     } else false
                 },
@@ -1425,9 +1448,7 @@ fun VentaScreen(
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                                 onKeyboardAction = {
-                                    val weight = weightState.text.toString().toDoubleOrNull() ?: 1.0
-                                    addProductToCart(product, weight)
-                                    showWeightDialogForProduct = null
+                                    confirmAddProduct()
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -1453,9 +1474,7 @@ fun VentaScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val weight = weightState.text.toString().toDoubleOrNull() ?: 1.0
-                        addProductToCart(product, weight)
-                        showWeightDialogForProduct = null
+                        confirmAddProduct()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = MaterialTheme.shapes.small,

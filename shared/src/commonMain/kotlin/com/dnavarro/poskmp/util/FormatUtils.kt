@@ -78,19 +78,16 @@ fun String.formatPrice(): String {
 
 fun Double.formatQuantity(isWeight: Boolean): String {
     return if (isWeight) {
-        val parts = this.toString().split(".")
-        if (parts.size == 1) {
-            "${parts[0]}.000"
-        } else {
-            val decimals = parts[1]
-            if (decimals.length >= 3) {
-                "${parts[0]}.${decimals.substring(0, 3)}"
-            } else {
-                "${parts[0]}.${decimals.padEnd(3, '0')}"
-            }
-        }
+        if (this.isNaN() || this.isInfinite()) return "0.000"
+        val isNegative = this < 0.0
+        val absVal = kotlin.math.abs(this)
+        val totalMillis = kotlin.math.round(absVal * 1000.0).toLong()
+        val intPart = totalMillis / 1000L
+        val decPart = totalMillis % 1000L
+        val sign = if (isNegative && totalMillis > 0L) "-" else ""
+        "$sign$intPart.${decPart.toString().padStart(3, '0')}"
     } else {
-        this.toInt().toString()
+        if (this % 1.0 == 0.0) this.toLong().toString() else this.toString()
     }
 }
 

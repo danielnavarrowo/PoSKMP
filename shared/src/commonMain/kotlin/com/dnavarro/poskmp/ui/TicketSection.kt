@@ -1157,13 +1157,16 @@ private fun ItemQuantityControls(
                 imeAction = ImeAction.Done
             ),
             onKeyboardAction = {
-                val parsed = quantityState.text.toString().toDoubleOrNull()
-                if (parsed != null && parsed > 0.0) {
-                    onSetQuantity(item, parsed)
-                } else if (parsed != null && parsed <= 0.0) {
-                    onRemoveItem(item)
-                } else {
-                    quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
+                val currentText = quantityState.text.toString()
+                if (currentText != formattedQuantity) {
+                    val parsed = currentText.toDoubleOrNull()
+                    if (parsed != null && parsed > 0.0) {
+                        onSetQuantity(item, parsed)
+                    } else if (parsed != null && parsed <= 0.0) {
+                        onRemoveItem(item)
+                    } else {
+                        quantityState.setTextAndPlaceCursorAtEnd(formattedQuantity)
+                    }
                 }
                 if (!isAndroid()) {
                     focusRequester.requestFocus()
@@ -1179,13 +1182,16 @@ private fun ItemQuantityControls(
                 .onPreviewKeyEvent { keyEvent ->
                     keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
                         Key.Enter, Key.NumPadEnter -> {
-                            val parsed = quantityState.text.toString().toDoubleOrNull()
-                            if (parsed != null && parsed > 0.0) {
-                                onSetQuantity(item, parsed)
-                            } else if (parsed != null && parsed <= 0.0) {
-                                onRemoveItem(item)
-                            } else {
-                                quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
+                            val currentText = quantityState.text.toString()
+                            if (currentText != formattedQuantity) {
+                                val parsed = currentText.toDoubleOrNull()
+                                if (parsed != null && parsed > 0.0) {
+                                    onSetQuantity(item, parsed)
+                                } else if (parsed != null && parsed <= 0.0) {
+                                    onRemoveItem(item)
+                                } else {
+                                    quantityState.setTextAndPlaceCursorAtEnd(formattedQuantity)
+                                }
                             }
                             if (!isAndroid()) {
                                 focusRequester.requestFocus()
@@ -1213,15 +1219,16 @@ private fun ItemQuantityControls(
                         }
                     }
                     if (!focusState.isFocused) {
-                        val parsed = quantityState.text.toString().toDoubleOrNull()
-                        if (parsed != null && parsed > 0.0) {
-                            if (parsed != item.quantity) {
+                        val currentText = quantityState.text.toString()
+                        if (currentText != formattedQuantity) {
+                            val parsed = currentText.toDoubleOrNull()
+                            if (parsed != null && parsed > 0.0) {
                                 onSetQuantity(item, parsed)
+                            } else if (parsed != null && parsed <= 0.0) {
+                                onRemoveItem(item)
+                            } else {
+                                quantityState.setTextAndPlaceCursorAtEnd(formattedQuantity)
                             }
-                        } else if (parsed != null && parsed <= 0.0) {
-                            onRemoveItem(item)
-                        } else {
-                            quantityState.setTextAndPlaceCursorAtEnd(item.quantity.formatQuantity(item.product.por_peso == 1L))
                         }
                     }
                 }

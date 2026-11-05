@@ -722,20 +722,20 @@ class VentaViewModel(
         if (existingIndex != -1) {
             val currentItem = currentList[existingIndex]
             val newQty = (currentItem.quantity + quantity)
-            val roundedQty = (newQty * 1000.0).roundToInt() / 1000.0
+            val effectiveQty = if (product.por_peso == 1L) newQty else (newQty * 1000.0).roundToInt() / 1000.0
             pushCartHistory()
-            if (roundedQty <= 0.0) {
+            if (effectiveQty <= 0.0) {
                 currentList.removeAt(existingIndex)
             } else {
                 currentList[existingIndex] = currentItem.copy(
-                    quantity = roundedQty,
+                    quantity = effectiveQty,
                     isManualWholesale = null,
                     manualTier = null
                 )
             }
         } else if (quantity > 0.0) {
             pushCartHistory()
-            val roundedQty = (quantity * 1000.0).roundToInt() / 1000.0
+            val effectiveQty = if (product.por_peso == 1L) quantity else (quantity * 1000.0).roundToInt() / 1000.0
             val prioritizeDelivery = uiState.value.prioritizeDeliveryPrice
             val basePrice = if (prioritizeDelivery && product.precio_delivery > 0.0) {
                 product.precio_delivery
@@ -745,7 +745,7 @@ class VentaViewModel(
             currentList.add(
                 CartItem(
                     product = product.copy(precio = basePrice),
-                    quantity = roundedQty,
+                    quantity = effectiveQty,
                     originalPrice = basePrice,
                     isManualWholesale = null,
                     appliedTier = PriceTier.RETAIL,
@@ -759,20 +759,20 @@ class VentaViewModel(
     fun setProductQuantityInCart(product: Products, qty: Double) {
         val currentList = _cartItems.value.toMutableList()
         val existingIndex = currentList.indexOfFirst { it.product.id == product.id }
-        val roundedQty = (qty * 1000.0).roundToInt() / 1000.0
+        val effectiveQty = if (product.por_peso == 1L) qty else (qty * 1000.0).roundToInt() / 1000.0
         if (existingIndex != -1) {
-            if (currentList[existingIndex].quantity == roundedQty) return
+            if (currentList[existingIndex].quantity == effectiveQty) return
             pushCartHistory()
-            if (roundedQty <= 0.0) {
+            if (effectiveQty <= 0.0) {
                 currentList.removeAt(existingIndex)
             } else {
                 currentList[existingIndex] = currentList[existingIndex].copy(
-                    quantity = roundedQty,
+                    quantity = effectiveQty,
                     isManualWholesale = null,
                     manualTier = null
                 )
             }
-        } else if (roundedQty > 0.0) {
+        } else if (effectiveQty > 0.0) {
             pushCartHistory()
             val prioritizeDelivery = uiState.value.prioritizeDeliveryPrice
             val basePrice = if (prioritizeDelivery && product.precio_delivery > 0.0) {
@@ -783,7 +783,7 @@ class VentaViewModel(
             currentList.add(
                 CartItem(
                     product = product.copy(precio = basePrice),
-                    quantity = roundedQty,
+                    quantity = effectiveQty,
                     originalPrice = basePrice,
                     isManualWholesale = null,
                     appliedTier = PriceTier.RETAIL,

@@ -57,10 +57,10 @@ class RecordSaleUseCase(
             val origUnitPrice = cartItem.originalPrice
             val unitCost = cartItem.product.costo
 
-            val itemSubtotal = unitPrice * qty
-            val itemOrigSubtotal = origUnitPrice * qty
-            val itemCost = unitCost * qty
-            val itemProfit = itemSubtotal - itemCost
+            val itemSubtotal = (unitPrice * qty * 100.0).roundToLong() / 100.0
+            val itemOrigSubtotal = (origUnitPrice * qty * 100.0).roundToLong() / 100.0
+            val itemCost = (unitCost * qty * 100.0).roundToLong() / 100.0
+            val itemProfit = ((itemSubtotal - itemCost) * 100.0).roundToLong() / 100.0
             val isWholesale = cartItem.appliedTier == PriceTier.WHOLESALE || (unitPrice == cartItem.product.precio_mayoreo && cartItem.product.precio_mayoreo > 0.0)
             val isDelivery = !isWholesale && unitPrice == cartItem.product.precio_delivery && cartItem.product.precio_delivery > 0.0
             val isDiscount = cartItem.appliedTier == PriceTier.CUSTOMER_DISCOUNT || (!isWholesale && !isDelivery && (unitPrice < origUnitPrice - 0.001 || cartItem.manualTier == PriceTier.CUSTOMER_DISCOUNT))

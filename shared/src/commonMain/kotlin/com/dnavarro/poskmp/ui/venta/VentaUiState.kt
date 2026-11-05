@@ -86,7 +86,7 @@ data class VentaUiState(
     val activeShiftMovements: List<com.dnavarro.poskmp.domain.model.CashMovement> = emptyList()
 ) {
     val rawTotal: Double
-        get() = (cartItems.sumOf { it.product.precio * it.quantity } * 100.0).roundToLong() / 100.0
+        get() = (cartItems.sumOf { (it.product.precio * it.quantity * 100.0).roundToLong() / 100.0 } * 100.0).roundToLong() / 100.0
 
     val total: Double
         get() = if (roundTicketTotal) roundPrice(rawTotal) else rawTotal
