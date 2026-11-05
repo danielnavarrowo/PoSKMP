@@ -46,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.ProductSalesStats
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.googleFlexCondensed
+import com.dnavarro.poskmp.theme.googleFlexNumeric
+import com.dnavarro.poskmp.theme.googleFlexTitle
 import com.dnavarro.poskmp.ui.ProductSortField
 import com.dnavarro.poskmp.ui.ProductSortOrder
 import com.dnavarro.poskmp.ui.productos.ProductTableColumn
@@ -264,6 +267,7 @@ fun ProductTableRow(
                             text = codesDisplay,
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = googleFlexCondensed,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -276,6 +280,7 @@ fun ProductTableRow(
                             Text(
                                 text = product.nombre,
                                 style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = googleFlexTitle,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -339,14 +344,16 @@ fun ProductTableRow(
                         Text(
                             text = "$${product.costo.toString().formatPrice()}",
                             modifier = Modifier.weight(weight),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = googleFlexNumeric
                         )
                     }
                     ProductTableColumn.MAYOREO -> {
                         Text(
                             text = "$${product.precio_mayoreo.toString().formatPrice()}",
                             modifier = Modifier.weight(weight),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = googleFlexNumeric
                         )
                     }
                     ProductTableColumn.PRECIO -> {
@@ -359,6 +366,7 @@ fun ProductTableRow(
                             text = priceText,
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = googleFlexNumeric,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -372,6 +380,7 @@ fun ProductTableRow(
                             text = if (product.precio_delivery > 0.0) priceText else "-",
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = googleFlexNumeric,
                             color = if (product.precio_delivery > 0.0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -680,10 +689,12 @@ fun ProductSimpleCard(
                                     text = item.price,
                                     style = if (item.isHighlighted) {
                                         MaterialTheme.typography.titleMedium.copy(
+                                            fontFamily = googleFlexNumeric,
                                             fontWeight = FontWeight.ExtraBold
                                         )
                                     } else {
                                         MaterialTheme.typography.bodyMedium.copy(
+                                            fontFamily = googleFlexNumeric,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     },

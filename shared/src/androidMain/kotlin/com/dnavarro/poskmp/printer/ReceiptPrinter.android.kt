@@ -36,41 +36,44 @@ import kotlin.time.Duration.Companion.milliseconds
 actual fun createReceiptPrinter(): ReceiptPrinter = AndroidReceiptPrinter()
 
 private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-private const val PLIANT_ASSET_PATH = "composeResources/poskmp.shared.generated.resources/font/Pliant.ttf"
+private const val GOOGLE_SANS_FLEX_ASSET_PATH = "composeResources/poskmp.shared.generated.resources/font/GoogleSansFlex.ttf"
 
 private class AndroidReceiptPrinter : ReceiptPrinter {
     @Volatile
-    private var cachedPliantRegular: Typeface? = null
+    private var cachedGoogleFlexRegular: Typeface? = null
 
     @Volatile
-    private var cachedPliantBold: Typeface? = null
+    private var cachedGoogleFlexBold: Typeface? = null
 
     private fun resolveTypeface(context: Context, fontFamily: ReceiptFontFamily, emphasized: Boolean): Typeface {
         if (fontFamily == ReceiptFontFamily.MONOSPACE) {
             return Typeface.create(Typeface.MONOSPACE, if (emphasized) Typeface.BOLD else Typeface.NORMAL)
         }
         if (emphasized) {
-            cachedPliantBold?.let { return it }
+            cachedGoogleFlexBold?.let { return it }
         } else {
-            cachedPliantRegular?.let { return it }
+            cachedGoogleFlexRegular?.let { return it }
         }
 
         val loaded = runCatching {
-            Typeface.Builder(context.assets, PLIANT_ASSET_PATH)
-                .setFontVariationSettings(if (emphasized) "'wght' 700" else "'wght' 500")
+            Typeface.Builder(context.assets, GOOGLE_SANS_FLEX_ASSET_PATH)
+                .setFontVariationSettings(
+                    if (emphasized) "'wght' 700, 'wdth' 104, 'ROND' 45, 'opsz' 18"
+                    else "'wght' 500, 'wdth' 100, 'ROND' 25, 'opsz' 14"
+                )
                 .build()
         }.getOrNull() ?: Typeface.create(Typeface.SANS_SERIF, if (emphasized) Typeface.BOLD else Typeface.NORMAL)
 
         if (emphasized) {
-            cachedPliantBold = loaded
+            cachedGoogleFlexBold = loaded
         } else {
-            cachedPliantRegular = loaded
+            cachedGoogleFlexRegular = loaded
         }
         return loaded
     }
 
     private fun encodeThermalPayload(document: ReceiptDocument, cutPaper: Boolean): ByteArray {
-        if (document.fontFamily == ReceiptFontFamily.PLIANT) {
+        if (document.fontFamily == ReceiptFontFamily.GOOGLE_SANS_FLEX) {
             val context = DatabaseDriverFactory.appContext
             if (context != null) {
                 return renderReceiptToEscPosRaster(context, document, cutPaper)
@@ -420,7 +423,7 @@ private class AndroidReceiptPrinter : ReceiptPrinter {
                     val lineHeight = document.fontSize * 1.4f
 
                     document.lines.forEach { line ->
-                        if (line.isSeparator && document.fontFamily == ReceiptFontFamily.PLIANT) {
+                        if (line.isSeparator && document.fontFamily == ReceiptFontFamily.GOOGLE_SANS_FLEX) {
                             val sepY = y - (document.fontSize * 0.35f)
                             canvas.drawLine(left, sepY, right, sepY, separatorPaint)
                             y += lineHeight

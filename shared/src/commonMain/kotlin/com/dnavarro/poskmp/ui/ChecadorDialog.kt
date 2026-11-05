@@ -76,6 +76,10 @@ import com.dnavarro.poskmp.data.ProductRepository
 import com.dnavarro.poskmp.data.SettingsRepository
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.googleFlexDisplay
+import com.dnavarro.poskmp.theme.googleFlexHeadline
+import com.dnavarro.poskmp.theme.googleFlexHero
+import com.dnavarro.poskmp.theme.googleFlexNumeric
 import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.formatCurrentDate
 import com.dnavarro.poskmp.util.formatCurrentTime
@@ -315,6 +319,7 @@ fun ChecadorContent(
                 ) {
                     Text(
                         text = product.nombre,
+                        fontFamily = googleFlexHeadline,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -493,6 +498,7 @@ fun ChecadorContent(
 
                         Text(
                             text = "$${effectiveUnitPrice.toString().formatPrice()}$suffix",
+                            fontFamily = googleFlexHero,
                             fontWeight = FontWeight.Black,
                             fontSize = 42.sp,
                             color = MaterialTheme.colorScheme.primary,
@@ -1026,6 +1032,7 @@ fun ChecadorScreen(
                                         state = barcodeState,
                                         lineLimits = TextFieldLineLimits.SingleLine,
                                         textStyle = TextStyle(
+                                            fontFamily = googleFlexNumeric,
                                             color = Color.Black,
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.Bold,
@@ -1118,6 +1125,7 @@ private fun AutoSizingText(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
+    val displayFamily = googleFlexDisplay
 
     BoxWithConstraints(
         modifier = modifier,
@@ -1126,7 +1134,7 @@ private fun AutoSizingText(
         val widthPx = with(density) { maxWidth.roundToPx() }
         val heightPx = with(density) { maxHeight.roundToPx() }
 
-        val optimalFontSize = remember(text, widthPx, heightPx, fontWeight, minFontSize, maxFontSize) {
+        val optimalFontSize = remember(text, widthPx, heightPx, fontWeight, minFontSize, maxFontSize, displayFamily) {
             val trimmedText = text.trim()
             if (widthPx <= 0 || heightPx <= 0 || trimmedText.isBlank()) {
                 minFontSize
@@ -1137,6 +1145,7 @@ private fun AutoSizingText(
                 val safeHeightPx = (heightPx - safetyMarginPx).coerceAtLeast(1)
 
                 val baseStyle = TextStyle(
+                    fontFamily = displayFamily,
                     fontWeight = fontWeight,
                     textAlign = textAlign
                 )
@@ -1213,6 +1222,7 @@ private fun AutoSizingText(
         Text(
             text = text,
             color = color,
+            fontFamily = displayFamily,
             fontWeight = fontWeight,
             fontSize = optimalFontSize,
             lineHeight = optimalFontSize * 1.05f,
@@ -1274,12 +1284,14 @@ private fun ChecadorMetricRow(
                 text = value,
                 style = if (isPrimary) {
                     MaterialTheme.typography.displayLarge.copy(
+                        fontFamily = googleFlexHero,
                         fontWeight = FontWeight.Black,
                         color = Color.Black,
                         fontSize = 128.sp
                     )
                 } else {
                     MaterialTheme.typography.displayLarge.copy(
+                        fontFamily = googleFlexNumeric,
                         fontWeight = FontWeight.Black,
                         color = Color.Black,
                         fontSize = 72.sp

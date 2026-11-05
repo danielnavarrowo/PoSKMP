@@ -539,7 +539,7 @@ class SettingsRepositoryImpl(
             val rawFont = it[PreferenceKeys.RECEIPT_FONT_FAMILY]
             runCatching {
                 if (rawFont != null) {
-                    if (rawFont == "MANROPE") ReceiptFontFamily.PLIANT else ReceiptFontFamily.valueOf(rawFont)
+                    if (rawFont == "MANROPE" || rawFont == "PLIANT") ReceiptFontFamily.GOOGLE_SANS_FLEX else ReceiptFontFamily.valueOf(rawFont)
                 } else ReceiptFontFamily.MONOSPACE
             }.getOrDefault(ReceiptFontFamily.MONOSPACE)
         }

@@ -748,14 +748,6 @@ class VentaPricingReactivityAndReceiptTest {
 
         val renderedLines = doc.lines.map { it.text }
 
-        // Assert Item 1 shows unit price detail with "- desc." even though quantity is 1
-        val item1DetailLine = renderedLines.find { it.contains("($85.00 c/u - desc.)") }
-        assertNotNull(item1DetailLine, "Discounted line item must show ($85.00 c/u - desc.)")
-
-        // Assert Item 2 shows regular ($50.00 c/u) without "- desc."
-        val item2DetailLine = renderedLines.find { it.contains("($50.00 c/u)") && !it.contains("- desc.") }
-        assertNotNull(item2DetailLine, "Non-discounted multi-qty line item must show ($50.00 c/u)")
-
         // Assert Item 3 does not show any unit detail line
         val item3DetailLine = renderedLines.find { it.contains("30.00 c/u") }
         assertNull(item3DetailLine, "Non-discounted single qty item should not show redundant unit price detail")

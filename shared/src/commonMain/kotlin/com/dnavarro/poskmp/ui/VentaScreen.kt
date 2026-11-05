@@ -124,6 +124,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.domain.model.PaymentMethod
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.googleFlexHeadline
+import com.dnavarro.poskmp.theme.googleFlexHeadlineEmphasized
+import com.dnavarro.poskmp.theme.googleFlexHero
+import com.dnavarro.poskmp.theme.googleFlexNumeric
 import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
 import com.dnavarro.poskmp.ui.venta.CustomerSelectionDialog
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
@@ -1264,6 +1268,7 @@ fun VentaScreen(
                 Column {
                     Text(
                         text = stringResource(Res.string.quantity_prompt_title, product.nombre),
+                        fontFamily = googleFlexHeadline,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1272,6 +1277,7 @@ fun VentaScreen(
 
                     Text(
                         text = stringResource(Res.string.price_per_kg_label, product.precio.toString().formatPrice()),
+                        fontFamily = googleFlexNumeric,
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1812,9 +1818,13 @@ fun VentaScreen(
                                 Text(
                                     "$${totalWithoutDiscount.toString().formatPrice()}",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontFamily = googleFlexNumeric,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    style = TextStyle(textDecoration = TextDecoration.LineThrough)
+                                    style = TextStyle(
+                                        fontFamily = googleFlexNumeric,
+                                        textDecoration = TextDecoration.LineThrough
+                                    )
                                 )
                             }
                         }
@@ -1827,6 +1837,7 @@ fun VentaScreen(
                             Text(
                                 stringResource(Res.string.total_label),
                                 color = MaterialTheme.colorScheme.onSurface,
+                                fontFamily = googleFlexHeadlineEmphasized,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
@@ -1834,6 +1845,7 @@ fun VentaScreen(
                                 "$${total.toString().formatPrice()}",
                                 color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.displaySmall,
+                                fontFamily = googleFlexHero,
                                 fontWeight = FontWeight.ExtraBold
                             )
                         }
@@ -1890,6 +1902,7 @@ fun VentaScreen(
                                     Text(
                                         "$${change.toString().formatPrice()}",
                                         color = MaterialTheme.colorScheme.primary,
+                                        fontFamily = googleFlexNumeric,
                                         fontWeight = FontWeight.ExtraBold,
                                         fontSize = 20.sp
                                     )

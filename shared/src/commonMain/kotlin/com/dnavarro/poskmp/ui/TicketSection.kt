@@ -87,6 +87,12 @@ import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.Customer
 import com.dnavarro.poskmp.domain.model.CustomerDiscountType
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.googleFlexBadge
+import com.dnavarro.poskmp.theme.googleFlexCondensed
+import com.dnavarro.poskmp.theme.googleFlexHeadlineEmphasized
+import com.dnavarro.poskmp.theme.googleFlexHero
+import com.dnavarro.poskmp.theme.googleFlexNumeric
+import com.dnavarro.poskmp.theme.googleFlexTitle
 import com.dnavarro.poskmp.ui.venta.HeldTicket
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatQuantity
@@ -640,25 +646,29 @@ fun TicketSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        style = TextStyle(textDecoration = TextDecoration.LineThrough)
+                        fontFamily = googleFlexNumeric,
+                        textDecoration = TextDecoration.LineThrough
                     )
                 }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     stringResource(Res.string.total_label),
                     color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = googleFlexHeadlineEmphasized,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
                     "$${total.toString().formatPrice()}",
                     color = MaterialTheme.colorScheme.primary,
-                   style = MaterialTheme.typography.displaySmall,
+                    style = MaterialTheme.typography.displaySmall,
+                    fontFamily = googleFlexHero,
                     fontWeight = FontWeight.ExtraBold
                 )
             }
@@ -734,6 +744,7 @@ fun TicketSection(
                                     Text(
                                         text = badgeText,
                                         style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = googleFlexBadge,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
                                         lineHeight = 12.sp,
@@ -931,6 +942,7 @@ private fun TicketItemRow(
                 ) {
                     Text(
                         text = item.product.nombre,
+                        fontFamily = googleFlexTitle,
                         fontSize = 13.sp,
                         lineHeight = 16.sp,
                         fontWeight = FontWeight.Bold,
@@ -1024,6 +1036,7 @@ private fun ProductTitleAndBadge(
     ) {
         Text(
             text = item.product.nombre,
+            fontFamily = googleFlexTitle,
             fontSize = 13.sp,
             lineHeight = 16.sp,
             fontWeight = FontWeight.Bold,
@@ -1072,6 +1085,7 @@ private fun ItemPriceTierBadge(
         ) {
             Text(
                 text = badgeText,
+                fontFamily = googleFlexBadge,
                 fontSize = 9.sp,
                 lineHeight = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -1147,6 +1161,7 @@ private fun ItemQuantityControls(
                 }
             },
             textStyle = TextStyle(
+                fontFamily = googleFlexNumeric,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -1255,6 +1270,7 @@ private fun ItemQuantityControls(
 private fun ItemUnitPriceCalcText(item: CartItem) {
     Text(
         text = "$${item.product.precio.toString().formatPrice()} x ${item.quantity.formatQuantity(item.product.por_peso == 1L)}",
+        fontFamily = googleFlexCondensed,
         fontSize = 11.sp,
         lineHeight = 13.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1270,10 +1286,11 @@ private fun ItemTotalPriceText(item: CartItem) {
         if (hasDiscount) {
             Text(
                 text = "$${(item.originalPrice * item.quantity).toString().formatPrice()}",
+                fontFamily = googleFlexCondensed,
                 fontSize = 10.sp,
                 lineHeight = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = TextStyle(textDecoration = TextDecoration.LineThrough),
+                textDecoration = TextDecoration.LineThrough,
                 maxLines = 1,
                 softWrap = false,
                 textAlign = TextAlign.End
@@ -1281,6 +1298,7 @@ private fun ItemTotalPriceText(item: CartItem) {
         }
         Text(
             text = "$${(item.product.precio * item.quantity).toString().formatPrice()}",
+            fontFamily = googleFlexNumeric,
             fontSize = 14.sp,
             lineHeight = 16.sp,
             fontWeight = FontWeight.Bold,

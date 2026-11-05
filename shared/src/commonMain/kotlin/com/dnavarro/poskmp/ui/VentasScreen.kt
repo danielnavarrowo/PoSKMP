@@ -116,6 +116,10 @@ import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.googleFlexBadge
+import com.dnavarro.poskmp.theme.googleFlexHeadline
+import com.dnavarro.poskmp.theme.googleFlexLabel
+import com.dnavarro.poskmp.theme.googleFlexNumeric
 import com.dnavarro.poskmp.ui.components.AppHorizontalScrollbar
 import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
 import com.dnavarro.poskmp.ui.ventas.HistorialVentasScreen
@@ -1589,6 +1593,7 @@ private fun KpiCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = title,
+                fontFamily = googleFlexLabel,
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium,
@@ -1598,6 +1603,7 @@ private fun KpiCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
+                fontFamily = googleFlexNumeric,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -1669,6 +1675,7 @@ internal fun SaleDetailDialog(
             ) {
                 Text(
                     stringResource(Res.string.ticket_detail_title, sale.folio),
+                    fontFamily = googleFlexHeadline,
                     fontWeight = FontWeight.Bold
                 )
                 Row(
@@ -1694,6 +1701,7 @@ internal fun SaleDetailDialog(
                                 Text(
                                     text = stringResource(Res.string.sale_badge_delivery),
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    fontFamily = googleFlexBadge,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1708,6 +1716,7 @@ internal fun SaleDetailDialog(
                             Text(
                                 text = stringResource(Res.string.sale_status_cancelled),
                                 color = MaterialTheme.colorScheme.error,
+                                fontFamily = googleFlexBadge,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -1736,12 +1745,17 @@ internal fun SaleDetailDialog(
                 ) {
                     Text(
                         stringResource(Res.string.ticket_detail_total, sale.total.toString().formatPrice()),
+                        fontFamily = googleFlexNumeric,
                         fontWeight = FontWeight.Bold,
-                        style = if (isCancelled) TextStyle(textDecoration = TextDecoration.LineThrough) else TextStyle.Default
+                        style = TextStyle(
+                            fontFamily = googleFlexNumeric,
+                            textDecoration = if (isCancelled) TextDecoration.LineThrough else null
+                        )
                     )
                     Text(
                         stringResource(Res.string.ticket_detail_profit, sale.ganancia.toString().formatPrice()),
                         color = if (isCancelled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                        fontFamily = googleFlexNumeric,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -2199,6 +2213,7 @@ private fun DailySalesCard(
                         labelProperties = LabelProperties(
                             enabled = true,
                             textStyle = TextStyle(
+                                fontFamily = googleFlexLabel,
                                 color = onSurfaceVariantColor,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center
@@ -2208,6 +2223,7 @@ private fun DailySalesCard(
                             enabled = true,
                             count = IndicatorCount.StepBased(stepBy = niceStep),
                             textStyle = TextStyle(
+                                fontFamily = googleFlexNumeric,
                                 color = onSurfaceVariantColor,
                                 fontSize = 10.sp
                             ),
@@ -2237,6 +2253,7 @@ private fun DailySalesCard(
                             containerColor = inverseSurfaceColor,
                             cornerRadius = 8.dp,
                             textStyle = TextStyle(
+                                fontFamily = googleFlexNumeric,
                                 color = inverseOnSurfaceColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold

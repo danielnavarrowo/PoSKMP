@@ -503,7 +503,7 @@ fun PrinterSettingsSection(
                 ) {
                     val fontOptions = listOf(
                         Pair(ReceiptFontFamily.MONOSPACE, "Monoespaciada"),
-                        Pair(ReceiptFontFamily.PLIANT, "Pliant")
+                        Pair(ReceiptFontFamily.GOOGLE_SANS_FLEX, "Google Sans Flex")
                     )
                     fontOptions.forEachIndexed { index, (fontOption, label) ->
                         val isSelected = settings.fontFamily == fontOption
@@ -535,7 +535,7 @@ fun PrinterSettingsSection(
                                     style = MaterialTheme.typography.bodySmall,
                                     fontFamily = when (fontOption) {
                                         ReceiptFontFamily.MONOSPACE -> FontFamily.Monospace
-                                        ReceiptFontFamily.PLIANT -> googleFlexBody
+                                        ReceiptFontFamily.GOOGLE_SANS_FLEX -> googleFlexBody
                                     },
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
