@@ -1,6 +1,5 @@
 package com.dnavarro.poskmp.theme
 
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontFamily
@@ -81,7 +80,7 @@ fun createGoogleFlexFontFamily(
 /** Wide, rounded, high-optical-size display voice for hero headers and large banners. */
 val googleFlexDisplay: FontFamily
     @Composable get() = createGoogleFlexFontFamily(
-        width = 132f,
+        width = 104f,
         roundness = 85f,
         opticalSize = 96f,
         slant = 0f
@@ -192,7 +191,6 @@ val googleFlexCondensed: FontFamily
         slant = 0f
     )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val AppTypography: Typography
     @Composable get() {
         val displayFam = googleFlexDisplay

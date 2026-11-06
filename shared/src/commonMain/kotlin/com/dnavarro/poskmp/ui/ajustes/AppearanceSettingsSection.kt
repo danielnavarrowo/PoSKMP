@@ -1,8 +1,11 @@
 package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +15,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,12 +42,17 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerLayoutType
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.rememberSliderState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,10 +75,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
+import com.dnavarro.poskmp.theme.DEFAULT_DARK_MODE_START_MINUTES
+import com.dnavarro.poskmp.theme.DEFAULT_LIGHT_MODE_START_MINUTES
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.formatMinutesOfDay12h
+import com.dnavarro.poskmp.theme.googleFlexNumeric
 import com.dnavarro.poskmp.util.isDynamicColorSupported
 import com.materialkolor.PaletteStyle
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -80,15 +96,20 @@ import poskmp.shared.generated.resources.amoled_mode_subtitle
 import poskmp.shared.generated.resources.amoled_mode_title
 import poskmp.shared.generated.resources.app_scale_subtitle
 import poskmp.shared.generated.resources.app_scale_title
+import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.dark_mode
 import poskmp.shared.generated.resources.dark_mode_off
 import poskmp.shared.generated.resources.dark_mode_on
+import poskmp.shared.generated.resources.dark_mode_schedule
+import poskmp.shared.generated.resources.dark_mode_schedule_dark_start
+import poskmp.shared.generated.resources.dark_mode_schedule_light_start
 import poskmp.shared.generated.resources.dark_mode_subtitle
 import poskmp.shared.generated.resources.dark_mode_system
 import poskmp.shared.generated.resources.dark_mode_title
 import poskmp.shared.generated.resources.dynamic_color_subtitle
 import poskmp.shared.generated.resources.dynamic_color_title
+import poskmp.shared.generated.resources.edit
 import poskmp.shared.generated.resources.info
 import poskmp.shared.generated.resources.light_mode
 import poskmp.shared.generated.resources.palette_style_content
@@ -113,9 +134,12 @@ import poskmp.shared.generated.resources.palette_style_vibrant
 import poskmp.shared.generated.resources.palette_style_vibrant_desc
 import poskmp.shared.generated.resources.remove
 import poskmp.shared.generated.resources.reset_scale_button
+import poskmp.shared.generated.resources.schedule
 import poskmp.shared.generated.resources.seed_color_subtitle
 import poskmp.shared.generated.resources.seed_color_title
 import poskmp.shared.generated.resources.star
+import poskmp.shared.generated.resources.time_picker_select_dark_start_title
+import poskmp.shared.generated.resources.time_picker_select_light_start_title
 import poskmp.shared.generated.resources.undo
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -162,6 +186,11 @@ fun rememberPresetSeedColorItems(): List<PresetColorItem> {
     }
 }
 
+private enum class ScheduleTimeTarget {
+    LIGHT_START,
+    DARK_START
+}
+
 @Composable
 fun AppearanceSettingsSection(
     useDynamicColor: Boolean,
@@ -172,6 +201,10 @@ fun AppearanceSettingsSection(
     onIsAmoledChange: (Boolean) -> Unit,
     darkModeConfig: DarkModeConfig,
     onDarkModeConfigChange: (DarkModeConfig) -> Unit,
+    lightModeStartMinutes: Int = DEFAULT_LIGHT_MODE_START_MINUTES,
+    onLightModeStartMinutesChange: (Int) -> Unit = {},
+    darkModeStartMinutes: Int = DEFAULT_DARK_MODE_START_MINUTES,
+    onDarkModeStartMinutesChange: (Int) -> Unit = {},
     paletteStyle: PaletteStyle,
     onPaletteStyleChange: (PaletteStyle) -> Unit,
     appScale: Float,
@@ -180,6 +213,7 @@ fun AppearanceSettingsSection(
 ) {
     val presetColorItems = rememberPresetSeedColorItems()
     var styleForDescriptionDialog by remember { mutableStateOf<PaletteStyle?>(null) }
+    var activeTimePickerTarget by remember { mutableStateOf<ScheduleTimeTarget?>(null) }
     val isDynamicSupported = isDynamicColorSupported()
     val isDynamicActive = useDynamicColor && isDynamicSupported
 
@@ -247,64 +281,136 @@ fun AppearanceSettingsSection(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val options = listOf(
-                        Triple(
-                            DarkModeConfig.SYSTEM,
-                            stringResource(Res.string.dark_mode_system),
-                            Res.drawable.star
-                        ),
-                        Triple(
-                            DarkModeConfig.LIGHT,
-                            stringResource(Res.string.dark_mode_off),
-                            Res.drawable.light_mode
-                        ),
-                        Triple(
-                            DarkModeConfig.DARK,
-                            stringResource(Res.string.dark_mode_on),
-                            Res.drawable.dark_mode
-                        )
+                val options = listOf(
+                    Triple(
+                        DarkModeConfig.SYSTEM,
+                        stringResource(Res.string.dark_mode_system),
+                        Res.drawable.star
+                    ),
+                    Triple(
+                        DarkModeConfig.LIGHT,
+                        stringResource(Res.string.dark_mode_off),
+                        Res.drawable.light_mode
+                    ),
+                    Triple(
+                        DarkModeConfig.DARK,
+                        stringResource(Res.string.dark_mode_on),
+                        Res.drawable.dark_mode
+                    ),
+                    Triple(
+                        DarkModeConfig.SCHEDULED,
+                        stringResource(Res.string.dark_mode_schedule),
+                        Res.drawable.schedule
                     )
-                    options.forEachIndexed { index, (config, label, icon) ->
-                        val isSelected = darkModeConfig == config
-                        ToggleButton(
-                            checked = isSelected,
-                            onCheckedChange = { onDarkModeConfigChange(config) },
-                            colors = ToggleButtonDefaults.colors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                        ) {
+                )
+
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val isCompactWidth = maxWidth < 480.dp
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                    ) {
+                        val rows = if (isCompactWidth) options.chunked(2) else listOf(options)
+                        rows.forEach { rowOptions ->
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    painter = painterResource(icon),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = label,
-                                    fontWeight = FontWeight.SemiBold,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                rowOptions.forEachIndexed { index, (config, label, icon) ->
+                                    val isSelected = darkModeConfig == config
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onDarkModeConfigChange(config) },
+                                        colors = ToggleButtonDefaults.colors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            rowOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                        }
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(icon),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = label,
+                                                fontWeight = FontWeight.SemiBold,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = darkModeConfig == DarkModeConfig.SCHEDULED,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp)
+                            ) {
+                                if (isCompactWidth) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        ScheduleTimePickerTile(
+                                            label = stringResource(Res.string.dark_mode_schedule_light_start),
+                                            formattedTime = formatMinutesOfDay12h(lightModeStartMinutes),
+                                            icon = Res.drawable.light_mode,
+                                            onClick = { activeTimePickerTarget = ScheduleTimeTarget.LIGHT_START },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        ScheduleTimePickerTile(
+                                            label = stringResource(Res.string.dark_mode_schedule_dark_start),
+                                            formattedTime = formatMinutesOfDay12h(darkModeStartMinutes),
+                                            icon = Res.drawable.dark_mode,
+                                            onClick = { activeTimePickerTarget = ScheduleTimeTarget.DARK_START },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                } else {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        ScheduleTimePickerTile(
+                                            label = stringResource(Res.string.dark_mode_schedule_light_start),
+                                            formattedTime = formatMinutesOfDay12h(lightModeStartMinutes),
+                                            icon = Res.drawable.light_mode,
+                                            onClick = { activeTimePickerTarget = ScheduleTimeTarget.LIGHT_START },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        ScheduleTimePickerTile(
+                                            label = stringResource(Res.string.dark_mode_schedule_dark_start),
+                                            formattedTime = formatMinutesOfDay12h(darkModeStartMinutes),
+                                            icon = Res.drawable.dark_mode,
+                                            onClick = { activeTimePickerTarget = ScheduleTimeTarget.DARK_START },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -689,6 +795,197 @@ fun AppearanceSettingsSection(
                 }
             }
         )
+    }
+
+    activeTimePickerTarget?.let { target ->
+        val initialMinutes = when (target) {
+            ScheduleTimeTarget.LIGHT_START -> lightModeStartMinutes
+            ScheduleTimeTarget.DARK_START -> darkModeStartMinutes
+        }.mod(24 * 60)
+
+        val timePickerState = rememberTimePickerState(
+            initialHour = initialMinutes / 60,
+            initialMinute = initialMinutes % 60,
+            is24Hour = false
+        )
+        var useKeyboardInput by remember(target) { mutableStateOf(false) }
+
+        val baseTypography = MaterialTheme.typography
+        val numericFont = googleFlexNumeric
+        val timePickerTypography = remember(baseTypography, numericFont) {
+            baseTypography.copy(
+                displayLarge = baseTypography.displayLarge.copy(
+                    fontFamily = numericFont,
+                    fontSize = 38.sp,
+                    lineHeight = 44.sp,
+                    letterSpacing = 0.sp
+                ),
+                displayMedium = baseTypography.displayMedium.copy(
+                    fontFamily = numericFont,
+                    fontSize = 34.sp,
+                    lineHeight = 40.sp,
+                    letterSpacing = 0.sp
+                ),
+                displaySmall = baseTypography.displaySmall.copy(
+                    fontFamily = numericFont,
+                    fontSize = 28.sp,
+                    lineHeight = 34.sp,
+                    letterSpacing = 0.sp
+                )
+            )
+        }
+
+        AlertDialog(
+            onDismissRequest = { activeTimePickerTarget = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+            modifier = Modifier
+                .widthIn(min = 320.dp, max = 380.dp)
+                .fillMaxWidth(0.92f),
+            shape = ShapeDefaults.cardShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = when (target) {
+                            ScheduleTimeTarget.LIGHT_START -> stringResource(Res.string.time_picker_select_light_start_title)
+                            ScheduleTimeTarget.DARK_START -> stringResource(Res.string.time_picker_select_dark_start_title)
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { useKeyboardInput = !useKeyboardInput }) {
+                        Icon(
+                            painter = painterResource(
+                                if (useKeyboardInput) Res.drawable.schedule else Res.drawable.edit
+                            ),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            text = {
+                MaterialTheme(
+                    colorScheme = MaterialTheme.colorScheme,
+                    shapes = MaterialTheme.shapes,
+                    typography = timePickerTypography
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (useKeyboardInput) {
+                            TimeInput(state = timePickerState)
+                        } else {
+                            TimePicker(
+                                state = timePickerState,
+                                layoutType = TimePickerLayoutType.Vertical
+                            )
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { activeTimePickerTarget = null },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val updatedMinutes = timePickerState.hour * 60 + timePickerState.minute
+                        when (target) {
+                            ScheduleTimeTarget.LIGHT_START -> onLightModeStartMinutesChange(updatedMinutes)
+                            ScheduleTimeTarget.DARK_START -> onDarkModeStartMinutesChange(updatedMinutes)
+                        }
+                        activeTimePickerTarget = null
+                    },
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(stringResource(Res.string.accept_button))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ScheduleTimePickerTile(
+    label: String,
+    formattedTime: String,
+    icon: DrawableResource,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier.pointerHoverIcon(PointerIcon.Hand)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialShapes.Cookie6Sided.toShape()
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = formattedTime,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontFamily = googleFlexNumeric,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Icon(
+                painter = painterResource(Res.drawable.schedule),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 

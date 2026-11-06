@@ -64,6 +64,8 @@ import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.theme.DEFAULT_DARK_MODE_START_MINUTES
+import com.dnavarro.poskmp.theme.DEFAULT_LIGHT_MODE_START_MINUTES
 import com.dnavarro.poskmp.theme.DEFAULT_SEED_COLOR
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -120,6 +122,10 @@ fun AjustesScreen(
         onIsAmoledChange = { viewModel.setIsAmoled(it) },
         darkModeConfig = uiState.darkModeConfig,
         onDarkModeConfigChange = { viewModel.setDarkModeConfig(it) },
+        lightModeStartMinutes = uiState.lightModeStartMinutes,
+        onLightModeStartMinutesChange = { viewModel.setLightModeStartMinutes(it) },
+        darkModeStartMinutes = uiState.darkModeStartMinutes,
+        onDarkModeStartMinutesChange = { viewModel.setDarkModeStartMinutes(it) },
         paletteStyle = uiState.paletteStyle,
         onPaletteStyleChange = { viewModel.setPaletteStyle(it) },
         appScale = uiState.appScale,
@@ -254,6 +260,10 @@ fun AjustesScreen(
     onIsAmoledChange: (Boolean) -> Unit = {},
     darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
     onDarkModeConfigChange: (DarkModeConfig) -> Unit = {},
+    lightModeStartMinutes: Int = DEFAULT_LIGHT_MODE_START_MINUTES,
+    onLightModeStartMinutesChange: (Int) -> Unit = {},
+    darkModeStartMinutes: Int = DEFAULT_DARK_MODE_START_MINUTES,
+    onDarkModeStartMinutesChange: (Int) -> Unit = {},
     paletteStyle: PaletteStyle = PaletteStyle.Fidelity,
     onPaletteStyleChange: (PaletteStyle) -> Unit = {},
     appScale: Float = 1.0f,
@@ -753,6 +763,10 @@ fun AjustesScreen(
                                         onIsAmoledChange = onIsAmoledChange,
                                         darkModeConfig = darkModeConfig,
                                         onDarkModeConfigChange = onDarkModeConfigChange,
+                                        lightModeStartMinutes = lightModeStartMinutes,
+                                        onLightModeStartMinutesChange = onLightModeStartMinutesChange,
+                                        darkModeStartMinutes = darkModeStartMinutes,
+                                        onDarkModeStartMinutesChange = onDarkModeStartMinutesChange,
                                         paletteStyle = paletteStyle,
                                         onPaletteStyleChange = onPaletteStyleChange,
                                         appScale = appScale,

@@ -18,6 +18,8 @@ import com.dnavarro.poskmp.domain.model.MAX_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.MIN_PAPER_WIDTH_MM
 import com.dnavarro.poskmp.domain.model.ReceiptFontFamily
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.theme.DEFAULT_DARK_MODE_START_MINUTES
+import com.dnavarro.poskmp.theme.DEFAULT_LIGHT_MODE_START_MINUTES
 import com.dnavarro.poskmp.theme.DEFAULT_SEED_COLOR
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.PRESET_SEED_COLORS
@@ -31,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -50,6 +53,8 @@ interface SettingsRepository {
     val seedColorFlow: Flow<Color>
     val isAmoledFlow: Flow<Boolean>
     val darkModeConfigFlow: Flow<DarkModeConfig>
+    val lightModeStartMinutesFlow: Flow<Int> get() = flowOf(DEFAULT_LIGHT_MODE_START_MINUTES)
+    val darkModeStartMinutesFlow: Flow<Int> get() = flowOf(DEFAULT_DARK_MODE_START_MINUTES)
     val paletteStyleFlow: Flow<PaletteStyle>
     val appScaleFlow: Flow<Float>
     val defaultScreenFlow: Flow<Screen>
@@ -101,6 +106,8 @@ interface SettingsRepository {
     suspend fun setSeedColor(color: Color)
     suspend fun setIsAmoled(isAmoled: Boolean)
     suspend fun setDarkModeConfig(config: DarkModeConfig)
+    suspend fun setLightModeStartMinutes(minutes: Int) {}
+    suspend fun setDarkModeStartMinutes(minutes: Int) {}
     suspend fun setPaletteStyle(style: PaletteStyle)
     suspend fun setAppScale(scale: Float)
     suspend fun setDefaultScreen(screen: Screen)
@@ -177,6 +184,8 @@ class SettingsRepositoryImpl(
         val SEED_COLOR = intPreferencesKey("seed_color_argb")
         val IS_AMOLED = booleanPreferencesKey("is_amoled")
         val DARK_MODE_CONFIG = stringPreferencesKey("dark_mode_config")
+        val LIGHT_MODE_START_MINUTES = intPreferencesKey("light_mode_start_minutes")
+        val DARK_MODE_START_MINUTES = intPreferencesKey("dark_mode_start_minutes")
         val PALETTE_STYLE = stringPreferencesKey("palette_style")
         val APP_SCALE = floatPreferencesKey("app_scale")
         val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
@@ -340,6 +349,14 @@ class SettingsRepositoryImpl(
         } catch (_: Exception) {
             DarkModeConfig.SYSTEM
         }
+    }
+
+    override val lightModeStartMinutesFlow: Flow<Int> = dataStore.data.map { preferences ->
+        (preferences[PreferenceKeys.LIGHT_MODE_START_MINUTES] ?: DEFAULT_LIGHT_MODE_START_MINUTES).coerceIn(0, 1439)
+    }
+
+    override val darkModeStartMinutesFlow: Flow<Int> = dataStore.data.map { preferences ->
+        (preferences[PreferenceKeys.DARK_MODE_START_MINUTES] ?: DEFAULT_DARK_MODE_START_MINUTES).coerceIn(0, 1439)
     }
 
     override val paletteStyleFlow: Flow<PaletteStyle> = dataStore.data.map { preferences ->
@@ -599,6 +616,18 @@ class SettingsRepositoryImpl(
     override suspend fun setDarkModeConfig(config: DarkModeConfig) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.DARK_MODE_CONFIG] = config.name
+        }
+    }
+
+    override suspend fun setLightModeStartMinutes(minutes: Int) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.LIGHT_MODE_START_MINUTES] = minutes.mod(24 * 60)
+        }
+    }
+
+    override suspend fun setDarkModeStartMinutes(minutes: Int) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DARK_MODE_START_MINUTES] = minutes.mod(24 * 60)
         }
     }
 

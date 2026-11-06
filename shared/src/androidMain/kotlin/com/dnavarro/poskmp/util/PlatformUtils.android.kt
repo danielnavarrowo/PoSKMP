@@ -39,6 +39,10 @@ actual fun isDynamicColorSupported(): Boolean =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
 @Composable
+actual fun rememberPlatformSystemDarkTheme(): Boolean =
+    androidx.compose.foundation.isSystemInDarkTheme()
+
+@Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
     val currentOnBack by rememberUpdatedState(onBack)
     val view = LocalView.current
@@ -99,55 +103,145 @@ actual fun <T> AdaptiveScaffoldPredictiveBackHandler(
 }
 
 private object AndroidSoundPlayer {
-    private val pendingPlay = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
-    private val soundCache = java.util.concurrent.ConcurrentHashMap<Int, Int>()
-    private val tempFiles = java.util.concurrent.ConcurrentHashMap<Int, java.io.File>()
+    private class ParsedWav(
+        val sampleRate: Int,
+        val channels: Int,
+        val bitsPerSample: Int,
+        val pcmOffset: Int,
+        val pcmLength: Int
+    )
 
-    private val soundPool: android.media.SoundPool by lazy {
-        val audioAttributes = android.media.AudioAttributes.Builder()
-            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+    private val tracks = java.util.concurrent.atomic.AtomicReferenceArray<android.media.AudioTrack?>(SoundType.entries.size)
+    private val playbackLock = Any()
+    @Volatile
+    private var activeTrack: android.media.AudioTrack? = null
+
+    private val audioAttributes: android.media.AudioAttributes by lazy {
+        android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
             .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
-        android.media.SoundPool.Builder()
-            .setMaxStreams(6)
-            .setAudioAttributes(audioAttributes)
-            .build().apply {
-                setOnLoadCompleteListener { sp, sampleId, status ->
-                    try {
-                        tempFiles.remove(sampleId)?.delete()
-                    } catch (_: Exception) {}
-                    if (status == 0 && pendingPlay.remove(sampleId)) {
-                        sp.play(sampleId, 1f, 1f, 1, 0, 1f)
-                    }
-                }
-            }
     }
 
-    fun play(bytes: ByteArray) {
-        val hash = bytes.contentHashCode()
-        val existingSoundId = soundCache[hash]
-        if (existingSoundId != null && existingSoundId != 0) {
-            soundPool.play(existingSoundId, 1f, 1f, 1, 0, 1f)
-            return
+    private fun parseWavHeader(bytes: ByteArray): ParsedWav? {
+        if (bytes.size < 44) return null
+        if (bytes[0] != 'R'.code.toByte() || bytes[1] != 'I'.code.toByte() ||
+            bytes[2] != 'F'.code.toByte() || bytes[3] != 'F'.code.toByte()
+        ) return null
+
+        var pos = 12
+        var audioFormat = 1
+        var channels = 1
+        var sampleRate = 44100
+        var bitsPerSample = 16
+        var dataOffset = -1
+        var dataLength = 0
+
+        while (pos + 8 <= bytes.size) {
+            val chunkId0 = bytes[pos].toInt().toChar()
+            val chunkId1 = bytes[pos + 1].toInt().toChar()
+            val chunkId2 = bytes[pos + 2].toInt().toChar()
+            val chunkId3 = bytes[pos + 3].toInt().toChar()
+            val chunkSize = (bytes[pos + 4].toInt() and 0xFF) or
+                    ((bytes[pos + 5].toInt() and 0xFF) shl 8) or
+                    ((bytes[pos + 6].toInt() and 0xFF) shl 16) or
+                    ((bytes[pos + 7].toInt() and 0xFF) shl 24)
+
+            val contentStart = pos + 8
+            if (chunkId0 == 'f' && chunkId1 == 'm' && chunkId2 == 't' && chunkId3 == ' ' && contentStart + 16 <= bytes.size) {
+                audioFormat = (bytes[contentStart].toInt() and 0xFF) or ((bytes[contentStart + 1].toInt() and 0xFF) shl 8)
+                channels = (bytes[contentStart + 2].toInt() and 0xFF) or ((bytes[contentStart + 3].toInt() and 0xFF) shl 8)
+                sampleRate = (bytes[contentStart + 4].toInt() and 0xFF) or
+                        ((bytes[contentStart + 5].toInt() and 0xFF) shl 8) or
+                        ((bytes[contentStart + 6].toInt() and 0xFF) shl 16) or
+                        ((bytes[contentStart + 7].toInt() and 0xFF) shl 24)
+                bitsPerSample = (bytes[contentStart + 14].toInt() and 0xFF) or ((bytes[contentStart + 15].toInt() and 0xFF) shl 8)
+            } else if (chunkId0 == 'd' && chunkId1 == 'a' && chunkId2 == 't' && chunkId3 == 'a') {
+                dataOffset = contentStart
+                dataLength = chunkSize.coerceAtMost(bytes.size - contentStart)
+                break
+            }
+
+            if (chunkSize < 0) break
+            pos = contentStart + chunkSize + (chunkSize and 1)
         }
 
-        kotlin.concurrent.thread(isDaemon = true) {
-            try {
-                val tempFile = java.io.File.createTempFile("snd_", ".wav")
-                tempFile.deleteOnExit()
-                tempFile.writeBytes(bytes)
+        if (audioFormat != 1 || dataOffset < 0 || dataLength <= 0) return null
+        return ParsedWav(sampleRate, channels, bitsPerSample, dataOffset, dataLength)
+    }
 
-                val soundId = soundPool.load(tempFile.absolutePath, 1)
-                soundCache[hash] = soundId
-                pendingPlay.add(soundId)
-                tempFiles[soundId] = tempFile
-            } catch (_: Exception) {}
+    private fun getOrCreateTrack(type: SoundType, bytes: ByteArray): android.media.AudioTrack? {
+        tracks.get(type.ordinal)?.let { return it }
+        synchronized(this) {
+            tracks.get(type.ordinal)?.let { return it }
+            val wav = parseWavHeader(bytes) ?: return null
+            val channelMask = if (wav.channels == 1) {
+                android.media.AudioFormat.CHANNEL_OUT_MONO
+            } else {
+                android.media.AudioFormat.CHANNEL_OUT_STEREO
+            }
+            val encoding = if (wav.bitsPerSample == 8) {
+                android.media.AudioFormat.ENCODING_PCM_8BIT
+            } else {
+                android.media.AudioFormat.ENCODING_PCM_16BIT
+            }
+            val format = android.media.AudioFormat.Builder()
+                .setSampleRate(wav.sampleRate)
+                .setEncoding(encoding)
+                .setChannelMask(channelMask)
+                .build()
+
+            val builder = android.media.AudioTrack.Builder()
+                .setAudioAttributes(audioAttributes)
+                .setAudioFormat(format)
+                .setBufferSizeInBytes(wav.pcmLength)
+                .setTransferMode(android.media.AudioTrack.MODE_STATIC)
+            builder.setPerformanceMode(android.media.AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+            val track = builder.build().apply {
+                write(bytes, wav.pcmOffset, wav.pcmLength)
+            }
+            tracks.set(type.ordinal, track)
+            return track
         }
+    }
+
+    fun preload(type: SoundType, bytes: ByteArray) {
+        try {
+            getOrCreateTrack(type, bytes)
+        } catch (_: Exception) {}
+    }
+
+    fun play(type: SoundType, bytes: ByteArray) {
+        try {
+            val track = tracks.get(type.ordinal) ?: getOrCreateTrack(type, bytes) ?: return
+            synchronized(playbackLock) {
+                val previous = activeTrack
+                if (previous != null && previous.playState == android.media.AudioTrack.PLAYSTATE_PLAYING) {
+                    try {
+                        previous.pause()
+                        previous.flush()
+                        previous.stop()
+                    } catch (_: Exception) {}
+                }
+                if (track.playState == android.media.AudioTrack.PLAYSTATE_PLAYING) {
+                    try {
+                        track.stop()
+                    } catch (_: Exception) {}
+                }
+                track.reloadStaticData()
+                track.play()
+                activeTrack = track
+            }
+        } catch (_: Exception) {}
     }
 }
 
-actual fun playSoundAlert(bytes: ByteArray) {
-    AndroidSoundPlayer.play(bytes)
+actual fun preloadSoundAlert(type: SoundType, bytes: ByteArray) {
+    AndroidSoundPlayer.preload(type, bytes)
+}
+
+actual fun playSoundAlert(type: SoundType, bytes: ByteArray) {
+    AndroidSoundPlayer.play(type, bytes)
 }
 
 actual fun pickFile(

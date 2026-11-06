@@ -93,6 +93,7 @@ import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.util.CategorySuggester
 import com.dnavarro.poskmp.util.PlatformBackHandler
+import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.applySmartWordCapitalization
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.encodeToJsonBarcodes
@@ -637,6 +638,9 @@ fun ProductFormDialog(
     fun addBarcodeFromInput() {
         val codesToAdd = parseBarcodes(barcodeInput)
         if (codesToAdd.isNotEmpty()) {
+            coroutineScope.launch {
+                SoundManager.playBeepSound()
+            }
             val updated = formBarcodes.toMutableList()
             var firstAdded: String? = null
             for (code in codesToAdd) {
@@ -2188,6 +2192,9 @@ fun ProductFormDialog(
                 showCameraScanner = false
                 val code = scannedBarcode.trim()
                 if (code.isNotEmpty()) {
+                    coroutineScope.launch {
+                        SoundManager.playBeepSound()
+                    }
                     if (!formBarcodes.contains(code)) {
                         formBarcodes = formBarcodes + code
                         isBarcodesExpanded = true

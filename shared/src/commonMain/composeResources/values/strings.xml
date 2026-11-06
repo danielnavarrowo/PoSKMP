@@ -78,6 +78,11 @@
     <string name="dark_mode_system">Sistema</string>
     <string name="dark_mode_off">Claro</string>
     <string name="dark_mode_on">Oscuro</string>
+    <string name="dark_mode_schedule">Horario</string>
+    <string name="dark_mode_schedule_light_start">Inicio modo claro</string>
+    <string name="dark_mode_schedule_dark_start">Inicio modo oscuro</string>
+    <string name="time_picker_select_light_start_title">Hora de inicio de modo claro</string>
+    <string name="time_picker_select_dark_start_title">Hora de inicio de modo oscuro</string>
     <string name="app_scale_title">Escala de la Interfaz</string>
     <string name="app_scale_subtitle">Ajusta el tamaño del texto y de la interfaz de toda la aplicación</string>
     <string name="reset_scale_button">Restablecer (100%)</string>

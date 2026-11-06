@@ -16,7 +16,6 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -128,6 +127,7 @@ import com.dnavarro.poskmp.navigation.toScreen
 import com.dnavarro.poskmp.theme.AppTheme
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.isScheduledDarkTime
 import com.dnavarro.poskmp.ui.AjustesScreen
 import com.dnavarro.poskmp.ui.CalculatorDialog
 import com.dnavarro.poskmp.ui.CancelSaleConfirmationDialog
@@ -148,11 +148,13 @@ import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
 import com.dnavarro.poskmp.util.AdaptiveBreakpoints
+import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.currentTimeMillis
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatTimeOnly
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.isCompactWidth
+import com.dnavarro.poskmp.util.rememberPlatformSystemDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -288,6 +290,9 @@ fun App(
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
+        launch(Dispatchers.IO) {
+            SoundManager.warmup()
+        }
         withContext(Dispatchers.IO) {
             syncRepository.syncAll()
         }
@@ -477,11 +482,32 @@ fun App(
     var lastSaleToCancel by remember { mutableStateOf<Sale?>(null) }
     var isCancellingLastSale by remember { mutableStateOf(false) }
 
-    val systemInDark = isSystemInDarkTheme()
+    val systemInDark = rememberPlatformSystemDarkTheme()
+    val currentMinutesOfDay by androidx.compose.runtime.produceState(
+        initialValue = java.time.LocalTime.now().let { it.hour * 60 + it.minute },
+        key1 = darkModeConfig
+    ) {
+        if (darkModeConfig == DarkModeConfig.SCHEDULED) {
+            while (true) {
+                val now = java.time.LocalTime.now()
+                val mins = now.hour * 60 + now.minute
+                if (value != mins) {
+                    value = mins
+                }
+                delay(15.seconds)
+            }
+        }
+    }
+
     val darkTheme = when (darkModeConfig) {
         DarkModeConfig.SYSTEM -> systemInDark
         DarkModeConfig.LIGHT -> false
         DarkModeConfig.DARK -> true
+        DarkModeConfig.SCHEDULED -> isScheduledDarkTime(
+            currentMinutesOfDay = currentMinutesOfDay,
+            lightStartMinutes = appRootState.lightModeStartMinutes,
+            darkStartMinutes = appRootState.darkModeStartMinutes
+        )
     }
 
     val currentOnDarkThemeChanged by rememberUpdatedState(onDarkThemeChanged)

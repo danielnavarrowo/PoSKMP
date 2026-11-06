@@ -8,6 +8,8 @@ import com.dnavarro.poskmp.data.updater.UpdateDownloadState
 import com.dnavarro.poskmp.domain.model.Cashier
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.domain.model.ReceiptSettings
+import com.dnavarro.poskmp.theme.DEFAULT_DARK_MODE_START_MINUTES
+import com.dnavarro.poskmp.theme.DEFAULT_LIGHT_MODE_START_MINUTES
 import com.dnavarro.poskmp.theme.DEFAULT_SEED_COLOR
 import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.ui.Screen
@@ -25,6 +27,8 @@ data class AjustesUiState(
     val seedColor: Color = DEFAULT_SEED_COLOR,
     val isAmoled: Boolean = false,
     val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
+    val lightModeStartMinutes: Int = DEFAULT_LIGHT_MODE_START_MINUTES,
+    val darkModeStartMinutes: Int = DEFAULT_DARK_MODE_START_MINUTES,
     val paletteStyle: PaletteStyle = PaletteStyle.Fidelity,
     val appScale: Float = 1.0f,
     val defaultScreen: Screen = Screen.VENTA,
@@ -97,6 +101,8 @@ data class AppRootState(
     val seedColor: Color = DEFAULT_SEED_COLOR,
     val isAmoled: Boolean = false,
     val darkModeConfig: DarkModeConfig = DarkModeConfig.SYSTEM,
+    val lightModeStartMinutes: Int = DEFAULT_LIGHT_MODE_START_MINUTES,
+    val darkModeStartMinutes: Int = DEFAULT_DARK_MODE_START_MINUTES,
     val paletteStyle: PaletteStyle = PaletteStyle.Fidelity,
     val appScale: Float = 1.0f,
     val defaultScreen: Screen = Screen.VENTA,

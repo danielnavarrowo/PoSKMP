@@ -46,6 +46,7 @@ import java.util.UUID
 import java.util.zip.ZipInputStream
 import javax.swing.SwingUtilities
 import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.time.Duration.Companion.milliseconds
 
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun generateUUID(): String = UUID.randomUUID().toString()
@@ -55,6 +56,141 @@ actual fun isAndroid(): Boolean = false
 
 @Suppress("SameReturnValue")
 actual fun isDynamicColorSupported(): Boolean = false
+
+private object JvmOsThemeDetector {
+    private val osName = System.getProperty("os.name", "").lowercase()
+    private val isWindows = osName.contains("win")
+    private val isLinux = osName.contains("nux") || osName.contains("nix")
+
+    @Volatile
+    var lastDetectedDark: Boolean? = null
+        private set
+
+    private fun runCommandOutput(vararg command: String): String? {
+        return try {
+            val process = ProcessBuilder(*command)
+                .redirectErrorStream(true)
+                .start()
+            val finished = process.waitFor(600, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                return null
+            }
+            if (process.exitValue() != 0) return null
+            process.inputStream.bufferedReader().readText().trim()
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private fun detectLinuxDark(): Boolean? {
+        // 1. Check GNOME / GTK 4 color-scheme
+        val colorScheme = runCommandOutput("gsettings", "get", "org.gnome.desktop.interface", "color-scheme")?.lowercase()
+        if (colorScheme != null) {
+            if (colorScheme.contains("prefer-dark")) return true
+            if (colorScheme.contains("prefer-light")) return false
+        }
+
+        // 2. Check Freedesktop XDG Desktop Portal (works across GNOME, KDE Plasma, Hyprland, Sway, Cinnamon, etc.)
+        val portalOut = runCommandOutput(
+            "dbus-send",
+            "--session",
+            "--print-reply=literal",
+            "--reply-timeout=400",
+            "--dest=org.freedesktop.portal.Desktop",
+            "/org/freedesktop/portal/desktop",
+            "org.freedesktop.portal.Settings.Read",
+            "string:org.freedesktop.appearance",
+            "string:color-scheme"
+        )?.lowercase()
+        if (portalOut != null) {
+            // 1 = Prefer dark, 2 = Prefer light, 0 = No preference
+            if (portalOut.contains("uint32 1")) return true
+            if (portalOut.contains("uint32 2")) return false
+        }
+
+        // 3. Check GNOME gtk-theme name if color-scheme was 'default'
+        val gtkTheme = runCommandOutput("gsettings", "get", "org.gnome.desktop.interface", "gtk-theme")?.lowercase()
+        if (!gtkTheme.isNullOrBlank()) {
+            return gtkTheme.contains("dark")
+        }
+
+        // 4. Check KDE kdeglobals config file
+        val userHome = System.getProperty("user.home")
+        if (!userHome.isNullOrBlank()) {
+            val kdeGlobals = File(userHome, ".config/kdeglobals")
+            if (kdeGlobals.exists() && kdeGlobals.canRead()) {
+                try {
+                    val lines = kdeGlobals.readLines()
+                    val colorSchemeLine = lines.firstOrNull {
+                        it.trim().startsWith("ColorScheme=", ignoreCase = true) ||
+                            it.trim().startsWith("LookAndFeelPackage=", ignoreCase = true)
+                    }
+                    if (colorSchemeLine != null) {
+                        return colorSchemeLine.contains("dark", ignoreCase = true)
+                    }
+                } catch (_: Throwable) {}
+            }
+        }
+
+        // 5. Check GTK_THEME environment variable
+        val envGtk = System.getenv("GTK_THEME")?.lowercase()
+        if (!envGtk.isNullOrBlank()) {
+            return envGtk.contains("dark")
+        }
+
+        return null
+    }
+
+    private fun detectWindowsDark(): Boolean? {
+        val out = runCommandOutput(
+            "reg",
+            "query",
+            "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+            "/v",
+            "AppsUseLightTheme"
+        )?.lowercase()
+        if (out != null && out.contains("appsuselighttheme")) {
+            if (out.contains("0x0")) return true
+            if (out.contains("0x1")) return false
+        }
+        return null
+    }
+
+    fun detectSystemDarkTheme(skikoFallback: Boolean): Boolean {
+        val detected = when {
+            isLinux -> detectLinuxDark()
+            isWindows -> detectWindowsDark()
+            else -> null
+        } ?: when (org.jetbrains.skiko.currentSystemTheme) {
+            org.jetbrains.skiko.SystemTheme.DARK -> true
+            org.jetbrains.skiko.SystemTheme.LIGHT -> false
+            org.jetbrains.skiko.SystemTheme.UNKNOWN -> skikoFallback
+        }
+        lastDetectedDark = detected
+        return detected
+    }
+}
+
+@Composable
+actual fun rememberPlatformSystemDarkTheme(): Boolean {
+    val skikoInDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val state = androidx.compose.runtime.produceState(
+        initialValue = JvmOsThemeDetector.lastDetectedDark ?: skikoInDark,
+        key1 = skikoInDark
+    ) {
+        while (true) {
+            val detected = withContext(Dispatchers.IO) {
+                JvmOsThemeDetector.detectSystemDarkTheme(skikoInDark)
+            }
+            if (value != detected) {
+                value = detected
+            }
+            kotlinx.coroutines.delay(3000L.milliseconds)
+        }
+    }
+    return state.value
+}
 
 @Suppress("EmptyMethod")
 @Composable
@@ -73,34 +209,74 @@ actual fun <T> AdaptiveScaffoldPredictiveBackHandler(
 }
 
 private object DesktopSoundPlayer {
-    private val clipCache = java.util.concurrent.ConcurrentHashMap<Int, javax.sound.sampled.Clip>()
+    private val clips = java.util.concurrent.atomic.AtomicReferenceArray<javax.sound.sampled.Clip?>(SoundType.entries.size)
+    private val playbackLock = Any()
+    @Volatile
+    private var activeClip: javax.sound.sampled.Clip? = null
 
-    fun play(bytes: ByteArray) {
-        try {
-            val hash = bytes.contentHashCode()
-            val existingClip = clipCache[hash]
-            if (existingClip != null) {
-                if (existingClip.isRunning) {
-                    existingClip.stop()
-                }
-                existingClip.framePosition = 0
-                existingClip.start()
-                return
+    private val audioExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "POS-LowLatency-Audio").apply {
+            isDaemon = true
+            priority = Thread.MAX_PRIORITY
+        }
+    }
+
+    private fun getOrCreateClip(type: SoundType, bytes: ByteArray): javax.sound.sampled.Clip? {
+        clips.get(type.ordinal)?.let { return it }
+        synchronized(this) {
+            clips.get(type.ordinal)?.let { return it }
+            return try {
+                val stream = javax.sound.sampled.AudioSystem.getAudioInputStream(
+                    ByteArrayInputStream(bytes)
+                )
+                val clip = javax.sound.sampled.AudioSystem.getClip()
+                clip.open(stream)
+                clips.set(type.ordinal, clip)
+                clip
+            } catch (_: Exception) {
+                null
             }
+        }
+    }
 
-            val audioInputStream = javax.sound.sampled.AudioSystem.getAudioInputStream(
-                ByteArrayInputStream(bytes)
-            )
-            val clip = javax.sound.sampled.AudioSystem.getClip()
-            clip.open(audioInputStream)
-            clipCache[hash] = clip
-            clip.start()
-        } catch (_: Exception) {}
+    fun preload(type: SoundType, bytes: ByteArray) {
+        audioExecutor.execute {
+            try {
+                getOrCreateClip(type, bytes)
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun play(type: SoundType, bytes: ByteArray) {
+        audioExecutor.execute {
+            try {
+                val clip = clips.get(type.ordinal) ?: getOrCreateClip(type, bytes) ?: return@execute
+                synchronized(playbackLock) {
+                    val previous = activeClip
+                    if (previous != null && previous !== clip && previous.isRunning) {
+                        previous.stop()
+                        previous.flush()
+                        previous.framePosition = 0
+                    }
+                    if (clip.isRunning) {
+                        clip.stop()
+                        clip.flush()
+                    }
+                    clip.framePosition = 0
+                    clip.start()
+                    activeClip = clip
+                }
+            } catch (_: Exception) {}
+        }
     }
 }
 
-actual fun playSoundAlert(bytes: ByteArray) {
-    DesktopSoundPlayer.play(bytes)
+actual fun preloadSoundAlert(type: SoundType, bytes: ByteArray) {
+    DesktopSoundPlayer.preload(type, bytes)
+}
+
+actual fun playSoundAlert(type: SoundType, bytes: ByteArray) {
+    DesktopSoundPlayer.play(type, bytes)
 }
 
 actual fun pickFile(

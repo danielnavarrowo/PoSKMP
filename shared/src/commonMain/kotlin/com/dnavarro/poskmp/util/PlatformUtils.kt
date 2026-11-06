@@ -10,7 +10,11 @@ expect fun currentTimeMillis(): Long
 expect fun generateUUID(): String
 expect fun isAndroid(): Boolean
 expect fun isDynamicColorSupported(): Boolean
-expect fun playSoundAlert(bytes: ByteArray)
+expect fun preloadSoundAlert(type: SoundType, bytes: ByteArray)
+expect fun playSoundAlert(type: SoundType, bytes: ByteArray)
+
+@Composable
+expect fun rememberPlatformSystemDarkTheme(): Boolean
 
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)

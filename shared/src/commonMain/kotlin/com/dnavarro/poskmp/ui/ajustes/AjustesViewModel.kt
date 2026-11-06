@@ -99,13 +99,21 @@ class AjustesViewModel(
             repository.paletteStyleFlow
         ) { darkModeConfig, appScale, paletteStyle ->
             Triple(darkModeConfig, appScale, paletteStyle)
+        },
+        combine(
+            repository.lightModeStartMinutesFlow,
+            repository.darkModeStartMinutesFlow
+        ) { lightStart, darkStart ->
+            Pair(lightStart, darkStart)
         }
-    ) { (useDynamicColor, seedColor, isAmoled), (darkModeConfig, appScale, paletteStyle) ->
+    ) { (useDynamicColor, seedColor, isAmoled), (darkModeConfig, appScale, paletteStyle), (lightStart, darkStart) ->
         AjustesUiState(
             useDynamicColor = useDynamicColor,
             seedColor = seedColor,
             isAmoled = isAmoled,
             darkModeConfig = darkModeConfig,
+            lightModeStartMinutes = lightStart,
+            darkModeStartMinutes = darkStart,
             appScale = appScale,
             paletteStyle = paletteStyle
         )
@@ -409,6 +417,8 @@ class AjustesViewModel(
             seedColor = themeState.seedColor,
             isAmoled = themeState.isAmoled,
             darkModeConfig = themeState.darkModeConfig,
+            lightModeStartMinutes = themeState.lightModeStartMinutes,
+            darkModeStartMinutes = themeState.darkModeStartMinutes,
             paletteStyle = themeState.paletteStyle,
             appScale = themeState.appScale,
             defaultScreen = defaultScreen,
@@ -497,6 +507,18 @@ class AjustesViewModel(
     fun setDarkModeConfig(config: DarkModeConfig) {
         viewModelScope.launch {
             repository.setDarkModeConfig(config)
+        }
+    }
+
+    fun setLightModeStartMinutes(minutes: Int) {
+        viewModelScope.launch {
+            repository.setLightModeStartMinutes(minutes)
+        }
+    }
+
+    fun setDarkModeStartMinutes(minutes: Int) {
+        viewModelScope.launch {
+            repository.setDarkModeStartMinutes(minutes)
         }
     }
 
