@@ -50,12 +50,14 @@ import com.dnavarro.poskmp.ui.CartItem
 import com.dnavarro.poskmp.ui.PriceTier
 import com.dnavarro.poskmp.ui.Screen
 import com.materialkolor.PaletteStyle
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -72,11 +74,12 @@ class VentaPricingReactivityAndReceiptTest {
 
     private class FakeProductRepository : ProductRepository {
         val products = mutableListOf<Products>()
+        val salesStatsFlow = MutableStateFlow<Map<String, ProductSalesStats>>(emptyMap())
         override fun getAllProducts(): Flow<List<Products>> = flowOf(products)
         override fun getActiveProducts(): Flow<List<Products>> = flowOf(products)
         override fun searchProducts(query: String, activeOnly: Boolean): Flow<List<Products>> =
             flowOf(products.filter { it.nombre.contains(query, ignoreCase = true) })
-        override fun getProductSalesStats(): Flow<Map<String, ProductSalesStats>> = flowOf(emptyMap())
+        override fun getProductSalesStats(): Flow<Map<String, ProductSalesStats>> = salesStatsFlow
         override suspend fun getProductById(id: String): Products? = products.find { it.id == id }
         override suspend fun insertProduct(product: Products) { products.add(product) }
         override suspend fun insertProducts(products: List<Products>) { this.products.addAll(products) }
@@ -894,4 +897,40 @@ class VentaPricingReactivityAndReceiptTest {
         assertNull(renderedLines.find { it.contains("Total sin desc:") }, "Should not display 'Total sin desc:' when there is no discount")
         assertNull(renderedLines.find { it.contains("Ahorro:") }, "Should not display 'Ahorro:' when there are no savings")
     }
+
+    @Test
+    fun testVentaViewModel_displayedCatalogProducts_relevanceRankingAndSalesBoosting() = runBlocking {
+        val p1 = createProduct("1", "Coca Cola Regular", 20.0, 15.0)
+        val p2 = createProduct("2", "Coca Cola Zero", 20.0, 15.0)
+        val p3 = createProduct("3", "Coca Cola Light", 20.0, 15.0)
+
+        val productRepo = FakeProductRepository()
+        productRepo.products.addAll(listOf(p1, p2, p3))
+
+        val viewModel = createViewModel(productRepo = productRepo)
+
+        // Collect uiState to start StateFlow
+        val collectJob = launch { viewModel.uiState.collect() }
+        delay(100)
+
+        viewModel.onSearchQueryChanged("coca")
+        delay(100)
+
+        // All 3 match query "coca" as prefix
+        var displayed = viewModel.uiState.value.displayedCatalogProducts
+        assertEquals(3, displayed.size)
+
+        // Initially with 0 sales and non-favorite, p2 ("Coca Cola Zero") is first due to higher query density (shorter name)
+        assertEquals("2", displayed[0].id)
+
+        // Now emit salesStats boosting p1 ("Coca Cola Regular"), which previously had lower density
+        productRepo.salesStatsFlow.value = mapOf("1" to ProductSalesStats("1", totalVentas = 100.0))
+        delay(100)
+
+        displayed = viewModel.uiState.value.displayedCatalogProducts
+        assertEquals("1", displayed.first().id, "Coca Cola Regular should be boosted to first place due to sales stats")
+
+        collectJob.cancel()
+    }
 }
+

@@ -89,7 +89,7 @@ val googleFlexDisplay: FontFamily
 /** Extra-expressive hero display voice: expanded width, full roundness, and subtle forward slant. */
 val googleFlexHero: FontFamily
     @Composable get() = createGoogleFlexFontFamily(
-        width = 144f,
+        width = 100f,
         roundness = 100f,
         opticalSize = 120f,
         slant = -5f,

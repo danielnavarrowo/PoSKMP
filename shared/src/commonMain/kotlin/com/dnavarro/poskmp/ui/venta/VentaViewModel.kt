@@ -184,26 +184,36 @@ class VentaViewModel(
         )
     }
 
+    private val _salesStatsFlow = repository.getProductSalesStats()
+
     private var lastCatalogRawProducts: List<Products>? = null
     private var lastCatalogSortField: ProductSortField? = null
     private var lastCatalogSortOrder: ProductSortOrder? = null
+    private var lastCatalogSearchQuery: String? = null
+    private var lastCatalogSalesStats: Map<String, com.dnavarro.poskmp.domain.model.ProductSalesStats>? = null
     private var cachedDisplayedCatalogProducts: List<Products> = emptyList()
 
     private fun getOrComputeDisplayedCatalogProducts(
         products: List<Products>,
         sortField: ProductSortField,
-        sortOrder: ProductSortOrder
+        sortOrder: ProductSortOrder,
+        searchQuery: String,
+        salesStats: Map<String, com.dnavarro.poskmp.domain.model.ProductSalesStats>
     ): List<Products> {
         if (products === lastCatalogRawProducts &&
             sortField == lastCatalogSortField &&
-            sortOrder == lastCatalogSortOrder
+            sortOrder == lastCatalogSortOrder &&
+            searchQuery == lastCatalogSearchQuery &&
+            salesStats === lastCatalogSalesStats
         ) {
             return cachedDisplayedCatalogProducts
         }
-        val computed = computeDisplayedCatalogProducts(products, sortField, sortOrder)
+        val computed = computeDisplayedCatalogProducts(products, sortField, sortOrder, searchQuery, salesStats)
         lastCatalogRawProducts = products
         lastCatalogSortField = sortField
         lastCatalogSortOrder = sortOrder
+        lastCatalogSearchQuery = searchQuery
+        lastCatalogSalesStats = salesStats
         cachedDisplayedCatalogProducts = computed
         return computed
     }
@@ -220,9 +230,10 @@ class VentaViewModel(
                 Tuple5(q, products, cat, cart, held)
             },
             _catalogSortField,
-            _catalogSortOrder
-        ) { core, sortField, sortOrder ->
-            Triple(core, sortField, sortOrder)
+            _catalogSortOrder,
+            _salesStatsFlow
+        ) { core, sortField, sortOrder, salesStats ->
+            Tuple4(core, sortField, sortOrder, salesStats)
         },
         combine(
             combine(
@@ -330,13 +341,13 @@ class VentaViewModel(
         combine(syncRepository.syncState, _allActiveProductsFlow, _availableCategoriesFlow) { syncState, allActive, categories ->
             Triple(syncState, allActive, categories)
         }
-    ) { (core, sortField, sortOrder),
+    ) { (core, sortField, sortOrder, salesStats),
         catalogConfig,
         receiptDialogState,
         (pricingSettings, receiptSettings, shiftState),
         (syncState, allActiveProducts, allCats) ->
         val (q, products, cat, cart, held) = core
-        val displayedCatalog = getOrComputeDisplayedCatalogProducts(products, sortField, sortOrder)
+        val displayedCatalog = getOrComputeDisplayedCatalogProducts(products, sortField, sortOrder, q, salesStats)
         val (cQuery, showDialog, lastReceipt, printState) = receiptDialogState
         val filteredCust = if (cQuery.isBlank()) {
             catalogConfig.customers
@@ -405,7 +416,8 @@ class VentaViewModel(
             isRecordingMovement = shiftState.isRecordingMovement,
             shiftActionError = shiftState.shiftActionError,
             shiftActionSuccess = shiftState.shiftActionSuccess,
-            activeShiftMovements = shiftState.activeShiftMovements
+            activeShiftMovements = shiftState.activeShiftMovements,
+            salesStats = salesStats
         )
     }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,

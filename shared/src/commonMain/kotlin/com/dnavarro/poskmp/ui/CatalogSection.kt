@@ -193,6 +193,7 @@ fun CatalogSection(
     onBarcodeScan: ((String) -> Unit)? = null,
     onSearchKeyIntercept: ((KeyEvent) -> Boolean)? = null,
     onAddProductWithQuantity: ((Products, Double) -> Unit)? = null,
+    salesStats: Map<String, com.dnavarro.poskmp.domain.model.ProductSalesStats> = emptyMap(),
     isLoading: Boolean = false
 ) {
     val focusManager = LocalFocusManager.current
@@ -292,8 +293,8 @@ fun CatalogSection(
         }
     }
 
-    val displayedProducts = preSortedProducts ?: remember(productsList, effectiveSortField, effectiveSortOrder) {
-        computeDisplayedCatalogProducts(productsList, effectiveSortField, effectiveSortOrder)
+    val displayedProducts = preSortedProducts ?: remember(productsList, effectiveSortField, effectiveSortOrder, searchQuery, salesStats) {
+        computeDisplayedCatalogProducts(productsList, effectiveSortField, effectiveSortOrder, searchQuery, salesStats)
     }
 
     LaunchedEffect(productsList.size, effectiveSortField, effectiveSortOrder) {

@@ -731,6 +731,7 @@ fun VentaScreen(
                         searchFocusRequester = searchBarFocusRequester,
                         onBarcodeScan = barcodeScanCallback,
                         onSearchKeyIntercept = handleSearchKeyIntercept,
+                        salesStats = uiState.salesStats,
                         isLoading = uiState.isLoading
                     )
                 }
@@ -907,6 +908,7 @@ fun VentaScreen(
                                 searchFocusRequester = searchBarFocusRequester,
                                 onBarcodeScan = barcodeScanCallback,
                                 onSearchKeyIntercept = handleSearchKeyIntercept,
+                                salesStats = uiState.salesStats,
                                 isLoading = uiState.isLoading
                             )
                         }

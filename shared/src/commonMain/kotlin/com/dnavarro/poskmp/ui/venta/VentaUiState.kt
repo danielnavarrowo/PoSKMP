@@ -83,7 +83,8 @@ data class VentaUiState(
     val isRecordingMovement: Boolean = false,
     val shiftActionError: String? = null,
     val shiftActionSuccess: String? = null,
-    val activeShiftMovements: List<com.dnavarro.poskmp.domain.model.CashMovement> = emptyList()
+    val activeShiftMovements: List<com.dnavarro.poskmp.domain.model.CashMovement> = emptyList(),
+    val salesStats: Map<String, com.dnavarro.poskmp.domain.model.ProductSalesStats> = emptyMap()
 ) {
     val rawTotal: Double
         get() = (cartItems.sumOf { (it.product.precio * it.quantity * 100.0).roundToLong() / 100.0 } * 100.0).roundToLong() / 100.0
@@ -95,18 +96,53 @@ data class VentaUiState(
 fun computeDisplayedCatalogProducts(
     productsList: List<Products>,
     sortField: ProductSortField,
-    sortOrder: ProductSortOrder
+    sortOrder: ProductSortOrder,
+    searchQuery: String = "",
+    salesStats: Map<String, com.dnavarro.poskmp.domain.model.ProductSalesStats> = emptyMap()
 ): List<Products> {
     if (productsList.isEmpty()) return emptyList()
+
     val formattedBarcodesById = if (sortField == ProductSortField.CODIGO) {
         productsList.associate { it.id to it.formatBarcodesForDisplay(emptyFallback = "") }
     } else {
         emptyMap()
     }
+
+    val isSearchActive = searchQuery.isNotBlank()
+    val relevanceScores = if (isSearchActive) {
+        val parsedQuery = CatalogSearchRanker.parseQuery(searchQuery)
+        productsList.associate { it.id to CatalogSearchRanker.computeRelevanceScore(it, parsedQuery, salesStats) }
+    } else {
+        emptyMap()
+    }
+
+    val isDefaultSort = sortField == ProductSortField.NOMBRE && sortOrder == ProductSortOrder.ASC
+
     return productsList.sortedWith { p1, p2 ->
-        val f1 = p1.es_favorito == 1L
-        val f2 = p2.es_favorito == 1L
-        if (f1 != f2) return@sortedWith if (f1) -1 else 1
+        // When search is active and sort is at default (NOMBRE, ASC), rank by search relevance
+        if (isSearchActive && isDefaultSort) {
+            val score1 = relevanceScores[p1.id] ?: 0.0
+            val score2 = relevanceScores[p2.id] ?: 0.0
+            val scoreComp = score2.compareTo(score1)
+            if (scoreComp != 0) return@sortedWith scoreComp
+
+            val v1 = salesStats[p1.id]?.totalVentas ?: 0.0
+            val v2 = salesStats[p2.id]?.totalVentas ?: 0.0
+            val salesComp = v2.compareTo(v1)
+            if (salesComp != 0) return@sortedWith salesComp
+
+            val nameComp = p1.nombre.compareTo(p2.nombre, ignoreCase = true)
+            if (nameComp != 0) return@sortedWith nameComp
+
+            return@sortedWith p1.id.compareTo(p2.id)
+        }
+
+        // When searchQuery is blank, preserve favorites first
+        if (!isSearchActive) {
+            val f1 = p1.es_favorito == 1L
+            val f2 = p2.es_favorito == 1L
+            if (f1 != f2) return@sortedWith if (f1) -1 else 1
+        }
 
         val primaryComp = when (sortField) {
             ProductSortField.NOMBRE -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
@@ -122,15 +158,60 @@ fun computeDisplayedCatalogProducts(
             ProductSortField.COSTO -> p1.costo.compareTo(p2.costo)
             ProductSortField.MAYOREO -> p1.precio_mayoreo.compareTo(p2.precio_mayoreo)
             ProductSortField.DOMICILIO -> p1.precio_delivery.compareTo(p2.precio_delivery)
+            ProductSortField.MARGEN_VENTA -> {
+                val m1 = if (p1.costo > 0.0 && p1.precio > 0.0) ((p1.precio - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                val m2 = if (p2.costo > 0.0 && p2.precio > 0.0) ((p2.precio - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                m1.compareTo(m2)
+            }
+            ProductSortField.MARGEN_MAYOREO -> {
+                val m1 = if (p1.costo > 0.0 && p1.precio_mayoreo > 0.0) ((p1.precio_mayoreo - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                val m2 = if (p2.costo > 0.0 && p2.precio_mayoreo > 0.0) ((p2.precio_mayoreo - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                m1.compareTo(m2)
+            }
+            ProductSortField.MARGEN_DOMICILIO -> {
+                val m1 = if (p1.costo > 0.0 && p1.precio_delivery > 0.0) ((p1.precio_delivery - p1.costo) / p1.costo) * 100.0 else -Double.MAX_VALUE
+                val m2 = if (p2.costo > 0.0 && p2.precio_delivery > 0.0) ((p2.precio_delivery - p2.costo) / p2.costo) * 100.0 else -Double.MAX_VALUE
+                m1.compareTo(m2)
+            }
+            ProductSortField.VENTAS_TOTALES -> {
+                val v1 = salesStats[p1.id]?.totalVentas ?: 0.0
+                val v2 = salesStats[p2.id]?.totalVentas ?: 0.0
+                v1.compareTo(v2)
+            }
+            ProductSortField.ULTIMA_VENTA -> {
+                val u1 = salesStats[p1.id]?.ultimaVenta ?: 0L
+                val u2 = salesStats[p2.id]?.ultimaVenta ?: 0L
+                u1.compareTo(u2)
+            }
             ProductSortField.FECHA_CREACION -> {
                 val c1 = if (p1.created_at > 0L) p1.created_at else p1.updated_at
                 val c2 = if (p2.created_at > 0L) p2.created_at else p2.updated_at
                 c1.compareTo(c2)
             }
             ProductSortField.FECHA_ACTUALIZACION -> p1.updated_at.compareTo(p2.updated_at)
-            else -> p1.nombre.compareTo(p2.nombre, ignoreCase = true)
         }
 
-        if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
+        val directedComp = if (sortOrder == ProductSortOrder.ASC) primaryComp else -primaryComp
+        if (directedComp != 0) return@sortedWith directedComp
+
+        // Tie-breaker 1: relevance score if search is active
+        if (isSearchActive) {
+            val score1 = relevanceScores[p1.id] ?: 0.0
+            val score2 = relevanceScores[p2.id] ?: 0.0
+            val scoreComp = score2.compareTo(score1)
+            if (scoreComp != 0) return@sortedWith scoreComp
+        }
+
+        // Tie-breaker 2: best-selling stats (totalVentas descending)
+        val v1 = salesStats[p1.id]?.totalVentas ?: 0.0
+        val v2 = salesStats[p2.id]?.totalVentas ?: 0.0
+        val salesComp = v2.compareTo(v1)
+        if (salesComp != 0) return@sortedWith salesComp
+
+        // Tie-breaker 3: product name ascending
+        val nameComp = p1.nombre.compareTo(p2.nombre, ignoreCase = true)
+        if (nameComp != 0) return@sortedWith nameComp
+
+        p1.id.compareTo(p2.id)
     }.take(100)
 }

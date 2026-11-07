@@ -878,7 +878,7 @@ fun ChecadorScreen(
                                     AutoSizingText(
                                         text = searchedProduct!!.nombre,
                                         color = Color.Black,
-                                        fontWeight = FontWeight.Black,
+                                        fontWeight = FontWeight.Bold,
                                         minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
                                         modifier = Modifier.fillMaxSize()
@@ -887,7 +887,7 @@ fun ChecadorScreen(
                                     AutoSizingText(
                                         text = stringResource(Res.string.product_not_found),
                                         color = Color.Black,
-                                        fontWeight = FontWeight.Black,
+                                        fontWeight = FontWeight.Bold,
                                         minFontSize = 16.sp,
                                         maxFontSize = 360.sp,
                                         modifier = Modifier.fillMaxSize()
@@ -1285,14 +1285,14 @@ private fun ChecadorMetricRow(
                 style = if (isPrimary) {
                     MaterialTheme.typography.displayLarge.copy(
                         fontFamily = googleFlexHero,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         fontSize = 128.sp
                     )
                 } else {
                     MaterialTheme.typography.displayLarge.copy(
                         fontFamily = googleFlexNumeric,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         fontSize = 72.sp
                     )
