@@ -47,8 +47,11 @@ class TestSettingsRepository(
     private val _showExtraPricesChecadorFlow = MutableStateFlow(false)
     override val showExtraPricesChecadorFlow: Flow<Boolean> = _showExtraPricesChecadorFlow.asStateFlow()
 
-    private val _lowResourceChecadorShaderFlow = MutableStateFlow(false)
-    override val lowResourceChecadorShaderFlow: Flow<Boolean> = _lowResourceChecadorShaderFlow.asStateFlow()
+    private val _useCustomChecadorBackgroundFlow = MutableStateFlow(false)
+    override val useCustomChecadorBackgroundFlow: Flow<Boolean> = _useCustomChecadorBackgroundFlow.asStateFlow()
+
+    private val _checadorBackgroundPathFlow = MutableStateFlow("")
+    override val checadorBackgroundPathFlow: Flow<String> = _checadorBackgroundPathFlow.asStateFlow()
 
     private val _useProductTableInCatalogFlow = MutableStateFlow(false)
     override val useProductTableInCatalogFlow: Flow<Boolean> = _useProductTableInCatalogFlow.asStateFlow()
@@ -208,8 +211,12 @@ class TestSettingsRepository(
         _showExtraPricesChecadorFlow.value = show
     }
 
-    override suspend fun setLowResourceChecadorShader(enabled: Boolean) {
-        _lowResourceChecadorShaderFlow.value = enabled
+    override suspend fun setUseCustomChecadorBackground(enabled: Boolean) {
+        _useCustomChecadorBackgroundFlow.value = enabled
+    }
+
+    override suspend fun setChecadorBackgroundPath(path: String) {
+        _checadorBackgroundPathFlow.value = path
     }
 
     override suspend fun setUseProductTableInCatalog(enabled: Boolean) {

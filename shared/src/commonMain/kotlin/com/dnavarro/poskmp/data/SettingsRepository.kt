@@ -60,7 +60,8 @@ interface SettingsRepository {
     val defaultScreenFlow: Flow<Screen>
     val isChecadorDialogFlow: Flow<Boolean>
     val showExtraPricesChecadorFlow: Flow<Boolean>
-    val lowResourceChecadorShaderFlow: Flow<Boolean>
+    val useCustomChecadorBackgroundFlow: Flow<Boolean> get() = flowOf(false)
+    val checadorBackgroundPathFlow: Flow<String> get() = flowOf("")
     val useProductTableInCatalogFlow: Flow<Boolean>
     val swapVentaLayoutOrderFlow: Flow<Boolean>
     val ventaSplitRatioFlow: Flow<Float>
@@ -113,7 +114,8 @@ interface SettingsRepository {
     suspend fun setDefaultScreen(screen: Screen)
     suspend fun setIsChecadorDialog(isDialog: Boolean)
     suspend fun setShowExtraPricesChecador(show: Boolean)
-    suspend fun setLowResourceChecadorShader(enabled: Boolean)
+    suspend fun setUseCustomChecadorBackground(enabled: Boolean) {}
+    suspend fun setChecadorBackgroundPath(path: String) {}
     suspend fun setUseProductTableInCatalog(enabled: Boolean)
     suspend fun setSwapVentaLayoutOrder(swap: Boolean)
     suspend fun setVentaSplitRatio(ratio: Float)
@@ -191,7 +193,8 @@ class SettingsRepositoryImpl(
         val DEFAULT_SCREEN = stringPreferencesKey("default_screen")
         val IS_CHECADOR_DIALOG = booleanPreferencesKey("is_checador_dialog")
         val SHOW_EXTRA_PRICES_CHECADOR = booleanPreferencesKey("show_extra_prices_checador")
-        val LOW_RESOURCE_CHECADOR_SHADER = booleanPreferencesKey("low_resource_checador_shader")
+        val USE_CUSTOM_CHECADOR_BACKGROUND = booleanPreferencesKey("use_custom_checador_background")
+        val CHECADOR_BACKGROUND_PATH = stringPreferencesKey("checador_background_path")
         val USE_PRODUCT_TABLE_IN_CATALOG = booleanPreferencesKey("use_product_table_in_catalog")
         val SWAP_VENTA_LAYOUT_ORDER = booleanPreferencesKey("swap_venta_layout_order")
         val VENTA_SPLIT_RATIO = floatPreferencesKey("venta_split_ratio")
@@ -390,8 +393,12 @@ class SettingsRepositoryImpl(
         preferences[PreferenceKeys.SHOW_EXTRA_PRICES_CHECADOR] ?: false
     }
 
-    override val lowResourceChecadorShaderFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[PreferenceKeys.LOW_RESOURCE_CHECADOR_SHADER] ?: false
+    override val useCustomChecadorBackgroundFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.USE_CUSTOM_CHECADOR_BACKGROUND] ?: false
+    }
+
+    override val checadorBackgroundPathFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.CHECADOR_BACKGROUND_PATH] ?: ""
     }
 
     override val useProductTableInCatalogFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -661,9 +668,20 @@ class SettingsRepositoryImpl(
         }
     }
 
-    override suspend fun setLowResourceChecadorShader(enabled: Boolean) {
+    override suspend fun setUseCustomChecadorBackground(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[PreferenceKeys.LOW_RESOURCE_CHECADOR_SHADER] = enabled
+            preferences[PreferenceKeys.USE_CUSTOM_CHECADOR_BACKGROUND] = enabled
+        }
+    }
+
+    override suspend fun setChecadorBackgroundPath(path: String) {
+        dataStore.edit { preferences ->
+            val clean = path.trim()
+            if (clean.isEmpty()) {
+                preferences.remove(PreferenceKeys.CHECADOR_BACKGROUND_PATH)
+            } else {
+                preferences[PreferenceKeys.CHECADOR_BACKGROUND_PATH] = clean
+            }
         }
     }
 

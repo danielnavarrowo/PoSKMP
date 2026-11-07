@@ -318,6 +318,12 @@ actual fun pickSingleFile(
         try {
             val title = runBlocking { getString(Res.string.select_file_dialog_title) }
             val dialog = FileDialog(null as Frame?, title, FileDialog.LOAD)
+            if (allowedExtensions.isNotEmpty()) {
+                dialog.setFilenameFilter { _, name ->
+                    val ext = name.substringAfterLast('.', "").lowercase()
+                    allowedExtensions.any { it.equals(ext, ignoreCase = true) }
+                }
+            }
             dialog.isVisible = true
             val file = dialog.file
             val directory = dialog.directory
@@ -376,7 +382,8 @@ actual fun pickDirectory(
                 dialogTitle = runBlocking { getString(Res.string.change_backup_path_dialog_title) }
                 isAcceptAllFileFilterUsed = false
                 val initFile = File(initialPath).takeIf { it.exists() }
-                if (initFile != null) {
+                    ?.let { if (it.isDirectory) it else it.parentFile }
+                if (initFile != null && initFile.exists()) {
                     currentDirectory = initFile
                     selectedFile = initFile
                 }

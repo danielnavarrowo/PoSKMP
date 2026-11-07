@@ -209,7 +209,6 @@ class VentaPricingReactivityAndReceiptTest {
         override val defaultScreenFlow: Flow<Screen> = flowOf(Screen.VENTA)
         override val isChecadorDialogFlow: Flow<Boolean> = flowOf(false)
         override val showExtraPricesChecadorFlow: Flow<Boolean> = flowOf(false)
-        override val lowResourceChecadorShaderFlow: Flow<Boolean> = flowOf(false)
         override val useProductTableInCatalogFlow: Flow<Boolean> = flowOf(false)
         override val swapVentaLayoutOrderFlow: Flow<Boolean> = flowOf(false)
         override val ventaSplitRatioFlow: Flow<Float> = flowOf(0.5f)
@@ -260,7 +259,6 @@ class VentaPricingReactivityAndReceiptTest {
         override suspend fun setDefaultScreen(screen: Screen) {}
         override suspend fun setIsChecadorDialog(isDialog: Boolean) {}
         override suspend fun setShowExtraPricesChecador(show: Boolean) {}
-        override suspend fun setLowResourceChecadorShader(enabled: Boolean) {}
         override suspend fun setUseProductTableInCatalog(enabled: Boolean) {}
         override suspend fun setSwapVentaLayoutOrder(swap: Boolean) {}
         override suspend fun setVentaSplitRatio(ratio: Float) {}

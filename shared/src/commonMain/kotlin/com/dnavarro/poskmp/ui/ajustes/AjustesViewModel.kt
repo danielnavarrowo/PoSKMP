@@ -62,7 +62,8 @@ private data class GeneralBehaviorState(
     val defaultScreen: Screen,
     val isChecadorDialog: Boolean,
     val showExtraPricesChecador: Boolean,
-    val lowResourceChecadorShader: Boolean,
+    val useCustomChecadorBackground: Boolean,
+    val checadorBackgroundPath: String,
     val useProductTableInCatalog: Boolean,
     val swapVentaLayoutOrder: Boolean,
     val beepOnBarcodeScan: Boolean
@@ -157,25 +158,28 @@ class AjustesViewModel(
                 Triple(defaultScreen, isChecadorDialog, showExtraPricesChecador)
             },
             combine(
-                repository.lowResourceChecadorShaderFlow,
+                repository.useCustomChecadorBackgroundFlow,
+                repository.checadorBackgroundPathFlow,
                 repository.useProductTableInCatalogFlow,
                 repository.swapVentaLayoutOrderFlow,
                 repository.beepOnBarcodeScanFlow
-            ) { lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan ->
-                Tuple4(
-                    lowResourceChecadorShader,
+            ) { useCustomChecadorBackground, checadorBackgroundPath, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan ->
+                Tuple5(
+                    useCustomChecadorBackground,
+                    checadorBackgroundPath,
                     useProductTableInCatalog,
                     swapVentaLayoutOrder,
                     beepOnBarcodeScan
                 )
             }
         ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador),
-            (lowResourceChecadorShader, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan) ->
+            (useCustomChecadorBackground, checadorBackgroundPath, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan) ->
             GeneralBehaviorState(
                 defaultScreen = defaultScreen,
                 isChecadorDialog = isChecadorDialog,
                 showExtraPricesChecador = showExtraPricesChecador,
-                lowResourceChecadorShader = lowResourceChecadorShader,
+                useCustomChecadorBackground = useCustomChecadorBackground,
+                checadorBackgroundPath = checadorBackgroundPath,
                 useProductTableInCatalog = useProductTableInCatalog,
                 swapVentaLayoutOrder = swapVentaLayoutOrder,
                 beepOnBarcodeScan = beepOnBarcodeScan
@@ -300,7 +304,8 @@ class AjustesViewModel(
             defaultScreen = generalBehaviorState.defaultScreen,
             isChecadorDialog = generalBehaviorState.isChecadorDialog,
             showExtraPricesChecador = generalBehaviorState.showExtraPricesChecador,
-            lowResourceChecadorShader = generalBehaviorState.lowResourceChecadorShader,
+            useCustomChecadorBackground = generalBehaviorState.useCustomChecadorBackground,
+            checadorBackgroundPath = generalBehaviorState.checadorBackgroundPath,
             useProductTableInCatalog = generalBehaviorState.useProductTableInCatalog,
             swapVentaLayoutOrder = generalBehaviorState.swapVentaLayoutOrder,
             beepOnBarcodeScan = generalBehaviorState.beepOnBarcodeScan,
@@ -371,7 +376,8 @@ class AjustesViewModel(
             defaultScreen = behaviorState.defaultScreen,
             isChecadorDialog = behaviorState.isChecadorDialog,
             showExtraPricesChecador = behaviorState.showExtraPricesChecador,
-            lowResourceChecadorShader = behaviorState.lowResourceChecadorShader,
+            useCustomChecadorBackground = behaviorState.useCustomChecadorBackground,
+            checadorBackgroundPath = behaviorState.checadorBackgroundPath,
             useProductTableInCatalog = behaviorState.useProductTableInCatalog,
             swapVentaLayoutOrder = behaviorState.swapVentaLayoutOrder,
             beepOnBarcodeScan = behaviorState.beepOnBarcodeScan,
@@ -552,9 +558,15 @@ class AjustesViewModel(
         }
     }
 
-    fun setLowResourceChecadorShader(enabled: Boolean) {
+    fun setUseCustomChecadorBackground(enabled: Boolean) {
         viewModelScope.launch {
-            repository.setLowResourceChecadorShader(enabled)
+            repository.setUseCustomChecadorBackground(enabled)
+        }
+    }
+
+    fun setChecadorBackgroundPath(path: String) {
+        viewModelScope.launch {
+            repository.setChecadorBackgroundPath(path)
         }
     }
 

@@ -1,5 +1,8 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -9,21 +12,31 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asComposeShader
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.layout.ContentScale
 import com.dnavarro.poskmp.data.SettingsRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Image as SkiaImage
 import org.jetbrains.skia.RuntimeEffect
 import org.jetbrains.skia.RuntimeShaderBuilder
 import org.jetbrains.skia.Shader
 import org.koin.compose.koinInject
+import java.io.File
 import java.time.LocalDate
+import javax.imageio.ImageIO
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -315,72 +328,116 @@ vec4 main(vec2 fragCoord) {
 }
 """
 
-internal const val CHECADOR_SKSL_LIGHT_SHADER = """
-uniform float2 uResolution;
-uniform float uTime;
-uniform vec3 uColor1;
-uniform vec3 uColor2;
-uniform vec3 uColor3;
-uniform vec3 uColor4;
+private val SUPPORTED_IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "webp", "bmp", "gif")
 
-const float uDriftSpeed = 0.10;
+internal fun getDailyChecadorImageFile(
+    basePath: String,
+    date: LocalDate = LocalDate.now()
+): File? {
+    val trimmed = basePath.trim()
+    if (trimmed.isEmpty()) return null
+    val target = File(trimmed)
+    if (!target.exists()) return null
 
-vec4 main(vec2 fragCoord) {
-    vec3 c0 = uColor1;
-    vec3 c1 = uColor2;
-    vec3 c2 = uColor3;
-    vec3 c3 = uColor4;
+    if (target.isFile) {
+        return target.takeIf { it.extension.lowercase() in SUPPORTED_IMAGE_EXTENSIONS }
+    }
 
-    vec2 uv = fragCoord / uResolution;
-    float aspect = uResolution.x / uResolution.y;
-    vec2 pos = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
+    if (target.isDirectory) {
+        val imageFiles = target.listFiles()
+            ?.filter { it.isFile && it.extension.lowercase() in SUPPORTED_IMAGE_EXTENSIONS }
+            ?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            ?: emptyList()
 
-    float t = uTime * uDriftSpeed;
+        if (imageFiles.isEmpty()) return null
+        if (imageFiles.size == 1) return imageFiles[0]
 
-    // Fast analytic sine warp without FBM or noise loops
-    pos += vec2(sin(pos.y * 3.0 + t), cos(pos.x * 3.0 + t * 0.7)) * 0.08;
+        val epochDay = date.toEpochDay()
+        val size = imageFiles.size
+        val cycle = Math.floorDiv(epochDay, size.toLong())
+        val pos = Math.floorMod(epochDay, size.toLong()).toInt()
+        val cyclePermutation = getCyclePermutation(cycle, size)
+        return imageFiles[cyclePermutation[pos]]
+    }
 
-    // 4 moving poles
-    vec2 p0 = vec2(-0.40,  0.30) + vec2(sin(t * 0.9), cos(t * 1.1)) * 0.35;
-    vec2 p1 = vec2( 0.40,  0.25) + vec2(sin(t * 0.7 + 2.0), cos(t * 1.3)) * 0.35;
-    vec2 p2 = vec2(-0.20, -0.35) + vec2(sin(t * 1.2 + 4.0), cos(t * 0.8)) * 0.35;
-    vec2 p3 = vec2( 0.35, -0.25) + vec2(sin(t * 0.8 + 5.0), cos(t * 1.0)) * 0.35;
-
-    // Fast squared-distance inverse falloffs (no exp or pow)
-    vec2 d0 = pos - p0;
-    vec2 d1 = pos - p1;
-    vec2 d2 = pos - p2;
-    vec2 d3 = pos - p3;
-
-    float w0 = 1.0 / (0.16 + dot(d0, d0));
-    float w1 = 1.0 / (0.16 + dot(d1, d1));
-    float w2 = 1.0 / (0.16 + dot(d2, d2));
-    float w3 = 1.0 / (0.16 + dot(d3, d3));
-    float wsum = w0 + w1 + w2 + w3 + 0.001;
-
-    vec3 col = (w0 * c0 + w1 * c1 + w2 * c2 + w3 * c3) / wsum;
-
-    // Fast soft contrast
-    col = col * col * (3.0 - 2.0 * col);
-
-    return vec4(col, 1.0);
+    return null
 }
-"""
+
+private data class LoadedChecadorImage(
+    val bitmap: ImageBitmap,
+    val isMainlyLight: Boolean
+)
+
+/**
+ * Samples the image on a grid and computes average perceived luminance (ITU-R BT.709).
+ * Returns true if the image is predominantly light (luminance >= 0.5).
+ */
+internal fun isImageMainlyLight(bitmap: ImageBitmap): Boolean {
+    return try {
+        val pixelMap = bitmap.toPixelMap()
+        val width = pixelMap.width
+        val height = pixelMap.height
+        if (width <= 0 || height <= 0) return true
+
+        val stepX = (width / 32).coerceAtLeast(1)
+        val stepY = (height / 32).coerceAtLeast(1)
+        var totalLuminance = 0.0
+        var sampleCount = 0
+
+        var y = 0
+        while (y < height) {
+            var x = 0
+            while (x < width) {
+                val color = pixelMap[x, y]
+                val alpha = color.alpha.toDouble()
+                val r = color.red * alpha + (1.0 - alpha)
+                val g = color.green * alpha + (1.0 - alpha)
+                val b = color.blue * alpha + (1.0 - alpha)
+                val luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                totalLuminance += luminance
+                sampleCount++
+                x += stepX
+            }
+            y += stepY
+        }
+
+        val averageLuminance = if (sampleCount > 0) totalLuminance / sampleCount else 0.5
+        averageLuminance >= 0.5
+    } catch (_: Exception) {
+        true
+    }
+}
+
+private fun loadImageBitmapFromFile(file: File): LoadedChecadorImage? {
+    val bitmap = try {
+        val bytes = file.readBytes()
+        SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
+    } catch (_: Exception) {
+        try {
+            ImageIO.read(file)?.toComposeImageBitmap()
+        } catch (_: Exception) {
+            null
+        }
+    } ?: return null
+
+    return LoadedChecadorImage(
+        bitmap = bitmap,
+        isMainlyLight = isImageMainlyLight(bitmap)
+    )
+}
 
 private val standardRuntimeEffect by lazy {
     RuntimeEffect.makeForShader(CHECADOR_SKSL_SHADER)
 }
 
-private val lightRuntimeEffect by lazy {
-    RuntimeEffect.makeForShader(CHECADOR_SKSL_LIGHT_SHADER)
-}
-
 @Composable
 actual fun ChecadorAnimatedBackground(
+    onForegroundColorChanged: (Color) -> Unit,
     modifier: Modifier
 ) {
     val settingsRepository = koinInject<SettingsRepository>()
-    val isLowResource by settingsRepository.lowResourceChecadorShaderFlow.collectAsState(initial = false)
+    val useCustomBackground by settingsRepository.useCustomChecadorBackgroundFlow.collectAsState(initial = false)
+    val customBackgroundPath by settingsRepository.checadorBackgroundPathFlow.collectAsState(initial = "")
 
     var time by remember { mutableFloatStateOf(0f) }
     var currentDay by remember { mutableLongStateOf(LocalDate.now().toEpochDay()) }
@@ -388,57 +445,119 @@ actual fun ChecadorAnimatedBackground(
         getDailyChecadorTheme(LocalDate.ofEpochDay(currentDay))
     }
 
-    // Refresh rate: 100ms (~10 FPS) in standard mode, 200ms (~5 FPS) in low-resource mode to minimize CPU/GPU/battery usage
-    LaunchedEffect(isLowResource) {
-        val delayDuration = if (isLowResource) 200L.milliseconds else 100L.milliseconds
-        val timeStep = if (isLowResource) 0.20f else 0.10f
-        while (isActive) {
-            delay(delayDuration)
-            time += timeStep
-            val today = LocalDate.now().toEpochDay()
-            if (today != currentDay) {
-                currentDay = today
+    val loadedCustomImage by produceState<LoadedChecadorImage?>(
+        initialValue = null,
+        key1 = useCustomBackground,
+        key2 = customBackgroundPath,
+        key3 = currentDay
+    ) {
+        value = if (useCustomBackground && customBackgroundPath.isNotBlank()) {
+            withContext(Dispatchers.IO) {
+                val file = getDailyChecadorImageFile(
+                    basePath = customBackgroundPath,
+                    date = LocalDate.ofEpochDay(currentDay)
+                )
+                file?.let { loadImageBitmapFromFile(it) }
             }
+        } else {
+            null
         }
     }
 
-    val effect = if (isLowResource) lightRuntimeEffect else standardRuntimeEffect
-    val builder = remember(effect) {
-        RuntimeShaderBuilder(effect)
+    val showingCustomImage = useCustomBackground && loadedCustomImage != null
+    val isLightBackground = loadedCustomImage?.isMainlyLight ?: true
+    val targetForegroundColor = if (!showingCustomImage) {
+        Color.Black
+    } else if (isLightBackground) {
+        Color.Black
+    } else {
+        Color.White
     }
 
-    val paint = remember { Paint() }
-    val activeSkiaShader = remember { arrayOfNulls<Shader>(1) }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            paint.shader = null
-            activeSkiaShader[0]?.close()
-            activeSkiaShader[0] = null
-        }
+    LaunchedEffect(targetForegroundColor) {
+        onForegroundColorChanged(targetForegroundColor)
     }
 
-    Spacer(
-        modifier = modifier
-            .fillMaxSize()
-            .drawWithCache {
-                builder.uniform("uResolution", size.width, size.height)
-                builder.uniform("uColor1", currentTheme.color1.red, currentTheme.color1.green, currentTheme.color1.blue)
-                builder.uniform("uColor2", currentTheme.color2.red, currentTheme.color2.green, currentTheme.color2.blue)
-                builder.uniform("uColor3", currentTheme.color3.red, currentTheme.color3.green, currentTheme.color3.blue)
-                builder.uniform("uColor4", currentTheme.color4.red, currentTheme.color4.green, currentTheme.color4.blue)
-
-                onDrawBehind {
-                    if (size.width > 0f && size.height > 0f) {
-                        builder.uniform("uTime", time)
-                        val newShader = builder.makeShader()
-                        val previousShader = activeSkiaShader[0]
-                        activeSkiaShader[0] = newShader
-                        paint.shader = newShader.asComposeShader()
-                        previousShader?.close()
-                        drawContext.canvas.drawRect(0f, 0f, size.width, size.height, paint)
-                    }
+    LaunchedEffect(showingCustomImage) {
+        if (showingCustomImage) {
+            while (isActive) {
+                delay(60_000L.milliseconds)
+                val today = LocalDate.now().toEpochDay()
+                if (today != currentDay) {
+                    currentDay = today
                 }
             }
-    )
+        } else {
+            while (isActive) {
+                delay(100L.milliseconds)
+                time += 0.10f
+                val today = LocalDate.now().toEpochDay()
+                if (today != currentDay) {
+                    currentDay = today
+                }
+            }
+        }
+    }
+
+    if (showingCustomImage) {
+        val loaded = loadedCustomImage!!
+        val overlayColor = if (loaded.isMainlyLight) {
+            Color.White.copy(alpha = 0.15f)
+        } else {
+            Color.Black.copy(alpha = 0.15f)
+        }
+        Box(modifier = modifier.fillMaxSize()) {
+            Image(
+                bitmap = loaded.bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            // Adaptive translucent scrim: light overlay for light images (dark text), dark overlay for dark images (light text)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(overlayColor)
+            )
+        }
+    } else {
+        val builder = remember {
+            RuntimeShaderBuilder(standardRuntimeEffect)
+        }
+
+        val paint = remember { Paint() }
+        val activeSkiaShader = remember { arrayOfNulls<Shader>(1) }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                paint.shader = null
+                activeSkiaShader[0]?.close()
+                activeSkiaShader[0] = null
+            }
+        }
+
+        Spacer(
+            modifier = modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    builder.uniform("uResolution", size.width, size.height)
+                    builder.uniform("uColor1", currentTheme.color1.red, currentTheme.color1.green, currentTheme.color1.blue)
+                    builder.uniform("uColor2", currentTheme.color2.red, currentTheme.color2.green, currentTheme.color2.blue)
+                    builder.uniform("uColor3", currentTheme.color3.red, currentTheme.color3.green, currentTheme.color3.blue)
+                    builder.uniform("uColor4", currentTheme.color4.red, currentTheme.color4.green, currentTheme.color4.blue)
+
+                    onDrawBehind {
+                        if (size.width > 0f && size.height > 0f) {
+                            builder.uniform("uTime", time)
+                            val newShader = builder.makeShader()
+                            val previousShader = activeSkiaShader[0]
+                            activeSkiaShader[0] = newShader
+                            paint.shader = newShader.asComposeShader()
+                            previousShader?.close()
+                            drawContext.canvas.drawRect(0f, 0f, size.width, size.height, paint)
+                        }
+                    }
+                }
+        )
+    }
 }
