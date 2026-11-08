@@ -449,7 +449,7 @@ fun AjustesScreen(
         directive = navigator.scaffoldDirective,
         scaffoldState = navigator.scaffoldState,
         listPane = {
-            val listScrollBehavior = if (!isListAndDetailVisible || isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+            val listScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
             LaunchedEffect(scrollToTopTrigger) {
                 if (scrollToTopTrigger > 0) {
@@ -460,12 +460,10 @@ fun AjustesScreen(
                     } else if (navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.Detail) {
                         navigator.navigateTo(ListDetailPaneScaffoldRole.List)
                     }
-                    if (listScrollBehavior != null) {
-                        try {
-                            listScrollBehavior.state.heightOffset = 0f
-                            listScrollBehavior.state.contentOffset = 0f
-                        } catch (_: Exception) {}
-                    }
+                    try {
+                        listScrollBehavior.state.heightOffset = 0f
+                        listScrollBehavior.state.contentOffset = 0f
+                    } catch (_: Exception) {}
                     try {
                         listScrollState.animateScrollTo(0)
                     } catch (_: Exception) {}
@@ -480,8 +478,7 @@ fun AjustesScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
-                            if (listScrollBehavior != null) Modifier.nestedScroll(listScrollBehavior.nestedScrollConnection)
-                            else Modifier
+                            Modifier.nestedScroll(listScrollBehavior.nestedScrollConnection)
                         ),
                     topBar = {
                         TopAppBar(

@@ -270,7 +270,6 @@ val ventasNavSavedStateConfig = SavedStateConfiguration {
 fun VentasScreen(
     viewModel: VentasViewModel,
     modifier: Modifier = Modifier,
-    isCompact: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
     scrollToTopTrigger: Int = 0
 ) {
@@ -283,7 +282,6 @@ fun VentasScreen(
 
     VentasScreen(
         state = state,
-        isCompact = isCompact,
         onRefresh = { viewModel.refreshSync() },
         onSelectPeriod = { viewModel.selectPeriod(it) },
         onSetCustomDateRange = { start, end -> viewModel.setCustomDateRange(start, end) },
@@ -311,7 +309,6 @@ fun VentasScreen(
 @Composable
 fun VentasScreen(
     state: VentasUiState,
-    isCompact: Boolean = false,
     onRefresh: () -> Unit = {},
     onSelectPeriod: (SalesPeriodPreset) -> Unit,
     onSetCustomDateRange: (startDateMillis: Long, endDateMillis: Long) -> Unit,
@@ -437,10 +434,10 @@ fun VentasScreen(
                 )
             }
             entry<VentasSubRoute.Main> {
-                val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+                val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
                 LaunchedEffect(scrollToTopTrigger) {
-                    if (scrollToTopTrigger > 0 && scrollBehavior != null) {
+                    if (scrollToTopTrigger > 0) {
                         try {
                             scrollBehavior.state.heightOffset = 0f
                             scrollBehavior.state.contentOffset = 0f
@@ -482,8 +479,7 @@ fun VentasScreen(
                         modifier = modifier
                             .fillMaxSize()
                             .then(
-                                if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                                else Modifier
+                                Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                             )
                             .then(
                                 if (!isAndroid()) {

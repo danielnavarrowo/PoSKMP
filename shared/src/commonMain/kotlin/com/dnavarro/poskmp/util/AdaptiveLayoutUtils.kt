@@ -49,6 +49,10 @@ object AdaptiveBreakpoints {
     val VentaMinTicketWidth: Dp = 280.dp
     val VentaSplitterWidth: Dp = 10.dp
     val VentaTwoPaneMinWidth: Dp = VentaMinCatalogWidth + VentaMinTicketWidth + VentaSplitterWidth
+
+    // Catalog table column progressive disclosure thresholds
+    val CatalogTableShowPiecesMinWidth: Dp = 440.dp
+    val CatalogTableShowCategoryMinWidth: Dp = 560.dp
 }
 
 /**

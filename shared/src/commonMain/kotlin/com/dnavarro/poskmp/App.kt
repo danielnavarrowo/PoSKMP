@@ -1522,7 +1522,6 @@ fun App(
                                         entry<AppRoute.Ventas> {
                                             VentasScreen(
                                                 viewModel = koinViewModel<VentasViewModel>(),
-                                                isCompact = isScreenCompact,
                                                 scrollToTopTrigger = ventasScrollToTopTrigger,
                                                 onNavigateBack = null
                                             )

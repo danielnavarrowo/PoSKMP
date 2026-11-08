@@ -546,7 +546,7 @@ fun ProductosScreen(
         }
     }
 
-    val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
         topBar = {
@@ -851,8 +851,7 @@ fun ProductosScreen(
             modifier = modifier
                 .fillMaxSize()
                 .then(
-                    if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                    else Modifier
+                    Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                 )
                 .padding(horizontal = 16.dp)
                 .then(

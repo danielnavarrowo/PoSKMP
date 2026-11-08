@@ -337,7 +337,9 @@ fun ProductTableRow(
                         Text(
                             text = piecesText,
                             modifier = Modifier.weight(weight),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     ProductTableColumn.COSTO -> {
@@ -345,7 +347,9 @@ fun ProductTableRow(
                             text = "$${product.costo.toString().formatPrice()}",
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = googleFlexNumeric
+                            fontFamily = googleFlexNumeric,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     ProductTableColumn.MAYOREO -> {
@@ -353,7 +357,9 @@ fun ProductTableRow(
                             text = "$${product.precio_mayoreo.toString().formatPrice()}",
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = googleFlexNumeric
+                            fontFamily = googleFlexNumeric,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     ProductTableColumn.PRECIO -> {
@@ -367,7 +373,9 @@ fun ProductTableRow(
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium,
                             fontFamily = googleFlexNumeric,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     ProductTableColumn.DOMICILIO -> {
@@ -381,7 +389,9 @@ fun ProductTableRow(
                             modifier = Modifier.weight(weight),
                             style = MaterialTheme.typography.bodyMedium,
                             fontFamily = googleFlexNumeric,
-                            color = if (product.precio_delivery > 0.0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (product.precio_delivery > 0.0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     ProductTableColumn.MARGEN_VENTA -> {

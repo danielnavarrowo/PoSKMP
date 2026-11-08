@@ -329,15 +329,14 @@ fun ClientesContent(
         }
     }
 
-    val scrollBehavior = if (isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
                 .then(
-                    if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                    else Modifier
+                    Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
                 )
                 .then(
                     if (!isAndroid()) {
