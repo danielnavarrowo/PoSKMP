@@ -667,7 +667,7 @@ fun TicketSection(
                 Text(
                     "$${total.toString().formatPrice()}",
                     color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.displaySmall,
+                    style = if (isNarrow) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displayMedium,
                     fontFamily = googleFlexHero,
                     fontWeight = FontWeight.ExtraBold
                 )

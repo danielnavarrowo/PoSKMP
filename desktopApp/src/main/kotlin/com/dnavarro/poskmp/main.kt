@@ -96,7 +96,7 @@ fun main() {
 
     application {
         val windowState = rememberWindowState(
-            placement = WindowPlacement.Fullscreen
+            placement = WindowPlacement.Floating
         )
         var isClosing by remember { mutableStateOf(false) }
         var isExternalClose by remember { mutableStateOf(false) }

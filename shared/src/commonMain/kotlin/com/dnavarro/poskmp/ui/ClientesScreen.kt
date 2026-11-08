@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -79,6 +80,7 @@ import com.dnavarro.poskmp.ui.clientes.ClientesViewModel
 import com.dnavarro.poskmp.ui.clientes.CustomerFormDialog
 import com.dnavarro.poskmp.ui.clientes.RecordPaymentDialog
 import com.dnavarro.poskmp.ui.components.AppVerticalScrollbar
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.resetScroll
@@ -473,18 +475,47 @@ fun ClientesContent(
                     shape = MaterialTheme.shapes.extraLarge
                 )
 
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    val containerWidth = maxWidth
+                    val isTripleColumnKpi = containerWidth >= AdaptiveBreakpoints.TripleColumnKpiMinWidth
+                    val isDualColumnKpi = containerWidth >= AdaptiveBreakpoints.DualColumnKpiMinWidth
+
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Adaptive(minSize = 340.dp),
+                        columns = GridCells.Adaptive(minSize = 280.dp),
                         modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                         contentPadding = PaddingValues(bottom = if (isCompact) 88.dp else 128.dp)
                     ) {
                         // KPI Cards Grid (spans all columns)
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            if (isCompact) {
+                            if (isTripleColumnKpi) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    CustomerKpiCard(
+                                        title = stringResource(Res.string.kpi_total_customers),
+                                        value = "${state.debtSummary.totalClientes}",
+                                        subtitle = stringResource(Res.string.kpi_active_customers_count, state.debtSummary.totalClientes),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    CustomerKpiCard(
+                                        title = stringResource(Res.string.kpi_total_debt),
+                                        value = "$${state.debtSummary.totalDeudaAcumulada.toString().formatPrice()}",
+                                        subtitle = stringResource(Res.string.kpi_debt_accumulated),
+                                        isError = state.debtSummary.totalDeudaAcumulada > 0.0,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    CustomerKpiCard(
+                                        title = stringResource(Res.string.kpi_debtors_count),
+                                        value = "${state.debtSummary.clientesConDeuda}",
+                                        subtitle = stringResource(Res.string.kpi_debtors_stat, state.debtSummary.clientesConDeuda),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            } else if (isDualColumnKpi) {
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -515,28 +546,29 @@ fun ClientesContent(
                                     }
                                 }
                             } else {
-                                Row(
+                                // Ultra compact or high font scaling (< 420.dp): stack all 3 cards vertically to prevent debt number truncation
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     CustomerKpiCard(
                                         title = stringResource(Res.string.kpi_total_customers),
                                         value = "${state.debtSummary.totalClientes}",
                                         subtitle = stringResource(Res.string.kpi_active_customers_count, state.debtSummary.totalClientes),
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                     CustomerKpiCard(
                                         title = stringResource(Res.string.kpi_total_debt),
                                         value = "$${state.debtSummary.totalDeudaAcumulada.toString().formatPrice()}",
                                         subtitle = stringResource(Res.string.kpi_debt_accumulated),
                                         isError = state.debtSummary.totalDeudaAcumulada > 0.0,
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                     CustomerKpiCard(
                                         title = stringResource(Res.string.kpi_debtors_count),
                                         value = "${state.debtSummary.clientesConDeuda}",
                                         subtitle = stringResource(Res.string.kpi_debtors_stat, state.debtSummary.clientesConDeuda),
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             }

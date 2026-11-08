@@ -288,7 +288,7 @@
     <string name="export_success_title">Exportación Exitosa</string>
     <string name="export_error_title">Error al Exportar</string>
     <string name="export_success_message">Catálogo de productos exportado y guardado exitosamente.</string>
-    <string name="new_product_button">Nuevo Producto</string>
+    <string name="new_product_button">Nuevo</string>
     <string name="new_product_button_desktop">Nuevo Producto (F10)</string>
     <string name="no_products_registered">No hay productos registrados.</string>
     <string name="edit_desc">Editar</string>
@@ -847,7 +847,7 @@
     <string name="btn_cash_outflow">Salida</string>
     <string name="btn_cash_outflow_desktop">Salida de efectivo (F8)</string>
     <string name="btn_close_shift">Cerrar turno</string>
-    <string name="btn_close_shift_desktop">Cerrar turno (F9)</string>
+    <string name="btn_close_shift_desktop">Cerrar turno (F12)</string>
 
     <string name="cash_inflow_title">Entrada de Efectivo</string>
     <string name="cash_outflow_title">Salida de Efectivo</string>

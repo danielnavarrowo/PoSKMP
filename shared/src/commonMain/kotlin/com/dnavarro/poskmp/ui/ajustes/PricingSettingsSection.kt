@@ -4,9 +4,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -312,57 +314,115 @@ fun PricingSettingsSection(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = retailMarginText,
-                            onValueChange = { input ->
-                                if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                    retailMarginText = input
-                                    onDefaultRetailMarginChange(input.toDoubleOrNull() ?: 0.0)
-                                }
-                            },
-                            label = { Text(stringResource(Res.string.retail_margin_label)) },
-                            suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                            placeholder = { Text("0") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.weight(1f)
-                        )
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val isNarrow = maxWidth < AdaptiveBreakpoints.ConnectedButtonsRowMinWidth
+                        if (isNarrow) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = retailMarginText,
+                                    onValueChange = { input ->
+                                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                            retailMarginText = input
+                                            onDefaultRetailMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                        }
+                                    },
+                                    label = { Text(stringResource(Res.string.retail_margin_label)) },
+                                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                    placeholder = { Text("0") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
 
-                        OutlinedTextField(
-                            value = wholesaleMarginText,
-                            onValueChange = { input ->
-                                if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                    wholesaleMarginText = input
-                                    onDefaultWholesaleMarginChange(input.toDoubleOrNull() ?: 0.0)
-                                }
-                            },
-                            label = { Text(stringResource(Res.string.wholesale_margin_label)) },
-                            suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                            placeholder = { Text("0") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.weight(1f)
-                        )
+                                OutlinedTextField(
+                                    value = wholesaleMarginText,
+                                    onValueChange = { input ->
+                                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                            wholesaleMarginText = input
+                                            onDefaultWholesaleMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                        }
+                                    },
+                                    label = { Text(stringResource(Res.string.wholesale_margin_label)) },
+                                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                    placeholder = { Text("0") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
 
-                        OutlinedTextField(
-                            value = deliveryMarginText,
-                            onValueChange = { input ->
-                                if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                    deliveryMarginText = input
-                                    onDefaultDeliveryMarginChange(input.toDoubleOrNull() ?: 0.0)
-                                }
-                            },
-                            label = { Text(stringResource(Res.string.delivery_margin_label)) },
-                            suffix = { Text("%", fontWeight = FontWeight.Bold) },
-                            placeholder = { Text("0") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.weight(1f)
-                        )
+                                OutlinedTextField(
+                                    value = deliveryMarginText,
+                                    onValueChange = { input ->
+                                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                            deliveryMarginText = input
+                                            onDefaultDeliveryMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                        }
+                                    },
+                                    label = { Text(stringResource(Res.string.delivery_margin_label)) },
+                                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                    placeholder = { Text("0") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = retailMarginText,
+                                    onValueChange = { input ->
+                                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                            retailMarginText = input
+                                            onDefaultRetailMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                        }
+                                    },
+                                    label = { Text(stringResource(Res.string.retail_margin_label)) },
+                                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                    placeholder = { Text("0") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                OutlinedTextField(
+                                    value = wholesaleMarginText,
+                                    onValueChange = { input ->
+                                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                            wholesaleMarginText = input
+                                            onDefaultWholesaleMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                        }
+                                    },
+                                    label = { Text(stringResource(Res.string.wholesale_margin_label)) },
+                                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                    placeholder = { Text("0") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                OutlinedTextField(
+                                    value = deliveryMarginText,
+                                    onValueChange = { input ->
+                                        if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                            deliveryMarginText = input
+                                            onDefaultDeliveryMarginChange(input.toDoubleOrNull() ?: 0.0)
+                                        }
+                                    },
+                                    label = { Text(stringResource(Res.string.delivery_margin_label)) },
+                                    suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                                    placeholder = { Text("0") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
                 }
             }

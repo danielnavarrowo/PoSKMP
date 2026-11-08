@@ -653,7 +653,6 @@ fun App(
                         )
                 ) {
                     val appMaxWidth = maxWidth
-                    val isCompact = isCompactWidth(appMaxWidth)
                     val isToolbarNavigation = navigationSuiteTypeForWidth(appMaxWidth) == NavigationSuiteType.None
 
                     val toolbarItems = remember(
@@ -1450,12 +1449,16 @@ fun App(
                                 }
                             }
                         ) { contentPadding ->
-                            Box(
+                            BoxWithConstraints(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(contentPadding)
                                     .consumeWindowInsets(contentPadding)
                             ) {
+                                val contentContainerWidth = maxWidth
+                                val isScreenCompact = isCompactWidth(contentContainerWidth)
+                                val isAjustesCompact = isToolbarNavigation || isScreenCompact
+
                                 NavDisplay(
                                     backStack = backStack,
                                     onBack = {
@@ -1484,7 +1487,7 @@ fun App(
                                         entry<AppRoute.Venta> {
                                             VentaScreen(
                                                 viewModel = ventaViewModel,
-                                                isCompact = isCompact,
+                                                isCompact = isScreenCompact,
                                                 refocusTrigger = ventaRefocusTrigger,
                                                 onNavigateToSettings = {
                                                     navigateTo(AppRoute.Ajustes(category = com.dnavarro.poskmp.ui.ajustes.AjustesCategory.CAJEROS))
@@ -1495,7 +1498,7 @@ fun App(
                                         entry<AppRoute.Productos> {
                                             ProductosScreen(
                                                 viewModel = koinViewModel<ProductosViewModel>(),
-                                                isCompact = isCompact,
+                                                isCompact = isScreenCompact,
                                                 refocusTrigger = productosRefocusTrigger,
                                                 searchFocusTrigger = productosSearchFocusTrigger,
                                                 onSearchFocusHandled = { productosSearchFocusTrigger = 0 }
@@ -1504,7 +1507,7 @@ fun App(
                                         entry<AppRoute.Clientes> {
                                             ClientesScreen(
                                                 viewModel = koinViewModel<ClientesViewModel>(),
-                                                isCompact = isCompact,
+                                                isCompact = isScreenCompact,
                                                 refocusTrigger = clientesRefocusTrigger,
                                                 onNavigateBack = if (isToolbarNavigation) {
                                                     {
@@ -1519,7 +1522,7 @@ fun App(
                                         entry<AppRoute.Ventas> {
                                             VentasScreen(
                                                 viewModel = koinViewModel<VentasViewModel>(),
-                                                isCompact = isCompact,
+                                                isCompact = isScreenCompact,
                                                 scrollToTopTrigger = ventasScrollToTopTrigger,
                                                 onNavigateBack = null
                                             )
@@ -1527,7 +1530,7 @@ fun App(
                                         entry<AppRoute.Ajustes> { route ->
                                             AjustesScreen(
                                                 viewModel = ajustesViewModel,
-                                                isCompact = isToolbarNavigation,
+                                                isCompact = isAjustesCompact,
                                                 initialCategory = route.category,
                                                 scrollToTopTrigger = ajustesScrollToTopTrigger,
                                                 onNavigateToClientes = {
@@ -1554,7 +1557,7 @@ fun App(
                                             if (isChecadorDialog && !isCheckerOnly) {
                                                 VentaScreen(
                                                     viewModel = ventaViewModel,
-                                                    isCompact = isCompact,
+                                                    isCompact = isScreenCompact,
                                                     refocusTrigger = ventaRefocusTrigger
                                                 )
                                             } else {

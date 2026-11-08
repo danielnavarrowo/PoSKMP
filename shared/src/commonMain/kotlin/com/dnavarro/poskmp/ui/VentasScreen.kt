@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -127,6 +128,7 @@ import com.dnavarro.poskmp.ui.ventas.ProductosVendidosScreen
 import com.dnavarro.poskmp.ui.ventas.SalesPeriodPreset
 import com.dnavarro.poskmp.ui.ventas.VentasUiState
 import com.dnavarro.poskmp.ui.ventas.VentasViewModel
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.formatShiftInterval
@@ -491,7 +493,7 @@ fun VentasScreen(
                                         .onPreviewKeyEvent { keyEvent ->
                                             keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
 
-                                                Key.F9 -> {
+                                                Key.F12 -> {
                                                     if (state.activeShift != null) {
                                                         onOpenCloseShiftDialog()
                                                         true
@@ -520,14 +522,24 @@ fun VentasScreen(
                                 .fillMaxSize()
                                 .padding(top = innerPadding.calculateTopPadding())
                         ) {
-                            LazyColumn(
-                                state = mainListState,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(bottom = 24.dp)
-                            ) {
+                            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                                val containerWidth = maxWidth
+                                val canFitSingleRowFilters = containerWidth >= AdaptiveBreakpoints.FilterBarSingleRowMinWidth
+                                val isTripleColumnKpi = containerWidth >= AdaptiveBreakpoints.TripleColumnKpiMinWidth
+                                val isDualColumnKpi = containerWidth >= AdaptiveBreakpoints.DualColumnKpiMinWidth
+                                val isWideComparison = containerWidth >= AdaptiveBreakpoints.MultiColumnContentMinWidth
+                                val canFitSideBySideCharts = containerWidth >= AdaptiveBreakpoints.PaymentAndCategoryRowMinWidth
+                                val isShiftActionsRow = containerWidth >= AdaptiveBreakpoints.ShiftActionsRowMinWidth
+                                val isNavButtonsRow = containerWidth >= AdaptiveBreakpoints.NavButtonsRowMinWidth
+
+                                LazyColumn(
+                                    state = mainListState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    contentPadding = PaddingValues(bottom = 24.dp)
+                                ) {
                 // Banner de Éxito / Feedback de Acciones de Turno
                 if (state.shiftActionSuccess != null) {
                     item {
@@ -594,58 +606,120 @@ fun VentasScreen(
                                 }
 
                                 // 3 Action Buttons: Entrada, Salida, Cerrar Turno
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    androidx.compose.material3.FilledTonalButton(
-                                        onClick = onOpenInflowDialog,
-                                        enabled = true,
-                                        shape = MaterialTheme.shapes.small,
-                                        modifier = Modifier.weight(1f)
+                                if (isShiftActionsRow) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
-                                            else stringResource(Res.string.btn_cash_inflow_desktop),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
-                                    }
+                                        androidx.compose.material3.FilledTonalButton(
+                                            onClick = onOpenInflowDialog,
+                                            enabled = true,
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
+                                                else stringResource(Res.string.btn_cash_inflow_desktop),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
 
-                                    androidx.compose.material3.FilledTonalButton(
-                                        onClick = onOpenOutflowDialog,
-                                        enabled = true,
-                                        shape = MaterialTheme.shapes.small,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text(
-                                            text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
-                                            else stringResource(Res.string.btn_cash_outflow_desktop),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
-                                    }
+                                        androidx.compose.material3.FilledTonalButton(
+                                            onClick = onOpenOutflowDialog,
+                                            enabled = true,
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
+                                                else stringResource(Res.string.btn_cash_outflow_desktop),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
 
-                                    androidx.compose.material3.Button(
-                                        onClick = onOpenCloseShiftDialog,
-                                        enabled = true,
-                                        shape = MaterialTheme.shapes.small,
-                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                        ),
-                                        modifier = Modifier.weight(1f)
+                                        androidx.compose.material3.Button(
+                                            onClick = onOpenCloseShiftDialog,
+                                            enabled = true,
+                                            shape = MaterialTheme.shapes.small,
+                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
+                                                else stringResource(Res.string.btn_close_shift_desktop),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Text(
-                                            text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
-                                            else stringResource(Res.string.btn_close_shift_desktop),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
+                                        androidx.compose.material3.FilledTonalButton(
+                                            onClick = onOpenInflowDialog,
+                                            enabled = true,
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
+                                                else stringResource(Res.string.btn_cash_inflow_desktop),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        androidx.compose.material3.FilledTonalButton(
+                                            onClick = onOpenOutflowDialog,
+                                            enabled = true,
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
+                                                else stringResource(Res.string.btn_cash_outflow_desktop),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        androidx.compose.material3.Button(
+                                            onClick = onOpenCloseShiftDialog,
+                                            enabled = true,
+                                            shape = MaterialTheme.shapes.small,
+                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
+                                                else stringResource(Res.string.btn_close_shift_desktop),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -656,8 +730,8 @@ fun VentasScreen(
 
                 // Period Filter Selector
                 item {
-                    if (isCompact) {
-                        // Layout de 2 filas para dispositivos compactos
+                    if (!canFitSingleRowFilters) {
+                        // Layout de 2 filas para cuando la anchura no es suficiente para 1 fila
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -666,7 +740,9 @@ fun VentasScreen(
                                 shifts = state.shiftsForSelectedPeriod,
                                 selectedShiftId = state.selectedShiftId,
                                 onSelectShiftFilter = onSelectShiftFilter,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .widthIn(max = 500.dp)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Row(
@@ -689,7 +765,7 @@ fun VentasScreen(
                             }
                         }
                     } else {
-                        // Layout de 1 sola fila cuando hay suficiente anchura
+                        // Layout de 1 sola fila cuando hay suficiente anchura (>= 840.dp)
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -706,7 +782,7 @@ fun VentasScreen(
                                         .weight(1f, fill = false)
                                         .widthIn(min = 220.dp, max = 360.dp)
                                 )
-                                Spacer(modifier = Modifier.width(16.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column(
                                     horizontalAlignment = Alignment.End,
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -729,7 +805,7 @@ fun VentasScreen(
                 }
 
                 item {
-                    if (isCompact) {
+                    if (!isNavButtonsRow) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -786,7 +862,35 @@ fun VentasScreen(
 
                 // KPI Summary Cards Grid
                 item {
-                    if (isCompact) {
+                    if (isTripleColumnKpi) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            KpiCard(
+                                title = stringResource(Res.string.kpi_total_sales),
+                                value = "$${state.summary.totalVentas.toString().formatPrice()}",
+                                subtitle = if (state.summary.totalSinDescuento > state.summary.totalVentas) {
+                                    stringResource(Res.string.kpi_without_discount, state.summary.totalSinDescuento.toString().formatPrice())
+                                } else stringResource(Res.string.kpi_gross_total),
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            KpiCard(
+                                title = stringResource(Res.string.kpi_net_profit),
+                                value = "$${state.summary.totalGanancia.toString().formatPrice()}",
+                                subtitle = stringResource(Res.string.kpi_margin, state.summary.porcentajeGanancia.toString().formatPrice()),
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            KpiCard(
+                                title = stringResource(Res.string.kpi_issued_tickets),
+                                value = formatWithThousandsSeparator(state.summary.totalTicketCount.toString()),
+                                subtitle = stringResource(Res.string.kpi_average_ticket, state.summary.promedioTicket.toString().formatPrice()),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else if (isDualColumnKpi) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -820,9 +924,10 @@ fun VentasScreen(
                             }
                         }
                     } else {
-                        Row(
+                        // Ultra compact or high font scaling (< 420.dp): stack all 3 cards vertically to prevent number truncation
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             KpiCard(
                                 title = stringResource(Res.string.kpi_total_sales),
@@ -830,21 +935,21 @@ fun VentasScreen(
                                 subtitle = if (state.summary.totalSinDescuento > state.summary.totalVentas) {
                                     stringResource(Res.string.kpi_without_discount, state.summary.totalSinDescuento.toString().formatPrice())
                                 } else stringResource(Res.string.kpi_gross_total),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.fillMaxWidth()
                             )
 
                             KpiCard(
                                 title = stringResource(Res.string.kpi_net_profit),
                                 value = "$${state.summary.totalGanancia.toString().formatPrice()}",
                                 subtitle = stringResource(Res.string.kpi_margin, state.summary.porcentajeGanancia.toString().formatPrice()),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.fillMaxWidth()
                             )
 
                             KpiCard(
                                 title = stringResource(Res.string.kpi_issued_tickets),
                                 value = formatWithThousandsSeparator(state.summary.totalTicketCount.toString()),
                                 subtitle = stringResource(Res.string.kpi_average_ticket, state.summary.promedioTicket.toString().formatPrice()),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -860,7 +965,7 @@ fun VentasScreen(
 
                 // Payment Methods & Category Sales
                 item {
-                    if (isCompact) {
+                    if (!canFitSideBySideCharts) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -895,7 +1000,7 @@ fun VentasScreen(
                 item {
                     DeliveryVsLocalComparisonCard(
                         metric = state.deliveryComparison,
-                        isWide = !isCompact,
+                        isWide = isWideComparison,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -908,6 +1013,7 @@ fun VentasScreen(
                     .fillMaxHeight()
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             )
+        }
         }
         }
     }
@@ -1260,7 +1366,15 @@ private fun ShiftFilterDropdown(
             value = selectedShiftLabel,
             onValueChange = {},
             readOnly = true,
-            label = { Text(stringResource(Res.string.shift_filter_label)) },
+            singleLine = true,
+            maxLines = 1,
+            label = {
+                Text(
+                    text = stringResource(Res.string.shift_filter_label),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shiftDropdownExpanded) },
             leadingIcon = {
                 Icon(

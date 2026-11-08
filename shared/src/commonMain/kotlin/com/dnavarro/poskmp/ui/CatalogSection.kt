@@ -118,6 +118,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.theme.googleFlexHero
 import com.dnavarro.poskmp.ui.components.ProductSimpleCard
 import com.dnavarro.poskmp.ui.components.ProductTableHeaderRow
 import com.dnavarro.poskmp.ui.components.ProductTableRow
@@ -148,7 +149,6 @@ import poskmp.shared.generated.resources.favorite_desc
 import poskmp.shared.generated.resources.increase_desc
 import poskmp.shared.generated.resources.mark_as_favorite
 import poskmp.shared.generated.resources.modify
-import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_found
 import poskmp.shared.generated.resources.not_registered
 import poskmp.shared.generated.resources.not_registered_hotkey
@@ -826,7 +826,7 @@ fun CatalogSection(
                                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(140.dp)
+                                    .height(110.dp)
                                     .then(
                                         if (isHighlighted) Modifier.border(
                                             2.dp,
@@ -870,16 +870,6 @@ fun CatalogSection(
                                     ) {
                                         Column {
                                             Text(
-                                                text = product.categoria
-                                                    ?: stringResource(Res.string.no_category),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
                                                 text = product.nombre,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface,
@@ -903,18 +893,20 @@ fun CatalogSection(
                                                     text = "$${
                                                         displayPrice.toString().formatPrice()
                                                     } / Kg",
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    color = MaterialTheme.colorScheme.primary
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontFamily = googleFlexHero,
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                             } else {
                                                 Text(
                                                     text = "$${
                                                         displayPrice.toString().formatPrice()
                                                     }",
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    color = MaterialTheme.colorScheme.primary
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontFamily = googleFlexHero,
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                             }
                                         }
@@ -925,7 +917,7 @@ fun CatalogSection(
                                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                                             modifier = Modifier
-                                                .align(Alignment.TopEnd)
+                                                .align(Alignment.BottomEnd)
                                                 .padding(8.dp)
                                                 .clip(MaterialShapes.Cookie12Sided.toShape())
                                                 .size(24.dp)

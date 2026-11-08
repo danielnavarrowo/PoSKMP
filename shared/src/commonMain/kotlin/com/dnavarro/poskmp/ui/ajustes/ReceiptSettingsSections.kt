@@ -3,6 +3,7 @@ package com.dnavarro.poskmp.ui.ajustes
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -56,6 +57,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
+import com.dnavarro.poskmp.util.connectedToggleButtonShapes
 import com.dnavarro.poskmp.domain.model.PRINTER_SYSTEM_DIALOG_ID
 import com.dnavarro.poskmp.domain.model.ReceiptFontFamily
 import com.dnavarro.poskmp.domain.model.ReceiptItem
@@ -497,49 +500,58 @@ fun PrinterSettingsSection(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val fontOptions = listOf(
-                        Pair(ReceiptFontFamily.MONOSPACE, "Monoespaciada"),
-                        Pair(ReceiptFontFamily.GOOGLE_SANS_FLEX, "Google Sans Flex")
-                    )
-                    fontOptions.forEachIndexed { index, (fontOption, label) ->
-                        val isSelected = settings.fontFamily == fontOption
-                        ToggleButton(
-                            checked = isSelected,
-                            onCheckedChange = { onSettingsChange(settings.copy(fontFamily = fontOption)) },
-                            colors = ToggleButtonDefaults.colors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                fontOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                        ) {
+                val fontOptions = listOf(
+                    Pair(ReceiptFontFamily.MONOSPACE, "Monoespaciada"),
+                    Pair(ReceiptFontFamily.GOOGLE_SANS_FLEX, "Google Sans Flex")
+                )
+
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val isCompactWidth = maxWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth
+                    val rows = if (isCompactWidth) fontOptions.chunked(1) else listOf(fontOptions)
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                    ) {
+                        rows.forEach { rowOptions ->
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(
-                                    text = label,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = when (fontOption) {
-                                        ReceiptFontFamily.MONOSPACE -> FontFamily.Monospace
-                                        ReceiptFontFamily.GOOGLE_SANS_FLEX -> googleFlexBody
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                rowOptions.forEachIndexed { index, (fontOption, label) ->
+                                    val isSelected = settings.fontFamily == fontOption
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onSettingsChange(settings.copy(fontFamily = fontOption)) },
+                                        colors = ToggleButtonDefaults.colors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = connectedToggleButtonShapes(index, rowOptions.size)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontFamily = when (fontOption) {
+                                                    ReceiptFontFamily.MONOSPACE -> FontFamily.Monospace
+                                                    ReceiptFontFamily.GOOGLE_SANS_FLEX -> googleFlexBody
+                                                },
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

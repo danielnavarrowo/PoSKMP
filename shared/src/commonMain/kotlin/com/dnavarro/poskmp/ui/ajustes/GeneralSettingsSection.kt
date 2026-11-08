@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -42,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.ui.Screen
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
+import com.dnavarro.poskmp.util.connectedToggleButtonShapes
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.pickDirectory
 import com.dnavarro.poskmp.util.pickSingleFile
@@ -136,64 +139,78 @@ fun GeneralSettingsSection(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val options = listOf(
-                        Triple(
-                            Screen.VENTA,
-                            stringResource(Res.string.tab_venta),
-                            Res.drawable.point_of_sale
-                        ),
-                        Triple(
-                            Screen.PRODUCTOS,
-                            stringResource(Res.string.tab_productos),
-                            Res.drawable.products
-                        ),
-                        Triple(
-                            Screen.CHECADOR,
-                            stringResource(Res.string.tab_checador),
-                            Res.drawable.barcode_scanner
-                        )
+                val options = listOf(
+                    Triple(
+                        Screen.VENTA,
+                        stringResource(Res.string.tab_venta),
+                        Res.drawable.point_of_sale
+                    ),
+                    Triple(
+                        Screen.PRODUCTOS,
+                        stringResource(Res.string.tab_productos),
+                        Res.drawable.products
+                    ),
+                    Triple(
+                        Screen.CHECADOR,
+                        stringResource(Res.string.tab_checador),
+                        Res.drawable.barcode_scanner
                     )
-                    options.forEachIndexed { index, (screenOption, label, iconRes) ->
-                        val isSelected = defaultScreen == screenOption
-                        ToggleButton(
-                            checked = isSelected,
-                            onCheckedChange = { onDefaultScreenChange(screenOption) },
-                            colors = ToggleButtonDefaults.colors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                        ) {
+                )
+
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val isNarrow = maxWidth < AdaptiveBreakpoints.SegmentedGroupWrapWidth
+                    val isCompactWidth = maxWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth
+                    val rows = when {
+                        isCompactWidth -> options.chunked(1)
+                        isNarrow -> options.chunked(2)
+                        else -> listOf(options)
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                    ) {
+                        rows.forEach { rowOptions ->
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    painter = painterResource(iconRes),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = label,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                rowOptions.forEachIndexed { index, (screenOption, label, iconRes) ->
+                                    val isSelected = defaultScreen == screenOption
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onDefaultScreenChange(screenOption) },
+                                        colors = ToggleButtonDefaults.colors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = connectedToggleButtonShapes(index, rowOptions.size)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(iconRes),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = label,
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -225,59 +242,68 @@ fun GeneralSettingsSection(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val checadorOptions = listOf(
-                            Triple(
-                                true,
-                                stringResource(Res.string.checador_layout_dialog),
-                                Res.drawable.pip
-                            ),
-                            Triple(
-                                false,
-                                stringResource(Res.string.checador_layout_fullscreen),
-                                Res.drawable.fullscreen
-                            )
+                    val checadorOptions = listOf(
+                        Triple(
+                            true,
+                            stringResource(Res.string.checador_layout_dialog),
+                            Res.drawable.pip
+                        ),
+                        Triple(
+                            false,
+                            stringResource(Res.string.checador_layout_fullscreen),
+                            Res.drawable.fullscreen
                         )
-                        checadorOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
-                            val isSelected = isChecadorDialog == isDialogOption
-                            ToggleButton(
-                                checked = isSelected,
-                                onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
-                                colors = ToggleButtonDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .semantics { role = Role.RadioButton },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    checadorOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-                            ) {
+                    )
+
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val isCompactWidth = maxWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth
+                        val rows = if (isCompactWidth) checadorOptions.chunked(1) else listOf(checadorOptions)
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                        ) {
+                            rows.forEach { rowOptions ->
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+                                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(
-                                        painter = painterResource(icon),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = label,
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    rowOptions.forEachIndexed { index, (isDialogOption, label, icon) ->
+                                        val isSelected = isChecadorDialog == isDialogOption
+                                        ToggleButton(
+                                            checked = isSelected,
+                                            onCheckedChange = { onIsChecadorDialogChange(isDialogOption) },
+                                            colors = ToggleButtonDefaults.colors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .semantics { role = Role.RadioButton },
+                                            shapes = connectedToggleButtonShapes(index, rowOptions.size)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(icon),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = label,
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -348,62 +374,71 @@ fun GeneralSettingsSection(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val bgOptions = listOf(
-                            Triple(
-                                false,
-                                stringResource(Res.string.checador_bg_shader),
-                                Res.drawable.light_mode
-                            ),
-                            Triple(
-                                true,
-                                stringResource(Res.string.checador_bg_custom_image),
-                                Res.drawable.photo_camera
-                            )
+                    val bgOptions = listOf(
+                        Triple(
+                            false,
+                            stringResource(Res.string.checador_bg_shader),
+                            Res.drawable.light_mode
+                        ),
+                        Triple(
+                            true,
+                            stringResource(Res.string.checador_bg_custom_image),
+                            Res.drawable.photo_camera
                         )
-                        bgOptions.forEachIndexed { index, (isCustomOption, label, icon) ->
-                            val isSelected = useCustomChecadorBackground == isCustomOption
-                            ToggleButton(
-                                checked = isSelected,
-                                onCheckedChange = {
-                                    pickerError = null
-                                    onUseCustomChecadorBackgroundChange(isCustomOption)
-                                },
-                                colors = ToggleButtonDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .semantics { role = Role.RadioButton },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    bgOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-                            ) {
+                    )
+
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val isCompactWidth = maxWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth
+                        val rows = if (isCompactWidth) bgOptions.chunked(1) else listOf(bgOptions)
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                        ) {
+                            rows.forEach { rowOptions ->
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+                                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(
-                                        painter = painterResource(icon),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = label,
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    rowOptions.forEachIndexed { index, (isCustomOption, label, icon) ->
+                                        val isSelected = useCustomChecadorBackground == isCustomOption
+                                        ToggleButton(
+                                            checked = isSelected,
+                                            onCheckedChange = {
+                                                pickerError = null
+                                                onUseCustomChecadorBackgroundChange(isCustomOption)
+                                            },
+                                            colors = ToggleButtonDefaults.colors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .semantics { role = Role.RadioButton },
+                                            shapes = connectedToggleButtonShapes(index, rowOptions.size)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(icon),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = label,
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -568,59 +603,68 @@ fun GeneralSettingsSection(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val catalogLayoutOptions = listOf(
-                        Triple(
-                            false,
-                            stringResource(Res.string.catalog_layout_grid),
-                            Res.drawable.grid
-                        ),
-                        Triple(
-                            true,
-                            stringResource(Res.string.catalog_layout_table),
-                            Res.drawable.list
-                        )
+                val catalogLayoutOptions = listOf(
+                    Triple(
+                        false,
+                        stringResource(Res.string.catalog_layout_grid),
+                        Res.drawable.grid
+                    ),
+                    Triple(
+                        true,
+                        stringResource(Res.string.catalog_layout_table),
+                        Res.drawable.list
                     )
-                    catalogLayoutOptions.forEachIndexed { index, (useTableOption, label, icon) ->
-                        val isSelected = useProductTableInCatalog == useTableOption
-                        ToggleButton(
-                            checked = isSelected,
-                            onCheckedChange = { onUseProductTableInCatalogChange(useTableOption) },
-                            colors = ToggleButtonDefaults.colors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                catalogLayoutOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                        ) {
+                )
+
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val isCompactWidth = maxWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth
+                    val rows = if (isCompactWidth) catalogLayoutOptions.chunked(1) else listOf(catalogLayoutOptions)
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                    ) {
+                        rows.forEach { rowOptions ->
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    painter = painterResource(icon),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = label,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                rowOptions.forEachIndexed { index, (useTableOption, label, icon) ->
+                                    val isSelected = useProductTableInCatalog == useTableOption
+                                    ToggleButton(
+                                        checked = isSelected,
+                                        onCheckedChange = { onUseProductTableInCatalogChange(useTableOption) },
+                                        colors = ToggleButtonDefaults.colors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .semantics { role = Role.RadioButton },
+                                        shapes = connectedToggleButtonShapes(index, rowOptions.size)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(icon),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = label,
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

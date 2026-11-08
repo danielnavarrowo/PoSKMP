@@ -418,6 +418,13 @@ fun AjustesScreen(
     AdaptiveScaffoldPredictiveBackHandler(navigator = navigator)
 
     val listScrollState = rememberScrollState()
+    val detailScrollState = rememberScrollState()
+
+    LaunchedEffect(currentCategory) {
+        try {
+            detailScrollState.scrollTo(0)
+        } catch (_: Exception) {}
+    }
 
     val categories = remember(isCompact) {
         val base = if (isCompact) {
@@ -461,6 +468,9 @@ fun AjustesScreen(
                     }
                     try {
                         listScrollState.animateScrollTo(0)
+                    } catch (_: Exception) {}
+                    try {
+                        detailScrollState.animateScrollTo(0)
                     } catch (_: Exception) {}
                 }
             }
@@ -624,7 +634,7 @@ fun AjustesScreen(
             }
         },
         detailPane = {
-            val detailScrollBehavior = if (!isListAndDetailVisible || isCompact) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
+            val detailScrollBehavior = if (!isListAndDetailVisible) TopAppBarDefaults.enterAlwaysScrollBehavior() else null
             AnimatedPane(modifier = Modifier.fillMaxSize()) {
                 Scaffold(
                     modifier = Modifier
@@ -686,9 +696,9 @@ fun AjustesScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(bottom = innerPadding.calculateBottomPadding())
-                                .verticalScroll(rememberScrollState())
+                                .verticalScroll(detailScrollState)
                                 .padding(horizontal = if (isListAndDetailVisible) 24.dp else 16.dp)
-                                .padding(bottom = 32.dp)
+                                .padding(bottom = if (isCompact) 64.dp else 32.dp)
                         ) {
                             if (isListAndDetailVisible) {
                                 Spacer(modifier = Modifier.height(20.dp))

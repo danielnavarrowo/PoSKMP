@@ -1,6 +1,7 @@
 package com.dnavarro.poskmp.ui.ajustes
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,6 +54,8 @@ import com.dnavarro.poskmp.data.source.remote.dto.RemoteAuditLogDto
 import com.dnavarro.poskmp.data.sync.SyncStateEnum
 import com.dnavarro.poskmp.domain.model.DeviceRole
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
+import com.dnavarro.poskmp.util.connectedToggleButtonShapes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
@@ -154,52 +157,66 @@ fun SyncSettingsSection(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Selector de Rol con ToggleButtons
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val roles = listOf(
-                            Triple(DeviceRole.ADMIN, "Admin", Res.drawable.person),
-                            Triple(DeviceRole.POS_CLIENT, "Caja / Terminal", Res.drawable.point_of_sale),
-                            Triple(DeviceRole.CHECKER_ONLY, "Solo Checador", Res.drawable.barcode_scanner)
-                        )
-                        roles.forEachIndexed { index, (role, label, iconRes) ->
-                            val isSelected = deviceRole == role
-                            ToggleButton(
-                                checked = isSelected,
-                                onCheckedChange = { onDeviceRoleChange(role) },
-                                colors = ToggleButtonDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .semantics { this.role = Role.RadioButton },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    roles.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-                            ) {
+                    val roles = listOf(
+                        Triple(DeviceRole.ADMIN, "Admin", Res.drawable.person),
+                        Triple(DeviceRole.POS_CLIENT, "Caja / Terminal", Res.drawable.point_of_sale),
+                        Triple(DeviceRole.CHECKER_ONLY, "Solo Checador", Res.drawable.barcode_scanner)
+                    )
+
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val isNarrow = maxWidth < AdaptiveBreakpoints.SegmentedGroupWrapWidth
+                        val isCompactWidth = maxWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth
+                        val rows = when {
+                            isCompactWidth -> roles.chunked(1)
+                            isNarrow -> roles.chunked(2)
+                            else -> listOf(roles)
+                        }
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                        ) {
+                            rows.forEach { rowOptions ->
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+                                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(
-                                        painter = painterResource(iconRes),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    rowOptions.forEachIndexed { index, (role, label, iconRes) ->
+                                        val isSelected = deviceRole == role
+                                        ToggleButton(
+                                            checked = isSelected,
+                                            onCheckedChange = { onDeviceRoleChange(role) },
+                                            colors = ToggleButtonDefaults.colors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .semantics { this.role = Role.RadioButton },
+                                            shapes = connectedToggleButtonShapes(index, rowOptions.size)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(iconRes),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

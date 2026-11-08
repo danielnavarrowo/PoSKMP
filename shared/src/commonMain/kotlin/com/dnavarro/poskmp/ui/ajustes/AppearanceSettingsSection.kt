@@ -83,6 +83,8 @@ import com.dnavarro.poskmp.theme.DarkModeConfig
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.theme.formatMinutesOfDay12h
 import com.dnavarro.poskmp.theme.googleFlexNumeric
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
+import com.dnavarro.poskmp.util.connectedToggleButtonShapes
 import com.dnavarro.poskmp.util.isDynamicColorSupported
 import com.materialkolor.PaletteStyle
 import org.jetbrains.compose.resources.DrawableResource
@@ -305,13 +307,19 @@ fun AppearanceSettingsSection(
                 )
 
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val isCompactWidth = maxWidth < 480.dp
+                    val containerWidth = maxWidth
+                    val isCompactWidth = containerWidth < AdaptiveBreakpoints.SegmentedGroupWrapWidth
+                    val isNarrow = containerWidth < 500.dp
 
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
                     ) {
-                        val rows = if (isCompactWidth) options.chunked(2) else listOf(options)
+                        val rows = when {
+                            containerWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth -> options.chunked(1)
+                            isNarrow -> options.chunked(2)
+                            else -> listOf(options)
+                        }
                         rows.forEach { rowOptions ->
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
@@ -331,11 +339,7 @@ fun AppearanceSettingsSection(
                                         modifier = Modifier
                                             .weight(1f)
                                             .semantics { role = Role.RadioButton },
-                                        shapes = when (index) {
-                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                            rowOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                        }
+                                        shapes = connectedToggleButtonShapes(index, rowOptions.size)
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,

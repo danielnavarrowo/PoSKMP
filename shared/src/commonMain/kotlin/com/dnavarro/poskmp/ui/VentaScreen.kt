@@ -131,6 +131,7 @@ import com.dnavarro.poskmp.theme.googleFlexNumeric
 import com.dnavarro.poskmp.ui.turnos.CashMovementDialogs
 import com.dnavarro.poskmp.ui.venta.CustomerSelectionDialog
 import com.dnavarro.poskmp.ui.venta.VentaViewModel
+import com.dnavarro.poskmp.util.AdaptiveBreakpoints
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.currentTimeMillis
@@ -683,10 +684,10 @@ fun VentaScreen(
                     .background(MaterialTheme.colorScheme.background)
             ) {
             val totalWidth = maxWidth
-            val minCatalogWidth = 320.dp
-            val minTicketWidth = 280.dp
-            val splitterWidth = 10.dp
-            val isTwoPaneWide = totalWidth >= (minCatalogWidth + minTicketWidth + splitterWidth) && !isCompact
+            val minCatalogWidth = AdaptiveBreakpoints.VentaMinCatalogWidth
+            val minTicketWidth = AdaptiveBreakpoints.VentaMinTicketWidth
+            val splitterWidth = AdaptiveBreakpoints.VentaSplitterWidth
+            val isTwoPaneWide = totalWidth >= AdaptiveBreakpoints.VentaTwoPaneMinWidth && !isCompact
 
             if (isTwoPaneWide) {
                 val maxCatalogAllowed = totalWidth - minTicketWidth - splitterWidth
