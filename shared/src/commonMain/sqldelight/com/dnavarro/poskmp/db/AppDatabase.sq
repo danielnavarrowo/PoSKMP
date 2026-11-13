@@ -1082,3 +1082,10 @@ selectCancelledSalesByShift:
 SELECT * FROM sales
 WHERE estado = 'CANCELADA' AND (shift_id = :shiftId OR (created_at >= :startTime AND (:endTime IS NULL OR created_at <= :endTime)))
 ORDER BY created_at DESC;
+
+selectCashCustomerPaymentsSumByShift:
+SELECT COALESCE(SUM(monto), 0.0) AS total
+FROM customer_payments
+WHERE UPPER(TRIM(metodo_pago)) = 'EFECTIVO'
+  AND created_at >= :startTime
+  AND (:endTime IS NULL OR created_at <= :endTime);

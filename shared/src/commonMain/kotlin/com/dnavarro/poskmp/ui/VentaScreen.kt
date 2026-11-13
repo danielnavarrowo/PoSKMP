@@ -269,7 +269,6 @@ fun VentaScreen(
     // Guards against firing the checkout twice (e.g. F1 and F2 pressed almost simultaneously, or a
     // double click) before the dialog has had a chance to recompose and disappear.
     var isCheckoutInFlight by remember { mutableStateOf(false) }
-    var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.EFECTIVO) }
     val paymentAmountInput = remember { TextFieldState("") }
     val mixedCashState = remember { TextFieldState("") }
     val mixedCardState = remember { TextFieldState("") }
@@ -1506,6 +1505,7 @@ fun VentaScreen(
 
     // Checkout Dialog
     if (showCheckoutDialog) {
+        var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.EFECTIVO) }
         val totalCents = (total * 100.0).roundToLong()
 
         LaunchedEffect(Unit) {

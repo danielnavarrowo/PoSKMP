@@ -245,6 +245,10 @@ class ShiftRepositoryImpl(
 
             val totalEntradas = localDataSource.getSumMovementsByShiftAndType(shiftId, CashMovementType.ENTRADA.name)
             val totalSalidas = localDataSource.getSumMovementsByShiftAndType(shiftId, CashMovementType.SALIDA.name)
+            val abonosEfectivo = localDataSource.getCashCustomerPaymentsSumByShift(
+                startTime = shiftDb.start_time,
+                endTime = shiftDb.end_time
+            )
             val movements = localDataSource.getMovementsByShiftId(shiftId).map { it.toDomain() }
 
             val cancelledSalesSummary = localDataSource.getCancelledSalesSummaryByShift(
@@ -285,7 +289,7 @@ class ShiftRepositoryImpl(
 
             val ventasEfectivo = salesSummary.ventas_efectivo ?: 0.0
             val fondoInicial = shiftDb.initial_cash
-            val efectivoEsperado = fondoInicial + ventasEfectivo + totalEntradas - totalSalidas
+            val efectivoEsperado = fondoInicial + ventasEfectivo + abonosEfectivo + totalEntradas - totalSalidas
 
             val shiftSummary = ShiftSummary(
                 shift = shiftDb.toDomain(),
@@ -295,6 +299,7 @@ class ShiftRepositoryImpl(
                 ventasTransferencia = salesSummary.ventas_transferencia ?: 0.0,
                 ventasCredito = salesSummary.ventas_credito ?: 0.0,
                 ventasMixto = salesSummary.ventas_mixto ?: 0.0,
+                abonosEfectivo = abonosEfectivo,
                 totalEntradas = totalEntradas,
                 totalSalidas = totalSalidas,
                 efectivoEsperado = efectivoEsperado,

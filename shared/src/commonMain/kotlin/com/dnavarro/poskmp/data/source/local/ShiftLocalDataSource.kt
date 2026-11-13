@@ -49,6 +49,7 @@ interface ShiftLocalDataSource {
     suspend fun getSalesSummaryByShift(shiftId: String, startTime: Long, endTime: Long?): SelectSalesSummaryByShift
     suspend fun getCancelledSalesSummaryByShift(shiftId: String, startTime: Long, endTime: Long?): SelectCancelledSalesSummaryByShift
     suspend fun getCancelledSalesByShift(shiftId: String, startTime: Long, endTime: Long?): List<Sales>
+    suspend fun getCashCustomerPaymentsSumByShift(startTime: Long, endTime: Long?): Double
 }
 
 class SqlDelightShiftDataSource(
@@ -222,5 +223,15 @@ class SqlDelightShiftDataSource(
             startTime = startTime,
             endTime = endTime
         ).executeAsList()
+    }
+
+    override suspend fun getCashCustomerPaymentsSumByShift(
+        startTime: Long,
+        endTime: Long?
+    ): Double = withContext(Dispatchers.IO) {
+        queries.selectCashCustomerPaymentsSumByShift(
+            startTime = startTime,
+            endTime = endTime
+        ).executeAsOne()
     }
 }

@@ -73,6 +73,7 @@ import poskmp.shared.generated.resources.initial_cash_label
 import poskmp.shared.generated.resources.shift_cancelled_disclaimer
 import poskmp.shared.generated.resources.shift_cancelled_tickets_label
 import poskmp.shared.generated.resources.shift_cancelled_total_label
+import poskmp.shared.generated.resources.shift_cash_customer_payments
 import poskmp.shared.generated.resources.shift_cash_inflows
 import poskmp.shared.generated.resources.shift_cash_outflows
 import poskmp.shared.generated.resources.shift_cash_sales
@@ -94,11 +95,23 @@ fun CloseShiftDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var countedCashText by remember { mutableStateOf("") }
+    val expectedCash = summary.efectivoEsperado
+    val initialCountedCashText = remember(summary.shift.id, expectedCash) {
+        val expectedCents = kotlin.math.round(expectedCash * 100.0).toLong().coerceAtLeast(0L)
+        val intPart = expectedCents / 100L
+        val decPart = expectedCents % 100L
+        if (decPart == 0L) {
+            intPart.toString()
+        } else {
+            "$intPart.${decPart.toString().padStart(2, '0')}"
+        }
+    }
+    var countedCashText by remember(summary.shift.id, expectedCash) {
+        mutableStateOf(initialCountedCashText)
+    }
     var notesText by remember { mutableStateOf("") }
 
     val countedCash = countedCashText.toDoubleOrNull()
-    val expectedCash = summary.efectivoEsperado
     val difference = if (countedCash != null) countedCash - expectedCash else null
 
     val countedCashFocusRequester = remember { FocusRequester() }
@@ -334,6 +347,13 @@ fun CloseShiftDialog(
                             value = "+ ${summary.ventasEfectivo.toString().formatPrice()}",
                             valueColor = Color(0xFF10B981)
                         )
+                        if (summary.abonosEfectivo > 0.0) {
+                            ShiftRowItem(
+                                label = stringResource(Res.string.shift_cash_customer_payments),
+                                value = "+ ${summary.abonosEfectivo.toString().formatPrice()}",
+                                valueColor = Color(0xFF10B981)
+                            )
+                        }
                         if (summary.totalEntradas > 0.0) {
                             ShiftRowItem(
                                 label = stringResource(Res.string.shift_cash_inflows),

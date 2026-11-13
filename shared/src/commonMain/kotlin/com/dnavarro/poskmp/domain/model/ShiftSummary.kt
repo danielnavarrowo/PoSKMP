@@ -8,6 +8,7 @@ data class ShiftSummary(
     val ventasTransferencia: Double = 0.0,
     val ventasCredito: Double = 0.0,
     val ventasMixto: Double = 0.0,
+    val abonosEfectivo: Double = 0.0,
     val totalEntradas: Double = 0.0,
     val totalSalidas: Double = 0.0,
     val efectivoEsperado: Double = 0.0,

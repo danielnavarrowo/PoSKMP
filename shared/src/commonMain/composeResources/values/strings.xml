@@ -866,6 +866,7 @@
     <string name="close_shift_dialog_subtitle">Cajero: %1$s • Inicio: %2$s</string>
     <string name="shift_summary_cash_section">Desglose de Efectivo en Caja</string>
     <string name="shift_cash_sales">Ventas en efectivo:</string>
+    <string name="shift_cash_customer_payments">Abonos en efectivo:</string>
     <string name="shift_cash_inflows">Entradas de efectivo:</string>
     <string name="shift_cash_outflows">Salidas de efectivo:</string>
     <string name="expected_cash_label">Efectivo esperado en caja:</string>
