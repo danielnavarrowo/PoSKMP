@@ -17,8 +17,6 @@ data class Customer(
     val tipoDescuento: CustomerDiscountType = if (siempreMayoreo) CustomerDiscountType.WHOLESALE else CustomerDiscountType.NONE,
     val porcentajeDescuento: Double = 0.0
 ) {
-    val discountType: CustomerDiscountType get() = tipoDescuento
-    val discountPercentage: Double get() = porcentajeDescuento
 
     val effectiveDiscountType: CustomerDiscountType
         get() = when {

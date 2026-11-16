@@ -145,7 +145,6 @@ import poskmp.shared.generated.resources.bulk_op_change_prices_title
 import poskmp.shared.generated.resources.bulk_op_deactivate_title
 import poskmp.shared.generated.resources.bulk_op_delete_title
 import poskmp.shared.generated.resources.bulk_op_mark_as_favorite_title
-import poskmp.shared.generated.resources.bulk_op_set_profit_title
 import poskmp.shared.generated.resources.category
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.clear_desc
@@ -184,7 +183,6 @@ import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.new_product_button_desktop
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
-import poskmp.shared.generated.resources.percent_discount_24px
 import poskmp.shared.generated.resources.price
 import poskmp.shared.generated.resources.product_admin_title
 import poskmp.shared.generated.resources.remove
@@ -624,21 +622,6 @@ fun ProductosScreen(
                                     )
                                 },
                                 text = { Text(stringResource(Res.string.bulk_op_change_prices_title)) },
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            FloatingActionButtonMenuItem(
-                                onClick = {
-                                    isFabMenuExpanded = false
-                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.SET_PROFIT)
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.percent_discount_24px),
-                                        contentDescription = null
-                                    )
-                                },
-                                text = { Text(stringResource(Res.string.bulk_op_set_profit_title)) },
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )

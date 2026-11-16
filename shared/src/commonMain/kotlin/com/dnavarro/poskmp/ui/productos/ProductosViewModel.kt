@@ -399,7 +399,8 @@ class ProductosViewModel(
                     bulkModificationProgress = BulkProgressState(
                         operation = modification.operation,
                         current = 0,
-                        total = total
+                        total = total,
+                        toggleMode = modification.toggleMode
                     )
                 )
             }
@@ -418,7 +419,8 @@ class ProductosViewModel(
                                 bulkModificationProgress = BulkProgressState(
                                     operation = modification.operation,
                                     current = current,
-                                    total = count
+                                    total = count,
+                                    toggleMode = modification.toggleMode
                                 )
                             )
                         }

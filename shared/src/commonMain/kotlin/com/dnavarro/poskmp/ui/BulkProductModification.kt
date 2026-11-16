@@ -1,9 +1,13 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.material3.LinearWavyProgressIndicator
@@ -15,13 +19,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
@@ -32,12 +42,15 @@ import com.dnavarro.poskmp.domain.model.PriceRoundingConfig
 import androidx.compose.ui.window.DialogProperties
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
+import com.dnavarro.poskmp.util.connectedToggleButtonShapes
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.roundPrice
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToLong
 import kotlin.time.Duration.Companion.milliseconds
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -52,6 +65,227 @@ enum class BulkProductOperation(val titleRes: StringResource) {
     DELETE(Res.string.bulk_op_delete_title)
 }
 
+enum class BulkToggleMode {
+    MARK,
+    UNMARK,
+    INVERT
+}
+
+private enum class BulkPriceEditMode(
+    val labelRes: StringResource,
+    val iconRes: DrawableResource
+) {
+    MANUAL_PRICES(Res.string.bulk_price_mode_manual, Res.drawable.price),
+    PROFIT_PERCENTAGES(Res.string.bulk_price_mode_profit, Res.drawable.percent_discount_24px)
+}
+
+/**
+ * Returns the [BulkToggleMode] options that actually change at least one product in
+ * [selectedProducts] for [operation]. Falls back to all options when [selectedProducts] is empty.
+ */
+fun availableToggleModes(
+    operation: BulkProductOperation,
+    selectedProducts: List<Products>
+): List<BulkToggleMode> {
+    if (operation != BulkProductOperation.MARK_AS_FAVORITE &&
+        operation != BulkProductOperation.DEACTIVATE
+    ) {
+        return emptyList()
+    }
+    if (selectedProducts.isEmpty()) return BulkToggleMode.entries
+    return BulkToggleMode.entries.filter { mode ->
+        val modification = BulkProductModification(operation = operation, toggleMode = mode)
+        selectedProducts.any { product ->
+            val updated = applyBulkProductModification(product, modification)
+            updated != null && updated != product
+        }
+    }
+}
+
+internal const val SHARED_PRICE_THRESHOLD = 0.05
+
+internal fun formatBulkPriceInput(value: Double): String {
+    val rounded = (value * 100.0).roundToLong() / 100.0
+    return if (rounded <= 0.0) ""
+    else if (rounded % 1.0 == 0.0) rounded.toLong().toString()
+    else {
+        val str = rounded.toString()
+        if (str.contains('.')) {
+            val parts = str.split('.')
+            val dec = parts[1].take(2)
+            if (dec.length == 1) "${parts[0]}.${dec}0" else "${parts[0]}.$dec"
+        } else str
+    }
+}
+
+internal fun formatBulkMarginInput(value: Double): String {
+    val rounded = (value * 100.0).roundToLong() / 100.0
+    return if (rounded % 1.0 == 0.0) {
+        rounded.toLong().toString()
+    } else {
+        val str = rounded.toString()
+        if (str.contains('.')) {
+            val parts = str.split('.')
+            val dec = parts[1].take(2).trimEnd('0')
+            if (dec.isEmpty()) parts[0] else "${parts[0]}.$dec"
+        } else str
+    }
+}
+
+data class BulkManualPriceInitialState(
+    val shareSamePrices: Boolean,
+    val changeCost: Boolean,
+    val changeRetail: Boolean,
+    val changeWholesale: Boolean,
+    val changeDelivery: Boolean,
+    val costText: String,
+    val retailText: String,
+    val wholesaleText: String,
+    val deliveryText: String,
+    val retailMarginText: String,
+    val wholesaleMarginText: String,
+    val deliveryMarginText: String,
+    val targetRetailMargin: Double?,
+    val targetWholesaleMargin: Double?,
+    val targetDeliveryMargin: Double?
+)
+
+/**
+ * Computes initial manual price fields and checkbox states from [selectedProducts].
+ * When all 4 price fields vary by at most [SHARED_PRICE_THRESHOLD] across products, shared positive
+ * fields are checked and autofilled; otherwise each field is autofilled with the maximum value and
+ * all checkboxes start unchecked.
+ */
+fun computeInitialBulkManualPrices(
+    selectedProducts: List<Products>,
+    defaultRetailMarginPercentage: Double = 0.0,
+    defaultWholesaleMarginPercentage: Double = 0.0,
+    defaultDeliveryMarginPercentage: Double = 0.0
+): BulkManualPriceInitialState {
+    if (selectedProducts.isEmpty()) {
+        return BulkManualPriceInitialState(
+            shareSamePrices = false,
+            changeCost = false,
+            changeRetail = true,
+            changeWholesale = false,
+            changeDelivery = false,
+            costText = "",
+            retailText = "",
+            wholesaleText = "",
+            deliveryText = "",
+            retailMarginText = "",
+            wholesaleMarginText = "",
+            deliveryMarginText = "",
+            targetRetailMargin = defaultRetailMarginPercentage.takeIf { it > 0.0 },
+            targetWholesaleMargin = defaultWholesaleMarginPercentage.takeIf { it > 0.0 },
+            targetDeliveryMargin = defaultDeliveryMarginPercentage.takeIf { it > 0.0 }
+        )
+    }
+
+    val minCost = selectedProducts.minOf { it.costo }
+    val maxCost = selectedProducts.maxOf { it.costo }
+    val minRetail = selectedProducts.minOf { it.precio }
+    val maxRetail = selectedProducts.maxOf { it.precio }
+    val minWholesale = selectedProducts.minOf { it.precio_mayoreo }
+    val maxWholesale = selectedProducts.maxOf { it.precio_mayoreo }
+    val minDelivery = selectedProducts.minOf { it.precio_delivery }
+    val maxDelivery = selectedProducts.maxOf { it.precio_delivery }
+
+    val tolerance = SHARED_PRICE_THRESHOLD + 1e-9
+    val shareSamePrices = (maxCost - minCost) <= tolerance &&
+        (maxRetail - minRetail) <= tolerance &&
+        (maxWholesale - minWholesale) <= tolerance &&
+        (maxDelivery - minDelivery) <= tolerance
+
+    val costText = formatBulkPriceInput(maxCost)
+    val retailText = formatBulkPriceInput(maxRetail)
+    val wholesaleText = formatBulkPriceInput(maxWholesale)
+    val deliveryText = formatBulkPriceInput(maxDelivery)
+
+    val costVal = costText.toDoubleOrNull()
+
+    fun initialMargin(priceText: String, defaultMarginPct: Double): Pair<String, Double?> {
+        val priceVal = priceText.toDoubleOrNull()
+        val margin = if (costVal != null && costVal > 0.0 && priceVal != null && priceVal > 0.0) {
+            ((priceVal - costVal) / costVal) * 100.0
+        } else {
+            null
+        }
+        val marginText = margin?.let(::formatBulkMarginInput) ?: ""
+        val targetMargin = margin ?: defaultMarginPct.takeIf { it > 0.0 }
+        return marginText to targetMargin
+    }
+
+    val (retailMarginText, targetRetailMargin) = initialMargin(retailText, defaultRetailMarginPercentage)
+    val (wholesaleMarginText, targetWholesaleMargin) = initialMargin(wholesaleText, defaultWholesaleMarginPercentage)
+    val (deliveryMarginText, targetDeliveryMargin) = initialMargin(deliveryText, defaultDeliveryMarginPercentage)
+
+    return BulkManualPriceInitialState(
+        shareSamePrices = shareSamePrices,
+        changeCost = shareSamePrices && maxCost > 0.0,
+        changeRetail = shareSamePrices && maxRetail > 0.0,
+        changeWholesale = shareSamePrices && maxWholesale > 0.0,
+        changeDelivery = shareSamePrices && maxDelivery > 0.0,
+        costText = costText,
+        retailText = retailText,
+        wholesaleText = wholesaleText,
+        deliveryText = deliveryText,
+        retailMarginText = retailMarginText,
+        wholesaleMarginText = wholesaleMarginText,
+        deliveryMarginText = deliveryMarginText,
+        targetRetailMargin = targetRetailMargin,
+        targetWholesaleMargin = targetWholesaleMargin,
+        targetDeliveryMargin = targetDeliveryMargin
+    )
+}
+
+internal fun recalculateTierOnCostChange(
+    cost: Double,
+    targetMargin: Double?,
+    marginText: String,
+    defaultMarginPercentage: Double,
+    shouldRound: Boolean
+): Pair<String, String>? {
+    if (cost <= 0.0) return null
+    val margin = targetMargin
+        ?: marginText.replace(',', '.').toDoubleOrNull()
+        ?: defaultMarginPercentage.takeIf { it > 0.0 }
+        ?: return null
+    val rawPrice = cost * (1.0 + margin / 100.0)
+    val finalPrice = if (shouldRound) roundPrice(rawPrice) else rawPrice
+    val realMargin = if (shouldRound) ((finalPrice - cost) / cost) * 100.0 else margin
+    return formatBulkPriceInput(finalPrice) to formatBulkMarginInput(realMargin)
+}
+
+internal fun calculateMarginOnPriceChange(
+    priceInput: String,
+    costText: String
+): Pair<String, Double>? {
+    val price = priceInput.replace(',', '.').toDoubleOrNull() ?: return null
+    val cost = costText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 } ?: return null
+    val margin = ((price - cost) / cost) * 100.0
+    return formatBulkMarginInput(margin) to margin
+}
+
+internal fun calculatePriceOnMarginChange(
+    marginInput: String,
+    costText: String,
+    shouldRound: Boolean
+): Pair<Double?, String?> {
+    val margin = marginInput.replace(',', '.').toDoubleOrNull()
+    val cost = costText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 }
+    if (margin == null || cost == null) return margin to null
+    val rawPrice = cost * (1.0 + margin / 100.0)
+    val finalPrice = if (shouldRound) roundPrice(rawPrice) else rawPrice
+    return margin to formatBulkPriceInput(finalPrice)
+}
+
+internal fun recomputeRoundedMargin(priceText: String, costText: String): String? {
+    val cost = costText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 } ?: return null
+    val price = priceText.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 } ?: return null
+    return formatBulkMarginInput(((price - cost) / cost) * 100.0)
+}
+
 data class BulkProductModification(
     val operation: BulkProductOperation,
     val costPrice: Double? = null,
@@ -61,13 +295,15 @@ data class BulkProductModification(
     val retailProfitPercentage: Double? = null,
     val wholesaleProfitPercentage: Double? = null,
     val deliveryProfitPercentage: Double? = null,
-    val category: String? = null
+    val category: String? = null,
+    val toggleMode: BulkToggleMode = BulkToggleMode.MARK
 )
 
 data class BulkProgressState(
     val operation: BulkProductOperation,
     val current: Int,
-    val total: Int
+    val total: Int,
+    val toggleMode: BulkToggleMode = BulkToggleMode.MARK
 ) {
     val fraction: Float
         get() = if (total > 0) (current.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
@@ -104,8 +340,24 @@ fun applyBulkProductModification(
     }
 
     BulkProductOperation.CHANGE_CATEGORY -> product.copy(categoria = modification.category)
-    BulkProductOperation.MARK_AS_FAVORITE -> product.copy(es_favorito = 1L)
-    BulkProductOperation.DEACTIVATE -> product.copy(activo = 0L)
+    BulkProductOperation.MARK_AS_FAVORITE -> {
+        val nextFavorite = when (modification.toggleMode) {
+            BulkToggleMode.MARK -> 1L
+            BulkToggleMode.UNMARK -> 0L
+            BulkToggleMode.INVERT -> if (product.es_favorito == 1L) 0L else 1L
+        }
+        product.copy(es_favorito = nextFavorite)
+    }
+
+    BulkProductOperation.DEACTIVATE -> {
+        val nextActive = when (modification.toggleMode) {
+            BulkToggleMode.MARK -> 0L
+            BulkToggleMode.UNMARK -> 1L
+            BulkToggleMode.INVERT -> if (product.activo == 1L) 0L else 1L
+        }
+        product.copy(activo = nextActive)
+    }
+
     BulkProductOperation.DELETE -> null
 }
 
@@ -200,13 +452,21 @@ fun BulkProductModificationDialog(
                 progress.percentage
             )
             BulkProductOperation.MARK_AS_FAVORITE -> stringResource(
-                Res.string.bulk_progress_mark_as_favorite,
+                when (progress.toggleMode) {
+                    BulkToggleMode.MARK -> Res.string.bulk_progress_mark_as_favorite
+                    BulkToggleMode.UNMARK -> Res.string.bulk_progress_unmark_favorite
+                    BulkToggleMode.INVERT -> Res.string.bulk_progress_invert_favorite
+                },
                 progress.current,
                 progress.total,
                 progress.percentage
             )
             BulkProductOperation.DEACTIVATE -> stringResource(
-                Res.string.bulk_progress_deactivate,
+                when (progress.toggleMode) {
+                    BulkToggleMode.MARK -> Res.string.bulk_progress_deactivate
+                    BulkToggleMode.UNMARK -> Res.string.bulk_progress_activate
+                    BulkToggleMode.INVERT -> Res.string.bulk_progress_invert_status
+                },
                 progress.current,
                 progress.total,
                 progress.percentage
@@ -220,14 +480,34 @@ fun BulkProductModificationDialog(
         }
     } else ""
 
-    var changeCost by remember { mutableStateOf(false) }
-    var changeRetail by remember { mutableStateOf(true) }
-    var changeWholesale by remember { mutableStateOf(false) }
-    var changeDelivery by remember { mutableStateOf(false) }
-    var costText by remember { mutableStateOf("") }
-    var retailText by remember { mutableStateOf("") }
-    var wholesaleText by remember { mutableStateOf("") }
-    var deliveryText by remember { mutableStateOf("") }
+    val initialManualPrices = remember(
+        operation,
+        selectedProducts,
+        defaultRetailMarginPercentage,
+        defaultWholesaleMarginPercentage,
+        defaultDeliveryMarginPercentage
+    ) {
+        computeInitialBulkManualPrices(
+            selectedProducts = selectedProducts,
+            defaultRetailMarginPercentage = defaultRetailMarginPercentage,
+            defaultWholesaleMarginPercentage = defaultWholesaleMarginPercentage,
+            defaultDeliveryMarginPercentage = defaultDeliveryMarginPercentage
+        )
+    }
+    var changeCost by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.changeCost) }
+    var changeRetail by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.changeRetail) }
+    var changeWholesale by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.changeWholesale) }
+    var changeDelivery by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.changeDelivery) }
+    var costText by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.costText) }
+    var retailText by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.retailText) }
+    var wholesaleText by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.wholesaleText) }
+    var deliveryText by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.deliveryText) }
+    var retailMarginText by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.retailMarginText) }
+    var wholesaleMarginText by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.wholesaleMarginText) }
+    var deliveryMarginText by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.deliveryMarginText) }
+    var targetRetailMargin by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.targetRetailMargin) }
+    var targetWholesaleMargin by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.targetWholesaleMargin) }
+    var targetDeliveryMargin by remember(operation, selectedProducts) { mutableStateOf(initialManualPrices.targetDeliveryMargin) }
     var retailProfitText by remember(defaultRetailMarginPercentage) {
         mutableStateOf(if (defaultRetailMarginPercentage > 0.0) {
             if (defaultRetailMarginPercentage % 1.0 == 0.0) defaultRetailMarginPercentage.toLong().toString() else defaultRetailMarginPercentage.toString()
@@ -244,6 +524,26 @@ fun BulkProductModificationDialog(
         } else "")
     }
     var categoryText by remember { mutableStateOf("") }
+    var priceEditMode by remember(operation) {
+        mutableStateOf(
+            if (operation == BulkProductOperation.SET_PROFIT) {
+                BulkPriceEditMode.PROFIT_PERCENTAGES
+            } else {
+                BulkPriceEditMode.MANUAL_PRICES
+            }
+        )
+    }
+    val effectiveOperation = when (operation) {
+        BulkProductOperation.CHANGE_PRICES if priceEditMode == BulkPriceEditMode.PROFIT_PERCENTAGES ->
+            BulkProductOperation.SET_PROFIT
+        else -> operation
+    }
+    val availableModes = remember(operation, selectedProducts) {
+        availableToggleModes(operation, selectedProducts)
+    }
+    var toggleMode by remember(operation) {
+        mutableStateOf(availableModes.firstOrNull() ?: BulkToggleMode.MARK)
+    }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Non-null while the user is reviewing the preview step, before the changes are applied.
@@ -252,6 +552,12 @@ fun BulkProductModificationDialog(
         previewModification?.let { buildBulkPreview(selectedProducts, it, rounding) }
     }
     val isPreviewing = previewItems != null
+
+    LaunchedEffect(availableModes, isProcessing, isPreviewing) {
+        if (!isProcessing && !isPreviewing && availableModes.isNotEmpty() && toggleMode !in availableModes) {
+            toggleMode = availableModes.first()
+        }
+    }
 
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
@@ -278,14 +584,14 @@ fun BulkProductModificationDialog(
     val firstFocusRequester = remember { FocusRequester() }
     val confirmButtonFocusRequester = remember { FocusRequester() }
 
-    val hasTextField = when (operation) {
+    val hasTextField = when (effectiveOperation) {
         BulkProductOperation.CHANGE_PRICES,
         BulkProductOperation.SET_PROFIT,
         BulkProductOperation.CHANGE_CATEGORY -> true
         else -> false
     }
 
-    LaunchedEffect(operation, isPreviewing) {
+    LaunchedEffect(effectiveOperation, isPreviewing) {
         if (!isAndroid()) {
             delay(100.milliseconds)
             try {
@@ -309,29 +615,30 @@ fun BulkProductModificationDialog(
     val selectProfitErr = stringResource(Res.string.bulk_select_profit_error)
     val enterCategoryErr = stringResource(Res.string.bulk_enter_category_error)
 
-    val costVal = if (changeCost) costText.replace(',', '.').toDoubleOrNull() else null
+    // Cost field still drives margin calculation and price-vs-cost checks even when not overwriting Cost.
+    val effectiveCostVal = costText.replace(',', '.').toDoubleOrNull()
     val retailVal = if (changeRetail) retailText.replace(',', '.').toDoubleOrNull() else null
     val wholesaleVal = if (changeWholesale) wholesaleText.replace(',', '.').toDoubleOrNull() else null
     val deliveryVal = if (changeDelivery) deliveryText.replace(',', '.').toDoubleOrNull() else null
 
     val wholesalePriceError: String? = when {
-        operation == BulkProductOperation.CHANGE_PRICES &&
-            costVal != null && costVal > 0.0 && wholesaleVal != null && wholesaleVal > 0.0 && wholesaleVal < costVal -> {
+        effectiveOperation == BulkProductOperation.CHANGE_PRICES &&
+            effectiveCostVal != null && effectiveCostVal > 0.0 && wholesaleVal != null && wholesaleVal > 0.0 && wholesaleVal < effectiveCostVal -> {
             stringResource(Res.string.error_wholesale_less_than_cost)
         }
         else -> null
     }
 
     val deliveryPriceError: String? = when {
-        operation == BulkProductOperation.CHANGE_PRICES &&
-            costVal != null && costVal > 0.0 && deliveryVal != null && deliveryVal > 0.0 && deliveryVal < costVal -> {
+        effectiveOperation == BulkProductOperation.CHANGE_PRICES &&
+            effectiveCostVal != null && effectiveCostVal > 0.0 && deliveryVal != null && deliveryVal > 0.0 && deliveryVal < effectiveCostVal -> {
             stringResource(Res.string.error_delivery_less_than_cost)
         }
         else -> null
     }
 
-    val retailPriceError: String? = when (operation) {
-        BulkProductOperation.CHANGE_PRICES if costVal != null && costVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < costVal -> {
+    val retailPriceError: String? = when (effectiveOperation) {
+        BulkProductOperation.CHANGE_PRICES if effectiveCostVal != null && effectiveCostVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < effectiveCostVal -> {
             stringResource(Res.string.error_retail_less_than_cost)
         }
         BulkProductOperation.CHANGE_PRICES if wholesaleVal != null && wholesaleVal > 0.0 && retailVal != null && retailVal > 0.0 && retailVal < wholesaleVal -> {
@@ -340,11 +647,39 @@ fun BulkProductModificationDialog(
         else -> null
     }
 
-    val retailProfitVal = if (operation == BulkProductOperation.SET_PROFIT) retailProfitText.replace(',', '.').toDoubleOrNull() else null
-    val wholesaleProfitVal = if (operation == BulkProductOperation.SET_PROFIT) wholesaleProfitText.replace(',', '.').toDoubleOrNull() else null
-    val deliveryProfitVal = if (operation == BulkProductOperation.SET_PROFIT) deliveryProfitText.replace(',', '.').toDoubleOrNull() else null
+    val retailMarginWarning = rememberMarginWarningOrNull(
+        enabled = effectiveOperation == BulkProductOperation.CHANGE_PRICES && changeRetail,
+        priceError = retailPriceError,
+        costVal = effectiveCostVal,
+        priceVal = retailVal,
+        marginText = retailMarginText,
+        defaultMarginPercentage = defaultRetailMarginPercentage,
+        warningRes = Res.string.warning_retail_margin_below_default
+    )
+    val wholesaleMarginWarning = rememberMarginWarningOrNull(
+        enabled = effectiveOperation == BulkProductOperation.CHANGE_PRICES && changeWholesale,
+        priceError = wholesalePriceError,
+        costVal = effectiveCostVal,
+        priceVal = wholesaleVal,
+        marginText = wholesaleMarginText,
+        defaultMarginPercentage = defaultWholesaleMarginPercentage,
+        warningRes = Res.string.warning_wholesale_margin_below_default
+    )
+    val deliveryMarginWarning = rememberMarginWarningOrNull(
+        enabled = effectiveOperation == BulkProductOperation.CHANGE_PRICES && changeDelivery,
+        priceError = deliveryPriceError,
+        costVal = effectiveCostVal,
+        priceVal = deliveryVal,
+        marginText = deliveryMarginText,
+        defaultMarginPercentage = defaultDeliveryMarginPercentage,
+        warningRes = Res.string.warning_delivery_margin_below_default
+    )
 
-    val profitError: String? = when (operation) {
+    val retailProfitVal = if (effectiveOperation == BulkProductOperation.SET_PROFIT) retailProfitText.replace(',', '.').toDoubleOrNull() else null
+    val wholesaleProfitVal = if (effectiveOperation == BulkProductOperation.SET_PROFIT) wholesaleProfitText.replace(',', '.').toDoubleOrNull() else null
+    val deliveryProfitVal = if (effectiveOperation == BulkProductOperation.SET_PROFIT) deliveryProfitText.replace(',', '.').toDoubleOrNull() else null
+
+    val profitError: String? = when (effectiveOperation) {
         BulkProductOperation.SET_PROFIT if wholesaleProfitVal != null && wholesaleProfitVal < 0.0 -> {
             stringResource(Res.string.error_wholesale_less_than_cost)
         }
@@ -374,7 +709,7 @@ fun BulkProductModificationDialog(
     fun createModification(): BulkProductModification? {
         errorMessage = null
         if (!isPriceModificationValid) return null
-        return when (operation) {
+        return when (effectiveOperation) {
             BulkProductOperation.CHANGE_PRICES -> {
                 if (!changeCost && !changeRetail && !changeWholesale && !changeDelivery) {
                     errorMessage = selectPriceErr
@@ -385,7 +720,7 @@ fun BulkProductModificationDialog(
                     val wholesale = if (changeWholesale) numberOrError(wholesaleText, wholesalePriceLabel, invalidValueFmt) else 0.0
                     val delivery = if (changeDelivery) numberOrError(deliveryText, deliveryPriceLabel, invalidValueFmt) else 0.0
                     if (errorMessage == null) BulkProductModification(
-                        operation = operation,
+                        operation = effectiveOperation,
                         costPrice = if (changeCost) cost else null,
                         retailPrice = if (changeRetail) retail else null,
                         wholesalePrice = if (changeWholesale) wholesale else null,
@@ -402,7 +737,7 @@ fun BulkProductModificationDialog(
                     errorMessage = selectProfitErr
                 }
                 if (errorMessage == null) BulkProductModification(
-                    operation,
+                    effectiveOperation,
                     retailProfitPercentage = retail,
                     wholesaleProfitPercentage = wholesale,
                     deliveryProfitPercentage = delivery
@@ -414,10 +749,12 @@ fun BulkProductModificationDialog(
                 if (category.isEmpty()) {
                     errorMessage = enterCategoryErr
                     null
-                } else BulkProductModification(operation, category = category)
+                } else BulkProductModification(effectiveOperation, category = category)
             }
 
-            BulkProductOperation.MARK_AS_FAVORITE, BulkProductOperation.DEACTIVATE, BulkProductOperation.DELETE -> BulkProductModification(operation)
+            BulkProductOperation.MARK_AS_FAVORITE, BulkProductOperation.DEACTIVATE ->
+                BulkProductModification(effectiveOperation, toggleMode = toggleMode)
+            BulkProductOperation.DELETE -> BulkProductModification(effectiveOperation)
         }
     }
 
@@ -474,105 +811,151 @@ fun BulkProductModificationDialog(
                         items = previewItems,
                         totalSelected = selectedProducts.size
                     )
-                } else when (operation) {
-                    BulkProductOperation.CHANGE_PRICES -> {
-                        PriceOption(
-                            label = stringResource(Res.string.cost_price),
-                            checked = changeCost,
-                            onCheckedChange = { changeCost = it },
-                            value = costText,
-                            onValueChange = { costText = it },
+                } else {
+                    if (operation == BulkProductOperation.CHANGE_PRICES) {
+                        PriceEditModeToggleBar(
+                            selectedMode = priceEditMode,
+                            onSelectMode = { mode ->
+                                priceEditMode = mode
+                                errorMessage = null
+                            },
                             enabled = !isProcessing
                         )
-                        PriceOption(
-                            label = stringResource(Res.string.retail_price),
-                            checked = changeRetail,
-                            onCheckedChange = { changeRetail = it },
-                            value = retailText,
-                            onValueChange = { retailText = it },
-                            isError = retailPriceError != null,
-                            enabled = !isProcessing,
-                            modifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
-                        )
-                        if (retailPriceError != null) {
-                            Text(
-                                text = retailPriceError,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(start = 48.dp)
-                            )
-                        }
-                        PriceOption(
-                            label = stringResource(Res.string.wholesale_price),
-                            checked = changeWholesale,
-                            onCheckedChange = { changeWholesale = it },
-                            value = wholesaleText,
-                            onValueChange = { wholesaleText = it },
-                            isError = wholesalePriceError != null,
-                            enabled = !isProcessing
-                        )
-                        if (wholesalePriceError != null) {
-                            Text(
-                                text = wholesalePriceError,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(start = 48.dp)
-                            )
-                        }
-                        PriceOption(
-                            label = stringResource(Res.string.delivery_price),
-                            checked = changeDelivery,
-                            onCheckedChange = { changeDelivery = it },
-                            value = deliveryText,
-                            onValueChange = { deliveryText = it },
-                            isError = deliveryPriceError != null,
-                            enabled = !isProcessing
-                        )
-                        if (deliveryPriceError != null) {
-                            Text(
-                                text = deliveryPriceError,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(start = 48.dp)
-                            )
-                        }
                     }
-
-                    BulkProductOperation.SET_PROFIT -> {
-                        Text(stringResource(Res.string.bulk_profit_cost_requirement))
-                        DecimalInput(
-                            label = stringResource(Res.string.retail_profit_pct),
-                            value = retailProfitText,
-                            isError = profitError != null,
-                            enabled = !isProcessing,
-                            modifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
-                        ) { retailProfitText = it }
-                        DecimalInput(
-                            label = stringResource(Res.string.wholesale_profit_pct),
-                            value = wholesaleProfitText,
-                            isError = profitError != null,
-                            enabled = !isProcessing
-                        ) { wholesaleProfitText = it }
-                        DecimalInput(
-                            label = stringResource(Res.string.delivery_profit_pct),
-                            value = deliveryProfitText,
-                            isError = profitError != null,
-                            enabled = !isProcessing
-                        ) { deliveryProfitText = it }
-                        if (profitError != null) {
-                            Text(
-                                text = profitError,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                    when (effectiveOperation) {
+                        BulkProductOperation.CHANGE_PRICES -> {
+                            PriceOption(
+                                label = stringResource(Res.string.cost_price),
+                                checked = changeCost,
+                                onCheckedChange = { changeCost = it },
+                                value = costText,
+                                onValueChange = { input ->
+                                    costText = input
+                                    val newCost = input.replace(',', '.').toDoubleOrNull()
+                                    if (newCost != null && newCost > 0.0) {
+                                        if (changeRetail) {
+                                            recalculateTierOnCostChange(
+                                                cost = newCost,
+                                                targetMargin = targetRetailMargin,
+                                                marginText = retailMarginText,
+                                                defaultMarginPercentage = defaultRetailMarginPercentage,
+                                                shouldRound = rounding.retail
+                                            )?.let { (newPrice, newMargin) ->
+                                                retailText = newPrice
+                                                retailMarginText = newMargin
+                                            }
+                                        }
+                                        if (changeWholesale) {
+                                            recalculateTierOnCostChange(
+                                                cost = newCost,
+                                                targetMargin = targetWholesaleMargin,
+                                                marginText = wholesaleMarginText,
+                                                defaultMarginPercentage = defaultWholesaleMarginPercentage,
+                                                shouldRound = rounding.wholesale
+                                            )?.let { (newPrice, newMargin) ->
+                                                wholesaleText = newPrice
+                                                wholesaleMarginText = newMargin
+                                            }
+                                        }
+                                        if (changeDelivery) {
+                                            recalculateTierOnCostChange(
+                                                cost = newCost,
+                                                targetMargin = targetDeliveryMargin,
+                                                marginText = deliveryMarginText,
+                                                defaultMarginPercentage = defaultDeliveryMarginPercentage,
+                                                shouldRound = rounding.delivery
+                                            )?.let { (newPrice, newMargin) ->
+                                                deliveryText = newPrice
+                                                deliveryMarginText = newMargin
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = !isProcessing
+                            )
+                            BulkTierPriceRow(
+                                priceLabel = stringResource(Res.string.retail_price),
+                                marginLabel = stringResource(Res.string.retail_margin_label),
+                                checked = changeRetail,
+                                onCheckedChange = { changeRetail = it },
+                                priceText = retailText,
+                                onPriceTextChange = { retailText = it },
+                                marginText = retailMarginText,
+                                onMarginTextChange = { retailMarginText = it },
+                                onTargetMarginChange = { targetRetailMargin = it },
+                                costText = costText,
+                                shouldRound = rounding.retail,
+                                priceError = retailPriceError,
+                                marginWarning = retailMarginWarning,
+                                enabled = !isProcessing,
+                                priceModifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
+                            )
+                            BulkTierPriceRow(
+                                priceLabel = stringResource(Res.string.wholesale_price),
+                                marginLabel = stringResource(Res.string.wholesale_margin_label),
+                                checked = changeWholesale,
+                                onCheckedChange = { changeWholesale = it },
+                                priceText = wholesaleText,
+                                onPriceTextChange = { wholesaleText = it },
+                                marginText = wholesaleMarginText,
+                                onMarginTextChange = { wholesaleMarginText = it },
+                                onTargetMarginChange = { targetWholesaleMargin = it },
+                                costText = costText,
+                                shouldRound = rounding.wholesale,
+                                priceError = wholesalePriceError,
+                                marginWarning = wholesaleMarginWarning,
+                                enabled = !isProcessing
+                            )
+                            BulkTierPriceRow(
+                                priceLabel = stringResource(Res.string.delivery_price),
+                                marginLabel = stringResource(Res.string.delivery_margin_label),
+                                checked = changeDelivery,
+                                onCheckedChange = { changeDelivery = it },
+                                priceText = deliveryText,
+                                onPriceTextChange = { deliveryText = it },
+                                marginText = deliveryMarginText,
+                                onMarginTextChange = { deliveryMarginText = it },
+                                onTargetMarginChange = { targetDeliveryMargin = it },
+                                costText = costText,
+                                shouldRound = rounding.delivery,
+                                priceError = deliveryPriceError,
+                                marginWarning = deliveryMarginWarning,
+                                enabled = !isProcessing
                             )
                         }
-                    }
 
-                    BulkProductOperation.CHANGE_CATEGORY -> {
+                        BulkProductOperation.SET_PROFIT -> {
+                            Text(stringResource(Res.string.bulk_profit_cost_requirement))
+                            DecimalInput(
+                                label = stringResource(Res.string.retail_profit_pct),
+                                value = retailProfitText,
+                                isError = profitError != null,
+                                enabled = !isProcessing,
+                                modifier = if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier
+                            ) { retailProfitText = it }
+                            DecimalInput(
+                                label = stringResource(Res.string.wholesale_profit_pct),
+                                value = wholesaleProfitText,
+                                isError = profitError != null,
+                                enabled = !isProcessing
+                            ) { wholesaleProfitText = it }
+                            DecimalInput(
+                                label = stringResource(Res.string.delivery_profit_pct),
+                                value = deliveryProfitText,
+                                isError = profitError != null,
+                                enabled = !isProcessing
+                            ) { deliveryProfitText = it }
+                            if (profitError != null) {
+                                Text(
+                                    text = profitError,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        BulkProductOperation.CHANGE_CATEGORY -> {
                         ExposedDropdownMenuBox(
                             expanded = categoryDropdownExpanded && !isProcessing,
                             onExpandedChange = { if (!isProcessing) categoryDropdownExpanded = it },
@@ -657,12 +1040,22 @@ fun BulkProductModificationDialog(
                         }
                     }
 
-                    BulkProductOperation.MARK_AS_FAVORITE -> Text(stringResource(Res.string.bulk_favorite_confirmation, selectedCount))
-                    BulkProductOperation.DEACTIVATE -> Text(stringResource(Res.string.bulk_deactivate_confirmation, selectedCount))
-                    BulkProductOperation.DELETE -> Text(
-                        stringResource(Res.string.bulk_delete_confirmation, selectedCount),
-                        color = MaterialTheme.colorScheme.error
-                    )
+                        BulkProductOperation.MARK_AS_FAVORITE,
+                        BulkProductOperation.DEACTIVATE -> ToggleModeSelector(
+                            selectedMode = toggleMode,
+                            onSelectMode = { toggleMode = it },
+                            enabled = !isProcessing,
+                            options = buildToggleModeOptions(
+                                operation = effectiveOperation,
+                                selectedCount = selectedCount,
+                                availableModes = availableModes
+                            )
+                        )
+                        BulkProductOperation.DELETE -> Text(
+                            stringResource(Res.string.bulk_delete_confirmation, selectedCount),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
                 errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 if (progress != null) {
@@ -873,6 +1266,193 @@ private fun PriceOption(
 }
 
 @Composable
+private fun rememberMarginWarningOrNull(
+    enabled: Boolean,
+    priceError: String?,
+    costVal: Double?,
+    priceVal: Double?,
+    marginText: String,
+    defaultMarginPercentage: Double,
+    warningRes: StringResource
+): String? {
+    if (!enabled || priceError != null || defaultMarginPercentage <= 0.0) return null
+    if (costVal == null || costVal <= 0.0 || priceVal == null || priceVal <= 0.0) return null
+    val currentMargin = marginText.replace(',', '.').toDoubleOrNull()
+        ?: (((priceVal - costVal) / costVal) * 100.0)
+    if (currentMargin >= defaultMarginPercentage - 0.001) return null
+    return stringResource(
+        warningRes,
+        formatBulkMarginInput(currentMargin),
+        formatBulkMarginInput(defaultMarginPercentage)
+    )
+}
+
+@Composable
+private fun BulkTierPriceRow(
+    priceLabel: String,
+    marginLabel: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    priceText: String,
+    onPriceTextChange: (String) -> Unit,
+    marginText: String,
+    onMarginTextChange: (String) -> Unit,
+    onTargetMarginChange: (Double?) -> Unit,
+    costText: String,
+    shouldRound: Boolean,
+    priceError: String?,
+    marginWarning: String?,
+    enabled: Boolean = true,
+    priceModifier: Modifier = Modifier
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        PriceWithMarginOption(
+            priceLabel = priceLabel,
+            marginLabel = marginLabel,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            priceValue = priceText,
+            onPriceValueChange = { input ->
+                onPriceTextChange(input)
+                calculateMarginOnPriceChange(input, costText)?.let { (formattedMargin, rawMargin) ->
+                    onMarginTextChange(formattedMargin)
+                    onTargetMarginChange(rawMargin)
+                }
+            },
+            marginValue = marginText,
+            onMarginValueChange = { input ->
+                onMarginTextChange(input)
+                val (parsedMargin, recalculatedPrice) = calculatePriceOnMarginChange(
+                    marginInput = input,
+                    costText = costText,
+                    shouldRound = shouldRound
+                )
+                onTargetMarginChange(parsedMargin)
+                if (recalculatedPrice != null) {
+                    onPriceTextChange(recalculatedPrice)
+                }
+            },
+            onMarginFocusLost = {
+                if (shouldRound) {
+                    recomputeRoundedMargin(priceText, costText)?.let(onMarginTextChange)
+                }
+            },
+            isError = priceError != null,
+            enabled = enabled,
+            priceModifier = priceModifier
+        )
+        if (priceError != null) {
+            Text(
+                text = priceError,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 48.dp, top = 2.dp)
+            )
+        } else if (marginWarning != null) {
+            BulkMarginWarningBadge(
+                warningText = marginWarning,
+                modifier = Modifier.padding(start = 48.dp, top = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PriceWithMarginOption(
+    priceLabel: String,
+    marginLabel: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    priceValue: String,
+    onPriceValueChange: (String) -> Unit,
+    marginValue: String,
+    onMarginValueChange: (String) -> Unit,
+    onMarginFocusLost: () -> Unit,
+    isError: Boolean = false,
+    enabled: Boolean = true,
+    priceModifier: Modifier = Modifier
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
+        )
+        Row(
+            modifier = Modifier.weight(1f).padding(start = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = priceValue,
+                onValueChange = { input ->
+                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                        onPriceValueChange(input)
+                    }
+                },
+                modifier = Modifier.weight(1f).then(priceModifier),
+                prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                label = { Text(priceLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                enabled = checked && enabled,
+                isError = isError,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+            OutlinedTextField(
+                value = marginValue,
+                onValueChange = { input ->
+                    if (input.isEmpty() || input.matches(Regex("^-?\\d*\\.?\\d{0,2}$"))) {
+                        onMarginValueChange(input)
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused) {
+                            onMarginFocusLost()
+                        }
+                    },
+                suffix = { Text("%", fontWeight = FontWeight.Bold) },
+                label = { Text(marginLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                enabled = checked && enabled,
+                isError = isError,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BulkMarginWarningBadge(
+    warningText: String,
+    modifier: Modifier = Modifier
+) {
+    val warningColor = if (isSystemInDarkTheme()) Color(0xFFFFB74D) else Color(0xFFD97706)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.warning),
+            contentDescription = null,
+            tint = warningColor,
+            modifier = Modifier.size(13.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = warningText,
+            color = warningColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
 private fun DecimalInput(
     label: String,
     value: String,
@@ -895,4 +1475,179 @@ private fun DecimalInput(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
     )
+}
+
+private data class ToggleModeOption(
+    val mode: BulkToggleMode,
+    val title: String,
+    val description: String
+)
+
+/**
+ * Switches between entering explicit prices manually and computing them via profit percentages
+ * inside the bulk price-change dialog.
+ */
+@Composable
+private fun PriceEditModeToggleBar(
+    selectedMode: BulkPriceEditMode,
+    onSelectMode: (BulkPriceEditMode) -> Unit,
+    enabled: Boolean = true
+) {
+    val modes = BulkPriceEditMode.entries
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        modes.forEachIndexed { index, mode ->
+            ToggleButton(
+                checked = selectedMode == mode,
+                onCheckedChange = { onSelectMode(mode) },
+                enabled = enabled,
+                colors = ToggleButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { role = Role.RadioButton },
+                shapes = connectedToggleButtonShapes(index, modes.size)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource(mode.iconRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(mode.labelRes),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun buildToggleModeOptions(
+    operation: BulkProductOperation,
+    selectedCount: Int,
+    availableModes: List<BulkToggleMode>
+): List<ToggleModeOption> {
+    val isFavoriteOp = operation == BulkProductOperation.MARK_AS_FAVORITE
+    val allOptions = listOf(
+        ToggleModeOption(
+            mode = BulkToggleMode.MARK,
+            title = stringResource(
+                if (isFavoriteOp) Res.string.bulk_favorite_opt_mark_title
+                else Res.string.bulk_deactivate_opt_mark_title
+            ),
+            description = stringResource(
+                if (isFavoriteOp) Res.string.bulk_favorite_opt_mark_desc
+                else Res.string.bulk_deactivate_opt_mark_desc,
+                selectedCount
+            )
+        ),
+        ToggleModeOption(
+            mode = BulkToggleMode.UNMARK,
+            title = stringResource(
+                if (isFavoriteOp) Res.string.bulk_favorite_opt_unmark_title
+                else Res.string.bulk_deactivate_opt_unmark_title
+            ),
+            description = stringResource(
+                if (isFavoriteOp) Res.string.bulk_favorite_opt_unmark_desc
+                else Res.string.bulk_deactivate_opt_unmark_desc,
+                selectedCount
+            )
+        ),
+        ToggleModeOption(
+            mode = BulkToggleMode.INVERT,
+            title = stringResource(Res.string.bulk_opt_invert_title),
+            description = stringResource(
+                if (isFavoriteOp) Res.string.bulk_favorite_opt_invert_desc
+                else Res.string.bulk_deactivate_opt_invert_desc
+            )
+        )
+    )
+    return allOptions.filter { it.mode in availableModes }
+}
+
+/**
+ * Renders the applicable bulk flag actions (mark, unmark, or invert)
+ * for favorite and active-status operations.
+ */
+@Composable
+private fun ToggleModeSelector(
+    selectedMode: BulkToggleMode,
+    onSelectMode: (BulkToggleMode) -> Unit,
+    options: List<ToggleModeOption>,
+    enabled: Boolean = true
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { option ->
+            val isSelected = selectedMode == option.mode
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.medium)
+                    .selectable(
+                        selected = isSelected,
+                        enabled = enabled,
+                        role = Role.RadioButton,
+                        onClick = { onSelectMode(option.mode) }
+                    ),
+                shape = MaterialTheme.shapes.medium,
+                border = BorderStroke(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                ),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerLowest
+                    }
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = null,
+                        enabled = enabled
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = option.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = option.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

@@ -939,14 +939,6 @@ class VentaViewModel(
         _cartItems.value = updated
     }
 
-    fun toggleWholesalePrice() {
-        cycleTicketPriceTier()
-    }
-
-    fun toggleWholesalePriceForItem(item: CartItem) {
-        cyclePriceTierForItem(item)
-    }
-
     fun toggleProductFavorite(product: Products) {
         viewModelScope.launch {
             val updated = product.copy(

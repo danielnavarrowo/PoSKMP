@@ -159,6 +159,8 @@
     <!-- BulkProductModificationDialog -->
     <string name="bulk_op_change_prices_title">Cambiar precios</string>
     <string name="bulk_op_change_prices_desc">Actualiza los precios que elijas y conserva los demás sin cambios.</string>
+    <string name="bulk_price_mode_manual">Precios manuales</string>
+    <string name="bulk_price_mode_profit">% de ganancia</string>
     <string name="bulk_op_set_profit_title">Establecer porcentaje de ganancia</string>
     <string name="bulk_op_set_profit_desc">Calcula los precios de venta a partir del costo de cada producto.</string>
     <string name="bulk_op_change_category_title">Modificar categoría</string>
@@ -166,8 +168,19 @@
     <string name="bulk_op_mark_as_favorite_title">Marcar como favoritos</string>
     <string name="bulk_op_mark_as_favorite_desc">Los productos seleccionados se marcarán como favoritos.</string>
     <string name="bulk_favorite_confirmation">Los %1$d productos seleccionados se marcarán como favoritos.</string>
+    <string name="bulk_favorite_opt_mark_title">Marcar como favoritos</string>
+    <string name="bulk_favorite_opt_mark_desc">Los %1$d productos seleccionados se marcarán como favoritos.</string>
+    <string name="bulk_favorite_opt_unmark_title">Desmarcar como favoritos</string>
+    <string name="bulk_favorite_opt_unmark_desc">Los %1$d productos seleccionados dejarán de ser favoritos.</string>
+    <string name="bulk_favorite_opt_invert_desc">Los favoritos pasarán a no favoritos y los no favoritos a favoritos.</string>
     <string name="bulk_op_deactivate_title">Marcar como no activos</string>
     <string name="bulk_op_deactivate_desc">Los productos dejarán de estar disponibles para la venta.</string>
+    <string name="bulk_deactivate_opt_mark_title">Marcar como no activos</string>
+    <string name="bulk_deactivate_opt_mark_desc">Los %1$d productos seleccionados quedarán inactivos.</string>
+    <string name="bulk_deactivate_opt_unmark_title">Desmarcar como no activos</string>
+    <string name="bulk_deactivate_opt_unmark_desc">Los %1$d productos seleccionados se marcarán como activos.</string>
+    <string name="bulk_deactivate_opt_invert_desc">Los inactivos pasarán a activos y los activos a inactivos.</string>
+    <string name="bulk_opt_invert_title">Invertir selección</string>
     <string name="bulk_op_delete_title">Eliminar definitivamente</string>
     <string name="bulk_op_delete_desc">Esta acción borra los productos seleccionados y no se puede deshacer.</string>
     <string name="bulk_invalid_value_error">Ingresa un valor válido para %1$s.</string>
@@ -199,7 +212,11 @@
     <string name="bulk_progress_set_profit">Estableciendo ganancia: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_change_category">Cambiando categoría: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_mark_as_favorite">Marcando como favoritos: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_unmark_favorite">Desmarcando favoritos: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_invert_favorite">Invirtiendo favoritos: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_deactivate">Desactivando productos: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_activate">Activando productos: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_invert_status">Invirtiendo estado de productos: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_delete">Eliminando productos: %1$d de %2$d (%3$d%)</string>
     <string name="apply_changes_button">Aplicar cambios</string>
     <string name="apply_changes_button_desktop">Aplicar cambios (Enter)</string>
