@@ -67,11 +67,23 @@ data class VentasUiState(
     val showOutflowDialog: Boolean = false,
     val showCloseShiftDialog: Boolean = false,
     val shiftSummary: ShiftSummary? = null,
+    val displayedShiftSummary: ShiftSummary? = null,
     val isRecordingMovement: Boolean = false,
     val isClosingShift: Boolean = false,
     val shiftActionError: String? = null,
     val shiftActionSuccess: String? = null
 )
+
+internal fun resolveDisplayedShiftId(
+    selectedShiftId: String?,
+    shiftsForSelectedPeriod: List<CashierShift>,
+    activeShift: CashierShift?
+): String? {
+    val validSelectedId = selectedShiftId?.takeIf { id ->
+        shiftsForSelectedPeriod.any { it.id == id }
+    }
+    return validSelectedId ?: activeShift?.id
+}
 
 class VentasViewModel(
     private val getSalesSummaryUseCase: GetSalesSummaryUseCase,
@@ -114,19 +126,54 @@ class VentasViewModel(
         }
     }
 
+    private suspend fun fetchDisplayedShiftSummary(
+        selectedShiftId: String?,
+        shiftsForSelectedPeriod: List<CashierShift>,
+        activeShift: CashierShift?
+    ): ShiftSummary? {
+        val targetShiftId = resolveDisplayedShiftId(
+            selectedShiftId = selectedShiftId,
+            shiftsForSelectedPeriod = shiftsForSelectedPeriod,
+            activeShift = activeShift
+        ) ?: return null
+        return getShiftSummaryUseCase(targetShiftId).getOrNull()
+    }
+
     private fun observeActiveShift() {
         viewModelScope.launch {
             getActiveShiftUseCase().collect { shift ->
                 _uiState.update { it.copy(activeShift = shift) }
                 movementsJob?.cancel()
                 if (shift != null) {
+                    val initialSummary = fetchDisplayedShiftSummary(
+                        selectedShiftId = _uiState.value.selectedShiftId,
+                        shiftsForSelectedPeriod = _uiState.value.shiftsForSelectedPeriod,
+                        activeShift = shift
+                    )
+                    _uiState.update { it.copy(displayedShiftSummary = initialSummary) }
                     movementsJob = viewModelScope.launch {
                         shiftRepository.getMovementsForShiftFlow(shift.id).collect { movements ->
                             _uiState.update { it.copy(activeShiftMovements = movements) }
+                            val updatedSummary = fetchDisplayedShiftSummary(
+                                selectedShiftId = _uiState.value.selectedShiftId,
+                                shiftsForSelectedPeriod = _uiState.value.shiftsForSelectedPeriod,
+                                activeShift = _uiState.value.activeShift
+                            )
+                            _uiState.update { it.copy(displayedShiftSummary = updatedSummary) }
                         }
                     }
                 } else {
-                    _uiState.update { it.copy(activeShiftMovements = emptyList()) }
+                    val summary = fetchDisplayedShiftSummary(
+                        selectedShiftId = _uiState.value.selectedShiftId,
+                        shiftsForSelectedPeriod = _uiState.value.shiftsForSelectedPeriod,
+                        activeShift = null
+                    )
+                    _uiState.update {
+                        it.copy(
+                            activeShiftMovements = emptyList(),
+                            displayedShiftSummary = summary
+                        )
+                    }
                 }
             }
         }
@@ -366,6 +413,9 @@ class VentasViewModel(
                     )
                 }
             }
+            if (result.isSuccess) {
+                refresh()
+            }
         }
     }
 
@@ -406,6 +456,11 @@ class VentasViewModel(
             val categorySalesMetrics = getSalesSummaryUseCase.getCategorySalesMetrics(startTime, endTime, summary.totalVentas, shiftId = effectiveShiftId)
             val dailySalesMetrics = getSalesSummaryUseCase.getDailySalesMetrics(startTime, endTime, shiftId = effectiveShiftId)
             val recentSales = saleRepository.getSalesBetween(startTime, endTime, limit = -1, offset = 0, shiftId = effectiveShiftId)
+            val displayedShiftSummary = fetchDisplayedShiftSummary(
+                selectedShiftId = effectiveShiftId,
+                shiftsForSelectedPeriod = shifts,
+                activeShift = _uiState.value.activeShift
+            )
 
             _uiState.update {
                 it.copy(
@@ -413,6 +468,7 @@ class VentasViewModel(
                     shiftsForSelectedPeriod = shifts,
                     selectedShiftId = effectiveShiftId,
                     summary = summary,
+                    displayedShiftSummary = displayedShiftSummary,
                     deliveryComparison = deliveryComparison,
                     soldProducts = soldProducts,
                     topSellers = topSellers,

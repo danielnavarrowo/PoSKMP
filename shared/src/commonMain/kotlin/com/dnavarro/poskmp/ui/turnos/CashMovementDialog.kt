@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dnavarro.poskmp.domain.model.CashMovement
 import com.dnavarro.poskmp.domain.model.CashMovementType
+import com.dnavarro.poskmp.domain.usecase.OpenCashDrawerUseCase
 import com.dnavarro.poskmp.util.formatEpochMillisToDateTime
 import com.dnavarro.poskmp.util.formatPrice
 import com.dnavarro.poskmp.util.isAndroid
@@ -57,6 +58,7 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.cancel
 import poskmp.shared.generated.resources.cash_inflow_reason_placeholder
@@ -80,7 +82,8 @@ fun CashMovementDialog(
     movements: List<CashMovement> = emptyList(),
     onConfirm: (amount: Double, reason: String) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    openCashDrawerUseCase: OpenCashDrawerUseCase = koinInject()
 ) {
     var amountText by remember { mutableStateOf("") }
     var reasonText by remember { mutableStateOf("") }
@@ -96,6 +99,14 @@ fun CashMovementDialog(
     val isValid = (amountText.toDoubleOrNull() ?: 0.0) > 0.0
 
     val amountFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(type) {
+        if (!isAndroid()) {
+            try {
+                openCashDrawerUseCase()
+            } catch (_: Exception) {}
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (!isAndroid()) {

@@ -7,12 +7,15 @@ import com.dnavarro.poskmp.data.sync.TestSettingsRepository
 import com.dnavarro.poskmp.db.AppDatabase
 import com.dnavarro.poskmp.db.DatabaseMigrator
 import com.dnavarro.poskmp.domain.model.CashMovementType
+import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.usecase.RecordCustomerPaymentUseCase
+import com.dnavarro.poskmp.ui.ventas.resolveDisplayedShiftId
 import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ShiftRepositoryCashPaymentsTest {
@@ -251,5 +254,155 @@ class ShiftRepositoryCashPaymentsTest {
         val summaryAfterDelete = shiftRepository.getShiftSummary("shift-bounded").getOrThrow()
         assertEquals(65.0, summaryAfterDelete.abonosEfectivo, 0.001)
         assertEquals(565.0, summaryAfterDelete.efectivoEsperado, 0.001)
+    }
+
+    @Test
+    fun resolveDisplayedShiftId_prefersSelectedShiftThenActiveShiftAndHidesOtherwise() {
+        val closedShift = CashierShift(
+            id = "shift-closed",
+            cashierId = "cashier-1",
+            cashierName = "Ana Cajera",
+            startTime = 1000L,
+            endTime = 2000L,
+            isClosed = true
+        )
+        val openShift = CashierShift(
+            id = "shift-open",
+            cashierId = "cashier-1",
+            cashierName = "Ana Cajera",
+            startTime = 3000L,
+            isClosed = false
+        )
+        val periodShifts = listOf(closedShift, openShift)
+
+        // 1. Valid selected shift in dropdown overrides active shift
+        assertEquals(
+            "shift-closed",
+            resolveDisplayedShiftId(
+                selectedShiftId = "shift-closed",
+                shiftsForSelectedPeriod = periodShifts,
+                activeShift = openShift
+            )
+        )
+
+        // 2. Falls back to open active shift when dropdown has no shift selected
+        assertEquals(
+            "shift-open",
+            resolveDisplayedShiftId(
+                selectedShiftId = null,
+                shiftsForSelectedPeriod = periodShifts,
+                activeShift = openShift
+            )
+        )
+
+        // 3. Returns null (hide card) when no shift is selected and no shift is open
+        assertNull(
+            resolveDisplayedShiftId(
+                selectedShiftId = null,
+                shiftsForSelectedPeriod = listOf(closedShift),
+                activeShift = null
+            )
+        )
+
+        // 4. Returns null when selectedShiftId is stale / not in period and no shift is open
+        assertNull(
+            resolveDisplayedShiftId(
+                selectedShiftId = "shift-other-period",
+                shiftsForSelectedPeriod = listOf(closedShift),
+                activeShift = null
+            )
+        )
+    }
+
+    @Test
+    fun getShiftSummary_excludesSalesFromOtherShiftsOrWithoutShiftEvenWithinTimeRange() = runBlocking {
+        seedCashierAndCustomer()
+        val queries = database.appDatabaseQueries
+
+        // Second shift / cashier or another open/closed shift in the same time window
+        queries.insertShift(
+            id = "shift-1",
+            cashier_id = "cashier-1",
+            cashier_name = "Ana Cajera",
+            start_time = 1000L,
+            end_time = null,
+            initial_cash = 200.0,
+            final_cash_expected = null,
+            final_cash_counted = null,
+            difference = null,
+            notes = null,
+            is_closed = 0L,
+            sync_state = "PENDING_INSERT",
+            updated_at = 1000L
+        )
+        queries.insertShift(
+            id = "other-shift",
+            cashier_id = "cashier-1",
+            cashier_name = "Ana Cajera",
+            start_time = 1000L,
+            end_time = 2000L,
+            initial_cash = 0.0,
+            final_cash_expected = null,
+            final_cash_counted = null,
+            difference = null,
+            notes = null,
+            is_closed = 1L,
+            sync_state = "PENDING_INSERT",
+            updated_at = 2000L
+        )
+
+        // Active & cancelled sales within >= 1000L belonging to another shift or no shift
+        seedSale(
+            id = "sale-other-shift",
+            folio = 10L,
+            total = 500.0,
+            metodoPago = "EFECTIVO",
+            customerId = null,
+            shiftId = "other-shift",
+            createdAt = 1500L
+        )
+        seedSale(
+            id = "sale-no-shift",
+            folio = 11L,
+            total = 300.0,
+            metodoPago = "TARJETA",
+            customerId = null,
+            shiftId = null,
+            createdAt = 1600L
+        )
+        queries.insertSale(
+            id = "sale-cancelled-other",
+            folio = 12L,
+            total = 400.0,
+            total_original = 400.0,
+            total_costo = 240.0,
+            ganancia = 160.0,
+            pago_con = 400.0,
+            cambio = 0.0,
+            metodo_pago = "EFECTIVO",
+            total_items = 1.0,
+            customer_id = null,
+            created_at = 1700L,
+            sync_state = "PENDING_INSERT",
+            shift_id = "other-shift",
+            cashier_id = "cashier-1",
+            cashier_name = "Ana Cajera",
+            estado = "CANCELADA",
+            es_foranea = 0L,
+            monto_efectivo = 400.0,
+            monto_tarjeta = 0.0,
+            monto_transferencia = 0.0,
+            monto_credito = 0.0,
+            updated_at = 1700L
+        )
+
+        val summary = shiftRepository.getShiftSummary("shift-1").getOrThrow()
+        assertEquals(0.0, summary.totalVentas, 0.001)
+        assertEquals(0.0, summary.ventasEfectivo, 0.001)
+        assertEquals(0L, summary.totalTransacciones)
+        assertEquals(0.0, summary.totalVentasCanceladas, 0.001)
+        assertEquals(0L, summary.totalTicketsCancelados)
+        assertEquals(emptyList(), summary.cancelledSales)
+        assertEquals(200.0, summary.efectivoEsperado, 0.001)
     }
 }

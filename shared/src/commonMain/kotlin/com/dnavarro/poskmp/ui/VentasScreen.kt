@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,16 +23,20 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,11 +49,13 @@ import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
@@ -92,22 +99,27 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
+import com.dnavarro.poskmp.domain.model.CashMovement
 import com.dnavarro.poskmp.domain.model.CashMovementType
 import com.dnavarro.poskmp.domain.model.CashierShift
 import com.dnavarro.poskmp.domain.model.CategorySalesMetric
@@ -116,6 +128,7 @@ import com.dnavarro.poskmp.domain.model.DeliveryComparisonMetric
 import com.dnavarro.poskmp.domain.model.PaymentMethodMetric
 import com.dnavarro.poskmp.domain.model.Sale
 import com.dnavarro.poskmp.domain.model.SaleItem
+import com.dnavarro.poskmp.domain.model.ShiftSummary
 import com.dnavarro.poskmp.theme.ShapeDefaults
 import com.dnavarro.poskmp.theme.googleFlexBadge
 import com.dnavarro.poskmp.theme.googleFlexHeadline
@@ -148,6 +161,7 @@ import ir.ehsannarmani.compose_charts.models.PopupProperties
 import ir.ehsannarmani.compose_charts.models.StrokeStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
@@ -162,7 +176,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.accept_button
-import poskmp.shared.generated.resources.active_shift_badge
 import poskmp.shared.generated.resources.all_shifts_option
 import poskmp.shared.generated.resources.arrow_up
 import poskmp.shared.generated.resources.back
@@ -171,7 +184,6 @@ import poskmp.shared.generated.resources.btn_cash_inflow_desktop
 import poskmp.shared.generated.resources.btn_cash_outflow
 import poskmp.shared.generated.resources.btn_cash_outflow_desktop
 import poskmp.shared.generated.resources.btn_close_shift
-import poskmp.shared.generated.resources.btn_close_shift_desktop
 import poskmp.shared.generated.resources.btn_view_sales_history
 import poskmp.shared.generated.resources.btn_view_sold_products
 import poskmp.shared.generated.resources.cancel
@@ -181,8 +193,10 @@ import poskmp.shared.generated.resources.cancel_sale_confirm_message
 import poskmp.shared.generated.resources.cancel_sale_confirm_title
 import poskmp.shared.generated.resources.cancel_sale_keep_action
 import poskmp.shared.generated.resources.card
+import poskmp.shared.generated.resources.cashier_label
 import poskmp.shared.generated.resources.category_stat_format
 import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.close_button
 import poskmp.shared.generated.resources.custom_range_active_format
 import poskmp.shared.generated.resources.daily_sales_avg_format
@@ -196,11 +210,16 @@ import poskmp.shared.generated.resources.delivery_comparison_title
 import poskmp.shared.generated.resources.delivery_mode_active_badge
 import poskmp.shared.generated.resources.delivery_stat_format
 import poskmp.shared.generated.resources.delivery_stat_profit_format
+import poskmp.shared.generated.resources.difference_balanced
+import poskmp.shared.generated.resources.difference_shortage
+import poskmp.shared.generated.resources.difference_surplus
 import poskmp.shared.generated.resources.empty_category_sales
 import poskmp.shared.generated.resources.empty_daily_sales
 import poskmp.shared.generated.resources.empty_payment_methods
 import poskmp.shared.generated.resources.empty_recent_sales_history
 import poskmp.shared.generated.resources.empty_sold_products
+import poskmp.shared.generated.resources.expected_cash_label
+import poskmp.shared.generated.resources.initial_cash_label
 import poskmp.shared.generated.resources.kpi_average_ticket
 import poskmp.shared.generated.resources.kpi_gross_total
 import poskmp.shared.generated.resources.kpi_issued_tickets
@@ -231,12 +250,37 @@ import poskmp.shared.generated.resources.reprint_receipt_button
 import poskmp.shared.generated.resources.sale_badge_delivery
 import poskmp.shared.generated.resources.sale_status_cancelled
 import poskmp.shared.generated.resources.select_date_range_title
+import poskmp.shared.generated.resources.shift_cancelled_tickets_label
+import poskmp.shared.generated.resources.shift_cancelled_total_label
+import poskmp.shared.generated.resources.shift_cash_customer_payments
+import poskmp.shared.generated.resources.shift_cash_inflows
+import poskmp.shared.generated.resources.shift_cash_outflows
+import poskmp.shared.generated.resources.shift_cash_sales
+import poskmp.shared.generated.resources.shift_closing_time_label
+import poskmp.shared.generated.resources.shift_credit_sales
+import poskmp.shared.generated.resources.shift_details_card_title
+import poskmp.shared.generated.resources.shift_difference_label
 import poskmp.shared.generated.resources.shift_filter_label
+import poskmp.shared.generated.resources.shift_in_progress_value
+import poskmp.shared.generated.resources.shift_movement_entry_badge
+import poskmp.shared.generated.resources.shift_movement_exit_badge
+import poskmp.shared.generated.resources.shift_movement_no_reason
+import poskmp.shared.generated.resources.shift_movements_empty
+import poskmp.shared.generated.resources.shift_movements_history_title
+import poskmp.shared.generated.resources.shift_notes_display_label
+import poskmp.shared.generated.resources.shift_opening_time_label
+import poskmp.shared.generated.resources.shift_reported_cash_label
+import poskmp.shared.generated.resources.shift_status_closed
 import poskmp.shared.generated.resources.shift_status_open
+import poskmp.shared.generated.resources.shift_summary_cash_section
+import poskmp.shared.generated.resources.shift_summary_other_payments_section
+import poskmp.shared.generated.resources.shift_total_sales
+import poskmp.shared.generated.resources.shift_total_tickets
 import poskmp.shared.generated.resources.ticket_cashier_format
-import poskmp.shared.generated.resources.ticket_detail_profit
+import poskmp.shared.generated.resources.ticket_detail_items_header
+import poskmp.shared.generated.resources.ticket_detail_profit_label
 import poskmp.shared.generated.resources.ticket_detail_title
-import poskmp.shared.generated.resources.ticket_detail_total
+import poskmp.shared.generated.resources.ticket_detail_total_label
 import poskmp.shared.generated.resources.title_category_sales
 import poskmp.shared.generated.resources.title_daily_sales
 import poskmp.shared.generated.resources.title_payment_methods
@@ -486,19 +530,6 @@ fun VentasScreen(
                                     Modifier
                                         .focusRequester(desktopFocusRequester)
                                         .focusable()
-                                        .onPreviewKeyEvent { keyEvent ->
-                                            keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-
-                                                Key.F12 -> {
-                                                    if (state.activeShift != null) {
-                                                        onOpenCloseShiftDialog()
-                                                        true
-                                                    } else false
-                                                }
-
-                                                else -> false
-                                            }
-                                        }
                                 } else Modifier
                             )
                     ) { innerPadding ->
@@ -520,12 +551,14 @@ fun VentasScreen(
                         ) {
                             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                                 val containerWidth = maxWidth
+                                val density = LocalDensity.current
+                                val windowWidth = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
+                                val isNavigationRailHidden = windowWidth < AdaptiveBreakpoints.NavRailMinWidth
                                 val canFitSingleRowFilters = containerWidth >= AdaptiveBreakpoints.FilterBarSingleRowMinWidth
                                 val isTripleColumnKpi = containerWidth >= AdaptiveBreakpoints.TripleColumnKpiMinWidth
                                 val isDualColumnKpi = containerWidth >= AdaptiveBreakpoints.DualColumnKpiMinWidth
                                 val isWideComparison = containerWidth >= AdaptiveBreakpoints.MultiColumnContentMinWidth
                                 val canFitSideBySideCharts = containerWidth >= AdaptiveBreakpoints.PaymentAndCategoryRowMinWidth
-                                val isShiftActionsRow = containerWidth >= AdaptiveBreakpoints.ShiftActionsRowMinWidth
                                 val isNavButtonsRow = containerWidth >= AdaptiveBreakpoints.NavButtonsRowMinWidth
 
                                 LazyColumn(
@@ -565,164 +598,6 @@ fun VentasScreen(
                         }
                     }
                 }
-
-                if(state.activeShift != null) {
-                    item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                            shape = ShapeDefaults.cardShape,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.person),
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Text(
-                                            text = stringResource(Res.string.active_shift_badge, state.activeShift.cashierName),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-
-                                // 3 Action Buttons: Entrada, Salida, Cerrar Turno
-                                if (isShiftActionsRow) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        androidx.compose.material3.FilledTonalButton(
-                                            onClick = onOpenInflowDialog,
-                                            enabled = true,
-                                            shape = MaterialTheme.shapes.small,
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text(
-                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
-                                                else stringResource(Res.string.btn_cash_inflow_desktop),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-
-                                        androidx.compose.material3.FilledTonalButton(
-                                            onClick = onOpenOutflowDialog,
-                                            enabled = true,
-                                            shape = MaterialTheme.shapes.small,
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text(
-                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
-                                                else stringResource(Res.string.btn_cash_outflow_desktop),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-
-                                        androidx.compose.material3.Button(
-                                            onClick = onOpenCloseShiftDialog,
-                                            enabled = true,
-                                            shape = MaterialTheme.shapes.small,
-                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                            ),
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text(
-                                                text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
-                                                else stringResource(Res.string.btn_close_shift_desktop),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        androidx.compose.material3.FilledTonalButton(
-                                            onClick = onOpenInflowDialog,
-                                            enabled = true,
-                                            shape = MaterialTheme.shapes.small,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text(
-                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
-                                                else stringResource(Res.string.btn_cash_inflow_desktop),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-
-                                        androidx.compose.material3.FilledTonalButton(
-                                            onClick = onOpenOutflowDialog,
-                                            enabled = true,
-                                            shape = MaterialTheme.shapes.small,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text(
-                                                text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
-                                                else stringResource(Res.string.btn_cash_outflow_desktop),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-
-                                        androidx.compose.material3.Button(
-                                            onClick = onOpenCloseShiftDialog,
-                                            enabled = true,
-                                            shape = MaterialTheme.shapes.small,
-                                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.errorContainer,
-                                                contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text(
-                                                text = if (isAndroid()) stringResource(Res.string.btn_close_shift)
-                                                else stringResource(Res.string.btn_close_shift_desktop),
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                // Shift Actions Card (Entrada, Salida, Cerrar turno)
 
                 // Period Filter Selector
                 item {
@@ -797,6 +672,24 @@ fun VentasScreen(
                                 }
                             }
                         }
+                    }
+                }
+
+                // Selected or Active Shift Details Card
+                if (state.displayedShiftSummary != null) {
+                    item {
+                        val isCurrentDeviceOpenShift = !state.displayedShiftSummary.shift.isClosed &&
+                            state.activeShift?.id == state.displayedShiftSummary.shift.id
+                        ShiftDetailsCard(
+                            summary = state.displayedShiftSummary,
+                            isCurrentDeviceOpenShift = isCurrentDeviceOpenShift,
+                            showCashMovementButtons = isNavigationRailHidden && isCurrentDeviceOpenShift,
+                            isWide = isWideComparison,
+                            onOpenInflowDialog = onOpenInflowDialog,
+                            onOpenOutflowDialog = onOpenOutflowDialog,
+                            onOpenCloseShiftDialog = onOpenCloseShiftDialog,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
 
@@ -1744,6 +1637,11 @@ internal fun SaleDetailDialog(
     val isCancelled = sale.isCancelled
     val closeButtonFocusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val maxDialogHeight = with(density) {
+        (windowInfo.containerSize.height.toDp() * 0.90f).coerceAtLeast(320.dp).coerceAtMost(680.dp)
+    }
 
     LaunchedEffect(Unit) {
         if (!isAndroid()) {
@@ -1754,295 +1652,96 @@ internal fun SaleDetailDialog(
         }
     }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier
-            .widthIn(max = 580.dp)
-            .fillMaxWidth()
-            .then(
-            if (!isAndroid()) {
-                Modifier
-                    .focusable()
-                    .onPreviewKeyEvent { keyEvent ->
-                        keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
-                            Key.Enter, Key.NumPadEnter-> {
-                                onDismiss()
-                                true
-                            }
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .widthIn(min = 300.dp, max = 560.dp)
+                .fillMaxWidth(0.94f)
+                .heightIn(max = maxDialogHeight)
+                .then(
+                    if (!isAndroid()) {
+                        Modifier
+                            .focusable()
+                            .onPreviewKeyEvent { keyEvent ->
+                                keyEvent.type == KeyEventType.KeyDown && when (keyEvent.key) {
+                                    Key.Enter, Key.NumPadEnter -> {
+                                        onDismiss()
+                                        true
+                                    }
 
-                            else -> false
-                        }
-                    }
-            } else Modifier
-        ),
-        shape = ShapeDefaults.cardShape,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    stringResource(Res.string.ticket_detail_title, sale.folio),
-                    fontFamily = googleFlexHeadline,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (sale.esForanea) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.tertiaryContainer,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.delivery),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = stringResource(Res.string.sale_badge_delivery),
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    fontFamily = googleFlexBadge,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                    else -> false
+                                }
                             }
-                        }
-                    }
-                    if (isCancelled) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = stringResource(Res.string.sale_status_cancelled),
-                                color = MaterialTheme.colorScheme.error,
-                                fontFamily = googleFlexBadge,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                val dateAndCashier = if (!sale.cashierName.isNullOrBlank()) {
-                    "${formatEpochMillisToDateTime(sale.createdAt)} • ${stringResource(Res.string.ticket_cashier_format, sale.cashierName)}"
-                } else {
-                    formatEpochMillisToDateTime(sale.createdAt)
-                }
-                Text(
-                    text = dateAndCashier,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    } else Modifier
+                ),
+            shape = ShapeDefaults.cardShape,
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+            tonalElevation = 6.dp
+        ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val isCompactActions = maxWidth < 460.dp
+                val outerPadding = if (maxWidth < 400.dp) 16.dp else 20.dp
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(outerPadding),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    SaleDetailHeader(
+                        sale = sale,
+                        isCancelled = isCancelled,
+                        onDismiss = onDismiss
+                    )
+
+                    SaleDetailSummaryCard(
+                        sale = sale,
+                        isCancelled = isCancelled
+                    )
+
                     Text(
-                        stringResource(Res.string.ticket_detail_total, sale.total.toString().formatPrice()),
-                        fontFamily = googleFlexNumeric,
+                        text = stringResource(Res.string.ticket_detail_items_header, items.size),
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        style = TextStyle(
-                            fontFamily = googleFlexNumeric,
-                            textDecoration = if (isCancelled) TextDecoration.LineThrough else null
-                        )
-                    )
-                    Text(
-                        stringResource(Res.string.ticket_detail_profit, sale.ganancia.toString().formatPrice()),
-                        color = if (isCancelled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                        fontFamily = googleFlexNumeric,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Método: ${sale.metodoPago}",
-                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (sale.pagoCon > 0.0 && sale.cambio > 0.0) {
-                        Text(
-                            text = "Pagó: $${sale.pagoCon.toString().formatPrice()} • Cambio: $${sale.cambio.toString().formatPrice()}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                if (sale.metodoPago == "MIXTO") {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (sale.montoEfectivo > 0.0) {
-                            Text(
-                                text = "Efectivo: $${sale.montoEfectivo.toString().formatPrice()}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        if (sale.montoTarjeta > 0.0) {
-                            Text(
-                                text = "Tarjeta: $${sale.montoTarjeta.toString().formatPrice()}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                        if (sale.montoTransferencia > 0.0) {
-                            Text(
-                                text = "Transferencia: $${sale.montoTransferencia.toString().formatPrice()}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
-                        if (sale.montoCredito > 0.0) {
-                            Text(
-                                text = "Crédito: $${sale.montoCredito.toString().formatPrice()}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(8.dp))
 
-                LazyColumn(modifier = Modifier.height(240.dp)) {
-                    items(
-                        items,
-                        key = { it.id },
-                        contentType = { "ticket_detail_item" }
-                    ) { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        item.productNombre,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    )
-                                    val isDiscounted = item.esDescuento || (!item.esMayoreo && !item.esDelivery && sale.totalOriginal > sale.total + 0.001)
-                                    if (item.esMayoreo) {
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.primaryContainer,
-                                            shape = RoundedCornerShape(4.dp)
-                                        ) {
-                                            Text(
-                                                text = "Mayoreo",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                            )
-                                        }
-                                    } else if (isDiscounted) {
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.secondaryContainer,
-                                            shape = RoundedCornerShape(4.dp)
-                                        ) {
-                                            Text(
-                                                text = "Descuento",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                            )
-                                        }
-                                    } else if (item.esDelivery) {
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.tertiaryContainer,
-                                            shape = RoundedCornerShape(4.dp)
-                                        ) {
-                                            Text(
-                                                text = stringResource(Res.string.delivery_mode_active_badge),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                                Text(
-                                    "${item.cantidad.toString().formatPrice()} x $${item.precioUnitario.toString().formatPrice()}",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .heightIn(max = 280.dp)
+                    ) {
+                        itemsIndexed(
+                            items = items,
+                            key = { _, item -> item.id },
+                            contentType = { _, _ -> "ticket_detail_item" }
+                        ) { index, item ->
+                            SaleDetailItemRow(item = item, sale = sale)
+                            if (index < items.lastIndex) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                                 )
                             }
-                            Text(
-                                "$${item.subtotal.toString().formatPrice()}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
                         }
                     }
-                }
-            }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = if (!isAndroid()) Modifier.focusRequester(closeButtonFocusRequester) else Modifier
-                ) {
-                    Text(
-                        if (isAndroid()) stringResource(Res.string.close_button)
-                        else "${stringResource(Res.string.close_button)} (Enter)"
-                    )
-                }
-                if (!isCancelled) {
-                    androidx.compose.material3.FilledTonalButton(
-                        onClick = {
+
+                    HorizontalDivider()
+
+                    SaleDetailFooterActions(
+                        isCancelled = isCancelled,
+                        isCompactActions = isCompactActions,
+                        isReprinting = isReprinting,
+                        closeButtonFocusRequester = closeButtonFocusRequester,
+                        onDismiss = onDismiss,
+                        onCancelSale = {
                             onDismiss()
                             onCancelSale()
                         },
-                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                    ) {
-                        Text(stringResource(Res.string.cancel_sale_button))
-                    }
-                    androidx.compose.material3.FilledTonalButton(
-                        onClick = {
+                        onReprint = {
                             if (!isReprinting) {
                                 isReprinting = true
                                 coroutineScope.launch {
@@ -2054,15 +1753,485 @@ internal fun SaleDetailDialog(
                                     }
                                 }
                             }
-                        },
-                        enabled = !isReprinting
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaleDetailHeader(
+    sale: Sale,
+    isCancelled: Boolean,
+    onDismiss: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                Text(
+                    text = stringResource(Res.string.ticket_detail_title, sale.folio),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontFamily = googleFlexHeadline,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val dateAndCashier = if (!sale.cashierName.isNullOrBlank()) {
+                    "${formatEpochMillisToDateTime(sale.createdAt)} • ${stringResource(Res.string.ticket_cashier_format, sale.cashierName)}"
+                } else {
+                    formatEpochMillisToDateTime(sale.createdAt)
+                }
+                Text(
+                    text = dateAndCashier,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.close),
+                    contentDescription = stringResource(Res.string.close_button),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        if (sale.esForanea || isCancelled) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (sale.esForanea) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = RoundedCornerShape(6.dp)
                     ) {
-                        Text(stringResource(Res.string.reprint_receipt_button))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.delivery),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(Res.string.sale_badge_delivery),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                fontFamily = googleFlexBadge,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                if (isCancelled) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.sale_status_cancelled),
+                            color = MaterialTheme.colorScheme.error,
+                            fontFamily = googleFlexBadge,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
                     }
                 }
             }
         }
-    )
+    }
+}
+
+@Composable
+private fun SaleDetailSummaryCard(
+    sale: Sale,
+    isCancelled: Boolean
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(Res.string.ticket_detail_total_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "$${sale.total.toString().formatPrice()}",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = googleFlexNumeric,
+                            fontWeight = FontWeight.ExtraBold,
+                            textDecoration = if (isCancelled) TextDecoration.LineThrough else null
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (sale.totalOriginal > sale.total + 0.001) {
+                        Text(
+                            text = "$${sale.totalOriginal.toString().formatPrice()}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = googleFlexNumeric,
+                                textDecoration = TextDecoration.LineThrough
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = stringResource(Res.string.ticket_detail_profit_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "+$${sale.ganancia.toString().formatPrice()}",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = googleFlexNumeric,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = if (isCancelled) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "${stringResource(Res.string.payment_method_label)}: ${sale.metodoPago}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (sale.pagoCon > 0.0 && sale.cambio > 0.0) {
+                    Text(
+                        text = "Pagó: $${sale.pagoCon.toString().formatPrice()} • Cambio: $${sale.cambio.toString().formatPrice()}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (sale.metodoPago == "MIXTO") {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (sale.montoEfectivo > 0.0) {
+                        MixedPaymentPill(
+                            text = "${stringResource(Res.string.payment_method_efectivo)}: $${sale.montoEfectivo.toString().formatPrice()}",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (sale.montoTarjeta > 0.0) {
+                        MixedPaymentPill(
+                            text = "${stringResource(Res.string.payment_method_tarjeta)}: $${sale.montoTarjeta.toString().formatPrice()}",
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    if (sale.montoTransferencia > 0.0) {
+                        MixedPaymentPill(
+                            text = "${stringResource(Res.string.payment_method_transferencia)}: $${sale.montoTransferencia.toString().formatPrice()}",
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                    if (sale.montoCredito > 0.0) {
+                        MixedPaymentPill(
+                            text = "${stringResource(Res.string.payment_method_credito)}: $${sale.montoCredito.toString().formatPrice()}",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MixedPaymentPill(
+    text: String,
+    color: Color
+) {
+    Surface(
+        color = color.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        )
+    }
+}
+
+@Composable
+private fun SaleDetailItemRow(
+    item: SaleItem,
+    sale: Sale
+) {
+    val isDiscounted = item.esDescuento || (!item.esMayoreo && !item.esDelivery && sale.totalOriginal > sale.total + 0.001)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = item.productNombre,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${item.cantidad.toString().formatPrice()} × $${item.precioUnitario.toString().formatPrice()}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (item.esMayoreo) {
+                    SaleItemBadgeChip(
+                        text = "Mayoreo",
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                } else if (isDiscounted) {
+                    SaleItemBadgeChip(
+                        text = "Descuento",
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                } else if (item.esDelivery) {
+                    SaleItemBadgeChip(
+                        text = stringResource(Res.string.delivery_mode_active_badge),
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
+        }
+        Text(
+            text = "$${item.subtotal.toString().formatPrice()}",
+            fontFamily = googleFlexNumeric,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun SaleItemBadgeChip(
+    text: String,
+    containerColor: Color,
+    contentColor: Color
+) {
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = contentColor,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+        )
+    }
+}
+
+@Composable
+private fun SaleDetailFooterActions(
+    isCancelled: Boolean,
+    isCompactActions: Boolean,
+    isReprinting: Boolean,
+    closeButtonFocusRequester: FocusRequester,
+    onDismiss: () -> Unit,
+    onCancelSale: () -> Unit,
+    onReprint: () -> Unit
+) {
+    val closeText = if (isAndroid()) {
+        stringResource(Res.string.close_button)
+    } else {
+        "${stringResource(Res.string.close_button)} (Enter)"
+    }
+    val closeFocusModifier = if (!isAndroid()) Modifier.focusRequester(closeButtonFocusRequester) else Modifier
+
+    if (isCancelled) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = MaterialTheme.shapes.small,
+                modifier = closeFocusModifier
+            ) {
+                Text(closeText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        return
+    }
+
+    if (isCompactActions) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = onReprint,
+                enabled = !isReprinting,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.print),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(Res.string.reprint_receipt_button),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = onCancelSale,
+                    shape = MaterialTheme.shapes.small,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = stringResource(Res.string.cancel_sale_button),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = MaterialTheme.shapes.small,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                    modifier = Modifier.weight(1f).then(closeFocusModifier)
+                ) {
+                    Text(
+                        text = closeText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = closeFocusModifier
+            ) {
+                Text(closeText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = onCancelSale,
+                    shape = MaterialTheme.shapes.small,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                ) {
+                    Text(
+                        text = stringResource(Res.string.cancel_sale_button),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Button(
+                    onClick = onReprint,
+                    enabled = !isReprinting,
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.print),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(Res.string.reprint_receipt_button),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -3213,6 +3382,573 @@ private fun DeliveryChannelMetricRow(
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = if (isSelected) color else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun ShiftDetailsCard(
+    summary: ShiftSummary,
+    isCurrentDeviceOpenShift: Boolean,
+    showCashMovementButtons: Boolean,
+    isWide: Boolean,
+    onOpenInflowDialog: () -> Unit,
+    onOpenOutflowDialog: () -> Unit,
+    onOpenCloseShiftDialog: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shift = summary.shift
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = ShapeDefaults.cardShape
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ShiftDetailsHeader(
+                shift = shift,
+                isCurrentDeviceOpenShift = isCurrentDeviceOpenShift,
+                onOpenCloseShiftDialog = onOpenCloseShiftDialog
+            )
+            ShiftTimesBar(shift = shift, isWide = isWide)
+
+            if (showCashMovementButtons) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilledTonalButton(
+                        onClick = onOpenInflowDialog,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
+                            else stringResource(Res.string.btn_cash_inflow_desktop),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    FilledTonalButton(
+                        onClick = onOpenOutflowDialog,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
+                            else stringResource(Res.string.btn_cash_outflow_desktop),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            if (isWide) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ShiftCashBreakdownSubCard(
+                        summary = summary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ShiftSalesSummarySubCard(summary = summary)
+                        ShiftMovementsSubCard(movements = summary.movements)
+                    }
+                }
+            } else {
+                ShiftCashBreakdownSubCard(
+                    summary = summary,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ShiftSalesSummarySubCard(
+                    summary = summary,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                ShiftMovementsSubCard(
+                    movements = summary.movements,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShiftDetailsHeader(
+    shift: CashierShift,
+    isCurrentDeviceOpenShift: Boolean,
+    onOpenCloseShiftDialog: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f).padding(end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.person),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = stringResource(Res.string.shift_details_card_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${stringResource(Res.string.cashier_label)}: ${shift.cashierName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (isCurrentDeviceOpenShift) {
+            Button(
+                onClick = onOpenCloseShiftDialog,
+                shape = MaterialTheme.shapes.small,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = stringResource(Res.string.btn_close_shift),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        } else {
+            val statusBg = if (shift.isClosed) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                Color(0xFF10B981).copy(alpha = 0.15f)
+            }
+            val statusColor = if (shift.isClosed) {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            } else {
+                Color(0xFF047857)
+            }
+            Surface(
+                color = statusBg,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = stringResource(
+                        if (shift.isClosed) Res.string.shift_status_closed else Res.string.shift_status_open
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShiftTimesBar(
+    shift: CashierShift,
+    isWide: Boolean
+) {
+    val openingLabel = stringResource(Res.string.shift_opening_time_label)
+    val openingValue = formatEpochMillisToDateTime(shift.startTime)
+    val closingLabel = stringResource(Res.string.shift_closing_time_label)
+    val closingValue = if (shift.isClosed && shift.endTime != null) {
+        formatEpochMillisToDateTime(shift.endTime)
+    } else {
+        stringResource(Res.string.shift_in_progress_value)
+    }
+    val closingColor = if (shift.isClosed) MaterialTheme.colorScheme.onSurface else Color(0xFF10B981)
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (isWide) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ShiftDetailRow(
+                    label = openingLabel,
+                    value = openingValue,
+                    modifier = Modifier.weight(1f)
+                )
+                ShiftDetailRow(
+                    label = closingLabel,
+                    value = closingValue,
+                    valueColor = closingColor,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ShiftDetailRow(label = openingLabel, value = openingValue)
+                ShiftDetailRow(
+                    label = closingLabel,
+                    value = closingValue,
+                    valueColor = closingColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShiftCashBreakdownSubCard(
+    summary: ShiftSummary,
+    modifier: Modifier = Modifier
+) {
+    val shift = summary.shift
+    val expectedCash = shift.finalCashExpected ?: summary.efectivoEsperado
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.shift_summary_cash_section),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+            ShiftDetailRow(
+                label = "${stringResource(Res.string.initial_cash_label)}:",
+                value = "$${shift.initialCash.toString().formatPrice()}"
+            )
+            ShiftDetailRow(
+                label = stringResource(Res.string.shift_cash_sales),
+                value = "+ $${summary.ventasEfectivo.toString().formatPrice()}",
+                valueColor = Color(0xFF10B981)
+            )
+            if (summary.abonosEfectivo > 0.0) {
+                ShiftDetailRow(
+                    label = stringResource(Res.string.shift_cash_customer_payments),
+                    value = "+ $${summary.abonosEfectivo.toString().formatPrice()}",
+                    valueColor = Color(0xFF10B981)
+                )
+            }
+            ShiftDetailRow(
+                label = stringResource(Res.string.shift_cash_inflows),
+                value = "+ $${summary.totalEntradas.toString().formatPrice()}",
+                valueColor = if (summary.totalEntradas > 0.0) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            ShiftDetailRow(
+                label = stringResource(Res.string.shift_cash_outflows),
+                value = "- $${summary.totalSalidas.toString().formatPrice()}",
+                valueColor = if (summary.totalSalidas > 0.0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+            ShiftDetailRow(
+                label = stringResource(Res.string.expected_cash_label),
+                value = "$${expectedCash.toString().formatPrice()}",
+                valueColor = MaterialTheme.colorScheme.primary,
+                bold = true
+            )
+
+            if (shift.isClosed) {
+                val countedCash = shift.finalCashCounted ?: 0.0
+                val diff = shift.difference ?: (countedCash - expectedCash)
+                val (diffText, diffColor) = when {
+                    abs(diff) < 0.01 -> Pair(
+                        stringResource(Res.string.difference_balanced),
+                        Color(0xFF10B981)
+                    )
+                    diff > 0.0 -> Pair(
+                        stringResource(Res.string.difference_surplus, "$${diff.toString().formatPrice()}"),
+                        Color(0xFF0284C7)
+                    )
+                    else -> Pair(
+                        stringResource(Res.string.difference_shortage, "$${abs(diff).toString().formatPrice()}"),
+                        MaterialTheme.colorScheme.error
+                    )
+                }
+
+                ShiftDetailRow(
+                    label = stringResource(Res.string.shift_reported_cash_label),
+                    value = "$${countedCash.toString().formatPrice()}",
+                    bold = true
+                )
+                ShiftDetailRow(
+                    label = stringResource(Res.string.shift_difference_label),
+                    value = diffText,
+                    valueColor = diffColor,
+                    bold = true
+                )
+
+                if (!shift.notes.isNullOrBlank()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                    Text(
+                        text = stringResource(Res.string.shift_notes_display_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = shift.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShiftSalesSummarySubCard(
+    summary: ShiftSummary,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.shift_summary_other_payments_section),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+            ShiftDetailRow(
+                label = stringResource(Res.string.shift_total_sales),
+                value = "$${summary.totalVentas.toString().formatPrice()}",
+                bold = true
+            )
+            ShiftDetailRow(
+                label = stringResource(Res.string.shift_total_tickets),
+                value = summary.totalTransacciones.toString()
+            )
+            if (summary.ventasTarjeta > 0.0) {
+                ShiftDetailRow(
+                    label = "${stringResource(Res.string.payment_method_tarjeta)}:",
+                    value = "$${summary.ventasTarjeta.toString().formatPrice()}"
+                )
+            }
+            if (summary.ventasTransferencia > 0.0) {
+                ShiftDetailRow(
+                    label = "${stringResource(Res.string.payment_method_transferencia)}:",
+                    value = "$${summary.ventasTransferencia.toString().formatPrice()}"
+                )
+            }
+            if (summary.ventasCredito > 0.0) {
+                ShiftDetailRow(
+                    label = stringResource(Res.string.shift_credit_sales),
+                    value = "$${summary.ventasCredito.toString().formatPrice()}"
+                )
+            }
+            if (summary.totalTicketsCancelados > 0L) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                ShiftDetailRow(
+                    label = stringResource(Res.string.shift_cancelled_tickets_label),
+                    value = summary.totalTicketsCancelados.toString(),
+                    valueColor = MaterialTheme.colorScheme.error
+                )
+                ShiftDetailRow(
+                    label = stringResource(Res.string.shift_cancelled_total_label),
+                    value = "$${summary.totalVentasCanceladas.toString().formatPrice()}",
+                    valueColor = MaterialTheme.colorScheme.error,
+                    bold = true
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShiftMovementsSubCard(
+    movements: List<CashMovement>,
+    modifier: Modifier = Modifier
+) {
+    val sortedMovements = remember(movements) {
+        movements.sortedByDescending { it.createdAt }
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.shift_movements_history_title),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+            if (sortedMovements.isEmpty()) {
+                Text(
+                    text = stringResource(Res.string.shift_movements_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    sortedMovements.forEach { movement ->
+                        ShiftMovementRow(movement = movement)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShiftMovementRow(movement: CashMovement) {
+    val isEntry = movement.tipo == CashMovementType.ENTRADA
+    val badgeBg = if (isEntry) Color(0xFF10B981).copy(alpha = 0.15f) else MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+    val badgeColor = if (isEntry) Color(0xFF047857) else MaterialTheme.colorScheme.error
+    val amountColor = if (isEntry) Color(0xFF10B981) else MaterialTheme.colorScheme.error
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        color = badgeBg,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (isEntry) Res.string.shift_movement_entry_badge else Res.string.shift_movement_exit_badge
+                            ),
+                            color = badgeColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = formatEpochMillisToDateTime(movement.createdAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                if (movement.motivo.isNotBlank()) {
+                    Text(
+                        text = movement.motivo,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                } else {
+                    Text(
+                        text = stringResource(Res.string.shift_movement_no_reason),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Text(
+                text = (if (isEntry) "(+) $" else "(-) $") + movement.monto.toString().formatPrice(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = amountColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShiftDetailRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    bold: Boolean = false
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f).padding(end = 8.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
+            color = valueColor
         )
     }
 }

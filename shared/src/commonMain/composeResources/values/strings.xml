@@ -508,6 +508,9 @@
     <string name="ticket_detail_title">Detalle de Ticket #%1$d</string>
     <string name="ticket_detail_total">Total: $%1$s</string>
     <string name="ticket_detail_profit">Ganancia: +$%1$s</string>
+    <string name="ticket_detail_total_label">Total</string>
+    <string name="ticket_detail_profit_label">Ganancia</string>
+    <string name="ticket_detail_items_header">Productos (%1$d)</string>
     <string name="sale_status_cancelled">Cancelada</string>
     <string name="cancel_sale_button">Cancelar venta</string>
     <string name="cancel_sale_confirm_title">¿Cancelar venta?</string>
@@ -864,7 +867,6 @@
     <string name="btn_cash_outflow">Salida</string>
     <string name="btn_cash_outflow_desktop">Salida de efectivo (F8)</string>
     <string name="btn_close_shift">Cerrar turno</string>
-    <string name="btn_close_shift_desktop">Cerrar turno (F12)</string>
 
     <string name="cash_inflow_title">Entrada de Efectivo</string>
     <string name="cash_outflow_title">Salida de Efectivo</string>
@@ -943,8 +945,16 @@
     <string name="all_shifts_option">Ver información de todos los turnos</string>
     <string name="no_shifts_for_period">No se registraron turnos en este período</string>
     <string name="shift_status_open">Abierto</string>
+    <string name="shift_status_closed">Cerrado</string>
     <string name="shift_dropdown_item_format">%1$s • %2$s (%3$s - %4$s)</string>
     <string name="shift_dropdown_item_open_format">%1$s • %2$s (%3$s - Abierto)</string>
+    <string name="shift_details_card_title">Detalles del turno</string>
+    <string name="shift_opening_time_label">Apertura:</string>
+    <string name="shift_closing_time_label">Cierre:</string>
+    <string name="shift_in_progress_value">En curso</string>
+    <string name="shift_reported_cash_label">Efectivo reportado al cierre:</string>
+    <string name="shift_difference_label">Diferencia:</string>
+    <string name="shift_notes_display_label">Observaciones:</string>
 
     <!-- Restablecimiento de Fábrica en Ajustes -->
     <string name="danger_zone_section_title">Zona de Peligro</string>

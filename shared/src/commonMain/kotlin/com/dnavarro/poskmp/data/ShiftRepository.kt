@@ -237,11 +237,7 @@ class ShiftRepositoryImpl(
             val shiftDb = localDataSource.getShiftById(shiftId)
                 ?: return@withContext Result.failure(IllegalArgumentException("Turno no encontrado."))
 
-            val salesSummary = localDataSource.getSalesSummaryByShift(
-                shiftId = shiftId,
-                startTime = shiftDb.start_time,
-                endTime = shiftDb.end_time
-            )
+            val salesSummary = localDataSource.getSalesSummaryByShift(shiftId = shiftId)
 
             val totalEntradas = localDataSource.getSumMovementsByShiftAndType(shiftId, CashMovementType.ENTRADA.name)
             val totalSalidas = localDataSource.getSumMovementsByShiftAndType(shiftId, CashMovementType.SALIDA.name)
@@ -251,16 +247,8 @@ class ShiftRepositoryImpl(
             )
             val movements = localDataSource.getMovementsByShiftId(shiftId).map { it.toDomain() }
 
-            val cancelledSalesSummary = localDataSource.getCancelledSalesSummaryByShift(
-                shiftId = shiftId,
-                startTime = shiftDb.start_time,
-                endTime = shiftDb.end_time
-            )
-            val cancelledSales = localDataSource.getCancelledSalesByShift(
-                shiftId = shiftId,
-                startTime = shiftDb.start_time,
-                endTime = shiftDb.end_time
-            ).map { row ->
+            val cancelledSalesSummary = localDataSource.getCancelledSalesSummaryByShift(shiftId = shiftId)
+            val cancelledSales = localDataSource.getCancelledSalesByShift(shiftId = shiftId).map { row ->
                 Sale(
                     id = row.id,
                     folio = row.folio,

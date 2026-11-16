@@ -46,9 +46,9 @@ interface ShiftLocalDataSource {
     fun getMovementsByShiftIdFlow(shiftId: String): Flow<List<Cash_movements>>
     suspend fun getMovementsByShiftId(shiftId: String): List<Cash_movements>
     suspend fun getSumMovementsByShiftAndType(shiftId: String, tipo: String): Double
-    suspend fun getSalesSummaryByShift(shiftId: String, startTime: Long, endTime: Long?): SelectSalesSummaryByShift
-    suspend fun getCancelledSalesSummaryByShift(shiftId: String, startTime: Long, endTime: Long?): SelectCancelledSalesSummaryByShift
-    suspend fun getCancelledSalesByShift(shiftId: String, startTime: Long, endTime: Long?): List<Sales>
+    suspend fun getSalesSummaryByShift(shiftId: String): SelectSalesSummaryByShift
+    suspend fun getCancelledSalesSummaryByShift(shiftId: String): SelectCancelledSalesSummaryByShift
+    suspend fun getCancelledSalesByShift(shiftId: String): List<Sales>
     suspend fun getCashCustomerPaymentsSumByShift(startTime: Long, endTime: Long?): Double
 }
 
@@ -190,39 +190,21 @@ class SqlDelightShiftDataSource(
     }
 
     override suspend fun getSalesSummaryByShift(
-        shiftId: String,
-        startTime: Long,
-        endTime: Long?
+        shiftId: String
     ): SelectSalesSummaryByShift = withContext(Dispatchers.IO) {
-        queries.selectSalesSummaryByShift(
-            shiftId = shiftId,
-            startTime = startTime,
-            endTime = endTime
-        ).executeAsOne()
+        queries.selectSalesSummaryByShift(shiftId = shiftId).executeAsOne()
     }
 
     override suspend fun getCancelledSalesSummaryByShift(
-        shiftId: String,
-        startTime: Long,
-        endTime: Long?
+        shiftId: String
     ): SelectCancelledSalesSummaryByShift = withContext(Dispatchers.IO) {
-        queries.selectCancelledSalesSummaryByShift(
-            shiftId = shiftId,
-            startTime = startTime,
-            endTime = endTime
-        ).executeAsOne()
+        queries.selectCancelledSalesSummaryByShift(shiftId = shiftId).executeAsOne()
     }
 
     override suspend fun getCancelledSalesByShift(
-        shiftId: String,
-        startTime: Long,
-        endTime: Long?
+        shiftId: String
     ): List<Sales> = withContext(Dispatchers.IO) {
-        queries.selectCancelledSalesByShift(
-            shiftId = shiftId,
-            startTime = startTime,
-            endTime = endTime
-        ).executeAsList()
+        queries.selectCancelledSalesByShift(shiftId = shiftId).executeAsList()
     }
 
     override suspend fun getCashCustomerPaymentsSumByShift(
