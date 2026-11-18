@@ -1,10 +1,14 @@
 package com.dnavarro.poskmp.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -29,7 +33,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -82,6 +85,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -161,12 +166,6 @@ import ir.ehsannarmani.compose_charts.models.PopupProperties
 import ir.ehsannarmani.compose_charts.models.StrokeStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.pow
-import kotlin.math.roundToLong
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -194,6 +193,8 @@ import poskmp.shared.generated.resources.cancel_sale_confirm_title
 import poskmp.shared.generated.resources.cancel_sale_keep_action
 import poskmp.shared.generated.resources.card
 import poskmp.shared.generated.resources.cashier_label
+import poskmp.shared.generated.resources.category_sales_hide_list
+import poskmp.shared.generated.resources.category_sales_show_list
 import poskmp.shared.generated.resources.category_stat_format
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.close
@@ -218,6 +219,7 @@ import poskmp.shared.generated.resources.empty_daily_sales
 import poskmp.shared.generated.resources.empty_payment_methods
 import poskmp.shared.generated.resources.empty_recent_sales_history
 import poskmp.shared.generated.resources.empty_sold_products
+import poskmp.shared.generated.resources.expand_more
 import poskmp.shared.generated.resources.expected_cash_label
 import poskmp.shared.generated.resources.initial_cash_label
 import poskmp.shared.generated.resources.kpi_average_ticket
@@ -237,9 +239,9 @@ import poskmp.shared.generated.resources.payment_method_stat_format
 import poskmp.shared.generated.resources.payment_method_tarjeta
 import poskmp.shared.generated.resources.payment_method_transferencia
 import poskmp.shared.generated.resources.payments
-import poskmp.shared.generated.resources.period_range
 import poskmp.shared.generated.resources.period_last_4_weeks
 import poskmp.shared.generated.resources.period_last_7_days
+import poskmp.shared.generated.resources.period_range
 import poskmp.shared.generated.resources.period_today
 import poskmp.shared.generated.resources.period_yesterday
 import poskmp.shared.generated.resources.person
@@ -286,6 +288,12 @@ import poskmp.shared.generated.resources.title_daily_sales
 import poskmp.shared.generated.resources.title_payment_methods
 import poskmp.shared.generated.resources.uncategorized_label
 import poskmp.shared.generated.resources.ventas_title
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
+import kotlin.math.roundToLong
 import kotlin.time.Duration.Companion.milliseconds
 
 @Serializable
@@ -845,11 +853,13 @@ fun VentasScreen(
                 }
 
                 // Daily Sales Bar Chart
-                item {
-                    DailySalesCard(
-                        metrics = state.dailySalesMetrics,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                if (!isSingleDaySelected(state.selectedPeriod, state.customStartDate, state.customEndDate)) {
+                    item {
+                        DailySalesCard(
+                            metrics = state.dailySalesMetrics,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
                 // Payment Methods & Category Sales
@@ -1220,6 +1230,25 @@ private fun formatDateDisplay(epochMillis: Long): String {
         .atZone(java.time.ZoneId.systemDefault())
         .toLocalDate()
         .format(DATE_DISPLAY_FORMATTER)
+}
+
+private fun isSingleDaySelected(
+    selectedPeriod: SalesPeriodPreset,
+    customStartDate: Long?,
+    customEndDate: Long?
+): Boolean = when (selectedPeriod) {
+    SalesPeriodPreset.HOY, SalesPeriodPreset.AYER -> true
+    SalesPeriodPreset.ULTIMOS_7_DIAS, SalesPeriodPreset.ULTIMAS_4_SEMANAS -> false
+    SalesPeriodPreset.RANGO -> {
+        if (customStartDate == null || customEndDate == null) {
+            false
+        } else {
+            val zone = java.time.ZoneId.systemDefault()
+            val startDate = java.time.Instant.ofEpochMilli(customStartDate).atZone(zone).toLocalDate()
+            val endDate = java.time.Instant.ofEpochMilli(customEndDate).atZone(zone).toLocalDate()
+            startDate == endDate
+        }
+    }
 }
 
 private fun formatShiftDisplay(shift: CashierShift): String {
@@ -2291,7 +2320,7 @@ internal fun CancelSaleConfirmationDialog(
             )
         },
         confirmButton = {
-            androidx.compose.material3.Button(
+            Button(
                 onClick = onConfirm,
                 enabled = !isCancelling,
                 modifier = if (!isAndroid()) Modifier.focusRequester(cancelConfirmButtonFocusRequester) else Modifier,
@@ -2857,21 +2886,101 @@ private fun CategorySalesCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                metrics.forEachIndexed { index, metric ->
-                    val color = getChartSliceColor(index)
-                    val isSelected = metric.categoria == selectedCategoryName
-                    CategorySalesMetricRow(
-                        metric = metric,
-                        color = color,
-                        isSelected = isSelected,
-                        onClick = {
-                            selectedCategoryName = if (selectedCategoryName == metric.categoria) null else metric.categoria
+                val visibleMetrics = metrics.take(5)
+                val hiddenMetrics = metrics.drop(5)
+                var isListExpanded by remember { mutableStateOf(false) }
+
+                CategoryMetricsList(
+                    items = visibleMetrics,
+                    startIndex = 0,
+                    selectedCategoryName = selectedCategoryName,
+                    hasFollowingItem = isListExpanded && hiddenMetrics.isNotEmpty(),
+                    onSelectCategory = { categoria ->
+                        selectedCategoryName = if (selectedCategoryName == categoria) null else categoria
+                    }
+                )
+
+                if (hiddenMetrics.isNotEmpty()) {
+                    AnimatedVisibility(
+                        visible = isListExpanded,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        CategoryMetricsList(
+                            items = hiddenMetrics,
+                            startIndex = visibleMetrics.size,
+                            selectedCategoryName = selectedCategoryName,
+                            hasFollowingItem = false,
+                            onSelectCategory = { categoria ->
+                                selectedCategoryName = if (selectedCategoryName == categoria) null else categoria
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val chevronRotation by animateFloatAsState(targetValue = if (isListExpanded) 180f else 0f)
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable { isListExpanded = !isListExpanded }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isListExpanded) {
+                                    stringResource(Res.string.category_sales_hide_list)
+                                } else {
+                                    stringResource(Res.string.category_sales_show_list, hiddenMetrics.size)
+                                },
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                painter = painterResource(Res.drawable.expand_more),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .rotate(chevronRotation)
+                            )
                         }
-                    )
-                    if (index < metrics.lastIndex) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryMetricsList(
+    items: List<CategorySalesMetric>,
+    startIndex: Int,
+    selectedCategoryName: String?,
+    hasFollowingItem: Boolean,
+    onSelectCategory: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        items.forEachIndexed { localIndex, metric ->
+            val color = getChartSliceColor(startIndex + localIndex)
+            val isSelected = metric.categoria == selectedCategoryName
+            CategorySalesMetricRow(
+                metric = metric,
+                color = color,
+                isSelected = isSelected,
+                onClick = { onSelectCategory(metric.categoria) }
+            )
+            if (localIndex < items.lastIndex || hasFollowingItem) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
         }
     }
@@ -3398,90 +3507,103 @@ private fun ShiftDetailsCard(
     modifier: Modifier = Modifier
 ) {
     val shift = summary.shift
+    var isExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         shape = ShapeDefaults.cardShape
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        Column(modifier = Modifier.padding(12.dp)) {
             ShiftDetailsHeader(
                 shift = shift,
+                isExpanded = isExpanded,
+                onToggleExpand = { isExpanded = !isExpanded },
                 isCurrentDeviceOpenShift = isCurrentDeviceOpenShift,
                 onOpenCloseShiftDialog = onOpenCloseShiftDialog
             )
-            ShiftTimesBar(shift = shift, isWide = isWide)
 
-            if (showCashMovementButtons) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier.padding(top = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    FilledTonalButton(
-                        onClick = onOpenInflowDialog,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
-                            else stringResource(Res.string.btn_cash_inflow_desktop),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    ShiftTimesBar(shift = shift, isWide = isWide)
+
+                    if (showCashMovementButtons) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FilledTonalButton(
+                                onClick = onOpenInflowDialog,
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = if (isAndroid()) stringResource(Res.string.btn_cash_inflow)
+                                    else stringResource(Res.string.btn_cash_inflow_desktop),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            FilledTonalButton(
+                                onClick = onOpenOutflowDialog,
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
+                                    else stringResource(Res.string.btn_cash_outflow_desktop),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
 
-                    FilledTonalButton(
-                        onClick = onOpenOutflowDialog,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = if (isAndroid()) stringResource(Res.string.btn_cash_outflow)
-                            else stringResource(Res.string.btn_cash_outflow_desktop),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    if (isWide) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ShiftCashBreakdownSubCard(
+                                summary = summary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                ShiftSalesSummarySubCard(summary = summary)
+                                ShiftMovementsSubCard(movements = summary.movements)
+                            }
+                        }
+                    } else {
+                        ShiftCashBreakdownSubCard(
+                            summary = summary,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        ShiftSalesSummarySubCard(
+                            summary = summary,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        ShiftMovementsSubCard(
+                            movements = summary.movements,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
-            }
-
-            if (isWide) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ShiftCashBreakdownSubCard(
-                        summary = summary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ShiftSalesSummarySubCard(summary = summary)
-                        ShiftMovementsSubCard(movements = summary.movements)
-                    }
-                }
-            } else {
-                ShiftCashBreakdownSubCard(
-                    summary = summary,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                ShiftSalesSummarySubCard(
-                    summary = summary,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                ShiftMovementsSubCard(
-                    movements = summary.movements,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     }
@@ -3490,26 +3612,42 @@ private fun ShiftDetailsCard(
 @Composable
 private fun ShiftDetailsHeader(
     shift: CashierShift,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
     isCurrentDeviceOpenShift: Boolean,
     onOpenCloseShiftDialog: () -> Unit
 ) {
+    val chevronRotation by animateFloatAsState(targetValue = if (isExpanded) 180f else 0f)
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(ShapeDefaults.cardShape)
+            .clickable(onClick = onToggleExpand),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier.weight(1f).padding(end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.weight(1f)
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.person),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Surface(
+                color = MaterialTheme.colorScheme.secondary,
+                shape = MaterialShapes.VerySunny.toShape(),
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(Res.drawable.person),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.surfaceBright,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Column {
                 Text(
                     text = stringResource(Res.string.shift_details_card_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -3526,49 +3664,63 @@ private fun ShiftDetailsHeader(
             }
         }
 
-        if (isCurrentDeviceOpenShift) {
-            Button(
-                onClick = onOpenCloseShiftDialog,
-                shape = MaterialTheme.shapes.small,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = stringResource(Res.string.btn_close_shift),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        } else {
-            val statusBg = if (shift.isClosed) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                Color(0xFF10B981).copy(alpha = 0.15f)
-            }
-            val statusColor = if (shift.isClosed) {
-                MaterialTheme.colorScheme.onSecondaryContainer
-            } else {
-                Color(0xFF047857)
-            }
-            Surface(
-                color = statusBg,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = stringResource(
-                        if (shift.isClosed) Res.string.shift_status_closed else Res.string.shift_status_open
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (isCurrentDeviceOpenShift) {
+                Button(
+                    onClick = onOpenCloseShiftDialog,
+                    shape = MaterialTheme.shapes.small,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = statusColor,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                )
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = stringResource(Res.string.btn_close_shift),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            } else {
+                val statusBg = if (shift.isClosed) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    Color(0xFF10B981).copy(alpha = 0.15f)
+                }
+                val statusColor = if (shift.isClosed) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    Color(0xFF047857)
+                }
+                Surface(
+                    color = statusBg,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (shift.isClosed) Res.string.shift_status_closed else Res.string.shift_status_open
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
             }
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                painter = painterResource(Res.drawable.expand_more),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(22.dp)
+                    .rotate(chevronRotation)
+            )
         }
     }
 }
