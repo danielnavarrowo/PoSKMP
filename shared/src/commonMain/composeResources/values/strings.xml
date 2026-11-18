@@ -489,6 +489,8 @@
     <string name="header_sold_pieces">Piezas Vendidas</string>
     <string name="title_payment_methods">Ventas por Método de Pago</string>
     <string name="title_category_sales">Ventas por Categoría</string>
+    <string name="category_sales_show_list">Ver %1$d categorías más</string>
+    <string name="category_sales_hide_list">Ver menos categorías</string>
     <string name="empty_period_sales">No hay ventas registradas en este período.</string>
     <string name="empty_payment_methods">No hay registros por método de pago en este período.</string>
     <string name="empty_category_sales">No hay registros por categoría en este período.</string>
