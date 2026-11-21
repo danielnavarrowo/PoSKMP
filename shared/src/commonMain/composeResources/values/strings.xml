@@ -108,6 +108,10 @@
     <string name="catalog_layout_table">Lista / Tabla</string>
     <string name="swap_venta_layout_order_title">Ticket a la izquierda en Venta</string>
     <string name="swap_venta_layout_order_subtitle">Muestra el ticket de venta a la izquierda y el catálogo de productos a la derecha en el diseño ancho</string>
+    <string name="desktop_title_bar_position_title">Posición de la barra de título</string>
+    <string name="desktop_title_bar_position_subtitle">Elige si la barra con fecha, hora, última venta y botones de ventana aparece arriba o abajo</string>
+    <string name="desktop_title_bar_position_top">Arriba</string>
+    <string name="desktop_title_bar_position_bottom">Abajo</string>
     <string name="beep_on_barcode_scan_title">Sonido al escanear código de barras</string>
     <string name="beep_on_barcode_scan_subtitle">Reproduce un pitido de confirmación al escanear o detectar un producto existente</string>
     <string name="default_margins_section_title">Márgenes de Ganancia</string>
@@ -165,6 +169,8 @@
     <string name="bulk_op_set_profit_desc">Calcula los precios de venta a partir del costo de cada producto.</string>
     <string name="bulk_op_change_category_title">Modificar categoría</string>
     <string name="bulk_op_change_category_desc">Asigna la misma categoría a todos los productos seleccionados.</string>
+    <string name="bulk_op_change_pieces_title">Modificar piezas</string>
+    <string name="bulk_op_change_pieces_desc">Asigna la misma cantidad de piezas a todos los productos seleccionados.</string>
     <string name="bulk_op_mark_as_favorite_title">Marcar como favoritos</string>
     <string name="bulk_op_mark_as_favorite_desc">Los productos seleccionados se marcarán como favoritos.</string>
     <string name="bulk_favorite_confirmation">Los %1$d productos seleccionados se marcarán como favoritos.</string>
@@ -194,6 +200,7 @@
     <string name="bulk_label_delivery_profit">la ganancia a domicilio</string>
     <string name="bulk_select_profit_error">Ingresa al menos un porcentaje de ganancia.</string>
     <string name="bulk_enter_category_error">Ingresa la categoría que se asignará.</string>
+    <string name="bulk_enter_pieces_error">Ingresa una cantidad de piezas mayor a 0.</string>
     <string name="bulk_mod_title">Modificación masiva</string>
     <string name="bulk_mod_subtitle">%1$d producto(s) seleccionado(s)</string>
     <string name="cost_price">Precio de costo</string>
@@ -211,6 +218,7 @@
     <string name="bulk_progress_change_prices">Actualizando precios: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_set_profit">Estableciendo ganancia: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_change_category">Cambiando categoría: %1$d de %2$d (%3$d%)</string>
+    <string name="bulk_progress_change_pieces">Actualizando piezas: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_mark_as_favorite">Marcando como favoritos: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_unmark_favorite">Desmarcando favoritos: %1$d de %2$d (%3$d%)</string>
     <string name="bulk_progress_invert_favorite">Invirtiendo favoritos: %1$d de %2$d (%3$d%)</string>

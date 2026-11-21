@@ -73,6 +73,12 @@ import poskmp.shared.generated.resources.checador_layout_title
 import poskmp.shared.generated.resources.close
 import poskmp.shared.generated.resources.default_screen_subtitle
 import poskmp.shared.generated.resources.default_screen_title
+import poskmp.shared.generated.resources.desktop_title_bar_position_bottom
+import poskmp.shared.generated.resources.desktop_title_bar_position_subtitle
+import poskmp.shared.generated.resources.desktop_title_bar_position_title
+import poskmp.shared.generated.resources.desktop_title_bar_position_top
+import poskmp.shared.generated.resources.dock_to_bottom
+import poskmp.shared.generated.resources.dock_to_top
 import poskmp.shared.generated.resources.fullscreen
 import poskmp.shared.generated.resources.grid
 import poskmp.shared.generated.resources.light_mode
@@ -108,6 +114,8 @@ fun GeneralSettingsSection(
     onUseProductTableInCatalogChange: (Boolean) -> Unit,
     swapVentaLayoutOrder: Boolean,
     onSwapVentaLayoutOrderChange: (Boolean) -> Unit,
+    desktopTitleBarAtBottom: Boolean = false,
+    onDesktopTitleBarAtBottomChange: (Boolean) -> Unit = {},
     beepOnBarcodeScan: Boolean = false,
     onBeepOnBarcodeScanChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
@@ -709,7 +717,101 @@ fun GeneralSettingsSection(
             }
         }
 
-        // 6. Beep on Barcode Scan Success Toggle
+        // 6. Posición de la barra de título (Solo Escritorio / JVM)
+        if (!isAndroid()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                shape = ShapeDefaults.middleListItemShape,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = stringResource(Res.string.desktop_title_bar_position_title),
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(Res.string.desktop_title_bar_position_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val titleBarPositionOptions = listOf(
+                        Triple(
+                            false,
+                            stringResource(Res.string.desktop_title_bar_position_top),
+                            Res.drawable.dock_to_top
+                        ),
+                        Triple(
+                            true,
+                            stringResource(Res.string.desktop_title_bar_position_bottom),
+                            Res.drawable.dock_to_bottom
+                        )
+                    )
+
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val isCompactWidth = maxWidth < AdaptiveBreakpoints.SegmentedGroupCompactWidth
+                        val rows = if (isCompactWidth) titleBarPositionOptions.chunked(1) else listOf(titleBarPositionOptions)
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+                        ) {
+                            rows.forEach { rowOptions ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    rowOptions.forEachIndexed { index, (atBottomOption, label, icon) ->
+                                        val isSelected = desktopTitleBarAtBottom == atBottomOption
+                                        ToggleButton(
+                                            checked = isSelected,
+                                            onCheckedChange = { onDesktopTitleBarAtBottomChange(atBottomOption) },
+                                            colors = ToggleButtonDefaults.colors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                                checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .semantics { role = Role.RadioButton },
+                                            shapes = connectedToggleButtonShapes(index, rowOptions.size)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(icon),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = label,
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 7. Beep on Barcode Scan Success Toggle
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer

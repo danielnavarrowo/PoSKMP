@@ -144,6 +144,8 @@ fun AjustesScreen(
         onUseProductTableInCatalogChange = { viewModel.setUseProductTableInCatalog(it) },
         swapVentaLayoutOrder = uiState.swapVentaLayoutOrder,
         onSwapVentaLayoutOrderChange = { viewModel.setSwapVentaLayoutOrder(it) },
+        desktopTitleBarAtBottom = uiState.desktopTitleBarAtBottom,
+        onDesktopTitleBarAtBottomChange = { viewModel.setDesktopTitleBarAtBottom(it) },
         beepOnBarcodeScan = uiState.beepOnBarcodeScan,
         onBeepOnBarcodeScanChange = { viewModel.setBeepOnBarcodeScan(it) },
         defaultRetailMargin = uiState.defaultRetailMargin,
@@ -284,6 +286,8 @@ fun AjustesScreen(
     onUseProductTableInCatalogChange: (Boolean) -> Unit = {},
     swapVentaLayoutOrder: Boolean = false,
     onSwapVentaLayoutOrderChange: (Boolean) -> Unit = {},
+    desktopTitleBarAtBottom: Boolean = false,
+    onDesktopTitleBarAtBottomChange: (Boolean) -> Unit = {},
     beepOnBarcodeScan: Boolean = false,
     onBeepOnBarcodeScanChange: (Boolean) -> Unit = {},
     defaultRetailMargin: Double = 0.0,
@@ -761,6 +765,8 @@ fun AjustesScreen(
                                         onUseProductTableInCatalogChange = onUseProductTableInCatalogChange,
                                         swapVentaLayoutOrder = swapVentaLayoutOrder,
                                         onSwapVentaLayoutOrderChange = onSwapVentaLayoutOrderChange,
+                                        desktopTitleBarAtBottom = desktopTitleBarAtBottom,
+                                        onDesktopTitleBarAtBottomChange = onDesktopTitleBarAtBottomChange,
                                         beepOnBarcodeScan = beepOnBarcodeScan,
                                         onBeepOnBarcodeScanChange = onBeepOnBarcodeScanChange
                                     )

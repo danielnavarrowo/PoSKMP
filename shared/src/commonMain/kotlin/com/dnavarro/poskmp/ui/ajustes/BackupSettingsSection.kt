@@ -55,6 +55,7 @@ import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.auto_backup_subtitle
 import poskmp.shared.generated.resources.auto_backup_title
 import poskmp.shared.generated.resources.backing_up_progress
+import poskmp.shared.generated.resources.backup
 import poskmp.shared.generated.resources.backup_error_message
 import poskmp.shared.generated.resources.backup_path_label
 import poskmp.shared.generated.resources.backup_section_title
@@ -363,7 +364,7 @@ fun BackupSettingsSection(
                             )
                         } else {
                             Icon(
-                                painter = painterResource(Res.drawable.restore),
+                                painter = painterResource(Res.drawable.backup),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -584,7 +585,7 @@ fun BackupSettingsSection(
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         Icon(
-                                            painter = painterResource(Res.drawable.restore),
+                                            painter = painterResource(Res.drawable.backup),
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(20.dp)

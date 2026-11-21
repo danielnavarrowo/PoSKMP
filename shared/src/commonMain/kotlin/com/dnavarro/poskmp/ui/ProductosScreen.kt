@@ -166,6 +166,7 @@ import poskmp.shared.generated.resources.add
 import poskmp.shared.generated.resources.apply_filters_button
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.bulk_op_change_category_title
+import poskmp.shared.generated.resources.bulk_op_change_pieces_title
 import poskmp.shared.generated.resources.bulk_op_change_prices_title
 import poskmp.shared.generated.resources.bulk_op_deactivate_title
 import poskmp.shared.generated.resources.bulk_op_delete_title
@@ -211,6 +212,7 @@ import poskmp.shared.generated.resources.new_product_button
 import poskmp.shared.generated.resources.new_product_button_desktop
 import poskmp.shared.generated.resources.no_category
 import poskmp.shared.generated.resources.no_products_registered
+import poskmp.shared.generated.resources.numbers
 import poskmp.shared.generated.resources.price
 import poskmp.shared.generated.resources.product_admin_title
 import poskmp.shared.generated.resources.remove
@@ -666,6 +668,21 @@ fun ProductosScreen(
                                     )
                                 },
                                 text = { Text(stringResource(Res.string.bulk_op_change_category_title)) },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            FloatingActionButtonMenuItem(
+                                onClick = {
+                                    isFabMenuExpanded = false
+                                    viewModel.onShowBulkModificationDialog(BulkProductOperation.CHANGE_PIECES)
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.numbers),
+                                        contentDescription = null
+                                    )
+                                },
+                                text = { Text(stringResource(Res.string.bulk_op_change_pieces_title)) },
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )

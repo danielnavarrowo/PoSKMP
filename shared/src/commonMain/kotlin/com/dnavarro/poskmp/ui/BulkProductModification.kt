@@ -60,6 +60,7 @@ enum class BulkProductOperation(val titleRes: StringResource) {
     CHANGE_PRICES(Res.string.bulk_op_change_prices_title),
     SET_PROFIT(Res.string.bulk_op_set_profit_title),
     CHANGE_CATEGORY(Res.string.bulk_op_change_category_title),
+    CHANGE_PIECES(Res.string.bulk_op_change_pieces_title),
     MARK_AS_FAVORITE(Res.string.bulk_op_mark_as_favorite_title),
     DEACTIVATE(Res.string.bulk_op_deactivate_title),
     DELETE(Res.string.bulk_op_delete_title)
@@ -127,6 +128,20 @@ internal fun formatBulkMarginInput(value: Double): String {
         if (str.contains('.')) {
             val parts = str.split('.')
             val dec = parts[1].take(2).trimEnd('0')
+            if (dec.isEmpty()) parts[0] else "${parts[0]}.$dec"
+        } else str
+    }
+}
+
+internal fun formatBulkPieces(value: Double): String {
+    val rounded = (value * 1000.0).roundToLong() / 1000.0
+    return if (rounded % 1.0 == 0.0) {
+        rounded.toLong().toString()
+    } else {
+        val str = rounded.toString()
+        if (str.contains('.')) {
+            val parts = str.split('.')
+            val dec = parts[1].take(3).trimEnd('0')
             if (dec.isEmpty()) parts[0] else "${parts[0]}.$dec"
         } else str
     }
@@ -296,6 +311,7 @@ data class BulkProductModification(
     val wholesaleProfitPercentage: Double? = null,
     val deliveryProfitPercentage: Double? = null,
     val category: String? = null,
+    val pieces: Double? = null,
     val toggleMode: BulkToggleMode = BulkToggleMode.MARK
 )
 
@@ -340,6 +356,7 @@ fun applyBulkProductModification(
     }
 
     BulkProductOperation.CHANGE_CATEGORY -> product.copy(categoria = modification.category)
+    BulkProductOperation.CHANGE_PIECES -> modification.pieces?.let { product.copy(piezas = it) } ?: product
     BulkProductOperation.MARK_AS_FAVORITE -> {
         val nextFavorite = when (modification.toggleMode) {
             BulkToggleMode.MARK -> 1L
@@ -361,7 +378,7 @@ fun applyBulkProductModification(
     BulkProductOperation.DELETE -> null
 }
 
-enum class BulkField { COST, RETAIL, WHOLESALE, DELIVERY, CATEGORY, FAVORITE, STATUS }
+enum class BulkField { COST, RETAIL, WHOLESALE, DELIVERY, CATEGORY, PIECES, FAVORITE, STATUS }
 
 /**
  * A single field difference for a product. For [BulkField.FAVORITE] and [BulkField.STATUS],
@@ -406,6 +423,15 @@ fun buildBulkPreview(
                 )
             )
         }
+        if (abs(updated.piezas - product.piezas) >= 0.0005) {
+            add(
+                BulkFieldChange(
+                    BulkField.PIECES,
+                    formatBulkPieces(product.piezas),
+                    formatBulkPieces(updated.piezas)
+                )
+            )
+        }
         if (updated.es_favorito != product.es_favorito) {
             add(BulkFieldChange(BulkField.FAVORITE, (product.es_favorito == 1L).toString(), (updated.es_favorito == 1L).toString()))
         }
@@ -447,6 +473,12 @@ fun BulkProductModificationDialog(
             )
             BulkProductOperation.CHANGE_CATEGORY -> stringResource(
                 Res.string.bulk_progress_change_category,
+                progress.current,
+                progress.total,
+                progress.percentage
+            )
+            BulkProductOperation.CHANGE_PIECES -> stringResource(
+                Res.string.bulk_progress_change_pieces,
                 progress.current,
                 progress.total,
                 progress.percentage
@@ -524,6 +556,7 @@ fun BulkProductModificationDialog(
         } else "")
     }
     var categoryText by remember { mutableStateOf("") }
+    var piecesText by remember(operation, selectedProducts) { mutableStateOf("") }
     var priceEditMode by remember(operation) {
         mutableStateOf(
             if (operation == BulkProductOperation.SET_PROFIT) {
@@ -587,7 +620,8 @@ fun BulkProductModificationDialog(
     val hasTextField = when (effectiveOperation) {
         BulkProductOperation.CHANGE_PRICES,
         BulkProductOperation.SET_PROFIT,
-        BulkProductOperation.CHANGE_CATEGORY -> true
+        BulkProductOperation.CHANGE_CATEGORY,
+        BulkProductOperation.CHANGE_PIECES -> true
         else -> false
     }
 
@@ -614,6 +648,7 @@ fun BulkProductModificationDialog(
     val selectPriceErr = stringResource(Res.string.bulk_select_price_error)
     val selectProfitErr = stringResource(Res.string.bulk_select_profit_error)
     val enterCategoryErr = stringResource(Res.string.bulk_enter_category_error)
+    val enterPiecesErr = stringResource(Res.string.bulk_enter_pieces_error)
 
     // Cost field still drives margin calculation and price-vs-cost checks even when not overwriting Cost.
     val effectiveCostVal = costText.replace(',', '.').toDoubleOrNull()
@@ -750,6 +785,14 @@ fun BulkProductModificationDialog(
                     errorMessage = enterCategoryErr
                     null
                 } else BulkProductModification(effectiveOperation, category = category)
+            }
+
+            BulkProductOperation.CHANGE_PIECES -> {
+                val parsed = piecesText.replace(',', '.').toDoubleOrNull()
+                if (parsed == null || parsed <= 0.0) {
+                    errorMessage = enterPiecesErr
+                    null
+                } else BulkProductModification(effectiveOperation, pieces = parsed)
             }
 
             BulkProductOperation.MARK_AS_FAVORITE, BulkProductOperation.DEACTIVATE ->
@@ -1040,6 +1083,35 @@ fun BulkProductModificationDialog(
                         }
                     }
 
+                        BulkProductOperation.CHANGE_PIECES -> {
+                            Text(
+                                text = stringResource(Res.string.bulk_op_change_pieces_desc),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            OutlinedTextField(
+                                value = piecesText,
+                                onValueChange = { input ->
+                                    if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d{0,3}$"))) {
+                                        piecesText = input
+                                        errorMessage = null
+                                    }
+                                },
+                                enabled = !isProcessing,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(if (!isAndroid()) Modifier.focusRequester(firstFocusRequester) else Modifier),
+                                label = {
+                                    Text(
+                                        stringResource(Res.string.product_pieces_label),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                },
+                                isError = errorMessage != null,
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                            )
+                        }
+
                         BulkProductOperation.MARK_AS_FAVORITE,
                         BulkProductOperation.DEACTIVATE -> ToggleModeSelector(
                             selectedMode = toggleMode,
@@ -1191,6 +1263,7 @@ private fun BulkFieldChangeRow(change: BulkFieldChange) {
             BulkField.WHOLESALE -> Res.string.bulk_preview_field_wholesale
             BulkField.DELIVERY -> Res.string.bulk_preview_field_delivery
             BulkField.CATEGORY -> Res.string.category_label
+            BulkField.PIECES -> Res.string.product_pieces_label
             BulkField.FAVORITE -> Res.string.bulk_preview_field_favorite
             BulkField.STATUS -> Res.string.bulk_preview_field_status
         }

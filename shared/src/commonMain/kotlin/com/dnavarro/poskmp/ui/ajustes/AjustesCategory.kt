@@ -36,6 +36,7 @@ import poskmp.shared.generated.resources.settings_cat_ventas_subtitle
 import poskmp.shared.generated.resources.settings_cat_ventas_title
 import poskmp.shared.generated.resources.sync
 import kotlinx.serialization.Serializable
+import poskmp.shared.generated.resources.backup
 
 @Serializable
 enum class AjustesCategory(
@@ -91,7 +92,7 @@ enum class AjustesCategory(
     COPIA_SEGURIDAD(
         titleRes = Res.string.settings_cat_backup_title,
         subtitleRes = Res.string.settings_cat_backup_subtitle,
-        icon = Res.drawable.restore
+        icon = Res.drawable.backup
     ),
     SISTEMA_ACERCA_DE(
         titleRes = Res.string.settings_cat_about_title,

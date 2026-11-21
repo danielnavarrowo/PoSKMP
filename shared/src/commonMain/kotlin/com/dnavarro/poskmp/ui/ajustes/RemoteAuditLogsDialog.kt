@@ -47,6 +47,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.download
 import poskmp.shared.generated.resources.restore
 import poskmp.shared.generated.resources.sad_face
 import poskmp.shared.generated.resources.supabase_remote_logs_empty
@@ -124,7 +125,7 @@ fun RemoteAuditLogsDialog(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    painter = painterResource(Res.drawable.restore),
+                                    painter = painterResource(Res.drawable.download),
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(24.dp)

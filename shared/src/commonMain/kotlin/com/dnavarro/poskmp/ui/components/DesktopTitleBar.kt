@@ -59,8 +59,14 @@ fun DesktopTitleBar(
     lastSale: Sale? = null,
     onLastSaleClick: (() -> Unit)? = null,
     onMinimize: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    isBottom: Boolean = false
 ) {
+    val tooltipAnchorPosition = if (isBottom) {
+        TooltipAnchorPosition.Above
+    } else {
+        TooltipAnchorPosition.Below
+    }
     val displayDateTime = dateTimeText.ifBlank {
         var currentDateText by remember { mutableStateOf(formatCurrentDate()) }
         var currentTimeText by remember { mutableStateOf(formatCurrentTime()) }
@@ -107,7 +113,7 @@ fun DesktopTitleBar(
                 // Última Venta Info
                 lastSale?.takeIf { !it.isCancelled }?.let { sale ->
                     TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(tooltipAnchorPosition),
                         tooltip = {
                             PlainTooltip {
                                 Text(stringResource(Res.string.ticket_detail_title, sale.folio))
@@ -165,7 +171,7 @@ fun DesktopTitleBar(
                 ) {
                 // Minimize Button
                 TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(tooltipAnchorPosition),
                     tooltip = {
                         PlainTooltip {
                             Text(stringResource(Res.string.minimize_window))
@@ -187,7 +193,7 @@ fun DesktopTitleBar(
 
                 // Close Button
                 TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(tooltipAnchorPosition),
                     tooltip = {
                         PlainTooltip {
                             Text(stringResource(Res.string.close_button))

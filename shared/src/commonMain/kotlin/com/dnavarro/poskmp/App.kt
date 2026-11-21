@@ -467,6 +467,7 @@ fun App(
 
     val isChecadorDialog = !(isCheckerOnly && !isAndroid()) && appRootState.isChecadorDialog
     val isChecadorFullScreen = currentScreen == Screen.CHECADOR && !isChecadorDialog
+    val desktopTitleBarAtBottom = appRootState.desktopTitleBarAtBottom
     val useDynamicColor = appRootState.useDynamicColor
     val seedColor = appRootState.seedColor
     val isAmoled = appRootState.isAmoled
@@ -537,22 +538,25 @@ fun App(
             paletteStyle = paletteStyle,
             darkTheme = darkTheme
         ) {
+            val showDesktopTitleBar = !isAndroid() && !isChecadorFullScreen
+            val onTitleBarLastSaleClick: () -> Unit = {
+                lastSale?.let { sale ->
+                    coroutineScope.launch {
+                        val items = saleRepository.getItemsBySaleId(sale.id)
+                        selectedLastSaleForDetail = Pair(sale, items)
+                    }
+                }
+            }
             Column(
                 modifier = modifier.fillMaxSize()
             ) {
-                if (!isAndroid() && !isChecadorFullScreen) {
+                if (showDesktopTitleBar && !desktopTitleBarAtBottom) {
                     DesktopTitleBar(
                         lastSale = lastSale,
-                        onLastSaleClick = {
-                            lastSale?.let { sale ->
-                                coroutineScope.launch {
-                                    val items = saleRepository.getItemsBySaleId(sale.id)
-                                    selectedLastSaleForDetail = Pair(sale, items)
-                                }
-                            }
-                        },
+                        onLastSaleClick = onTitleBarLastSaleClick,
                         onMinimize = { onMinimize?.invoke() },
-                        onClose = { onClose?.invoke() }
+                        onClose = { onClose?.invoke() },
+                        isBottom = false
                     )
                 }
                 BoxWithConstraints(
@@ -1836,6 +1840,15 @@ fun App(
                             }
                         )
                     }
+                }
+                if (showDesktopTitleBar && desktopTitleBarAtBottom) {
+                    DesktopTitleBar(
+                        lastSale = lastSale,
+                        onLastSaleClick = onTitleBarLastSaleClick,
+                        onMinimize = { onMinimize?.invoke() },
+                        onClose = { onClose?.invoke() },
+                        isBottom = true
+                    )
                 }
             }
         }

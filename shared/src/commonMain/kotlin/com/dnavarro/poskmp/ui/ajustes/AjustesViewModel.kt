@@ -66,6 +66,7 @@ private data class GeneralBehaviorState(
     val checadorBackgroundPath: String,
     val useProductTableInCatalog: Boolean,
     val swapVentaLayoutOrder: Boolean,
+    val desktopTitleBarAtBottom: Boolean,
     val beepOnBarcodeScan: Boolean
 )
 
@@ -153,9 +154,10 @@ class AjustesViewModel(
             combine(
                 repository.defaultScreenFlow,
                 repository.isChecadorDialogFlow,
-                repository.showExtraPricesChecadorFlow
-            ) { defaultScreen, isChecadorDialog, showExtraPricesChecador ->
-                Triple(defaultScreen, isChecadorDialog, showExtraPricesChecador)
+                repository.showExtraPricesChecadorFlow,
+                repository.desktopTitleBarAtBottomFlow
+            ) { defaultScreen, isChecadorDialog, showExtraPricesChecador, desktopTitleBarAtBottom ->
+                Tuple4(defaultScreen, isChecadorDialog, showExtraPricesChecador, desktopTitleBarAtBottom)
             },
             combine(
                 repository.useCustomChecadorBackgroundFlow,
@@ -172,7 +174,7 @@ class AjustesViewModel(
                     beepOnBarcodeScan
                 )
             }
-        ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador),
+        ) { (defaultScreen, isChecadorDialog, showExtraPricesChecador, desktopTitleBarAtBottom),
             (useCustomChecadorBackground, checadorBackgroundPath, useProductTableInCatalog, swapVentaLayoutOrder, beepOnBarcodeScan) ->
             GeneralBehaviorState(
                 defaultScreen = defaultScreen,
@@ -182,6 +184,7 @@ class AjustesViewModel(
                 checadorBackgroundPath = checadorBackgroundPath,
                 useProductTableInCatalog = useProductTableInCatalog,
                 swapVentaLayoutOrder = swapVentaLayoutOrder,
+                desktopTitleBarAtBottom = desktopTitleBarAtBottom,
                 beepOnBarcodeScan = beepOnBarcodeScan
             )
         },
@@ -308,6 +311,7 @@ class AjustesViewModel(
             checadorBackgroundPath = generalBehaviorState.checadorBackgroundPath,
             useProductTableInCatalog = generalBehaviorState.useProductTableInCatalog,
             swapVentaLayoutOrder = generalBehaviorState.swapVentaLayoutOrder,
+            desktopTitleBarAtBottom = generalBehaviorState.desktopTitleBarAtBottom,
             beepOnBarcodeScan = generalBehaviorState.beepOnBarcodeScan,
             defaultRetailMargin = pricingState.defaultRetailMargin,
             defaultWholesaleMargin = pricingState.defaultWholesaleMargin,
@@ -380,6 +384,7 @@ class AjustesViewModel(
             checadorBackgroundPath = behaviorState.checadorBackgroundPath,
             useProductTableInCatalog = behaviorState.useProductTableInCatalog,
             swapVentaLayoutOrder = behaviorState.swapVentaLayoutOrder,
+            desktopTitleBarAtBottom = behaviorState.desktopTitleBarAtBottom,
             beepOnBarcodeScan = behaviorState.beepOnBarcodeScan,
             defaultRetailMargin = behaviorState.defaultRetailMargin,
             defaultWholesaleMargin = behaviorState.defaultWholesaleMargin,
@@ -414,9 +419,14 @@ class AjustesViewModel(
         _themeFlow,
         repository.deviceRoleFlow,
         repository.defaultScreenFlow,
-        repository.isChecadorDialogFlow,
-        repository.showExtraPricesChecadorFlow
-    ) { themeState, deviceRole, defaultScreen, isChecadorDialog, showExtraPricesChecador ->
+        combine(
+            repository.isChecadorDialogFlow,
+            repository.showExtraPricesChecadorFlow,
+            repository.desktopTitleBarAtBottomFlow
+        ) { isChecadorDialog, showExtraPricesChecador, desktopTitleBarAtBottom ->
+            Triple(isChecadorDialog, showExtraPricesChecador, desktopTitleBarAtBottom)
+        }
+    ) { themeState, deviceRole, defaultScreen, (isChecadorDialog, showExtraPricesChecador, desktopTitleBarAtBottom) ->
         AppRootState(
             deviceRole = deviceRole,
             useDynamicColor = themeState.useDynamicColor,
@@ -429,7 +439,8 @@ class AjustesViewModel(
             appScale = themeState.appScale,
             defaultScreen = defaultScreen,
             isChecadorDialog = isChecadorDialog,
-            showExtraPricesChecador = showExtraPricesChecador
+            showExtraPricesChecador = showExtraPricesChecador,
+            desktopTitleBarAtBottom = desktopTitleBarAtBottom
         )
     }.stateIn(
         scope = viewModelScope,
@@ -579,6 +590,12 @@ class AjustesViewModel(
     fun setSwapVentaLayoutOrder(swap: Boolean) {
         viewModelScope.launch {
             repository.setSwapVentaLayoutOrder(swap)
+        }
+    }
+
+    fun setDesktopTitleBarAtBottom(atBottom: Boolean) {
+        viewModelScope.launch {
+            repository.setDesktopTitleBarAtBottom(atBottom)
         }
     }
 

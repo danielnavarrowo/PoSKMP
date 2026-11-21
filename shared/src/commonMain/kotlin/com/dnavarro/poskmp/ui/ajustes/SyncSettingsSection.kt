@@ -62,6 +62,7 @@ import poskmp.shared.generated.resources.Res
 import poskmp.shared.generated.resources.analytics
 import poskmp.shared.generated.resources.barcode_scanner
 import poskmp.shared.generated.resources.check
+import poskmp.shared.generated.resources.download
 import poskmp.shared.generated.resources.person
 import poskmp.shared.generated.resources.point_of_sale
 import poskmp.shared.generated.resources.restore
@@ -598,7 +599,7 @@ fun SyncSettingsSection(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Icon(
-                                painter = painterResource(Res.drawable.restore),
+                                painter = painterResource(Res.drawable.download),
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )

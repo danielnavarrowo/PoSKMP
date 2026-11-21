@@ -38,6 +38,7 @@ data class AjustesUiState(
     val checadorBackgroundPath: String = "",
     val useProductTableInCatalog: Boolean = false,
     val swapVentaLayoutOrder: Boolean = false,
+    val desktopTitleBarAtBottom: Boolean = false,
     val beepOnBarcodeScan: Boolean = false,
     val defaultRetailMargin: Double = 0.0,
     val defaultWholesaleMargin: Double = 0.0,
@@ -108,5 +109,6 @@ data class AppRootState(
     val appScale: Float = 1.0f,
     val defaultScreen: Screen = Screen.VENTA,
     val isChecadorDialog: Boolean = true,
-    val showExtraPricesChecador: Boolean = false
+    val showExtraPricesChecador: Boolean = false,
+    val desktopTitleBarAtBottom: Boolean = false
 )

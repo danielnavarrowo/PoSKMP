@@ -59,6 +59,9 @@ class TestSettingsRepository(
     private val _swapVentaLayoutOrderFlow = MutableStateFlow(false)
     override val swapVentaLayoutOrderFlow: Flow<Boolean> = _swapVentaLayoutOrderFlow.asStateFlow()
 
+    private val _desktopTitleBarAtBottomFlow = MutableStateFlow(false)
+    override val desktopTitleBarAtBottomFlow: Flow<Boolean> = _desktopTitleBarAtBottomFlow.asStateFlow()
+
     private val _ventaSplitRatioFlow = MutableStateFlow(0.5f)
     override val ventaSplitRatioFlow: Flow<Float> = _ventaSplitRatioFlow.asStateFlow()
 
@@ -228,6 +231,10 @@ class TestSettingsRepository(
 
     override suspend fun setSwapVentaLayoutOrder(swap: Boolean) {
         _swapVentaLayoutOrderFlow.value = swap
+    }
+
+    override suspend fun setDesktopTitleBarAtBottom(atBottom: Boolean) {
+        _desktopTitleBarAtBottomFlow.value = atBottom
     }
 
     override suspend fun setVentaSplitRatio(ratio: Float) {

@@ -64,6 +64,7 @@ interface SettingsRepository {
     val checadorBackgroundPathFlow: Flow<String> get() = flowOf("")
     val useProductTableInCatalogFlow: Flow<Boolean>
     val swapVentaLayoutOrderFlow: Flow<Boolean>
+    val desktopTitleBarAtBottomFlow: Flow<Boolean> get() = flowOf(false)
     val ventaSplitRatioFlow: Flow<Float>
     val beepOnBarcodeScanFlow: Flow<Boolean>
     val defaultRetailMarginFlow: Flow<Double>
@@ -119,6 +120,7 @@ interface SettingsRepository {
     suspend fun setChecadorBackgroundPath(path: String) {}
     suspend fun setUseProductTableInCatalog(enabled: Boolean)
     suspend fun setSwapVentaLayoutOrder(swap: Boolean)
+    suspend fun setDesktopTitleBarAtBottom(atBottom: Boolean) {}
     suspend fun setVentaSplitRatio(ratio: Float)
     suspend fun setBeepOnBarcodeScan(enabled: Boolean)
     suspend fun setDefaultRetailMargin(margin: Double)
@@ -199,6 +201,7 @@ class SettingsRepositoryImpl(
         val CHECADOR_BACKGROUND_PATH = stringPreferencesKey("checador_background_path")
         val USE_PRODUCT_TABLE_IN_CATALOG = booleanPreferencesKey("use_product_table_in_catalog")
         val SWAP_VENTA_LAYOUT_ORDER = booleanPreferencesKey("swap_venta_layout_order")
+        val DESKTOP_TITLE_BAR_AT_BOTTOM = booleanPreferencesKey("desktop_title_bar_at_bottom")
         val VENTA_SPLIT_RATIO = floatPreferencesKey("venta_split_ratio")
         val BEEP_ON_BARCODE_SCAN = booleanPreferencesKey("beep_on_barcode_scan")
         val DEFAULT_RETAIL_MARGIN = doublePreferencesKey("default_retail_margin_percentage")
@@ -410,6 +413,10 @@ class SettingsRepositoryImpl(
 
     override val swapVentaLayoutOrderFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[PreferenceKeys.SWAP_VENTA_LAYOUT_ORDER] ?: false
+    }
+
+    override val desktopTitleBarAtBottomFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferenceKeys.DESKTOP_TITLE_BAR_AT_BOTTOM] ?: false
     }
 
     override val ventaSplitRatioFlow: Flow<Float> = dataStore.data.map { preferences ->
@@ -706,6 +713,12 @@ class SettingsRepositoryImpl(
     override suspend fun setSwapVentaLayoutOrder(swap: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.SWAP_VENTA_LAYOUT_ORDER] = swap
+        }
+    }
+
+    override suspend fun setDesktopTitleBarAtBottom(atBottom: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.DESKTOP_TITLE_BAR_AT_BOTTOM] = atBottom
         }
     }
 
