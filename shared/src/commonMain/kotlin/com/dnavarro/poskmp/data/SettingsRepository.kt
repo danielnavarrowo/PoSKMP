@@ -85,6 +85,7 @@ interface SettingsRepository {
     val googleSearchEngineIdFlow: Flow<String>
     val googleSearchApiKeyFlow: Flow<String>
     val productTableVisibleColumnsFlow: Flow<Set<String>>
+    val productTableColumnOrderFlow: Flow<List<String>> get() = flowOf(emptyList())
     val supabaseUrlFlow: Flow<String>
     val supabaseKeyFlow: Flow<String>
     val lastSyncTimestampFlow: Flow<Long>
@@ -140,6 +141,7 @@ interface SettingsRepository {
     suspend fun setGoogleSearchApiKey(key: String)
     suspend fun setProductTableVisibleColumns(columns: Set<String>)
     suspend fun toggleProductTableColumn(columnName: String, defaultColumns: Set<String> = DEFAULT_PRODUCT_TABLE_COLUMN_NAMES)
+    suspend fun setProductTableColumnOrder(columnOrder: List<String>) {}
     suspend fun setBusinessSettings(
         defaultRetailMargin: Double,
         defaultWholesaleMargin: Double,
@@ -242,6 +244,7 @@ class SettingsRepositoryImpl(
         val OPEN_CASH_DRAWER_ON_RECEIPT = booleanPreferencesKey("open_cash_drawer_on_receipt")
         val OPEN_CASH_DRAWER_ON_CASH_SALE = booleanPreferencesKey("open_cash_drawer_on_cash_sale")
         val PRODUCT_TABLE_VISIBLE_COLUMNS = stringSetPreferencesKey("product_table_visible_columns")
+        val PRODUCT_TABLE_COLUMN_ORDER = stringPreferencesKey("product_table_column_order")
         val DEVICE_ROLE = stringPreferencesKey("device_role")
         val TERMINAL_PREFIX = stringPreferencesKey("terminal_prefix")
         val LOCAL_ACTIVE_SHIFT_ID = stringPreferencesKey("local_active_shift_id")
@@ -492,6 +495,15 @@ class SettingsRepositoryImpl(
     override val productTableVisibleColumnsFlow: Flow<Set<String>> = dataStore.data.map { preferences ->
         val saved = preferences[PreferenceKeys.PRODUCT_TABLE_VISIBLE_COLUMNS]
         if (saved.isNullOrEmpty()) DEFAULT_PRODUCT_TABLE_COLUMN_NAMES else saved
+    }
+
+    override val productTableColumnOrderFlow: Flow<List<String>> = dataStore.data.map { preferences ->
+        val saved = preferences[PreferenceKeys.PRODUCT_TABLE_COLUMN_ORDER]
+        if (saved.isNullOrBlank()) {
+            emptyList()
+        } else {
+            saved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        }
     }
 
     override val supabaseUrlFlow: Flow<String> = dataStore.data.map { preferences ->
@@ -841,6 +853,12 @@ class SettingsRepositoryImpl(
                 current + columnName
             }
             preferences[PreferenceKeys.PRODUCT_TABLE_VISIBLE_COLUMNS] = updated
+        }
+    }
+
+    override suspend fun setProductTableColumnOrder(columnOrder: List<String>) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.PRODUCT_TABLE_COLUMN_ORDER] = columnOrder.joinToString(",")
         }
     }
 

@@ -51,6 +51,28 @@ val DEFAULT_PRODUCT_TABLE_COLUMNS: Set<ProductTableColumn> = setOf(
     ProductTableColumn.PRECIO
 )
 
+val DEFAULT_PRODUCT_TABLE_COLUMN_ORDER: List<ProductTableColumn> = ProductTableColumn.entries
+
+fun normalizeProductTableColumnOrder(savedNames: List<String>): List<ProductTableColumn> {
+    if (savedNames.isEmpty()) return DEFAULT_PRODUCT_TABLE_COLUMN_ORDER
+    val byName = ProductTableColumn.entries.associateBy { it.name }
+    val parsed = savedNames.mapNotNull { byName[it] }.distinct()
+    val missing = ProductTableColumn.entries.filter { it !in parsed }
+    return parsed + missing
+}
+
+fun resolveActiveProductTableColumns(
+    visibleColumns: Set<ProductTableColumn>,
+    columnOrder: List<ProductTableColumn>
+): List<ProductTableColumn> {
+    val normalizedOrder = if (columnOrder.size == ProductTableColumn.entries.size) {
+        columnOrder
+    } else {
+        normalizeProductTableColumnOrder(columnOrder.map { it.name })
+    }
+    return normalizedOrder.filter { it in visibleColumns }
+}
+
 enum class FavoriteFilterOption {
     ALL, ONLY_FAVORITES, ONLY_NON_FAVORITES
 }
@@ -74,6 +96,7 @@ data class ProductosUiState(
     val favoriteFilter: FavoriteFilterOption = FavoriteFilterOption.ALL,
     val statusFilter: StatusFilterOption = StatusFilterOption.ALL,
     val visibleColumns: Set<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMNS,
+    val columnOrder: List<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMN_ORDER,
     val showProductDialogFor: Products? = null,
     val showBulkModificationFor: BulkProductOperation? = null,
     val selectedProductIds: Set<String> = emptySet(),

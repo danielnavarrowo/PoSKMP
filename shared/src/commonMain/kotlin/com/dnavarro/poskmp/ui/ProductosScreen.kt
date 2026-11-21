@@ -2,13 +2,20 @@ package com.dnavarro.poskmp.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import com.dnavarro.poskmp.domain.model.PriceRoundingConfig
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,9 +85,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -93,7 +102,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -102,7 +114,16 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -114,6 +135,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dnavarro.poskmp.db.Products
 import com.dnavarro.poskmp.theme.ShapeDefaults
@@ -122,15 +144,18 @@ import com.dnavarro.poskmp.ui.components.ProductSimpleCard
 import com.dnavarro.poskmp.ui.components.ProductTableHeaderRow
 import com.dnavarro.poskmp.ui.components.ProductTableRow
 import com.dnavarro.poskmp.ui.productos.DEFAULT_PRODUCT_TABLE_COLUMNS
+import com.dnavarro.poskmp.ui.productos.DEFAULT_PRODUCT_TABLE_COLUMN_ORDER
 import com.dnavarro.poskmp.ui.productos.FavoriteFilterOption
 import com.dnavarro.poskmp.ui.productos.ProductTableColumn
 import com.dnavarro.poskmp.ui.productos.ProductosViewModel
 import com.dnavarro.poskmp.ui.productos.StatusFilterOption
+import com.dnavarro.poskmp.ui.productos.resolveActiveProductTableColumns
 import com.dnavarro.poskmp.util.PlatformBackHandler
 import com.dnavarro.poskmp.util.SoundManager
 import com.dnavarro.poskmp.util.isAndroid
 import com.dnavarro.poskmp.util.resetScroll
 import com.dnavarro.poskmp.util.scrollItemIntoView
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -149,8 +174,11 @@ import poskmp.shared.generated.resources.category
 import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.clear_desc
 import poskmp.shared.generated.resources.close
+import poskmp.shared.generated.resources.columns_reorder_hint
+import poskmp.shared.generated.resources.columns_reorder_hint_touch
 import poskmp.shared.generated.resources.columns_section_title
 import poskmp.shared.generated.resources.delete
+import poskmp.shared.generated.resources.drag_indicator
 import poskmp.shared.generated.resources.edit
 import poskmp.shared.generated.resources.filter
 import poskmp.shared.generated.resources.filter_and_sort_title
@@ -200,6 +228,7 @@ import poskmp.shared.generated.resources.sort_order_section_title
 import poskmp.shared.generated.resources.sort_section_title
 import poskmp.shared.generated.resources.star
 import poskmp.shared.generated.resources.wholesale
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class ProductSortField {
@@ -1152,8 +1181,11 @@ fun ProductosScreen(
                                                 tableWidthPx = size.width.toFloat().coerceAtLeast(1f)
                                             }
                                     ) {
-                                        val activeColumns = remember(uiState.visibleColumns) {
-                                            ProductTableColumn.entries.filter { it in uiState.visibleColumns }
+                                        val activeColumns = remember(uiState.visibleColumns, uiState.columnOrder) {
+                                            resolveActiveProductTableColumns(
+                                                visibleColumns = uiState.visibleColumns,
+                                                columnOrder = uiState.columnOrder
+                                            )
                                         }
                                         val totalDefaultWeight = remember(activeColumns) {
                                             activeColumns.sumOf { it.defaultWeight.toDouble() }.toFloat().coerceAtLeast(0.01f)
@@ -1380,7 +1412,9 @@ fun ProductosScreen(
                     statusFilter = uiState.statusFilter,
                     availableCategories = uiState.availableCategories,
                     visibleColumns = uiState.visibleColumns,
+                    columnOrder = uiState.columnOrder,
                     onToggleColumn = { viewModel.onToggleColumn(it) },
+                    onReorderColumns = { viewModel.onReorderColumns(it) },
                     onSortFieldSelected = { viewModel.onSortFieldChanged(it) },
                     onSortOrderSelected = { viewModel.onSortOrderChanged(it) },
                     onCategorySelected = { viewModel.onCategoryFilterChanged(it) },
@@ -1404,7 +1438,9 @@ fun ProductFilterAndSortBottomSheet(
     statusFilter: StatusFilterOption,
     availableCategories: List<String>,
     visibleColumns: Set<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMNS,
+    columnOrder: List<ProductTableColumn> = DEFAULT_PRODUCT_TABLE_COLUMN_ORDER,
     onToggleColumn: (ProductTableColumn) -> Unit = {},
+    onReorderColumns: (List<ProductTableColumn>) -> Unit = {},
     onSortFieldSelected: (ProductSortField) -> Unit,
     onSortOrderSelected: (ProductSortOrder) -> Unit,
     onCategorySelected: (String?) -> Unit,
@@ -1598,28 +1634,32 @@ fun ProductFilterAndSortBottomSheet(
                 // Section 3: Visible Columns (Wide View Only)
                 if (!isCompact) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(Res.string.columns_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            ProductTableColumn.entries.forEach { col ->
-                                val isSelected = visibleColumns.contains(col)
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { onToggleColumn(col) },
-                                    label = { Text(stringResource(col.titleRes)) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                )
-                            }
+                            Text(
+                                text = stringResource(Res.string.columns_section_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = stringResource(
+                                    if (isAndroid()) Res.string.columns_reorder_hint_touch
+                                    else Res.string.columns_reorder_hint
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
+                        DraggableColumnsFlowRow(
+                            columnOrder = columnOrder,
+                            visibleColumns = visibleColumns,
+                            onToggleColumn = onToggleColumn,
+                            onReorderColumns = onReorderColumns
+                        )
                     }
                 }
 
@@ -1789,6 +1829,396 @@ fun ProductFilterAndSortBottomSheet(
         }
     }
 }
+
+internal data class DragReorderCandidate(
+    val targetIndex: Int,
+    val targetColumn: ProductTableColumn
+)
+
+internal fun findColumnDragReorderCandidate(
+    order: List<ProductTableColumn>,
+    bounds: Map<ProductTableColumn, Rect>,
+    draggedColumn: ProductTableColumn,
+    pointerPos: Offset,
+    lastSwappedColumn: ProductTableColumn?,
+    lastSwapPointerPos: Offset?,
+    hysteresisPx: Float
+): DragReorderCandidate? {
+    val draggedIndex = order.indexOf(draggedColumn)
+    if (draggedIndex == -1) return null
+    val draggedRect = bounds[draggedColumn] ?: return null
+
+    // 1. Direct hit on another chip's bounds
+    val directHit = order.withIndex().firstOrNull { (_, col) ->
+        col != draggedColumn && bounds[col]?.contains(pointerPos) == true
+    }
+
+    if (directHit != null) {
+        val targetIndex = directHit.index
+        val targetCol = directHit.value
+        val targetRect = bounds[targetCol] ?: return null
+
+        val sameRow = abs(targetRect.center.y - draggedRect.center.y) <
+            minOf(targetRect.height, draggedRect.height) * 0.5f
+
+        // Anti-oscillation guard for the chip we just swapped with
+        if (targetCol == lastSwappedColumn && lastSwapPointerPos != null) {
+            if (sameRow) {
+                val movedTowardTarget = if (targetIndex < draggedIndex) {
+                    lastSwapPointerPos.x - pointerPos.x >= hysteresisPx
+                } else {
+                    pointerPos.x - lastSwapPointerPos.x >= hysteresisPx
+                }
+                if (!movedTowardTarget) return null
+            } else {
+                if ((pointerPos - lastSwapPointerPos).getDistance() < hysteresisPx) {
+                    return null
+                }
+            }
+        }
+
+        if (sameRow) {
+            val crossedThreshold = if (targetIndex > draggedIndex) {
+                pointerPos.x >= targetRect.left + targetRect.width * 0.25f
+            } else {
+                pointerPos.x <= targetRect.right - targetRect.width * 0.25f
+            }
+            if (!crossedThreshold) return null
+        }
+
+        return DragReorderCandidate(targetIndex = targetIndex, targetColumn = targetCol)
+    }
+
+    // 2. Pointer is still over the dragged chip's own slot
+    if (draggedRect.contains(pointerPos)) return null
+
+    // 3. Pointer is in empty space (past end of a row, above first row, or below last row)
+    val allRects = order.mapNotNull { col -> bounds[col]?.let { col to it } }
+    if (allRects.isEmpty()) return null
+
+    val minTop = allRects.minOf { it.second.top }
+    val maxBottom = allRects.maxOf { it.second.bottom }
+
+    if (pointerPos.y < minTop && draggedIndex != 0) {
+        return DragReorderCandidate(targetIndex = 0, targetColumn = order.first())
+    }
+    if (pointerPos.y > maxBottom && draggedIndex != order.lastIndex) {
+        return DragReorderCandidate(targetIndex = order.lastIndex, targetColumn = order.last())
+    }
+
+    val rowItems = order.withIndex().mapNotNull { indexed ->
+        val rect = bounds[indexed.value] ?: return@mapNotNull null
+        if (pointerPos.y in rect.top..rect.bottom) indexed to rect else null
+    }
+    if (rowItems.isNotEmpty()) {
+        val rightmost = rowItems.maxByOrNull { it.second.right }
+        if (rightmost != null && pointerPos.x > rightmost.second.right) {
+            val insertIndex = if (draggedIndex < rightmost.first.index) {
+                rightmost.first.index
+            } else {
+                (rightmost.first.index + 1).coerceAtMost(order.lastIndex)
+            }
+            if (insertIndex != draggedIndex && rightmost.first.value != lastSwappedColumn) {
+                return DragReorderCandidate(
+                    targetIndex = insertIndex,
+                    targetColumn = rightmost.first.value
+                )
+            }
+        }
+    }
+
+    return null
+}
+
+@Composable
+private fun DraggableColumnsFlowRow(
+    columnOrder: List<ProductTableColumn>,
+    visibleColumns: Set<ProductTableColumn>,
+    onToggleColumn: (ProductTableColumn) -> Unit,
+    onReorderColumns: (List<ProductTableColumn>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val hysteresisPx = remember(density) { with(density) { 18.dp.toPx() } }
+
+    var workingOrder by remember { mutableStateOf(columnOrder) }
+    var draggedColumn by remember { mutableStateOf<ProductTableColumn?>(null) }
+    var dragPointerPos by remember { mutableStateOf(Offset.Zero) }
+    var dragGrabOffset by remember { mutableStateOf(Offset.Zero) }
+
+    val latestColumnOrder by rememberUpdatedState(columnOrder)
+    val latestOnReorderColumns by rememberUpdatedState(onReorderColumns)
+
+    // Sync external order updates without snapping back while dragging or right after a local drop
+    LaunchedEffect(columnOrder) {
+        if (draggedColumn == null) {
+            workingOrder = columnOrder
+        }
+    }
+
+    val itemBounds = remember { mutableStateMapOf<ProductTableColumn, Rect>() }
+    val chipAnimOffsets = remember {
+        ProductTableColumn.entries.associateWith {
+            Animatable(Offset.Zero, Offset.VectorConverter)
+        }
+    }
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(
+                        requireUnconsumed = false,
+                        pass = PointerEventPass.Initial
+                    )
+                    val downPos = down.position
+                    val hitCol = workingOrder.firstOrNull { col ->
+                        itemBounds[col]?.contains(downPos) == true
+                    } ?: return@awaitEachGesture
+
+                    val isDirectDrag = down.type != PointerType.Touch
+                    val touchSlop = viewConfiguration.touchSlop
+                    var dragStarted = false
+                    var currentPos = downPos
+
+                    if (isDirectDrag) {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                                ?: event.changes.firstOrNull()
+                                ?: break
+
+                            if (!change.pressed) {
+                                break
+                            }
+
+                            if ((change.position - downPos).getDistance() > touchSlop) {
+                                dragStarted = true
+                                currentPos = change.position
+                                change.consume()
+                                break
+                            }
+                        }
+                    } else {
+                        val longPressTimeout = viewConfiguration.longPressTimeoutMillis
+                        val canceledOrTapped = withTimeoutOrNull(longPressTimeout) {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val change = event.changes.firstOrNull { it.id == down.id }
+                                    ?: event.changes.firstOrNull()
+                                    ?: return@withTimeoutOrNull true
+
+                                if (!change.pressed) {
+                                    return@withTimeoutOrNull true
+                                }
+
+                                if ((change.position - downPos).getDistance() > touchSlop) {
+                                    return@withTimeoutOrNull true
+                                }
+                                currentPos = change.position
+                            }
+                            @Suppress("UNREACHABLE_CODE")
+                            true
+                        }
+                        if (canceledOrTapped == null) {
+                            dragStarted = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    }
+
+                    if (!dragStarted) return@awaitEachGesture
+
+                    val startRect = itemBounds[hitCol] ?: return@awaitEachGesture
+                    val grabOffset = downPos - startRect.topLeft
+                    draggedColumn = hitCol
+                    dragPointerPos = currentPos
+                    dragGrabOffset = grabOffset
+
+                    var lastSwappedCol: ProductTableColumn? = null
+                    var lastSwapPointerPos: Offset? = null
+
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                                ?: event.changes.firstOrNull()
+                                ?: break
+
+                            change.consume()
+
+                            if (!change.pressed) {
+                                break
+                            }
+
+                            val pos = change.position
+                            dragPointerPos = pos
+
+                            if (lastSwappedCol != null &&
+                                itemBounds[lastSwappedCol]?.contains(pos) != true
+                            ) {
+                                lastSwappedCol = null
+                                lastSwapPointerPos = null
+                            }
+
+                            val candidate = findColumnDragReorderCandidate(
+                                order = workingOrder,
+                                bounds = itemBounds,
+                                draggedColumn = hitCol,
+                                pointerPos = pos,
+                                lastSwappedColumn = lastSwappedCol,
+                                lastSwapPointerPos = lastSwapPointerPos,
+                                hysteresisPx = hysteresisPx
+                            )
+
+                            if (candidate != null) {
+                                val fromIndex = workingOrder.indexOf(hitCol)
+                                if (fromIndex != -1 && fromIndex != candidate.targetIndex) {
+                                    val updated = workingOrder.toMutableList()
+                                    val moved = updated.removeAt(fromIndex)
+                                    updated.add(candidate.targetIndex, moved)
+                                    workingOrder = updated
+                                    lastSwappedCol = candidate.targetColumn
+                                    lastSwapPointerPos = pos
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            }
+                        }
+                    } finally {
+                        val finalRect = itemBounds[hitCol]
+                        if (finalRect != null) {
+                            val finalVisualOffset = (dragPointerPos - dragGrabOffset) - finalRect.topLeft
+                            chipAnimOffsets[hitCol]?.let { anim ->
+                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    anim.snapTo(finalVisualOffset)
+                                    anim.animateTo(
+                                        Offset.Zero,
+                                        spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        draggedColumn = null
+                        if (workingOrder != latestColumnOrder) {
+                            latestOnReorderColumns(workingOrder)
+                        }
+                    }
+                }
+            }
+    ) {
+        workingOrder.forEach { col ->
+            key(col) {
+                val isSelected = visibleColumns.contains(col)
+                val isDragged = draggedColumn == col
+                val animOffset = chipAnimOffsets.getValue(col)
+                var lastPlacedTopLeft by remember { mutableStateOf<Offset?>(null) }
+
+                val dragScale by animateFloatAsState(
+                    targetValue = if (isDragged) 1.05f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "columnChipScale"
+                )
+                val dragElevation by animateDpAsState(
+                    targetValue = if (isDragged) 6.dp else 0.dp,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "columnChipElevation"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .onPlaced { coords ->
+                            val rect = coords.boundsInParent()
+                            itemBounds[col] = rect
+                            val newTopLeft = rect.topLeft
+                            val prevTopLeft = lastPlacedTopLeft
+                            lastPlacedTopLeft = newTopLeft
+                            if (prevTopLeft != null &&
+                                prevTopLeft != newTopLeft &&
+                                draggedColumn != null &&
+                                draggedColumn != col
+                            ) {
+                                val delta = prevTopLeft - newTopLeft
+                                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    animOffset.snapTo(animOffset.value + delta)
+                                    animOffset.animateTo(
+                                        Offset.Zero,
+                                        spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        .zIndex(if (isDragged) 10f else 0f)
+                        .graphicsLayer {
+                            val translation = if (isDragged) {
+                                val slotTopLeft = itemBounds[col]?.topLeft ?: Offset.Zero
+                                (dragPointerPos - dragGrabOffset) - slotTopLeft
+                            } else {
+                                animOffset.value
+                            }
+                            translationX = translation.x
+                            translationY = translation.y
+                            scaleX = dragScale
+                            scaleY = dragScale
+                        }
+                        .pointerHoverIcon(PointerIcon.Hand)
+                ) {
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onToggleColumn(col) },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(Res.drawable.drag_indicator),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isSelected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                }
+                            )
+                        },
+                        label = { Text(stringResource(col.titleRes)) },
+                        elevation = FilterChipDefaults.filterChipElevation(
+                            elevation = dragElevation,
+                            pressedElevation = dragElevation,
+                            focusedElevation = dragElevation,
+                            hoveredElevation = dragElevation,
+                            draggedElevation = dragElevation
+                        ),
+                        border = if (isDragged) {
+                            BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                        } else {
+                            FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 
 

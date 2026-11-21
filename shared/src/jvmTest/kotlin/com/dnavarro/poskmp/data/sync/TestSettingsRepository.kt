@@ -122,6 +122,9 @@ class TestSettingsRepository(
     private val _productTableVisibleColumnsFlow = MutableStateFlow(DEFAULT_PRODUCT_TABLE_COLUMN_NAMES)
     override val productTableVisibleColumnsFlow: Flow<Set<String>> = _productTableVisibleColumnsFlow.asStateFlow()
 
+    private val _productTableColumnOrderFlow = MutableStateFlow<List<String>>(emptyList())
+    override val productTableColumnOrderFlow: Flow<List<String>> = _productTableColumnOrderFlow.asStateFlow()
+
     private val _supabaseUrlFlow = MutableStateFlow(initialSupabaseUrl)
     override val supabaseUrlFlow: Flow<String> = _supabaseUrlFlow.asStateFlow()
 
@@ -315,6 +318,10 @@ class TestSettingsRepository(
         val current = _productTableVisibleColumnsFlow.value.toMutableSet()
         if (current.contains(columnName)) current.remove(columnName) else current.add(columnName)
         _productTableVisibleColumnsFlow.value = current
+    }
+
+    override suspend fun setProductTableColumnOrder(columnOrder: List<String>) {
+        _productTableColumnOrderFlow.value = columnOrder
     }
 
     override suspend fun setBusinessSettings(

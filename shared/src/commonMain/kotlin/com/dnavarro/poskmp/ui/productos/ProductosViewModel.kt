@@ -74,6 +74,7 @@ private data class ProductSettingsConfig(
 
 private data class ProductExtraState(
     val visibleColumns: Set<ProductTableColumn>,
+    val columnOrder: List<ProductTableColumn>,
     val salesStats: Map<String, ProductSalesStats>,
     val syncState: SyncStateEnum,
     val allProducts: List<Products> = emptyList(),
@@ -107,6 +108,14 @@ class ProductosViewModel(
             }.toSet()
             parsed.ifEmpty { DEFAULT_PRODUCT_TABLE_COLUMNS }
         }.distinctUntilChanged()
+
+    private val _columnOrderFlow: Flow<List<ProductTableColumn>> =
+        settingsRepository.productTableColumnOrderFlow
+            .map { savedNames -> normalizeProductTableColumnOrder(savedNames) }
+            .distinctUntilChanged()
+
+    private val _columnsConfigFlow: Flow<Pair<Set<ProductTableColumn>, List<ProductTableColumn>>> =
+        combine(_visibleColumnsFlow, _columnOrderFlow) { visible, order -> visible to order }
 
     private val _queryAndProductsFlow = _searchQuery.flatMapLatest { query ->
         getProductsUseCase(query = query, activeOnly = false).map { products ->
@@ -195,14 +204,15 @@ class ProductosViewModel(
             Triple(query, products, display)
         },
         combine(
-            _visibleColumnsFlow,
+            _columnsConfigFlow,
             _salesStatsFlow,
             syncRepository.syncState,
             _allProductsFlow,
             _allCategoriesFlow
-        ) { visibleColumns, salesStats, syncState, allProducts, allCats ->
+        ) { (visibleColumns, columnOrder), salesStats, syncState, allProducts, allCats ->
             ProductExtraState(
                 visibleColumns = visibleColumns,
+                columnOrder = columnOrder,
                 salesStats = salesStats,
                 syncState = syncState,
                 allProducts = allProducts,
@@ -260,6 +270,7 @@ class ProductosViewModel(
             favoriteFilter = display.favoriteFilter,
             statusFilter = display.statusFilter,
             visibleColumns = extra.visibleColumns,
+            columnOrder = extra.columnOrder,
             showProductDialogFor = display.showProductDialogFor,
             showBulkModificationFor = display.showBulkModificationFor,
             selectedProductIds = display.selectedProductIds,
@@ -316,6 +327,13 @@ class ProductosViewModel(
                 columnName = column.name,
                 defaultColumns = DEFAULT_PRODUCT_TABLE_COLUMNS.map { it.name }.toSet()
             )
+        }
+    }
+
+    fun onReorderColumns(newOrder: List<ProductTableColumn>) {
+        val normalized = normalizeProductTableColumnOrder(newOrder.map { it.name })
+        viewModelScope.launch {
+            settingsRepository.setProductTableColumnOrder(normalized.map { it.name })
         }
     }
 
