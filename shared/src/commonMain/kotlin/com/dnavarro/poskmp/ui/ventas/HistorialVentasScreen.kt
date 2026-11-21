@@ -98,6 +98,7 @@ import poskmp.shared.generated.resources.check
 import poskmp.shared.generated.resources.delivery
 import poskmp.shared.generated.resources.empty_recent_sales_history
 import poskmp.shared.generated.resources.filter
+import poskmp.shared.generated.resources.filter_and_sort_title
 import poskmp.shared.generated.resources.filter_off
 import poskmp.shared.generated.resources.filter_on
 import poskmp.shared.generated.resources.filter_section_title
@@ -106,11 +107,21 @@ import poskmp.shared.generated.resources.reset_filters
 import poskmp.shared.generated.resources.sale_badge_delivery
 import poskmp.shared.generated.resources.sale_status_cancelled
 import poskmp.shared.generated.resources.sales_history_total_summary
+import poskmp.shared.generated.resources.sort_order_asc
+import poskmp.shared.generated.resources.sort_order_desc
+import poskmp.shared.generated.resources.sort_order_section_title
+import poskmp.shared.generated.resources.sort_section_title
 import poskmp.shared.generated.resources.ticket_cashier_format
 import poskmp.shared.generated.resources.ticket_folio_format
 import poskmp.shared.generated.resources.ticket_items_and_method
 import poskmp.shared.generated.resources.ticket_profit_label
 import poskmp.shared.generated.resources.title_recent_sales_history
+
+enum class SaleSortField(val label: String) {
+    TIME("Fecha y hora"),
+    TOTAL("Monto total"),
+    PIECES("Piezas")
+}
 
 enum class SaleTypeFilterOption {
     ALL,
@@ -124,6 +135,19 @@ enum class SaleStatusFilterOption {
     CANCELLED
 }
 
+internal fun sortSales(
+    sales: List<Sale>,
+    sortField: SaleSortField,
+    isAscending: Boolean
+): List<Sale> {
+    val comparator = when (sortField) {
+        SaleSortField.TIME -> compareBy<Sale> { it.createdAt }.thenBy { it.folio }
+        SaleSortField.TOTAL -> compareBy<Sale> { it.total }.thenBy { it.createdAt }
+        SaleSortField.PIECES -> compareBy<Sale> { it.totalItems }.thenBy { it.createdAt }
+    }
+    return if (isAscending) sales.sortedWith(comparator) else sales.sortedWith(comparator.reversed())
+}
+
 @Composable
 fun HistorialVentasScreen(
     sales: List<Sale>,
@@ -134,6 +158,8 @@ fun HistorialVentasScreen(
     modifier: Modifier = Modifier
 ) {
     var showFilterBottomSheet by remember { mutableStateOf(false) }
+    var sortField by rememberSaveable { mutableStateOf(SaleSortField.TIME) }
+    var isAscending by rememberSaveable { mutableStateOf(false) }
     var typeFilter by rememberSaveable { mutableStateOf(SaleTypeFilterOption.ALL) }
     var statusFilter by rememberSaveable { mutableStateOf(SaleStatusFilterOption.ALL) }
     var selectedPaymentMethod by rememberSaveable { mutableStateOf<String?>(null) }
@@ -143,12 +169,16 @@ fun HistorialVentasScreen(
         sales.mapNotNull { it.cashierName }.filter { it.isNotBlank() }.distinct().sorted()
     }
 
-    val hasActiveFilters = typeFilter != SaleTypeFilterOption.ALL ||
+    val hasActiveFilters = sortField != SaleSortField.TIME ||
+            isAscending ||
+            typeFilter != SaleTypeFilterOption.ALL ||
             statusFilter != SaleStatusFilterOption.ALL ||
             selectedPaymentMethod != null ||
             selectedCashier != null
 
     val resetFilters = {
+        sortField = SaleSortField.TIME
+        isAscending = false
         typeFilter = SaleTypeFilterOption.ALL
         statusFilter = SaleStatusFilterOption.ALL
         selectedPaymentMethod = null
@@ -159,12 +189,14 @@ fun HistorialVentasScreen(
 
     val filteredSales = remember(
         sales,
+        sortField,
+        isAscending,
         typeFilter,
         statusFilter,
         selectedPaymentMethod,
         selectedCashier
     ) {
-        sales.filter { sale ->
+        val filtered = sales.filter { sale ->
             val matchesType = when (typeFilter) {
                 SaleTypeFilterOption.ALL -> true
                 SaleTypeFilterOption.LOCAL -> !sale.esForanea
@@ -179,9 +211,10 @@ fun HistorialVentasScreen(
             val matchesCashier = selectedCashier == null || sale.cashierName == selectedCashier
             matchesType && matchesStatus && matchesPayment && matchesCashier
         }
+        sortSales(filtered, sortField, isAscending)
     }
 
-    LaunchedEffect(typeFilter, statusFilter, selectedPaymentMethod, selectedCashier) {
+    LaunchedEffect(sortField, isAscending, typeFilter, statusFilter, selectedPaymentMethod, selectedCashier) {
         try {
             listState.scrollToItem(0)
         } catch (_: Exception) {}
@@ -380,11 +413,15 @@ fun HistorialVentasScreen(
 
         if (showFilterBottomSheet) {
             SaleFilterBottomSheet(
+                sortField = sortField,
+                isAscending = isAscending,
                 typeFilter = typeFilter,
                 statusFilter = statusFilter,
                 selectedPaymentMethod = selectedPaymentMethod,
                 selectedCashier = selectedCashier,
                 availableCashiers = availableCashiers,
+                onSortFieldSelected = { sortField = it },
+                onSortOrderSelected = { isAscending = it },
                 onTypeFilterSelected = { typeFilter = it },
                 onStatusFilterSelected = { statusFilter = it },
                 onPaymentMethodSelected = { selectedPaymentMethod = it },
@@ -562,11 +599,15 @@ fun SaleTicketCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaleFilterBottomSheet(
+    sortField: SaleSortField,
+    isAscending: Boolean,
     typeFilter: SaleTypeFilterOption,
     statusFilter: SaleStatusFilterOption,
     selectedPaymentMethod: String?,
     selectedCashier: String?,
     availableCashiers: List<String>,
+    onSortFieldSelected: (SaleSortField) -> Unit,
+    onSortOrderSelected: (Boolean) -> Unit,
     onTypeFilterSelected: (SaleTypeFilterOption) -> Unit,
     onStatusFilterSelected: (SaleStatusFilterOption) -> Unit,
     onPaymentMethodSelected: (String?) -> Unit,
@@ -629,7 +670,7 @@ fun SaleFilterBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(Res.string.filter_section_title),
+                    text = stringResource(Res.string.filter_and_sort_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -658,7 +699,78 @@ fun SaleFilterBottomSheet(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Section 1: Tipo de venta
+                // Section 1: Ordenar por
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.sort_section_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        SaleSortField.entries.forEach { field ->
+                            FilterChip(
+                                selected = sortField == field,
+                                onClick = { onSortFieldSelected(field) },
+                                label = { Text(field.label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Section 2: Dirección del orden
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(Res.string.sort_order_section_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val orderOptions = listOf(
+                            false to "▼ " + stringResource(Res.string.sort_order_desc),
+                            true to "▲ " + stringResource(Res.string.sort_order_asc)
+                        )
+                        orderOptions.forEachIndexed { index, (order, label) ->
+                            val isSelected = isAscending == order
+                            ToggleButton(
+                                checked = isSelected,
+                                onCheckedChange = { onSortOrderSelected(order) },
+                                colors = ToggleButtonDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    orderOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Section 3: Tipo de venta
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Tipo de venta",
