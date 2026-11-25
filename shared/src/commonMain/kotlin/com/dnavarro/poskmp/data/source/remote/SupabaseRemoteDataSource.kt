@@ -82,6 +82,19 @@ class SupabaseRemoteDataSourceImpl(
         return url.trim().trimEnd('/')
     }
 
+    /**
+     * Builds a deterministic PostgREST order/filter query string with `id.asc` as a unique
+     * tie-breaker so OFFSET pagination never skips or duplicates rows with equal timestamps.
+     */
+    private fun buildIncrementalOrderQuery(timestampColumn: String, sinceTimestamp: Long): String {
+        val orderClause = "order=$timestampColumn.asc,id.asc"
+        return if (sinceTimestamp > 0) {
+            "$timestampColumn=gt.$sinceTimestamp&$orderClause"
+        } else {
+            orderClause
+        }
+    }
+
     private suspend inline fun <reified T> fetchAllPaged(
         cleanUrl: String,
         key: String,
@@ -181,11 +194,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<ProductDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
-            } else {
-                "order=updated_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("updated_at", sinceTimestamp)
             val list: List<ProductDto> = fetchAllPaged(cleanUrl, key, "products", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -215,11 +224,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<CustomerDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
-            } else {
-                "order=updated_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("updated_at", sinceTimestamp)
             val list: List<CustomerDto> = fetchAllPaged(cleanUrl, key, "customers", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -249,11 +254,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<CustomerPaymentDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "created_at=gt.$sinceTimestamp&order=created_at.asc"
-            } else {
-                "order=created_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("created_at", sinceTimestamp)
             val list: List<CustomerPaymentDto> = fetchAllPaged(cleanUrl, key, "customer_payments", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -283,11 +284,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<CashierDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
-            } else {
-                "order=updated_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("updated_at", sinceTimestamp)
             val list: List<CashierDto> = fetchAllPaged(cleanUrl, key, "cashiers", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -317,11 +314,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<ShiftDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
-            } else {
-                "order=updated_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("updated_at", sinceTimestamp)
             val list: List<ShiftDto> = fetchAllPaged(cleanUrl, key, "shifts", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -351,11 +344,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<CashMovementDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "created_at=gt.$sinceTimestamp&order=created_at.asc"
-            } else {
-                "order=created_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("created_at", sinceTimestamp)
             val list: List<CashMovementDto> = fetchAllPaged(cleanUrl, key, "cash_movements", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -385,11 +374,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<SaleDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "updated_at=gt.$sinceTimestamp&order=updated_at.asc"
-            } else {
-                "order=updated_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("updated_at", sinceTimestamp)
             val list: List<SaleDto> = fetchAllPaged(cleanUrl, key, "sales", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -419,11 +404,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<SaleItemDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "created_at=gt.$sinceTimestamp&order=created_at.asc"
-            } else {
-                "order=created_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("created_at", sinceTimestamp)
             val list: List<SaleItemDto> = fetchAllPaged(cleanUrl, key, "sale_items", query)
             Result.success(list)
         } catch (e: Exception) {
@@ -562,11 +543,7 @@ class SupabaseRemoteDataSourceImpl(
     ): Result<List<DeletedRecordDto>> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = normalizeUrl(url)
-            val query = if (sinceTimestamp > 0) {
-                "deleted_at=gt.$sinceTimestamp&order=deleted_at.asc"
-            } else {
-                "order=deleted_at.asc"
-            }
+            val query = buildIncrementalOrderQuery("deleted_at", sinceTimestamp)
             val list: List<DeletedRecordDto> = fetchAllPaged(cleanUrl, key, "deleted_records", query)
             Result.success(list)
         } catch (e: Exception) {

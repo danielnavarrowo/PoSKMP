@@ -4,6 +4,6 @@ package com.dnavarro.poskmp.util
  * Global application constants.
  */
 object AppConstants {
-    const val APP_VERSION = "1.3.3"
+    const val APP_VERSION = "1.3.4"
 
 }
